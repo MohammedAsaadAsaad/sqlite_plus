@@ -54,7 +54,27 @@ bool? truth(Object? value, [int encoding = 1]) {
 BigInt boolean(bool value) => value ? BigInt.one : BigInt.zero;
 String stringify(Object value, [int encoding = 1]) {
   if (value is Uint8List) return decodeSqlText(value, encoding);
+  if (value is double) return sqlRealText(value);
   return value.toString();
+}
+
+String sqlRealText(double value, [int precision = 15]) {
+  if (value == 0) return '0.0';
+  if (!value.isFinite) return value.isNegative ? '-Inf' : 'Inf';
+  final parts = value.toStringAsExponential(precision - 1).split('e');
+  final exponent = int.parse(parts[1]);
+  String trim(String s) {
+    if (!s.contains('.')) return '$s.0';
+    while (s.endsWith('0')) {
+      s = s.substring(0, s.length - 1);
+    }
+    return s.endsWith('.') ? '${s}0' : s;
+  }
+
+  if (exponent >= -4 && exponent < precision) {
+    return trim(value.toStringAsFixed(precision - 1 - exponent));
+  }
+  return '${trim(parts[0])}e${exponent < 0 ? '-' : '+'}${exponent.abs().toString().padLeft(2, '0')}';
 }
 
 int compareValues(Object? a, Object? b, [int encoding = 1]) {

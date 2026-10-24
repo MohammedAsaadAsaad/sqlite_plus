@@ -3,6 +3,7 @@ import '../pager/read_only_pager.dart';
 import '../storage/storage_backend.dart';
 import 'catalog.dart';
 import 'parser.dart';
+import 'functions.dart';
 import 'tokenizer.dart';
 import 'values.dart';
 
@@ -12,6 +13,13 @@ final class QueryResult {
         rows = List.unmodifiable(rows.map(List<Object?>.unmodifiable));
   final List<String> columns;
   final List<List<Object?>> rows;
+}
+
+final class QueryPlan {
+  const QueryPlan(this.access, this.rootPage, this.rowid);
+  final String access;
+  final int? rootPage;
+  final BigInt? rowid;
 }
 
 /// M3 read-only single-table SELECT API. Unsupported SQL fails explicitly.
@@ -35,9 +43,83 @@ final class SqliteDatabase {
     await _pager.close();
   }
 
+  QueryPlan _plan(
+      SelectStatement statement, CatalogTable? table, List<Object?> bound) {
+    if (table == null) return const QueryPlan('constant', null, null);
+    if (!table.withoutRowid) {
+      BigInt? lookup(Expr? expr) {
+        if (expr is! BinaryExpr) return null;
+        if (expr.op == 'AND') return lookup(expr.left) ?? lookup(expr.right);
+        if (!['=', '=='].contains(expr.op)) return null;
+        ColumnExpr? column;
+        Expr? constant;
+        if (expr.left is ColumnExpr) {
+          column = expr.left as ColumnExpr;
+          constant = expr.right;
+        } else if (expr.right is ColumnExpr) {
+          column = expr.right as ColumnExpr;
+          constant = expr.left;
+        }
+        if (column == null) return null;
+        final alias = table.rowidAlias;
+        final actual =
+            table.columns.where((c) => asciiLower(c.name) == column!.key);
+        if (!(alias != null && column.key == asciiLower(alias)) &&
+            (!['rowid', '_rowid_', 'oid'].contains(column.key) ||
+                actual.isNotEmpty)) {
+          return null;
+        }
+        try {
+          constant!.validate({});
+        } on SqlException {
+          return null;
+        }
+        if (constant.containsAggregate) return null;
+        var value = applyAffinity(
+            constant.evaluate(
+                EvalContext({}, {}, bound, _pager.header.textEncoding)),
+            'numeric');
+        if (value is double &&
+            value.isFinite &&
+            value == value.truncateToDouble()) {
+          value = BigInt.from(value);
+        }
+        return value is BigInt &&
+                value >= -(BigInt.one << 63) &&
+                value < BigInt.one << 63
+            ? value
+            : null;
+      }
+
+      final key = lookup(statement.where);
+      if (key != null) return QueryPlan('rowid-lookup', table.rootPage, key);
+    }
+    return QueryPlan(table.withoutRowid ? 'index-tree-scan' : 'table-scan',
+        table.rootPage, null);
+  }
+
+  QueryPlan explain(String sql, [List<Object?> parameters = const []]) {
+    if (_closed) throw StateError('Database is closed');
+    final statement = SqlParser(sql).select();
+    if (parameters.length != statement.parameterCount) {
+      throw const SqlException('Incorrect parameter count');
+    }
+    return _plan(
+        statement,
+        statement.table == null ? null : catalog.table(statement.table!),
+        parameters.map(sqlValue).toList());
+  }
+
   Future<QueryResult> query(String sql,
       [List<Object?> parameters = const []]) async {
     if (_closed) throw StateError('Database is closed');
+    final pragmaParser = SqlParser(sql);
+    if (pragmaParser.take('PRAGMA')) {
+      if (parameters.isNotEmpty) {
+        throw const SqlException('PRAGMA does not accept bindings');
+      }
+      return _pragma(pragmaParser);
+    }
     final statement = SqlParser(sql).select();
     if (parameters.length != statement.parameterCount) {
       throw const SqlException('Incorrect parameter count');
@@ -72,6 +154,42 @@ final class SqliteDatabase {
       item.expression!.validate(names);
     }
     statement.where?.validate(names);
+    if (statement.where?.containsAggregate ?? false) {
+      throw const SqlException('Aggregate in WHERE');
+    }
+    for (final expr in statement.groupBy) {
+      expr.validate(names);
+      if (expr is Literal && expr.value is BigInt) {
+        throw const SqlException('GROUP BY ordinals are unsupported');
+      }
+      if (expr.containsAggregate) {
+        throw const SqlException('Aggregate in GROUP BY');
+      }
+    }
+    final aggregate = statement.groupBy.isNotEmpty ||
+        items.any((item) => item.expression!.containsAggregate) ||
+        statement.order.any((term) => term.expression.containsAggregate) ||
+        (statement.having?.containsAggregate ?? false);
+    if (statement.having != null && !aggregate) {
+      throw const SqlException('HAVING requires aggregate query');
+    }
+    statement.having?.validate(names);
+    if (aggregate) {
+      final grouped = statement.groupBy
+          .whereType<ColumnExpr>()
+          .map((expr) => expr.key)
+          .toSet();
+      for (final expr in [
+        ...items.map((item) => item.expression!),
+        if (statement.having != null) statement.having!
+      ]) {
+        if (expr.unaggregatedColumns.any((name) => !grouped.contains(name))) {
+          throw const SqlException(
+              'Bare or expression-grouped columns in aggregate projection are unsupported');
+        }
+      }
+    }
+
     for (final term in statement.order) {
       final expr = term.expression;
       if (expr is Literal &&
@@ -84,6 +202,17 @@ final class SqliteDatabase {
     final aliases = items.map((item) => asciiLower(item.label)).toSet();
     for (final term in statement.order) {
       term.expression.validate({...names, ...aliases});
+      if (aggregate) {
+        final grouped = statement.groupBy
+            .whereType<ColumnExpr>()
+            .map((expr) => expr.key)
+            .toSet();
+        if (term.expression.unaggregatedColumns.any(
+            (name) => !grouped.contains(name) && !aliases.contains(name))) {
+          throw const SqlException(
+              'Unsupported bare column in aggregate ordering');
+        }
+      }
     }
     statement.limit?.validate({});
     statement.offset?.validate({});
@@ -109,14 +238,23 @@ final class SqliteDatabase {
 
     final limit = count(statement.limit);
     final offset = count(statement.offset) ?? 0;
+    if (limit == 0) return QueryResult(_labels(items, columns, table), []);
     final input = <RowValues>[];
     if (table == null) {
       input.add({});
     } else {
       final reader = BtreeReader(_pager);
-      final stream = table.withoutRowid
-          ? reader.scanIndex(table.rootPage)
-          : reader.scanTable(table.rootPage);
+      final plan = _plan(statement, table, bound);
+      Stream<BtreeRecord> point() async* {
+        final record = await reader.findRowid(table.rootPage, plan.rowid!);
+        if (record != null) yield record;
+      }
+
+      final stream = plan.access == 'rowid-lookup'
+          ? point()
+          : table.withoutRowid
+              ? reader.scanIndex(table.rootPage)
+              : reader.scanTable(table.rootPage);
       final stored = table.storageColumns;
       await for (final record in stream) {
         if (record.values.length > stored.length) {
@@ -132,6 +270,8 @@ final class SqliteDatabase {
                   ? record.values[i]
                   : column.defaultValue;
         }
+        row.updateAll(
+            (name, value) => value is double && value.isNaN ? null : value);
         for (final column in columns) {
           final type = column.declaredType.toUpperCase();
           final key = asciiLower(column.name);
@@ -149,12 +289,55 @@ final class SqliteDatabase {
         input.add(row);
       }
     }
-    final output = <(List<Object?>, List<Object?>, int)>[];
-    for (final row in input) {
+    final filtered = input.where((row) {
       final ctx =
           EvalContext(row, affinities, bound, _pager.header.textEncoding);
-      if (statement.where != null &&
-          truth(statement.where!.evaluate(ctx), _pager.header.textEncoding) !=
+      return statement.where == null ||
+          truth(statement.where!.evaluate(ctx), _pager.header.textEncoding) ==
+              true;
+    }).toList();
+    final groups = <(List<Object?>, List<RowValues>)>[];
+    if (aggregate && statement.groupBy.isEmpty) {
+      groups.add(([], filtered));
+    } else {
+      for (final row in filtered) {
+        final ctx =
+            EvalContext(row, affinities, bound, _pager.header.textEncoding);
+        final keys =
+            statement.groupBy.map((expr) => expr.evaluate(ctx)).toList();
+        if (!aggregate) {
+          groups.add((keys, [row]));
+          continue;
+        }
+        final index = groups.indexWhere((group) => _same(group.$1, keys));
+        if (index < 0) {
+          groups.add((keys, [row]));
+        } else {
+          groups[index].$2.add(row);
+        }
+      }
+    }
+    final output = <(List<Object?>, List<Object?>, int)>[];
+    for (final group in groups) {
+      final row = group.$2.isEmpty
+          ? <String, Object?>{for (final name in names) name: null}
+          : group.$2.first;
+      final ctx =
+          EvalContext(row, affinities, bound, _pager.header.textEncoding)
+            ..group = aggregate ? group.$2 : null;
+      if (aggregate) {
+        for (final expr in [
+          ...items.map((item) => item.expression!),
+          if (statement.having != null) statement.having!,
+          ...statement.order.map((term) => term.expression)
+        ]) {
+          for (final function in aggregateFunctions(expr)) {
+            ctx.aggregateValues[function] = function.evaluate(ctx);
+          }
+        }
+      }
+      if (statement.having != null &&
+          truth(statement.having!.evaluate(ctx), _pager.header.textEncoding) !=
               true) {
         continue;
       }
@@ -169,7 +352,9 @@ final class SqliteDatabase {
         orderRow[asciiLower(items[i].label)] = values[i];
       }
       final orderCtx =
-          EvalContext(orderRow, affinities, bound, _pager.header.textEncoding);
+          EvalContext(orderRow, affinities, bound, _pager.header.textEncoding)
+            ..group = aggregate ? group.$2 : null;
+      orderCtx.aggregateValues.addAll(ctx.aggregateValues);
       final keys = <Object?>[];
       for (final term in statement.order) {
         final expr = term.expression;
@@ -197,6 +382,11 @@ final class SqliteDatabase {
     });
     var rows = output.map((entry) => entry.$1).skip(offset < 0 ? 0 : offset);
     if (limit != null && limit >= 0) rows = rows.take(limit);
+    return QueryResult(_labels(items, columns, table), rows.toList());
+  }
+
+  List<String> _labels(List<SelectItem> items, List<CatalogColumn> columns,
+      CatalogTable? table) {
     String label(SelectItem item) {
       final expr = item.expression;
       if (expr is ColumnExpr && !item.explicitAlias) {
@@ -214,7 +404,67 @@ final class SqliteDatabase {
       return item.label;
     }
 
-    return QueryResult(items.map(label).toList(), rows.toList());
+    return items.map(label).toList();
+  }
+
+  QueryResult _pragma(SqlParser parser) {
+    final name = asciiLower(parser.identifier());
+    String? argument;
+    if (parser.take('(')) {
+      if (parser.current.kind == SqlTokenKind.string) {
+        argument = parser.current.text;
+        parser.position++;
+      } else {
+        argument = parser.identifier();
+      }
+      parser.require(')');
+    }
+    parser.finish();
+    final header = _pager.header;
+    final values = <String, Object?>{
+      'page_size': BigInt.from(header.pageSize),
+      'page_count': BigInt.from(_pager.pageCount),
+      'freelist_count': BigInt.from(header.freelistPages),
+      'schema_version': BigInt.from(header.schemaCookie.toSigned(32)),
+      'user_version': BigInt.from(header.userVersion.toSigned(32)),
+      'application_id': BigInt.from(header.applicationId.toSigned(32)),
+      'encoding': const [
+        '',
+        'UTF-8',
+        'UTF-16le',
+        'UTF-16be'
+      ][header.textEncoding],
+    };
+    if (values.containsKey(name) && argument == null) {
+      return QueryResult([
+        name
+      ], [
+        [values[name]]
+      ]);
+    }
+    if (name == 'table_info' && argument != null) {
+      final cols = ['cid', 'name', 'type', 'notnull', 'dflt_value', 'pk'];
+      final exists =
+          ['sqlite_schema', 'sqlite_master'].contains(asciiLower(argument)) ||
+              catalog.entries.any((entry) =>
+                  asciiLower(entry.name) == asciiLower(argument!) &&
+                  entry.type == 'table');
+      if (!exists) return QueryResult(cols, []);
+      final table = catalog.table(argument);
+      return QueryResult(cols, [
+        for (var i = 0; i < table.columns.length; i++)
+          [
+            BigInt.from(i),
+            table.columns[i].name,
+            table.columns[i].declaredType,
+            boolean(table.columns[i].notNull ||
+                table.withoutRowid && table.columns[i].primaryKey != 0),
+            table.columns[i].defaultSql,
+            BigInt.from(table.columns[i].primaryKey)
+          ]
+      ]);
+    }
+    throw SqlException('Unsupported PRAGMA $name');
   }
 
   bool _same(List<Object?> a, List<Object?> b) {

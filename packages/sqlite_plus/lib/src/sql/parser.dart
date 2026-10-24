@@ -2,19 +2,27 @@ import 'dart:typed_data';
 
 import 'tokenizer.dart';
 import 'values.dart';
+import 'functions.dart';
 
 typedef RowValues = Map<String, Object?>;
 
 final class EvalContext {
   EvalContext(this.row, this.affinities, this.parameters, [this.encoding = 1]);
+  List<RowValues>? group;
+  final Map<Expr, Object?> aggregateValues = {};
   final int encoding;
   final RowValues row;
   final Map<String, String> affinities;
   final List<Object?> parameters;
 }
 
-sealed class Expr {
+abstract class Expr {
+  Iterable<Expr> get children => const [];
+  bool get containsAggregate =>
+      children.any((child) => child.containsAggregate);
   Object? evaluate(EvalContext context);
+  Set<String> get unaggregatedColumns =>
+      children.expand((child) => child.unaggregatedColumns).toSet();
   String affinity(EvalContext context) => 'none';
   void validate(Set<String> columns) {}
 }
@@ -30,6 +38,8 @@ final class ColumnExpr extends Expr {
   ColumnExpr(this.name);
   final String name;
   String get key => asciiLower(name);
+  @override
+  Set<String> get unaggregatedColumns => {key};
   @override
   Object? evaluate(EvalContext context) {
     if (!context.row.containsKey(key)) {
@@ -58,6 +68,8 @@ final class UnaryExpr extends Expr {
   final String op;
   final Expr operand;
   @override
+  Iterable<Expr> get children => [operand];
+  @override
   void validate(Set<String> columns) => operand.validate(columns);
   @override
   Object? evaluate(EvalContext context) {
@@ -82,6 +94,8 @@ final class UnaryExpr extends Expr {
 final class TruthExpr extends Expr {
   TruthExpr(this.operand, this.expected, this.negate);
   final Expr operand;
+  @override
+  Iterable<Expr> get children => [operand];
   final bool expected;
   final bool negate;
   @override
@@ -99,6 +113,8 @@ final class BinaryExpr extends Expr {
   final String op;
   final Expr left;
   final Expr right;
+  @override
+  Iterable<Expr> get children => [left, right];
   @override
   void validate(Set<String> columns) {
     left.validate(columns);
@@ -209,6 +225,8 @@ final class OrderTerm {
 final class SelectStatement {
   SelectStatement(this.items, this.table, this.where, this.order, this.limit,
       this.offset, this.distinct, this.parameterCount);
+  final List<Expr> groupBy = [];
+  Expr? having;
   final List<SelectItem> items;
   final String? table;
   final Expr? where;
@@ -282,6 +300,14 @@ final class SqlParser {
     String? table;
     if (take('FROM')) table = identifier();
     final where = take('WHERE') ? expression() : null;
+    final groups = <Expr>[];
+    if (take('GROUP')) {
+      require('BY');
+      do {
+        groups.add(expression());
+      } while (take(','));
+    }
+    final having = take('HAVING') ? expression() : null;
     final order = <OrderTerm>[];
     if (take('ORDER')) {
       require('BY');
@@ -305,7 +331,9 @@ final class SqlParser {
     }
     finish();
     return SelectStatement(
-        items, table, where, order, limit, offset, distinct, parameterCount);
+        items, table, where, order, limit, offset, distinct, parameterCount)
+      ..groupBy.addAll(groups)
+      ..having = having;
   }
 
   int _depth = 0;
@@ -378,7 +406,23 @@ final class SqlParser {
       } else if (token.keyword == 'TRUE' || token.keyword == 'FALSE') {
         left = Literal(boolean(token.keyword == 'TRUE'));
       } else if (token.kind == SqlTokenKind.identifier) {
-        left = ColumnExpr(token.text);
+        if (take('(')) {
+          final args = <Expr>[];
+          var star = false;
+          final distinct = take('DISTINCT');
+          if (take('*')) {
+            star = true;
+            require(')');
+          } else if (!take(')')) {
+            do {
+              args.add(expression());
+            } while (take(','));
+            require(')');
+          }
+          left = FunctionExpr(token.text, args, distinct: distinct, star: star);
+        } else {
+          left = ColumnExpr(token.text);
+        }
       } else {
         throw SqlException('Expected expression', token.offset);
       }

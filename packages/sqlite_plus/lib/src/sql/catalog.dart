@@ -6,11 +6,16 @@ import 'values.dart';
 
 final class CatalogColumn {
   CatalogColumn(this.name, this.declaredType,
-      {this.primaryKey = 0, this.defaultValue});
+      {this.primaryKey = 0,
+      this.defaultValue,
+      this.notNull = false,
+      this.defaultSql});
   final String name;
   final String declaredType;
   int primaryKey;
   final Object? defaultValue;
+  final bool notNull;
+  final String? defaultSql;
   String get affinity => affinityFor(declaredType);
 }
 
@@ -126,6 +131,8 @@ final class DatabaseCatalog {
           throw const SqlException('Duplicate column');
         }
         final type = <String>[];
+        final declaredStart = parser.current.offset;
+        var quotedType = false;
         while (parser.current.kind == SqlTokenKind.identifier &&
             ![
               'PRIMARY',
@@ -139,22 +146,38 @@ final class DatabaseCatalog {
               'GENERATED',
               'CONSTRAINT'
             ].contains(parser.current.keyword)) {
+          quotedType = quotedType || parser.current.quoted;
           type.add(parser.identifier());
         }
+        var declaredType = type.join(' ');
         if (parser.take('(')) {
+          final sizes = <String>[];
           if (parser.current.kind != SqlTokenKind.number) {
             throw const SqlException('Invalid type size');
           }
+          sizes.add(parser.current.text);
           parser.position++;
           if (parser.take(',')) {
             if (parser.current.kind != SqlTokenKind.number) {
               throw const SqlException('Invalid type size');
             }
+            sizes.add(parser.current.text);
             parser.position++;
           }
           parser.require(')');
+          declaredType += '(${sizes.join(',')})';
+        }
+        if (!quotedType) {
+          declaredType =
+              sql.substring(declaredStart, parser.current.offset).trim();
+        }
+        if (['ANY', 'BLOB', 'INT', 'INTEGER', 'REAL', 'TEXT']
+            .contains(declaredType.toUpperCase())) {
+          declaredType = declaredType.toUpperCase();
         }
         var columnPrimary = false;
+        var notNull = false;
+        String? defaultSql;
         var descending = false;
         Object? defaultValue;
         while (parser.current.text != ',' && parser.current.text != ')') {
@@ -166,10 +189,17 @@ final class DatabaseCatalog {
             parser.take('AUTOINCREMENT');
           } else if (parser.take('NOT')) {
             parser.require('NULL');
+            notNull = true;
           } else if (parser.take('NULL') || parser.take('UNIQUE')) {
             /* metadata only */
           } else if (parser.take('DEFAULT')) {
+            final start = parser.current.offset;
             final expr = parser.expression();
+            defaultSql = sql.substring(start, parser.current.offset).trim();
+            if (defaultSql.startsWith('(') && defaultSql.endsWith(')')) {
+              defaultSql =
+                  defaultSql.substring(1, defaultSql.length - 1).trim();
+            }
             if (parser.parameterCount != 0) {
               throw const SqlException(
                   'Parameters not allowed in schema defaults');
@@ -190,12 +220,14 @@ final class DatabaseCatalog {
             throw const SqlException('Multiple primary keys');
           }
           primary.add(columnName);
-          if (type.join(' ').toUpperCase() == 'INTEGER' && !descending) {
+          if (declaredType.toUpperCase() == 'INTEGER' && !descending) {
             alias = columnName;
           }
         }
-        columns.add(CatalogColumn(columnName, type.join(' '),
-            defaultValue: defaultValue));
+        columns.add(CatalogColumn(columnName, declaredType,
+            defaultValue: defaultValue,
+            notNull: notNull,
+            defaultSql: defaultSql));
       }
     } while (parser.take(','));
     parser.require(')');

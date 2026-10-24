@@ -1,0 +1,4733 @@
+[
+  {
+    "file": "sqlite-512.db",
+    "sql": "select abs(-7) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select abs(-1.25) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        1.25
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select abs('12') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        12.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select abs('x') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        0.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select abs(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select length(1e100) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "8"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select length(-0.0) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select quote(1e100) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "1.0e+100"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select quote(1e999) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "9.0e+999"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select quote(-1e999) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "-9.0e+999"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select quote(1.2345678901234567) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "1.2345678901234567"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select quote(1e-5) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "1.0e-05"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select length('λ😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select length(X'00ff') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select length('') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select length(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select lower('AbCλ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abcλ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select upper('aBcλ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "ABCλ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select typeof(1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select typeof(1.0) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select typeof(X'') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "blob"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select typeof(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "null"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select coalesce(NULL,7,8) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select coalesce(NULL,NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select ifnull(0,9) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select nullif(1,1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select nullif(1,'1') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select iif(0,abs(-9223372036854775808),4) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select iif(NULL,1,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select hex('λ😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "CEBBF09F9880"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select hex(X'00ff') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "00FF"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select hex(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select quote('a''b') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "'a''b'"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select quote(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "NULL"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select quote(X'00ff') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "X'00FF'"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select unicode('😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128512"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select unicode('') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select char(65,955,128512) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "Aλ😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select char(NULL,-1,1114112) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "\u0000��"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select substr('λ😀abc',2,3) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "😀ab"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select substr('abcdef',-3,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "de"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select substr('abcdef',0,3) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "ab"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select substr('abcdef',4,-2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "bc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select substr('abcdef',-99,100) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abcdef"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select substr(X'0001020304',2,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "blob": "0102"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select substr('abcdef',-99,1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select substr('abcdef',-99,-1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select substr('abcdef',999,-2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select substring('abc',2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "bc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select replace('abab','ab','x') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "xx"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select replace('abc','','x') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select trim('  x  ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "x"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select ltrim('xyxabcxy','xy') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abcxy"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select rtrim('xyxabcxy','xy') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "xyxabc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select trim('λλxλλ','λ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "x"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select length(zeroblob(4)) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select hex(zeroblob(-1)) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select min('λ','😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select max('λ','😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select min(1,3,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select max(1,'a',X'00') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "blob": "00"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select min(1,NULL,3) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select count(*),count(),count(value),sum(id),total(id),avg(id),min(id),max(id) from sample where id<4",
+    "parameters": [],
+    "columns": [
+      "count(*)",
+      "count()",
+      "count(value)",
+      "sum(id)",
+      "total(id)",
+      "avg(id)",
+      "min(id)",
+      "max(id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "6"
+        },
+        6.0,
+        2.0,
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select count(*),count(value),sum(id),total(id),avg(id),min(id),max(id) from sample where 0",
+    "parameters": [],
+    "columns": [
+      "count(*)",
+      "count(value)",
+      "sum(id)",
+      "total(id)",
+      "avg(id)",
+      "min(id)",
+      "max(id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        },
+        null,
+        0.0,
+        null,
+        null,
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select count(*),count(n),sum(i),total(i),avg(i),min(i),max(i) from types where rowid>=0 and rowid<128",
+    "parameters": [],
+    "columns": [
+      "count(*)",
+      "count(n)",
+      "sum(i)",
+      "total(i)",
+      "avg(i)",
+      "min(i)",
+      "max(i)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "128"
+        },
+        128.0,
+        42.666666666666664,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "127"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select sum(t),total(t),avg(t) from types",
+    "parameters": [],
+    "columns": [
+      "sum(t)",
+      "total(t)",
+      "avg(t)"
+    ],
+    "rows": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select avg(i),total(i),avg(r),sum(r),total(r) from types",
+    "parameters": [],
+    "columns": [
+      "avg(i)",
+      "total(i)",
+      "avg(r)",
+      "sum(r)",
+      "total(r)"
+    ],
+    "rows": [
+      [
+        -1198336.2857142857,
+        -8388354.0,
+        1.4285714285714286e+99,
+        1e+100,
+        1e+100
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select min(t),max(t) from types",
+    "parameters": [],
+    "columns": [
+      "min(t)",
+      "max(t)"
+    ],
+    "rows": [
+      [
+        "",
+        "λ😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select coalesce(1,sum(i)) from types",
+    "parameters": [],
+    "error": "integer overflow"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select iif(0,sum(i),1) from types",
+    "parameters": [],
+    "error": "integer overflow"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select abs(-9223372036854775808),count(*) from sample limit 0",
+    "parameters": [],
+    "columns": [
+      "abs(-9223372036854775808)",
+      "count(*)"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select n,count(*),min(i),max(i) from types group by n order by n",
+    "parameters": [],
+    "columns": [
+      "n",
+      "count(*)",
+      "min(i)",
+      "max(i)"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "-9223372036854775808"
+        },
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select value,count(*) from sample group by value having count(*)>0 order by value limit 4",
+    "parameters": [],
+    "columns": [
+      "value",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        "row-0000-λ",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        "row-0001-λ",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        "row-0002-λ",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        "row-0003-λ",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select count(distinct n),count(distinct t) from types",
+    "parameters": [],
+    "columns": [
+      "count(distinct n)",
+      "count(distinct t)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select group_concat(id),group_concat(value,'|') from sample where id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(id)",
+      "group_concat(value,'|')"
+    ],
+    "rows": [
+      [
+        "1,2,3",
+        "row-0000-λ|row-0001-λ|row-0002-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select abs(sum(id)) from sample where id<4",
+    "parameters": [],
+    "columns": [
+      "abs(sum(id))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "6"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select count(*) as c from sample having count(*)>5 order by c",
+    "parameters": [],
+    "columns": [
+      "c"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "200"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select sum(id) from sample where id=?",
+    "parameters": [
+      {
+        "integer": "128"
+      }
+    ],
+    "columns": [
+      "sum(id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id from sample where id=128",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id from sample where id=128.0 and value is not null",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id from sample where '128'=id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id from sample where id=999999",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select rowid,i from types where rowid=-9223372036854775808",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select rowid,i from types where rowid=9223372036854775807",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        },
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select rowid,i from types where rowid=-1",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-1"
+        },
+        {
+          "integer": "-8388609"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select rowid,i from types where rowid=0",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA page_size",
+    "parameters": [],
+    "columns": [
+      "page_size"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "512"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA page_count",
+    "parameters": [],
+    "columns": [
+      "page_count"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "141"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA freelist_count",
+    "parameters": [],
+    "columns": [
+      "freelist_count"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA user_version",
+    "parameters": [],
+    "columns": [
+      "user_version"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "42"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA schema_version",
+    "parameters": [],
+    "columns": [
+      "schema_version"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "8"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA application_id",
+    "parameters": [],
+    "columns": [
+      "application_id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1397836884"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA encoding",
+    "parameters": [],
+    "columns": [
+      "encoding"
+    ],
+    "rows": [
+      [
+        "UTF-8"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA table_info(sample)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "id",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "value",
+        "TEXT",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA table_info(types)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "i",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "r",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "t",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        "b",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        "n",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA table_info(keyed)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "k",
+        "TEXT",
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "v",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA table_info(missing)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select abs(-7) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select abs(-1.25) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        1.25
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select abs('12') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        12.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select abs('x') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        0.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select abs(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select length(1e100) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "8"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select length(-0.0) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select quote(1e100) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "1.0e+100"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select quote(1e999) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "9.0e+999"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select quote(-1e999) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "-9.0e+999"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select quote(1.2345678901234567) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "1.2345678901234567"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select quote(1e-5) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "1.0e-05"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select length('λ😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select length(X'00ff') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select length('') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select length(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select lower('AbCλ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abcλ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select upper('aBcλ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "ABCλ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select typeof(1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select typeof(1.0) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select typeof(X'') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "blob"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select typeof(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "null"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select coalesce(NULL,7,8) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select coalesce(NULL,NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select ifnull(0,9) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select nullif(1,1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select nullif(1,'1') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select iif(0,abs(-9223372036854775808),4) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select iif(NULL,1,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select hex('λ😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "BB033DD800DE"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select hex(X'00ff') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "00FF"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select hex(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select quote('a''b') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "'a''b'"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select quote(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "NULL"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select quote(X'00ff') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "X'00FF'"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select unicode('😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128512"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select unicode('') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select char(65,955,128512) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "Aλ😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select char(NULL,-1,1114112) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "\u0000��"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select substr('λ😀abc',2,3) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "😀ab"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select substr('abcdef',-3,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "de"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select substr('abcdef',0,3) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "ab"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select substr('abcdef',4,-2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "bc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select substr('abcdef',-99,100) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abcdef"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select substr(X'0001020304',2,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "blob": "0102"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select substr('abcdef',-99,1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select substr('abcdef',-99,-1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select substr('abcdef',999,-2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select substring('abc',2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "bc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select replace('abab','ab','x') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "xx"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select replace('abc','','x') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select trim('  x  ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "x"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select ltrim('xyxabcxy','xy') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abcxy"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select rtrim('xyxabcxy','xy') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "xyxabc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select trim('λλxλλ','λ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "x"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select length(zeroblob(4)) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select hex(zeroblob(-1)) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select min('λ','😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select max('λ','😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select min(1,3,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select max(1,'a',X'00') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "blob": "00"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select min(1,NULL,3) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select count(*),count(),count(value),sum(id),total(id),avg(id),min(id),max(id) from sample where id<4",
+    "parameters": [],
+    "columns": [
+      "count(*)",
+      "count()",
+      "count(value)",
+      "sum(id)",
+      "total(id)",
+      "avg(id)",
+      "min(id)",
+      "max(id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "6"
+        },
+        6.0,
+        2.0,
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select count(*),count(value),sum(id),total(id),avg(id),min(id),max(id) from sample where 0",
+    "parameters": [],
+    "columns": [
+      "count(*)",
+      "count(value)",
+      "sum(id)",
+      "total(id)",
+      "avg(id)",
+      "min(id)",
+      "max(id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        },
+        null,
+        0.0,
+        null,
+        null,
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select count(*),count(n),sum(i),total(i),avg(i),min(i),max(i) from types where rowid>=0 and rowid<128",
+    "parameters": [],
+    "columns": [
+      "count(*)",
+      "count(n)",
+      "sum(i)",
+      "total(i)",
+      "avg(i)",
+      "min(i)",
+      "max(i)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "128"
+        },
+        128.0,
+        42.666666666666664,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "127"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select sum(t),total(t),avg(t) from types",
+    "parameters": [],
+    "columns": [
+      "sum(t)",
+      "total(t)",
+      "avg(t)"
+    ],
+    "rows": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select avg(i),total(i),avg(r),sum(r),total(r) from types",
+    "parameters": [],
+    "columns": [
+      "avg(i)",
+      "total(i)",
+      "avg(r)",
+      "sum(r)",
+      "total(r)"
+    ],
+    "rows": [
+      [
+        -1198336.2857142857,
+        -8388354.0,
+        1.4285714285714286e+99,
+        1e+100,
+        1e+100
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select min(t),max(t) from types",
+    "parameters": [],
+    "columns": [
+      "min(t)",
+      "max(t)"
+    ],
+    "rows": [
+      [
+        "",
+        "λ😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select coalesce(1,sum(i)) from types",
+    "parameters": [],
+    "error": "integer overflow"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select iif(0,sum(i),1) from types",
+    "parameters": [],
+    "error": "integer overflow"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select abs(-9223372036854775808),count(*) from sample limit 0",
+    "parameters": [],
+    "columns": [
+      "abs(-9223372036854775808)",
+      "count(*)"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select n,count(*),min(i),max(i) from types group by n order by n",
+    "parameters": [],
+    "columns": [
+      "n",
+      "count(*)",
+      "min(i)",
+      "max(i)"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "-9223372036854775808"
+        },
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select value,count(*) from sample group by value having count(*)>0 order by value limit 4",
+    "parameters": [],
+    "columns": [
+      "value",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        "row-0000-λ",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        "row-0001-λ",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        "row-0002-λ",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        "row-0003-λ",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select count(distinct n),count(distinct t) from types",
+    "parameters": [],
+    "columns": [
+      "count(distinct n)",
+      "count(distinct t)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select group_concat(id),group_concat(value,'|') from sample where id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(id)",
+      "group_concat(value,'|')"
+    ],
+    "rows": [
+      [
+        "1,2,3",
+        "row-0000-λ|row-0001-λ|row-0002-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select abs(sum(id)) from sample where id<4",
+    "parameters": [],
+    "columns": [
+      "abs(sum(id))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "6"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select count(*) as c from sample having count(*)>5 order by c",
+    "parameters": [],
+    "columns": [
+      "c"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "200"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select sum(id) from sample where id=?",
+    "parameters": [
+      {
+        "integer": "128"
+      }
+    ],
+    "columns": [
+      "sum(id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id from sample where id=128",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id from sample where id=128.0 and value is not null",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id from sample where '128'=id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id from sample where id=999999",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select rowid,i from types where rowid=-9223372036854775808",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select rowid,i from types where rowid=9223372036854775807",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        },
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select rowid,i from types where rowid=-1",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-1"
+        },
+        {
+          "integer": "-8388609"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select rowid,i from types where rowid=0",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA page_size",
+    "parameters": [],
+    "columns": [
+      "page_size"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4096"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA page_count",
+    "parameters": [],
+    "columns": [
+      "page_count"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "48"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA freelist_count",
+    "parameters": [],
+    "columns": [
+      "freelist_count"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA user_version",
+    "parameters": [],
+    "columns": [
+      "user_version"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "42"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA schema_version",
+    "parameters": [],
+    "columns": [
+      "schema_version"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "8"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA application_id",
+    "parameters": [],
+    "columns": [
+      "application_id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1397836884"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA encoding",
+    "parameters": [],
+    "columns": [
+      "encoding"
+    ],
+    "rows": [
+      [
+        "UTF-16le"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA table_info(sample)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "id",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "value",
+        "TEXT",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA table_info(types)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "i",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "r",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "t",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        "b",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        "n",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA table_info(keyed)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "k",
+        "TEXT",
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "v",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA table_info(missing)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select abs(-7) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select abs(-1.25) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        1.25
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select abs('12') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        12.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select abs('x') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        0.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select abs(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select length(1e100) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "8"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select length(-0.0) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select quote(1e100) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "1.0e+100"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select quote(1e999) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "9.0e+999"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select quote(-1e999) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "-9.0e+999"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select quote(1.2345678901234567) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "1.2345678901234567"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select quote(1e-5) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "1.0e-05"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select length('λ😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select length(X'00ff') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select length('') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select length(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select lower('AbCλ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abcλ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select upper('aBcλ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "ABCλ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select typeof(1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select typeof(1.0) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select typeof(X'') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "blob"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select typeof(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "null"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select coalesce(NULL,7,8) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select coalesce(NULL,NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select ifnull(0,9) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select nullif(1,1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select nullif(1,'1') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select iif(0,abs(-9223372036854775808),4) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select iif(NULL,1,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select hex('λ😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "03BBD83DDE00"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select hex(X'00ff') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "00FF"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select hex(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select quote('a''b') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "'a''b'"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select quote(NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "NULL"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select quote(X'00ff') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "X'00FF'"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select unicode('😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128512"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select unicode('') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select char(65,955,128512) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "Aλ😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select char(NULL,-1,1114112) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "\u0000��"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select substr('λ😀abc',2,3) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "😀ab"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select substr('abcdef',-3,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "de"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select substr('abcdef',0,3) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "ab"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select substr('abcdef',4,-2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "bc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select substr('abcdef',-99,100) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abcdef"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select substr(X'0001020304',2,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "blob": "0102"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select substr('abcdef',-99,1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select substr('abcdef',-99,-1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select substr('abcdef',999,-2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select substring('abc',2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "bc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select replace('abab','ab','x') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "xx"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select replace('abc','','x') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select trim('  x  ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "x"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select ltrim('xyxabcxy','xy') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "abcxy"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select rtrim('xyxabcxy','xy') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "xyxabc"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select trim('λλxλλ','λ') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "x"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select length(zeroblob(4)) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select hex(zeroblob(-1)) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        ""
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select min('λ','😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select max('λ','😀') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select min(1,3,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select max(1,'a',X'00') as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "blob": "00"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select min(1,NULL,3) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select count(*),count(),count(value),sum(id),total(id),avg(id),min(id),max(id) from sample where id<4",
+    "parameters": [],
+    "columns": [
+      "count(*)",
+      "count()",
+      "count(value)",
+      "sum(id)",
+      "total(id)",
+      "avg(id)",
+      "min(id)",
+      "max(id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "6"
+        },
+        6.0,
+        2.0,
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select count(*),count(value),sum(id),total(id),avg(id),min(id),max(id) from sample where 0",
+    "parameters": [],
+    "columns": [
+      "count(*)",
+      "count(value)",
+      "sum(id)",
+      "total(id)",
+      "avg(id)",
+      "min(id)",
+      "max(id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        },
+        null,
+        0.0,
+        null,
+        null,
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select count(*),count(n),sum(i),total(i),avg(i),min(i),max(i) from types where rowid>=0 and rowid<128",
+    "parameters": [],
+    "columns": [
+      "count(*)",
+      "count(n)",
+      "sum(i)",
+      "total(i)",
+      "avg(i)",
+      "min(i)",
+      "max(i)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "128"
+        },
+        128.0,
+        42.666666666666664,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "127"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select sum(t),total(t),avg(t) from types",
+    "parameters": [],
+    "columns": [
+      "sum(t)",
+      "total(t)",
+      "avg(t)"
+    ],
+    "rows": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select avg(i),total(i),avg(r),sum(r),total(r) from types",
+    "parameters": [],
+    "columns": [
+      "avg(i)",
+      "total(i)",
+      "avg(r)",
+      "sum(r)",
+      "total(r)"
+    ],
+    "rows": [
+      [
+        -1198336.2857142857,
+        -8388354.0,
+        1.4285714285714286e+99,
+        1e+100,
+        1e+100
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select min(t),max(t) from types",
+    "parameters": [],
+    "columns": [
+      "min(t)",
+      "max(t)"
+    ],
+    "rows": [
+      [
+        "",
+        "λ😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select coalesce(1,sum(i)) from types",
+    "parameters": [],
+    "error": "integer overflow"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select iif(0,sum(i),1) from types",
+    "parameters": [],
+    "error": "integer overflow"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select abs(-9223372036854775808),count(*) from sample limit 0",
+    "parameters": [],
+    "columns": [
+      "abs(-9223372036854775808)",
+      "count(*)"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select n,count(*),min(i),max(i) from types group by n order by n",
+    "parameters": [],
+    "columns": [
+      "n",
+      "count(*)",
+      "min(i)",
+      "max(i)"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "-9223372036854775808"
+        },
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select value,count(*) from sample group by value having count(*)>0 order by value limit 4",
+    "parameters": [],
+    "columns": [
+      "value",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        "row-0000-λ",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        "row-0001-λ",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        "row-0002-λ",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        "row-0003-λ",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select count(distinct n),count(distinct t) from types",
+    "parameters": [],
+    "columns": [
+      "count(distinct n)",
+      "count(distinct t)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select group_concat(id),group_concat(value,'|') from sample where id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(id)",
+      "group_concat(value,'|')"
+    ],
+    "rows": [
+      [
+        "1,2,3",
+        "row-0000-λ|row-0001-λ|row-0002-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select abs(sum(id)) from sample where id<4",
+    "parameters": [],
+    "columns": [
+      "abs(sum(id))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "6"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select count(*) as c from sample having count(*)>5 order by c",
+    "parameters": [],
+    "columns": [
+      "c"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "200"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select sum(id) from sample where id=?",
+    "parameters": [
+      {
+        "integer": "128"
+      }
+    ],
+    "columns": [
+      "sum(id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id from sample where id=128",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id from sample where id=128.0 and value is not null",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id from sample where '128'=id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id from sample where id=999999",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select rowid,i from types where rowid=-9223372036854775808",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select rowid,i from types where rowid=9223372036854775807",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        },
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select rowid,i from types where rowid=-1",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-1"
+        },
+        {
+          "integer": "-8388609"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select rowid,i from types where rowid=0",
+    "parameters": [],
+    "columns": [
+      "rowid",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA page_size",
+    "parameters": [],
+    "columns": [
+      "page_size"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "65536"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA page_count",
+    "parameters": [],
+    "columns": [
+      "page_count"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "29"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA freelist_count",
+    "parameters": [],
+    "columns": [
+      "freelist_count"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA user_version",
+    "parameters": [],
+    "columns": [
+      "user_version"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "42"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA schema_version",
+    "parameters": [],
+    "columns": [
+      "schema_version"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "8"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA application_id",
+    "parameters": [],
+    "columns": [
+      "application_id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1397836884"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA encoding",
+    "parameters": [],
+    "columns": [
+      "encoding"
+    ],
+    "rows": [
+      [
+        "UTF-16be"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA table_info(sample)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "id",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "value",
+        "TEXT",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA table_info(types)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "i",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "r",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "t",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        "b",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        "n",
+        "",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA table_info(keyed)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "k",
+        "TEXT",
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "v",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA table_info(missing)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk"
+    ],
+    "rows": []
+  }
+]

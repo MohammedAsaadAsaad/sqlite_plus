@@ -161,3 +161,26 @@
   physical power-loss certification or cross-platform claim is made.
 - Next: M6 SQL semantics, planner/index use, functions and PRAGMAs. Full SQL
   compatibility remains unclaimed and must be supported by differential evidence.
+
+## 2026-10-24 — M6 functions, aggregates, metadata and rowid planning (partial)
+
+- Added bounded scalar functions and core aggregates, column grouping/HAVING,
+  distinct aggregates, signed metadata PRAGMAs and column constraints/default
+  metadata. Unsupported syntax/arity, aggregate misuse and bare-column cases
+  fail explicitly; M6 remains unchecked.
+- Added rowid equality planning and validated B-tree point descent. A regression
+  compares identical results and page-read counts against a forced scan. Point
+  searches retain cell/freeblock/separator/overflow corruption checks.
+- Added 291 pinned SQLite differential cases across all three fixture encodings,
+  including error cases. Corrected aggregate error evaluation inside lazy scalar
+  expressions, empty input/LIMIT 0, compensated sums with split integer input,
+  floating quote/text rendering, type metadata and output-allocation limits.
+- All 1149 engine tests pass with formatting, locked installs, fatal-info analysis
+  and all checksum gates. Rollback, transaction, WAL/native-write continuation
+  and owner interoperability verifiers pass against the pinned SQLite build.
+- Collected five real AOT samples for a 2000-row memory-backed point-query versus
+  scan workload; saved raw microsecond timings, fixture SHA, SDK and process RSS
+  under benchmark_results. No general benchmark or M9 completion claim.
+- M6 still needs joins/subqueries/compounds, remaining expression semantics,
+  secondary indexes and maintenance, constraints, DDL and full conformance.
+  M7–M9 remain unstarted to preserve sequential verification.

@@ -19,7 +19,11 @@ The pinned Python/SQLite oracle is development-only. M3 SELECT compatibility is 
 | SQLite-created file reads | Verified fixture subset | 2,244 physical records across three encodings/page sizes match pinned SQLite; includes schema, indexes and WITHOUT ROWID tables |
 | Binary fixtures / development oracle | Implemented | 512/4096/65536-byte pages; 213 total pages including 131 overflow pages; checksums, integrity_check, deterministic regeneration |
 | Catalog and SELECT subset | Implemented | 726 pinned SQLite differential cases: single table, projection, WHERE, DISTINCT, ORDER BY, LIMIT/OFFSET, positional bindings, arithmetic/comparison/NULL logic; catalog names and rowid aliases |
-| Full SQL semantics | Not started (M6) | No joins, aggregates, subqueries, compound SELECTs, IN/LIKE, user functions or non-BINARY collations |
+| Full SQL semantics | In progress (M6) | Joins, subqueries, compound SELECTs, IN/LIKE/CASE/CAST, user functions, secondary-index maintenance, constraints and non-BINARY collations remain unfinished |
+| Scalar and aggregate functions | Verified subset | 291 pinned differential cases cover core functions, COUNT/SUM/TOTAL/AVG/MIN/MAX/GROUP_CONCAT, NULL/error behavior and floating rendering |
+| Column GROUP BY / HAVING | Verified subset | Grouped columns, explicit aggregate HAVING, DISTINCT aggregates, empty input and aggregate error evaluation; bare columns/group ordinals/aliases are restricted |
+| Read-only metadata PRAGMAs | Verified subset | page_size/page_count/freelist_count/schema_version/user_version/application_id/encoding/table_info; signed fields, PK and NOT NULL metadata |
+| Rowid planner | Implemented | B-tree separator descent for eligible rowid equality/conjunctions; corruption checks, diagnostic explain(), fewer page reads in regression; measured AOT microbenchmark |
 | Transactions/savepoints | Implemented for the limited M4 writer | BEGIN/COMMIT/ROLLBACK, nested SAVEPOINT/RELEASE/ROLLBACK TO; 14-step pinned SQLite differential sequence; writes deferred until outer commit |
 | Offline WAL recovery | Implemented for stable copied files | SQLite-generated WAL commits, every truncated final-frame tail, salts/checksums/resource limits; no live writer coordination |
 | Exclusive file lease | Single-owner subset | SQLite lock-byte range blocks a separate SQLite process; same-isolate duplicate lease protection. POSIX cross-isolate/process-wide descriptor-close limitations remain |
@@ -29,7 +33,7 @@ The pinned Python/SQLite oracle is development-only. M3 SELECT compatibility is 
 | Rollback journal | Implemented under explicit durable storage contract | SQLite-compatible full-page before-images, PERSIST invalidation, every-operation crash injection, recovery fault injection; pinned SQLite recovers Dart journal byte-for-byte |
 | Durable file adapter | Conditional | Existing-file random writes/flush validated; caller must guarantee durable pre-provisioned entries and exclusive access. No power-loss filesystem certification |
 | ORM and code generator | Placeholders | Analyzer passes; no behavior/tests yet |
-| Linux x64 | Development checks verified | Dart 3.13.7; 852 engine tests, formatting and fatal-info analysis pass |
+| Linux x64 | Development checks verified | Dart 3.13.7; 1149 engine tests, formatting and fatal-info analysis pass |
 | Windows/macOS/Android/iOS/Web | Not verified | Core has no dart:io imports; optional adapter requires dart:io. Execution on these platforms remains untested |
 
 M2 reads stable, nonempty SQLite 3 database copies with rollback-format headers.
@@ -52,8 +56,7 @@ native SQLite is used only to generate development fixtures.
 
 M3 `SqliteDatabase.openReadOnly` reads catalog metadata and `query` supports the
 single-table SELECT subset described in README. Catalog definitions with
-unsupported constraints/collations fail when accessed. No general SQLite SQL
-compatibility is asserted: functions, joins, grouped queries, DDL is not implemented; DML and transaction control use the separate limited mutable API. NULL logic, signed arithmetic limits,
+unsupported constraints/collations fail when accessed. General SQLite SQL compatibility is unclaimed. M6 function/grouping additions are listed above; joins, DDL and remaining semantics are unfinished. DML and transaction control use the limited mutable API. NULL logic, signed arithmetic limits,
 integer/real comparisons, ASCII-insensitive names, quoted tokens, positional
 parameters, rowid aliases, binary UTF ordering and blob numeric conversion are
 covered by the pinned cases. Floating-point-to-text conversion beyond those
@@ -101,3 +104,16 @@ shared-reader WAL, multi-database transaction or performance claim is made.
 The pinned reference reads Dart WALs, appends native transactions, and verifies
 checkpoint integrity. Linux x64 owner/process behavior is verified; other
 platforms and arbitrary non-cooperating same-process handles remain unverified.
+
+M6 is still open. SqliteDatabase.explain reports the actual access path chosen
+for the supported SELECT grammar; it is not SQLite EXPLAIN bytecode or a cost
+model. Rowid equality selects a single B-tree path; unsupported predicates retain
+the scan path and still evaluate their full WHERE expression. Secondary indexes
+are not planned or maintained yet. Aggregate projections allow grouped columns,
+not SQLite's special bare-column MIN/MAX row selection. GROUP BY ordinals,
+expression-grouped projection and HAVING aliases remain unsupported. Functions
+are limited to the documented arities and bounded outputs; no extension or
+complete floating formatting/SQL conformance claim is made. Materialized query
+execution and naive grouping are not a general performance claim. The saved AOT
+benchmark has raw measurements for one 2000-row memory-backed point-query
+workload and does not satisfy M9's scale/platform benchmark matrix.

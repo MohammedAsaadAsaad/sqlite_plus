@@ -1,0 +1,182 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
+import 'package:test/test.dart';
+
+import 'read_only_test.dart' show expectedValue;
+
+final class CountedStorage implements StorageBackend {
+  CountedStorage(this.inner);
+  final StorageBackend inner;
+  int reads = 0;
+  @override
+  Future<int> read(int offset, Uint8List bytes) {
+    reads++;
+    return inner.read(offset, bytes);
+  }
+
+  @override
+  Future<void> write(int offset, Uint8List bytes) => inner.write(offset, bytes);
+  @override
+  Future<void> truncate(int size) => inner.truncate(size);
+  @override
+  Future<int> length() => inner.length();
+  @override
+  Future<void> sync() => inner.sync();
+  @override
+  Future<void> close() => inner.close();
+}
+
+void main() {
+  final cases =
+      jsonDecode(File('test/fixtures/semantics_oracle.json').readAsStringSync())
+          as List;
+  for (final size in [512, 4096, 65536]) {
+    group('M6 differential $size', () {
+      late SqliteDatabase database;
+      setUpAll(() async {
+        database = await SqliteDatabase.openReadOnly(
+            await ReadOnlyFileStorageBackend.open(
+                'test/fixtures/sqlite-$size.db'));
+      });
+      tearDownAll(() => database.close());
+      for (final entry in cases.where((c) => c['file'] == 'sqlite-$size.db')) {
+        test(entry['sql'] as String, () async {
+          if (entry.containsKey('error')) {
+            await expectLater(
+                database.query(entry['sql'] as String,
+                    (entry['parameters'] as List).map(expectedValue).toList()),
+                throwsA(isA<SqlException>()));
+            return;
+          }
+          final result = await database.query(entry['sql'] as String,
+              (entry['parameters'] as List).map(expectedValue).toList());
+          expect(result.columns, entry['columns']);
+          expect(
+              result.rows,
+              (entry['rows'] as List)
+                  .map((row) => (row as List).map(expectedValue).toList())
+                  .toList());
+        });
+      }
+    });
+  }
+  test('rowid point lookup reads fewer pages and explains chosen access',
+      () async {
+    final storage = CountedStorage(
+        await ReadOnlyFileStorageBackend.open('test/fixtures/write.db'));
+    final db = await SqliteDatabase.openReadOnly(storage);
+    addTearDown(db.close);
+    expect(db.explain('SELECT id FROM notes WHERE id=?', [1999]).access,
+        'rowid-lookup');
+    storage.reads = 0;
+    final point = await db.query('SELECT id FROM notes WHERE id=?', [1999]);
+    final pointReads = storage.reads;
+    storage.reads = 0;
+    final scan = await db.query('SELECT id FROM notes WHERE +id=?', [1999]);
+    expect(point.rows, scan.rows);
+    expect(pointReads, lessThan(storage.reads ~/ 10));
+    expect(db.explain('SELECT id FROM notes WHERE +id=?', [1999]).access,
+        'table-scan');
+    expect((await db.query('SELECT id FROM notes WHERE id=-1')).rows, isEmpty);
+  });
+  test('aggregate misuse and unsupported metadata fail explicitly', () async {
+    final db = await SqliteDatabase.openReadOnly(
+        await ReadOnlyFileStorageBackend.open('test/fixtures/sqlite-512.db'));
+    addTearDown(db.close);
+    for (final sql in [
+      'SELECT sum(count(*)) FROM sample',
+      'SELECT id FROM sample WHERE count(*)>1',
+      'SELECT count(*) FROM sample GROUP BY sum(id)',
+      'SELECT min(id),value FROM sample',
+      'SELECT unknown_fn(1)',
+      'SELECT abs()',
+      'SELECT count(DISTINCT *) FROM sample',
+      'PRAGMA page_size=1024',
+      'PRAGMA unsupported',
+      'SELECT abs(-9223372036854775808)'
+    ]) {
+      await expectLater(db.query(sql), throwsA(isA<SqlException>()),
+          reason: sql);
+    }
+  });
+  test('empty-table aggregate misuse in mutations does not silently succeed',
+      () async {
+    final db = await MutableSqliteDatabase.fromImage(
+        File('test/fixtures/write.db').readAsBytesSync());
+    addTearDown(db.close);
+    await db.execute('DELETE FROM notes');
+    final before = db.exportImage();
+    for (final sql in [
+      'UPDATE notes SET n=count(*)',
+      'DELETE FROM notes WHERE count(*)>0',
+      'INSERT INTO notes(value) VALUES(count(*))'
+    ]) {
+      await expectLater(db.execute(sql), throwsA(isA<SqlException>()));
+      expect(db.exportImage(), before);
+    }
+  });
+  test('primary-key search rejects corrupt leaf framing', () async {
+    final bytes = File('test/fixtures/write.db').readAsBytesSync();
+    var number = 2;
+    final data = ByteData.sublistView(bytes);
+    while (bytes[(number - 1) * 512] == 5) {
+      final base = (number - 1) * 512;
+      final cell = data.getUint16(base + 12);
+      number = data.getUint32(base + cell);
+    }
+    final base = (number - 1) * 512;
+    final cell = data.getUint16(base + 8);
+    // Keep cell pointer in range but advertise a payload beyond the page end.
+    bytes[base + cell] = 127;
+    final memory = MemoryStorageBackend();
+    await memory.write(0, bytes);
+    final db = await SqliteDatabase.openReadOnly(memory);
+    addTearDown(db.close);
+    await expectLater(
+        db.query('SELECT id FROM notes WHERE id=1'), throwsFormatException);
+  });
+  test('metadata preserves NOT NULL and reports signed pragma fields',
+      () async {
+    final bytes = File('test/fixtures/write.db').readAsBytesSync();
+    final data = ByteData.sublistView(bytes);
+    data.setUint32(60, 0xffffffff);
+    data.setUint32(68, 0x80000001);
+    final memory = MemoryStorageBackend();
+    await memory.write(0, bytes);
+    final db = await SqliteDatabase.openReadOnly(memory);
+    addTearDown(db.close);
+    expect((await db.query('PRAGMA user_version')).rows, [
+      [BigInt.from(-1)]
+    ]);
+    expect((await db.query('PRAGMA application_id')).rows, [
+      [BigInt.from(-2147483647)]
+    ]);
+    expect((await db.query('PRAGMA table_info(guarded)')).rows, [
+      [BigInt.zero, 'x', 'TEXT', BigInt.one, null, BigInt.zero]
+    ]);
+    final table = DatabaseCatalog.parseTable(
+        'CREATE TABLE t(v varchar (20) DEFAULT (7), x INTEGER(1) PRIMARY KEY)',
+        2);
+    expect(table.columns.first.declaredType, 'varchar (20)');
+    expect(table.columns.first.defaultSql, '7');
+    expect(table.rowidAlias, isNull);
+  });
+  test('function output limits reject large allocations before expansion',
+      () async {
+    final db = await SqliteDatabase.openReadOnly(
+        await ReadOnlyFileStorageBackend.open('test/fixtures/sqlite-512.db'));
+    addTearDown(db.close);
+    for (final sql in [
+      'SELECT zeroblob(16777217)',
+      'SELECT hex(zeroblob(8388609))'
+    ]) {
+      await expectLater(db.query(sql), throwsA(isA<SqlException>()));
+    }
+    await expectLater(db.query("SELECT replace('aa','a',?)", ['x' * 8388609]),
+        throwsA(isA<SqlException>()));
+  });
+}

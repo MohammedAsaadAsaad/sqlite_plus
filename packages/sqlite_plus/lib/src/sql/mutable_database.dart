@@ -143,6 +143,9 @@ final class MutableSqliteDatabase {
               do {
                 final expr = parser.expression();
                 expr.validate({});
+                if (expr.containsAggregate) {
+                  throw const SqlException('Aggregate in INSERT');
+                }
                 row.add(expr);
               } while (parser.take(','));
               parser.require(')');
@@ -162,12 +165,18 @@ final class MutableSqliteDatabase {
                 parser.require('=');
                 final expr = parser.expression();
                 expr.validate(rowNames);
+                if (expr.containsAggregate) {
+                  throw const SqlException('Aggregate in UPDATE');
+                }
                 assignments[name] = expr;
               } while (parser.take(','));
             }
             if (parser.take('WHERE')) {
               where = parser.expression();
               where.validate(rowNames);
+              if (where.containsAggregate) {
+                throw const SqlException('Aggregate in WHERE');
+              }
             }
           }
           parser.finish();

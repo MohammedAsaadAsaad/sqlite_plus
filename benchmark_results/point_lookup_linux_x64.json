@@ -1,0 +1,26 @@
+{
+  "workload": "100 repeated point SELECTs over the same 2000-row memory-backed fixture; five samples; three warmups per variant",
+  "fixture_sha256": "8807f6da9876b074391a217608572cee2fe888b8ca26edf3ecb4777979d980b3",
+  "sdk": "3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "os": "linux",
+  "runtime": "AOT executable",
+  "iterations_per_sample": 100,
+  "microseconds": {
+    "rowid_lookup": [
+      8937,
+      9583,
+      8050,
+      6383,
+      6907
+    ],
+    "equivalent_scan": [
+      1154727,
+      1129570,
+      1119497,
+      1126970,
+      1114489
+    ]
+  },
+  "peak_process_rss_bytes": 42524672,
+  "limitations": "One small memory-backed workload. Includes parsing/materialization. RSS is whole process. No M9 scale/platform or native SQL benchmark claim."
+}

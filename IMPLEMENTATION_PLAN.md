@@ -6,7 +6,7 @@
 - [x] M3: Catalog, tokenizer, parser, single-table SELECT execution and differential tests (M3 subset; full semantics remain M6).
 - [x] M4: Write pager, rowid B-tree mutation, INSERT/UPDATE/DELETE and rollback journal (simple unindexed tables; durability requires pre-provisioned storage contract).
 - [x] M5: Transactions, savepoints, locking, WAL writes/checkpoints and recovery tests under a single exclusive owner isolate. External concurrent SQLite readers/shared wal-index mode and hard-link aliases are unsupported; see compatibility matrix.
-- [ ] M6: Complete SQL semantics, indexes, planner, functions and PRAGMAs.
+- [ ] M6: Complete SQL semantics, indexes, planner, functions and PRAGMAs. Partial: scalar/aggregate functions, column grouping/HAVING, read-only metadata PRAGMAs and rowid lookup planning verified; joins, subqueries, secondary-index maintenance, constraints and remaining semantics are unfinished.
 - [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.
 - [ ] M8: Advanced extensions, JSON/JSONB, FTS, R-tree, virtual tables.
 - [ ] M9: Browser adapters, platform matrix, AOT benchmarks, hardening and release gates.

@@ -38,6 +38,82 @@ final class BtreeReader {
 
   final int maxPayloadBytes;
 
+  /// Descends separator keys to a single rowid without scanning other leaves.
+  Future<BtreeRecord?> findRowid(int rootPage, BigInt key) async {
+    final used = <int>{};
+    var number = rootPage;
+    BigInt? lower;
+    BigInt? upper;
+    while (true) {
+      if (!used.add(number)) {
+        throw const FormatException('Repeated search page');
+      }
+      final bytes = await _readPage(number);
+      final header = BtreePageHeader.decode(bytes,
+          database: pager.header, pageNumber: number);
+      if (!header.isTable) {
+        throw const FormatException('Rowid lookup requires a table B-tree');
+      }
+      var child = header.rightmostChild;
+      var selected = false;
+      BigInt? previous = lower;
+      final inheritedUpper = upper;
+      final ranges = <(int, int)>[];
+      SqliteByteReader? match;
+      BigInt? payload;
+      for (final offset in header.cellOffsets) {
+        final cell = SqliteByteReader(bytes,
+            offset: offset, end: pager.header.usableSize);
+        final left = header.isLeaf ? null : cell.uint32();
+        final size = header.isLeaf ? cell.varint() : null;
+        final rowid = cell.varint().toSigned(64);
+        var end = cell.offset;
+        if (size != null) {
+          final usable = pager.header.usableSize;
+          var local = size <= BigInt.from(usable - 35) ? size.toInt() : -1;
+          if (local == -1) {
+            final minimum = ((usable - 12) * 32 ~/ 255) - 23;
+            local = minimum +
+                ((size - BigInt.from(minimum)) % BigInt.from(usable - 4))
+                    .toInt();
+            if (local > usable - 35) local = minimum;
+          }
+          end += local + (size > BigInt.from(local) ? 4 : 0);
+          if (end > usable) {
+            throw const FormatException('Invalid search cell bounds');
+          }
+        }
+        ranges.add((offset, end));
+
+        if ((previous != null && rowid <= previous) ||
+            (inheritedUpper != null && rowid > inheritedUpper)) {
+          throw const FormatException('Invalid search separator order');
+        }
+        if (header.isLeaf && rowid == key) {
+          match = cell;
+          payload = size;
+        }
+        if (!header.isLeaf && !selected && key <= rowid) {
+          child = left;
+          upper = rowid;
+          lower = previous;
+          selected = true;
+        }
+        previous = rowid;
+      }
+      _validateRanges(bytes, header, ranges);
+      if (header.isLeaf) {
+        if (match == null) return null;
+        final data =
+            await _payload(match, payload!, tableLeaf: true, used: used);
+        return BtreeRecord._(
+            key, RecordCodec.decode(data, encoding: pager.header.textEncoding));
+      }
+      if (!selected) lower = previous;
+      number = child!;
+    }
+  }
+
   Stream<BtreeRecord> scanTable(int rootPage) => _scan(rootPage, true);
   Stream<BtreeRecord> scanIndex(int rootPage) => _scan(rootPage, false);
 
@@ -101,27 +177,31 @@ final class BtreeReader {
         if (values != null) actions.add(BtreeRecord._(rowId, values));
         if (node.table) lower = rowId;
       }
-      // Cells must not overlap each other or the freeblock chain.
-      ranges.sort((a, b) => a.$1.compareTo(b.$1));
-      for (var i = 1; i < ranges.length; i++) {
-        if (ranges[i].$1 < ranges[i - 1].$2) {
-          throw const FormatException('Overlapping cells');
-        }
-      }
-      var free = header.firstFreeblock;
-      final data = ByteData.sublistView(bytes);
-      while (free != 0) {
-        final end = free + data.getUint16(free + 2);
-        if (ranges.any((range) => range.$1 < end && range.$2 > free)) {
-          throw const FormatException('Cell overlaps freeblock');
-        }
-        free = data.getUint16(free);
-      }
+      _validateRanges(bytes, header, ranges);
       if (!header.isLeaf) {
         actions.add(
             _PageTask(header.rightmostChild!, node.table, lower, node.upper));
       }
       stack.addAll(actions.reversed);
+    }
+  }
+
+  void _validateRanges(
+      Uint8List bytes, BtreePageHeader header, List<(int, int)> ranges) {
+    ranges.sort((a, b) => a.$1.compareTo(b.$1));
+    for (var i = 1; i < ranges.length; i++) {
+      if (ranges[i].$1 < ranges[i - 1].$2) {
+        throw const FormatException('Overlapping cells');
+      }
+    }
+    var free = header.firstFreeblock;
+    final data = ByteData.sublistView(bytes);
+    while (free != 0) {
+      final end = free + data.getUint16(free + 2);
+      if (ranges.any((range) => range.$1 < end && range.$2 > free)) {
+        throw const FormatException('Cell overlaps freeblock');
+      }
+      free = data.getUint16(free);
     }
   }
 
