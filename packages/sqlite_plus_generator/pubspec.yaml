@@ -1,0 +1,6 @@
+name: sqlite_plus_generator
+description: Dart metadata generator for sqlite_plus (under development).
+version: 0.0.1-dev.1
+publish_to: none
+environment:
+  sdk: '>=3.3.0 <4.0.0'

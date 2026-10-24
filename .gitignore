@@ -1,0 +1,7 @@
+.dart_tool/
+.packages
+build/
+coverage/
+*.g.dart
+*.freezed.dart
+.DS_Store

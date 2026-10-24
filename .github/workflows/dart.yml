@@ -1,0 +1,22 @@
+name: Dart checks
+on:
+  push:
+  pull_request:
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+      - name: Install dependencies
+        working-directory: packages/sqlite_plus
+        run: dart pub get
+      - name: Format
+        working-directory: packages/sqlite_plus
+        run: dart format --output=none --set-exit-if-changed .
+      - name: Analyze
+        working-directory: packages/sqlite_plus
+        run: dart analyze --fatal-infos
+      - name: Test
+        working-directory: packages/sqlite_plus
+        run: dart test
