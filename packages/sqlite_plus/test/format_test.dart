@@ -37,6 +37,7 @@ void main() {
         expect(header.schemaCookie, greaterThan(0));
         expect(header.defaultCacheSize, 0);
         for (final page in item['pages'] as List<dynamic>) {
+          if (page['pagetype'] == 'overflow') continue;
           final number = page['pageno'] as int;
           final decoded = BtreePageHeader.decode(
               Uint8List.sublistView(bytes, (number - 1) * size, number * size),
@@ -44,7 +45,10 @@ void main() {
               pageNumber: number);
           expect(decoded.cellCount, page['ncell']);
           expect(decoded.isLeaf, page['pagetype'] == 'leaf');
-          expect(decoded.isTable, page['name'] != 'sample_value');
+          expect(
+              decoded.isTable,
+              !['sample_value', 'types_blob', 'boundary_blob', 'keyed']
+                  .contains(page['name']));
           expect(
               decoded.rightmostChild, decoded.isLeaf ? isNull : greaterThan(0));
         }

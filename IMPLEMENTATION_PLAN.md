@@ -2,7 +2,7 @@
 
 - [x] M0: Repository skeleton, pure Dart memory storage interface and tests (verified on Dart 3.13.7/Linux x64).
 - [x] M1: Pin SQLite version/configuration, test oracle, binary fixtures, page/header decoder and tests.
-- [ ] M2: Read-only pager and B-tree traversal; open SQLite-created files and compare records.
+- [x] M2: Read-only pager and B-tree traversal; open SQLite-created files and compare records.
 - [ ] M3: Catalog, tokenizer, parser, SELECT execution and differential tests.
 - [ ] M4: Write pager, B-tree mutation, INSERT/UPDATE/DELETE, crash-safe rollback journal.
 - [ ] M5: Transactions, savepoints, locking and WAL with recovery tests.

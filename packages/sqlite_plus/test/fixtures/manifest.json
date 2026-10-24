@@ -54,13 +54,13 @@
       "file": "sqlite-512.db",
       "page_size": 512,
       "encoding": "UTF-8",
-      "sha256": "f889715efa1845ad8c64453dc84e71eaf3b33aab6d9bbe06bc61f195beedc539",
+      "sha256": "ea38af603e534e176e3304ca6999e0e44421fdd9ceeb9c5c1c45d5539741ea76",
       "pages": [
         {
           "name": "sqlite_schema",
           "pageno": 1,
-          "pagetype": "leaf",
-          "ncell": 2
+          "pagetype": "internal",
+          "ncell": 1
         },
         {
           "name": "sample",
@@ -169,6 +169,738 @@
           "pageno": 19,
           "pagetype": "leaf",
           "ncell": 9
+        },
+        {
+          "name": "types",
+          "pageno": 20,
+          "pagetype": "internal",
+          "ncell": 2
+        },
+        {
+          "name": "types",
+          "pageno": 21,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 22,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 23,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 24,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 25,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 26,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 27,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 28,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 29,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 30,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 31,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 32,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 33,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 34,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 35,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 36,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 37,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 38,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 39,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 40,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 41,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 42,
+          "pagetype": "leaf",
+          "ncell": 2
+        },
+        {
+          "name": "types",
+          "pageno": 43,
+          "pagetype": "leaf",
+          "ncell": 2
+        },
+        {
+          "name": "types",
+          "pageno": 44,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 45,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 46,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 47,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 48,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 49,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 50,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 51,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 52,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 53,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 54,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 55,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 56,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 57,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 58,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 59,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 60,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 61,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 62,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 63,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 64,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 65,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 66,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 67,
+          "pagetype": "leaf",
+          "ncell": 3
+        },
+        {
+          "name": "types",
+          "pageno": 68,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 69,
+          "pagetype": "leaf",
+          "ncell": 7
+        },
+        {
+          "name": "types_blob",
+          "pageno": 70,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 71,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 72,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 73,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 74,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 75,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 76,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 77,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 78,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 79,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 80,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 81,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 82,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 83,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 84,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 85,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 86,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 87,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 88,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 89,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 90,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 91,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 92,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 93,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 94,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 95,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 96,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 97,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 98,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 99,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 100,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 101,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 102,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 103,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 104,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 105,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 106,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 107,
+          "pagetype": "internal",
+          "ncell": 3
+        },
+        {
+          "name": "boundary",
+          "pageno": 108,
+          "pagetype": "leaf",
+          "ncell": 7
+        },
+        {
+          "name": "boundary",
+          "pageno": 109,
+          "pagetype": "leaf",
+          "ncell": 1
+        },
+        {
+          "name": "boundary",
+          "pageno": 110,
+          "pagetype": "leaf",
+          "ncell": 1
+        },
+        {
+          "name": "boundary",
+          "pageno": 111,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 112,
+          "pagetype": "leaf",
+          "ncell": 4
+        },
+        {
+          "name": "boundary",
+          "pageno": 113,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 114,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 115,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 116,
+          "pagetype": "internal",
+          "ncell": 1
+        },
+        {
+          "name": "sqlite_schema",
+          "pageno": 117,
+          "pagetype": "leaf",
+          "ncell": 4
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 118,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 119,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 120,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 121,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 122,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 123,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 124,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 125,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 126,
+          "pagetype": "leaf",
+          "ncell": 10
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 127,
+          "pagetype": "leaf",
+          "ncell": 2
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 128,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "empty",
+          "pageno": 129,
+          "pagetype": "leaf",
+          "ncell": 0
+        },
+        {
+          "name": "keyed",
+          "pageno": 130,
+          "pagetype": "internal",
+          "ncell": 9
+        },
+        {
+          "name": "sqlite_schema",
+          "pageno": 131,
+          "pagetype": "leaf",
+          "ncell": 4
+        },
+        {
+          "name": "keyed",
+          "pageno": 132,
+          "pagetype": "leaf",
+          "ncell": 28
+        },
+        {
+          "name": "keyed",
+          "pageno": 133,
+          "pagetype": "leaf",
+          "ncell": 29
+        },
+        {
+          "name": "keyed",
+          "pageno": 134,
+          "pagetype": "leaf",
+          "ncell": 29
+        },
+        {
+          "name": "keyed",
+          "pageno": 135,
+          "pagetype": "leaf",
+          "ncell": 29
+        },
+        {
+          "name": "keyed",
+          "pageno": 136,
+          "pagetype": "leaf",
+          "ncell": 29
+        },
+        {
+          "name": "keyed",
+          "pageno": 137,
+          "pagetype": "leaf",
+          "ncell": 30
+        },
+        {
+          "name": "keyed",
+          "pageno": 138,
+          "pagetype": "leaf",
+          "ncell": 29
+        },
+        {
+          "name": "keyed",
+          "pageno": 139,
+          "pagetype": "leaf",
+          "ncell": 31
+        },
+        {
+          "name": "keyed",
+          "pageno": 140,
+          "pagetype": "leaf",
+          "ncell": 30
+        },
+        {
+          "name": "keyed",
+          "pageno": 141,
+          "pagetype": "leaf",
+          "ncell": 27
         }
       ]
     },
@@ -176,13 +908,13 @@
       "file": "sqlite-4096.db",
       "page_size": 4096,
       "encoding": "UTF-16le",
-      "sha256": "61b1f53d92914ef6a3c0afdecd6d7c51259ab1b0338c88be5f6e4c1399a6039c",
+      "sha256": "3a93a74582db2d6a5ee1e29adffff03d6c3158aa60ad851fd4afd6d6aded2d91",
       "pages": [
         {
           "name": "sqlite_schema",
           "pageno": 1,
           "pagetype": "leaf",
-          "ncell": 2
+          "ncell": 8
         },
         {
           "name": "sample",
@@ -219,6 +951,252 @@
           "pageno": 7,
           "pagetype": "leaf",
           "ncell": 50
+        },
+        {
+          "name": "types",
+          "pageno": 8,
+          "pagetype": "internal",
+          "ncell": 2
+        },
+        {
+          "name": "types",
+          "pageno": 9,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 10,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 11,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 12,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 13,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types",
+          "pageno": 14,
+          "pagetype": "leaf",
+          "ncell": 4
+        },
+        {
+          "name": "types",
+          "pageno": 15,
+          "pagetype": "leaf",
+          "ncell": 1
+        },
+        {
+          "name": "types",
+          "pageno": 16,
+          "pagetype": "leaf",
+          "ncell": 2
+        },
+        {
+          "name": "types_blob",
+          "pageno": 17,
+          "pagetype": "leaf",
+          "ncell": 7
+        },
+        {
+          "name": "types_blob",
+          "pageno": 18,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 19,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 20,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 21,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "types_blob",
+          "pageno": 22,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 23,
+          "pagetype": "internal",
+          "ncell": 4
+        },
+        {
+          "name": "boundary",
+          "pageno": 24,
+          "pagetype": "leaf",
+          "ncell": 6
+        },
+        {
+          "name": "boundary",
+          "pageno": 25,
+          "pagetype": "leaf",
+          "ncell": 1
+        },
+        {
+          "name": "boundary",
+          "pageno": 26,
+          "pagetype": "leaf",
+          "ncell": 1
+        },
+        {
+          "name": "boundary",
+          "pageno": 27,
+          "pagetype": "leaf",
+          "ncell": 1
+        },
+        {
+          "name": "boundary",
+          "pageno": 28,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 29,
+          "pagetype": "leaf",
+          "ncell": 4
+        },
+        {
+          "name": "boundary",
+          "pageno": 30,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 31,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 32,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 33,
+          "pagetype": "internal",
+          "ncell": 1
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 34,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 35,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 36,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 37,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 38,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 39,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 40,
+          "pagetype": "leaf",
+          "ncell": 8
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 41,
+          "pagetype": "leaf",
+          "ncell": 4
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 42,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 43,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 44,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "empty",
+          "pageno": 45,
+          "pagetype": "leaf",
+          "ncell": 0
+        },
+        {
+          "name": "keyed",
+          "pageno": 46,
+          "pagetype": "internal",
+          "ncell": 1
+        },
+        {
+          "name": "keyed",
+          "pageno": 47,
+          "pagetype": "leaf",
+          "ncell": 133
+        },
+        {
+          "name": "keyed",
+          "pageno": 48,
+          "pagetype": "leaf",
+          "ncell": 166
         }
       ]
     },
@@ -226,13 +1204,13 @@
       "file": "sqlite-65536.db",
       "page_size": 65536,
       "encoding": "UTF-16be",
-      "sha256": "76e627ca7110e5ed32a030701351589b41fbf3bbd98322de91d62408fd412ac5",
+      "sha256": "17f80bf152de507c3dcee9ceca45d2bf41c09ae8c7ad4c6c1d71ac86c36064c5",
       "pages": [
         {
           "name": "sqlite_schema",
           "pageno": 1,
           "pagetype": "leaf",
-          "ncell": 2
+          "ncell": 8
         },
         {
           "name": "sample",
@@ -245,8 +1223,165 @@
           "pageno": 3,
           "pagetype": "leaf",
           "ncell": 200
+        },
+        {
+          "name": "types",
+          "pageno": 4,
+          "pagetype": "leaf",
+          "ncell": 7
+        },
+        {
+          "name": "types_blob",
+          "pageno": 5,
+          "pagetype": "leaf",
+          "ncell": 7
+        },
+        {
+          "name": "boundary",
+          "pageno": 6,
+          "pagetype": "internal",
+          "ncell": 4
+        },
+        {
+          "name": "boundary",
+          "pageno": 7,
+          "pagetype": "leaf",
+          "ncell": 6
+        },
+        {
+          "name": "boundary",
+          "pageno": 8,
+          "pagetype": "leaf",
+          "ncell": 1
+        },
+        {
+          "name": "boundary",
+          "pageno": 9,
+          "pagetype": "leaf",
+          "ncell": 1
+        },
+        {
+          "name": "boundary",
+          "pageno": 10,
+          "pagetype": "leaf",
+          "ncell": 1
+        },
+        {
+          "name": "boundary",
+          "pageno": 11,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 12,
+          "pagetype": "leaf",
+          "ncell": 4
+        },
+        {
+          "name": "boundary",
+          "pageno": 13,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 14,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary",
+          "pageno": 15,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 16,
+          "pagetype": "internal",
+          "ncell": 1
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 17,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 18,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 19,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 20,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 21,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 22,
+          "pagetype": "leaf",
+          "ncell": 7
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 23,
+          "pagetype": "leaf",
+          "ncell": 5
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 24,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 25,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 26,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "boundary_blob",
+          "pageno": 27,
+          "pagetype": "overflow",
+          "ncell": 0
+        },
+        {
+          "name": "empty",
+          "pageno": 28,
+          "pagetype": "leaf",
+          "ncell": 0
+        },
+        {
+          "name": "keyed",
+          "pageno": 29,
+          "pagetype": "leaf",
+          "ncell": 300
         }
       ]
     }
-  ]
+  ],
+  "records_sha256": "fc5f910e3e9f86c234e68fc91c3dab2d680026b15039405b549a9b0ca5be5ac5"
 }

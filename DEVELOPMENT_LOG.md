@@ -30,3 +30,35 @@
 - Scope: no SQL, pager, records, writes, WAL recovery or full database integrity
   checks. No runtime native SQLite dependency. Other platforms remain untested.
 - Next milestone: M2 read-only pager and B-tree traversal/record comparison.
+
+## 2026-10-24 — M2 read-only pager and B-tree records
+
+- Implemented Pure Dart exact/partial-read paging with authoritative logical
+  page counts, stale-size fallback, independent buffers and backend ownership.
+  WAL header versions are rejected; the reader requires a stable journal-free
+  rollback-format copy and provides no locks or recovery.
+- Added an optional dart:io read-only file backend. Serialized seek/read pairs
+  protect concurrent reads; write/truncate operations are unsupported. The core
+  export remains independent of dart:io.
+- Added iterative table/index traversal (including index interior records and
+  WITHOUT ROWID trees), bounded overflow reconstruction, cell/freeblock overlap
+  checks, separator bounds, repeated-page and chain-length validation.
+- Added bounded varint and record decoding: all integer serial widths use BigInt,
+  plus doubles, NULL, copied blobs and well-formed UTF-8/UTF-16 text. Physical
+  INTEGER PRIMARY KEY alias fields remain NULL, with rowid exposed separately.
+- Expanded the same pinned SQLite 3.53.1 fixtures and recorded SELECT expectations:
+  2,244 physical records, 213 pages (131 overflow), 512/4096/65536-byte pages,
+  minimum/maximum rowids, overflow/local boundaries, empty tables, indexes,
+  WITHOUT ROWID, schema records, blobs and supplementary Unicode characters.
+  Source ID and compile options are enforced, and all binary/oracle checksums
+  are verified. Regeneration is byte-for-byte deterministic.
+- Verified all 48 engine tests, formatting and fatal-info analysis on Dart
+  3.13.7/Linux x64. Tests include partial reads/EOF, file byte preservation,
+  lifecycle, corrupt pointers/varints/records, cycles, shared pages, separator
+  order, overflow lengths, reserved tails, cancellation, 2,000 deterministic
+  malformed record inputs and 100 mutated B-tree inputs. All three packages
+  pass locked dependency installation, formatting and analysis.
+- No write/crash-recovery tests apply to these read-only changes. M3 catalog/SQL,
+  concurrent mutation safety, malformed-text parity, full integrity checking,
+  and execution on other platforms remain unimplemented/unverified. Remote
+  GitHub Actions results are not claimed by local command verification.
