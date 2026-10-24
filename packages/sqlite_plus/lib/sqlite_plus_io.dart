@@ -2,3 +2,4 @@
 library;
 
 export 'src/storage/read_only_file_storage_backend.dart';
+export 'src/storage/durable_file_storage_backend.dart';

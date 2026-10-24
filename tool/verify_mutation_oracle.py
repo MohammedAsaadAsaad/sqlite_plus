@@ -1,0 +1,53 @@
+"""Cross-open Dart-written files and compare each mutation to pinned SQLite."""
+import json
+from pathlib import Path
+import shutil
+import sqlite3
+import subprocess
+import tempfile
+from generate_fixtures import PIN, ROOT
+
+
+def main():
+    manifest = json.loads((ROOT / 'manifest.json').read_text())
+    with sqlite3.connect(':memory:') as c:
+        if c.execute('select sqlite_source_id()').fetchone()[0] != PIN:
+            raise RuntimeError('Wrong SQLite source ID')
+        if sorted(r[0] for r in c.execute('pragma compile_options')) != manifest['compile_options']:
+            raise RuntimeError('Wrong SQLite compile options')
+    operations = [
+        {'sql': 'INSERT INTO notes(value,n) VALUES(?,?),(?,?)',
+         'parameters': ['overflow-λ😀' * 3000, 7, 'short', 8]},
+        {'sql': 'UPDATE notes SET value=?,n=n+1 WHERE id>=?', 'parameters': ['updated', 1999]},
+        {'sql': 'UPDATE notes SET id=-id WHERE id<4', 'parameters': []},
+        {'sql': 'DELETE FROM notes WHERE id>5 AND id<1999', 'parameters': []},
+        {'sql': 'INSERT INTO notes VALUES(-128,?,?)', 'parameters': ['negative', -32769]},
+        {'sql': 'UPDATE notes SET value=? WHERE id=2002', 'parameters': ['x' * 5000]},
+        {'sql': 'DELETE FROM notes', 'parameters': []},
+        {'sql': 'INSERT INTO notes(value,n) VALUES(?,?)', 'parameters': ['restart', 1]},
+    ]
+    with tempfile.TemporaryDirectory() as directory:
+        directory = Path(directory)
+        (directory / 'operations.json').write_text(json.dumps(operations))
+        subprocess.run(['dart', '--suppress-analytics', 'run', 'tool/export_mutations.dart', str(directory)],
+                       cwd=ROOT.parents[1], check=True)
+        expected_path = directory / 'reference.db'
+        shutil.copyfile(ROOT / 'write.db', expected_path)
+        with sqlite3.connect(expected_path) as reference:
+            for i, operation in enumerate(operations):
+                cursor = reference.execute(operation['sql'], operation['parameters'])
+                reference.commit()
+                expected = reference.execute('select * from notes order by id').fetchall()
+                metadata = json.loads((directory / f'{i}.json').read_text())
+                if metadata['changes'] != cursor.rowcount:
+                    raise RuntimeError(f'Change count mismatch at step {i}')
+                with sqlite3.connect(f'file:{directory / str(i)}.db?mode=ro', uri=True) as actual:
+                    if actual.execute('pragma integrity_check').fetchone() != ('ok',):
+                        raise RuntimeError(f'Integrity failure at step {i}')
+                    if actual.execute('select * from notes order by id').fetchall() != expected:
+                        raise RuntimeError(f'Row mismatch at step {i}')
+        print(f'Pinned SQLite cross-open/integrity/differential checks passed for {len(operations)} mutations')
+
+
+if __name__ == '__main__':
+    main()

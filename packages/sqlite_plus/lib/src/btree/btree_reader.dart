@@ -24,10 +24,18 @@ final class _PageTask {
 /// Iterative in-order traversal of rowid tables and index B-trees.
 /// Traversal returns physical records; it does not apply SQL or collations.
 final class BtreeReader {
-  BtreeReader(this.pager, {this.maxPayloadBytes = 16 * 1024 * 1024}) {
+  BtreeReader(this.pager,
+      {this.maxPayloadBytes = 16 * 1024 * 1024, this.onPageRead}) {
     if (maxPayloadBytes < 1) throw RangeError.value(maxPayloadBytes);
   }
   final ReadOnlyPager pager;
+  final void Function(int pageNumber)? onPageRead;
+  Future<Uint8List> _readPage(int number) async {
+    final result = await pager.readPage(number);
+    onPageRead?.call(number);
+    return result;
+  }
+
   final int maxPayloadBytes;
 
   Stream<BtreeRecord> scanTable(int rootPage) => _scan(rootPage, true);
@@ -55,7 +63,7 @@ final class BtreeReader {
       if (!used.add(node.number)) {
         throw const FormatException('Repeated B-tree or overflow page');
       }
-      final bytes = await pager.readPage(node.number);
+      final bytes = await _readPage(node.number);
       final header = BtreePageHeader.decode(bytes,
           database: pager.header, pageNumber: node.number);
       if (header.isTable != node.table) {
@@ -145,7 +153,7 @@ final class BtreeReader {
       if (!used.add(next)) {
         throw const FormatException('Repeated overflow or B-tree page');
       }
-      final page = await pager.readPage(next);
+      final page = await _readPage(next);
       next = ByteData.sublistView(page).getUint32(0);
       final count = math.min(length - copied, usable - 4);
       result.setRange(copied, copied + count, page, 4);

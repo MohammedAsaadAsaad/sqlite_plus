@@ -21,9 +21,11 @@ The pinned Python/SQLite oracle is development-only. M3 SELECT compatibility is 
 | Catalog and SELECT subset | Implemented | 726 pinned SQLite differential cases: single table, projection, WHERE, DISTINCT, ORDER BY, LIMIT/OFFSET, positional bindings, arithmetic/comparison/NULL logic; catalog names and rowid aliases |
 | Full SQL semantics | Not started (M6) | No joins, aggregates, subqueries, compound SELECTs, IN/LIKE, user functions or non-BINARY collations |
 | Transactions, locking and recovery | Not started | No concurrent writers, hot journal recovery, WAL reader, or crash safety claims |
-| SQLite file writes | Not started | No cross-open writes, pager mutation or complete integrity check |
+| SQLite image mutations | Implemented for simple unindexed rowid tables | INSERT/UPDATE/DELETE, bulk B-tree/overflow rebuilding, freelist reclamation; 8 mutation snapshots cross-open and pass pinned SQLite integrity_check/differential checks |
+| Rollback journal | Implemented under explicit durable storage contract | SQLite-compatible full-page before-images, PERSIST invalidation, every-operation crash injection, recovery fault injection; pinned SQLite recovers Dart journal byte-for-byte |
+| Durable file adapter | Conditional | Existing-file random writes/flush validated; caller must guarantee durable pre-provisioned entries and exclusive access. No power-loss filesystem certification |
 | ORM and code generator | Placeholders | Analyzer passes; no behavior/tests yet |
-| Linux x64 | Development checks verified | Dart 3.13.7; 808 engine tests, formatting and fatal-info analysis pass |
+| Linux x64 | Development checks verified | Dart 3.13.7; 821 engine tests, formatting and fatal-info analysis pass |
 | Windows/macOS/Android/iOS/Web | Not verified | Core has no dart:io imports; optional adapter requires dart:io. Execution on these platforms remains untested |
 
 M2 reads stable, nonempty SQLite 3 database copies with rollback-format headers.
@@ -53,3 +55,20 @@ integer/real comparisons, ASCII-insensitive names, quoted tokens, positional
 parameters, rowid aliases, binary UTF ordering and blob numeric conversion are
 covered by the pinned cases. Floating-point-to-text conversion beyond those
 cases is not verified. Query results are materialized; no performance claims.
+
+M4 provides an experimental MutableSqliteDatabase for existing images. It only
+writes ordinary rowid tables without indexes, triggers, non-PK constraints,
+auto-vacuum or reserved bytes. Unsupported targets fail before mutation.
+TableImageWriter validates cross-tree ownership and freelists before reclaiming
+pages. Rebuilding appends pages and reclaims old pages rather than optimizing
+in-place splits; no write-performance claim. A default 64 MiB image bound applies.
+
+RollbackJournalPager requires distinct DurableStorageBackend instances with
+already durable directory entries, durable ordered sync and exclusive access.
+DurableFileStorageBackend only opens existing regular files; its explicit
+pre-provisioning attestation is a caller contract, not a detected property.
+No automatic directory provisioning is offered. Crash-injection tests model
+volatile versus synced data and restart recovery at each operation. Torn or
+unrecognized journal headers fail closed. Filesystem power-loss, multi-process
+locking, SQLite journal modes other than this single-header PERSIST subset,
+transactions/savepoints and WAL remain M5/unverified.

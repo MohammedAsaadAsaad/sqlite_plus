@@ -84,3 +84,27 @@
   be flushed through the available dart:io file API. Durable journal creation
   and directory-entry persistence need an explicitly supported capability;
   do not claim crash-safe filesystem writes from ordinary file flush alone.
+
+## 2026-10-24 — M4 limited writes and rollback journal
+
+- Implemented record serialization, rowid B-tree bulk mutation/rebuilding,
+  overflow writes, freelist reclamation and cross-tree ownership validation.
+  Added atomic single-statement INSERT/UPDATE/DELETE for simple unindexed rowid
+  tables. Indexed/triggered/constrained, WITHOUT ROWID, auto-vacuum and reserved
+  space targets fail explicitly; no general writable compatibility claim.
+- Implemented SQLite-compatible single-header rollback journals with complete
+  before-images and PERSIST header invalidation, guarded by an explicit durable
+  storage capability. Every mutating storage operation and each recovery step
+  is tested with crashes, both dropping and retaining unsynced writes.
+- Added an existing-file-only Pure Dart adapter that requires explicit caller
+  attestation of durable directory entries. Random-position writes, flush and
+  truncate are verified; it cannot establish directory-entry durability, locks
+  or physical power-loss safety. No files are silently provisioned.
+- The pinned SQLite 3.53.1 reference successfully recovers a Dart-produced hot
+  journal byte-for-byte. Eight sequential INSERT/UPDATE/DELETE image snapshots
+  cross-open, match reference rows/change counts and pass SQLite integrity_check.
+- All 821 engine tests pass, with formatting, fatal-info analysis and checksum
+  checks. Added writer fixture verification to CI. Runtime remains Pure Dart.
+- M5 remains next: SQL transactions/savepoints, locking, WAL and recovery. M4
+  storage durability is conditional on its documented backend contract, not a
+  claim that the cloud filesystem has been power-loss certified.

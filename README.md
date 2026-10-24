@@ -2,8 +2,8 @@
 
 Pure Dart SQLite-compatible engine and convention-based ORM under development.
 M3 adds catalog lookup and a read-only single-table SELECT API to the pager,
-B-tree traversal and record decoding. Durable writes and ORM behavior are not
-implemented. Full SQLite SQL semantics remain a later milestone. Production runtime code uses no native SQLite, FFI or WASM.
+B-tree traversal and record decoding. M4 adds experimental image mutations and a rollback pager. ORM behavior is
+not implemented. Full SQLite SQL semantics remain a later milestone. Production runtime code uses no native SQLite, FFI or WASM.
 
 Read `MASTER_SPEC.md`, `AGENTS.md`, `IMPLEMENTATION_PLAN.md` and
 `COMPATIBILITY_MATRIX.md` before developing.
@@ -150,3 +150,41 @@ metadata grammar also fail explicitly.
 using the pinned SQLite source/build, across all three database encodings.
 `python3 tool/generate_sql_oracle.py --verify` checks its committed SHA-256.
 The Dart tests use only the committed JSON and never execute native SQLite.
+
+## M4 writes (limited subset)
+
+`MutableSqliteDatabase.fromImage(bytes)` creates an independent mutable image.
+`execute(sql, parameters)` supports INSERT VALUES (including multiple rows),
+UPDATE SET/WHERE and DELETE WHERE on simple rowid tables without indexes,
+triggers, non-PK constraints, auto-vacuum or reserved space. Unsupported targets
+fail explicitly. `exportImage()` returns a copy that SQLite can open. Statements
+are atomic in memory; this alone is not durable storage. Rebuilding appends new
+pages and puts old descendants/overflow pages on the freelist.
+
+For durable commits, supply `RollbackJournalPager.open(database, journal)` to
+`MutableSqliteDatabase.fromJournalPager`. Both backends must implement the
+explicit `DurableStorageBackend` contract: distinct, already durably provisioned
+files, durable ordered sync, and exclusive access. The optional
+`DurableFileStorageBackend.openExisting(path, directoryEntryIsDurable: true)`
+uses only existing regular files and file flush; it does not create/delete files
+or establish that their directory entries are durable. The boolean is a caller
+attestation, not automatic detection. Do not use it to assume fresh files are
+power-loss safe. Pre-provision those files through a storage provider that can
+guarantee directory-entry persistence. The journal retains its existing entry
+and invalidates its header after database sync (PERSIST-style commit).
+
+Any commit I/O failure poisons the writer; reopen the pager to recover before
+accessing data again. No locking, concurrent-writer support, transaction SQL,
+savepoints or WAL is supplied yet. The image limit defaults to 64 MiB. The
+reference verifies eight cross-open mutation snapshots and recovers a Dart hot
+journal byte-for-byte. These are algorithm/interoperability checks, not physical
+power-loss certification of the cloud filesystem.
+
+Development-only verification, with the pinned SQLite/Python build and Dart on
+PATH (run from repository root):
+
+```sh
+python3 tool/generate_write_fixture.py --verify
+python3 tool/verify_mutation_oracle.py
+python3 tool/verify_rollback_oracle.py
+```

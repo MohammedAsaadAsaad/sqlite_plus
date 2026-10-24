@@ -22,6 +22,7 @@ jobs:
         run: |
           python3 tool/generate_fixtures.py --verify
           python3 tool/generate_sql_oracle.py --verify
+          python3 tool/generate_write_fixture.py --verify
       - name: Install dependencies
         run: dart pub get --enforce-lockfile
       - name: Format
