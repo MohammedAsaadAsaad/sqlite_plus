@@ -2,6 +2,84 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('duplicate key policies and ignored replacement deletes match SQLite',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(a UNIQUE,UNIQUE(a) ON CONFLICT IGNORE)');
+    expect((await db.execute('INSERT INTO t VALUES(1),(1)')).changes, 1);
+    await expectLater(
+        db.execute(
+            'CREATE TABLE bad(a UNIQUE ON CONFLICT FAIL,UNIQUE(a) ON CONFLICT IGNORE)'),
+        throwsA(isA<SqlException>()));
+    await db.execute('PRAGMA recursive_triggers=ON');
+    await db.execute(
+        "CREATE TRIGGER skip BEFORE DELETE ON t BEGIN SELECT RAISE(IGNORE); END");
+    final image = db.exportImage();
+    await expectLater(db.execute('INSERT OR REPLACE INTO t VALUES(1),(2)'),
+        throwsA(isA<SqlException>()));
+    expect(db.exportImage(), image);
+    await db.execute('DROP TRIGGER skip');
+    await db.execute(
+        "CREATE TRIGGER skip AFTER DELETE ON t BEGIN SELECT RAISE(IGNORE); END");
+    expect((await db.execute('INSERT OR REPLACE INTO t VALUES(1),(2)')).changes,
+        2);
+  });
+
+  test('schema defaults resolve per constraint and explicit OR overrides them',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute(
+        'CREATE TABLE t(id INTEGER PRIMARY KEY ON CONFLICT REPLACE, '
+        'a INT UNIQUE ON CONFLICT IGNORE,b INT NOT NULL ON CONFLICT REPLACE DEFAULT 7)');
+    final result = await db
+        .execute('INSERT INTO t VALUES(1,1,NULL),(2,1,2),(3,3,3) RETURNING *');
+    expect(result.returning!.rows, [
+      [BigInt.one, BigInt.one, BigInt.from(7)],
+      [BigInt.from(3), BigInt.from(3), BigInt.from(3)]
+    ]);
+    await db.execute('INSERT INTO t VALUES(1,4,4)');
+    final image = db.exportImage();
+    await expectLater(db.execute('INSERT OR ABORT INTO t VALUES(5,3,5)'),
+        throwsA(isA<SqlException>()));
+    expect(db.exportImage(), image);
+    await db.execute('INSERT OR REPLACE INTO t VALUES(5,3,NULL)');
+    expect((await db.query('SELECT id,a,b FROM t ORDER BY id')).rows, [
+      [BigInt.one, BigInt.from(4), BigInt.from(4)],
+      [BigInt.from(5), BigInt.from(3), BigInt.from(7)]
+    ]);
+  });
+
+  test('REPLACE delete triggers require recursive_triggers and preserve counts',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute(
+        'CREATE TABLE t(id INTEGER PRIMARY KEY ON CONFLICT REPLACE,v INT UNIQUE)');
+    await db.execute('CREATE TABLE audit(kind TEXT,id INT)');
+    await db.execute(
+        "CREATE TRIGGER before_delete BEFORE DELETE ON t BEGIN INSERT INTO audit VALUES('before',old.id); END");
+    await db.execute(
+        "CREATE TRIGGER after_delete AFTER DELETE ON t BEGIN INSERT INTO audit VALUES('after',old.id); END");
+    await db.execute('INSERT INTO t VALUES(1,1)');
+    await db.execute('INSERT INTO t VALUES(1,2)');
+    expect((await db.query('SELECT * FROM audit')).rows, isEmpty);
+    await db.execute('PRAGMA recursive_triggers=ON');
+    final result = await db.execute('INSERT INTO t VALUES(1,3) RETURNING *');
+    expect(result.changes, 1);
+    expect((await db.query('SELECT * FROM audit')).rows, [
+      ['before', BigInt.one],
+      ['after', BigInt.one]
+    ]);
+    await db.execute(
+        "CREATE TRIGGER stop BEFORE DELETE ON t BEGIN SELECT RAISE(ABORT,'stop'); END");
+    final image = db.exportImage();
+    await expectLater(db.execute('INSERT OR REPLACE INTO t VALUES(1,4)'),
+        throwsA(isA<SqlException>()));
+    expect(db.exportImage(), image);
+  });
+
   test(
       'explicit outer policies override trigger bodies and UPSERT updates abort',
       () async {

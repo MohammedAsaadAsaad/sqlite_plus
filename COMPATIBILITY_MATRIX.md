@@ -20,9 +20,9 @@ development reference tools. Production engine code is Pure Dart.
 | Scalar / aggregate functions | Verified subset | Core/string/math/ROUND/variadic IF/IIF and aggregates; connection-local scalar/aggregate callbacks; DATE/TIME/DATETIME/JULIANDAY/UNIXEPOCH/STRFTIME/TIMEDIFF and dynamic defaults; broader edge cases remain |
 | GROUP BY / HAVING | Verified subset | Expressions/ordinals/aliases, HAVING aliases, distinct aggregates, empty inputs and bare-column MIN/MAX selection in differential cases |
 | Window functions | Verified bounded subset | Ranking, NTILE, LAG/LEAD, first/last/nth values, aggregate ROWS/GROUPS/RANGE frames/offsets, EXCLUDE, FILTER, named/inherited windows and NULLS FIRST/LAST; max 10,000 rows; grouped aggregates and HAVING feed windows |
-| Schema creation / index maintenance | Verified subset | CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, ADD/RENAME/DROP COLUMN and table rename, ordinary and WITHOUT ROWID B-trees, auto/secondary indexes, overflow; 458 SQLite cross-open/integrity snapshots per encoding (1,374 total across UTF-8/UTF-16le/UTF-16be) |
+| Schema creation / index maintenance | Verified subset | CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, ADD/RENAME/DROP COLUMN and table rename, ordinary and WITHOUT ROWID B-trees, auto/secondary indexes, overflow; 501 SQLite cross-open/integrity snapshots per encoding (1,503 total across UTF-8/UTF-16le/UTF-16be) |
 | Generated columns | Verified subset | VIRTUAL/STORED, deterministic expressions, dependency order/cycle rejection, affinity, constraints/indexes, ADD virtual and guarded rename/drop; native fixtures in all encodings |
-| Constraints | Verified subset | Defaults, NOT NULL/UNIQUE/CHECK, STRICT, AUTOINCREMENT, FK enable state/actions/deferral, OR IGNORE/REPLACE/FAIL/ROLLBACK, partial/expression unique keys; evaluation errors are not ignored as constraints; broader edge-case conformance pending |
+| Constraints | Verified subset | Defaults, NOT NULL/UNIQUE/CHECK, STRICT, AUTOINCREMENT, FK enable state/actions/deferral, OR IGNORE/REPLACE/FAIL/ROLLBACK, partial/expression unique keys; schema PRIMARY KEY/UNIQUE/NOT NULL conflict policies and recursive REPLACE delete triggers; evaluation errors are not ignored as constraints; broader edge-case conformance pending |
 | Views / row triggers | Verified subset | Read views; BEFORE/AFTER INSERT/UPDATE/DELETE, UPDATE OF, WHEN, OLD/NEW, DML/SELECT/WITH bodies, WHEN subqueries, RAISE ABORT/FAIL/ROLLBACK/IGNORE, recursive_triggers state/1,000-depth bound, typed OLD/NEW and automatic rowid timing; INSTEAD OF INSERT/UPDATE/DELETE view triggers, zero direct change counts and RETURNING |
 | DML | Verified subset | INSERT VALUES/multirow/DEFAULT VALUES/SELECT, UPDATE/DELETE, UPSERT target/DO NOTHING/DO UPDATE, RETURNING with owner RPC; expression/partial conflict targets; combined conflict policies verified; broader syntax pending |
 | PRAGMAs | Verified subset | Header/table/index/FK metadata, integrity_check/quick_check/foreign_key_check, mutable foreign_keys/recursive_triggers/user_version/application_id; bounded to supported images/schema |
@@ -32,7 +32,7 @@ development reference tools. Production engine code is Pure Dart.
 | Isolate ownership / file lease | Single-owner architecture | Serialized SendPort requests, client-owned transactions, loopback duplicate-owner guard, native SQLite lock-byte exclusion and handoff |
 | ORM / generator | Placeholders, M7 pending | No behavior or tests yet |
 | JSON/JSONB / FTS / R-tree / virtual tables | M8 pending | No implementation claim |
-| Linux x64 | Development verified | Dart 3.13.7; 2,149 engine tests, format, fatal-info analysis and locked dependencies pass |
+| Linux x64 | Development verified | Dart 3.13.7; 2,152 engine tests, format, fatal-info analysis and locked dependencies pass |
 | Windows/macOS/Android/iOS/Web | Unverified, M9 pending | Core has no dart:io dependency; optional file/owner adapter does; no execution claim |
 
 ## Query and format limits
@@ -101,6 +101,6 @@ for small Linux memory workloads, not the required 1k/10k/100k/1m scale and
 platform/ORM/native-engine comparison matrix. No release-ready or all-milestones
 completion claim is made.
 
-M6 completion audit still has concrete open items: view/trigger dependency rewrites and broader ALTER conformance; schema constraint-level conflict policies; additional trigger/FK interactions;
+M6 completion audit still has concrete open items: view/trigger dependency rewrites and broader ALTER conformance; additional trigger/FK interactions;
 remaining SQL/function/PRAGMA conformance and hardening.
 These are not marked implemented by passing the expanded subset tests.

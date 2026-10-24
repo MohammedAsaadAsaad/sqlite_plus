@@ -424,3 +424,19 @@
 - Existing native mutation/transaction checks, byte-exact hot journal recovery
   and WAL/checkpoint/native continuation/owner-handoff checks also pass. M6 remains
   open for the documented dependency rewrites, schema policies and broader audit.
+
+## 2026-10-24 — M6 schema conflict defaults and REPLACE triggers
+
+- Added per-constraint PRIMARY KEY/UNIQUE/NOT NULL conflict defaults, explicit
+  statement precedence, duplicate-key policy merging/conflict errors, and native
+  table CHECK conflict-clause parsing (CHECK still aborts by default).
+- Added recursive REPLACE BEFORE/AFTER DELETE triggers, unique-key victim
+  collection and FK actions, without counting implicit deletes as direct changes.
+  Non-REPLACE constraints resolve before replacement deletion. BEFORE DELETE
+  RAISE(IGNORE) leaves uniqueness enforcement active, matching the reference.
+- Verification: all 2,152 engine tests, all-package locked dependencies and
+  fatal-info analysis, formatting, all fixture/oracle checksums and existing
+  mutation/transaction/journal/WAL/native-handoff checks pass. Pinned SQLite
+  validates 501 mutation snapshots per encoding (1,503 total), including schema
+  policies, compound keys, rollback, ignored replacement deletes and metadata.
+- M6 remains open for dependency rewrites and remaining SQL/PRAGMA/planner audit.

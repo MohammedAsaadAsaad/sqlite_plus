@@ -11,7 +11,9 @@ final class SqlException implements Exception {
 /// A constraint failure eligible for an SQL conflict policy. Evaluation and
 /// callback errors remain SqlException and must not be swallowed by OR IGNORE.
 final class SqlConstraintException extends SqlException {
-  const SqlConstraintException(super.message, [super.offset]);
+  const SqlConstraintException(super.message,
+      [super.offset, this.conflictPolicy = 'ABORT']);
+  final String conflictPolicy;
 }
 
 /// STRICT datatype violations always abort, even with OR IGNORE/FAIL.

@@ -10,6 +10,7 @@ final class CatalogColumn {
   CatalogColumn(this.name, this.declaredType,
       {this.generatedExpression,
       this.generatedStored = false,
+      this.notNullPolicy = 'ABORT',
       this.primaryKey = 0,
       this.defaultValue,
       this.defaultExpression,
@@ -28,6 +29,7 @@ final class CatalogColumn {
   final Object? defaultValue;
   final Expr? defaultExpression;
   final bool notNull;
+  final String notNullPolicy;
   final String? defaultSql;
   final bool unique, autoIncrement, primaryDescending;
   bool strict = false;
@@ -49,6 +51,8 @@ final class CatalogTable {
   final String? rowidAlias;
   final List<List<String>> uniqueKeys = [];
   final List<List<String>> autoIndexKeys = [];
+  final List<String> autoIndexPolicies = [];
+  String primaryPolicy = 'ABORT';
   final List<Expr> checks = [];
   final List<ForeignKey> foreignKeys = [];
   final List<CatalogColumn> generatedOrder = [];
@@ -179,7 +183,8 @@ final class DatabaseCatalog {
     String? alias;
     var tablePrimary = false;
     final uniqueKeys = <List<String>>[];
-    final autoKeys = <(bool, List<String>)>[];
+    final autoKeys = <(bool, List<String>, String)>[];
+    var primaryPolicy = 'ABORT';
     final tableChecks = <Expr>[];
     final foreignKeys = <ForeignKey>[];
     List<String> keyColumns() {
@@ -199,14 +204,15 @@ final class DatabaseCatalog {
       return names;
     }
 
-    void conflict() {
-      if (parser.take('ON')) {
-        parser.require('CONFLICT');
-        if (!parser.take('ABORT')) {
-          throw const SqlException(
-              'Only ABORT constraint policy is currently supported');
-        }
+    String conflict() {
+      if (!parser.take('ON')) return 'DEFAULT';
+      parser.require('CONFLICT');
+      final policy = parser.identifier().toUpperCase();
+      if (!['ABORT', 'IGNORE', 'REPLACE', 'FAIL', 'ROLLBACK']
+          .contains(policy)) {
+        throw const SqlException('Invalid conflict policy');
       }
+      return policy;
     }
 
     ForeignKey references(List<String> names) {
@@ -268,12 +274,12 @@ final class DatabaseCatalog {
       if (parser.take('UNIQUE')) {
         final key = keyColumns();
         uniqueKeys.add(key);
-        autoKeys.add((false, key));
-        conflict();
+        autoKeys.add((false, key, conflict()));
       } else if (parser.take('CHECK')) {
         parser.require('(');
         tableChecks.add(parser.expression());
         parser.require(')');
+        conflict();
       } else if (parser.take('FOREIGN')) {
         parser.require('KEY');
         final names = keyColumns();
@@ -286,8 +292,8 @@ final class DatabaseCatalog {
         tablePrimary = true;
         parser.require('KEY');
         primary.addAll(keyColumns());
-        autoKeys.add((true, List.of(primary)));
-        conflict();
+        primaryPolicy = conflict();
+        autoKeys.add((true, List.of(primary), primaryPolicy));
       } else {
         final columnName = parser.identifier();
         if (['CONSTRAINT', 'FOREIGN', 'UNIQUE', 'CHECK']
@@ -349,6 +355,7 @@ final class DatabaseCatalog {
         var collation = 'binary';
         final columnChecks = <Expr>[];
         var notNull = false;
+        var notNullPolicy = 'ABORT';
         String? defaultSql;
         var descending = false;
         Object? defaultValue;
@@ -363,19 +370,18 @@ final class DatabaseCatalog {
           if (parser.take('PRIMARY')) {
             parser.require('KEY');
             columnPrimary = true;
-            autoKeys.add((true, [columnName]));
             descending = parser.take('DESC');
             if (!descending) parser.take('ASC');
-            conflict();
+            primaryPolicy = conflict();
+            autoKeys.add((true, [columnName], primaryPolicy));
             autoIncrement = parser.take('AUTOINCREMENT');
           } else if (parser.take('NOT')) {
             parser.require('NULL');
             notNull = true;
-            conflict();
+            notNullPolicy = conflict();
           } else if (parser.take('UNIQUE')) {
             unique = true;
-            autoKeys.add((false, [columnName]));
-            conflict();
+            autoKeys.add((false, [columnName], conflict()));
           } else if (parser.take('CHECK')) {
             parser.require('(');
             columnChecks.add(parser.expression());
@@ -437,6 +443,7 @@ final class DatabaseCatalog {
             defaultValue: defaultValue,
             defaultExpression: defaultExpression,
             notNull: notNull,
+            notNullPolicy: notNullPolicy == 'DEFAULT' ? 'ABORT' : notNullPolicy,
             defaultSql: defaultSql,
             unique: unique,
             collation: collation,
@@ -482,6 +489,7 @@ final class DatabaseCatalog {
     }
     final result = CatalogTable(name, rootPage, columns,
         withoutRowid: withoutRowid, rowidAlias: withoutRowid ? null : alias)
+      ..primaryPolicy = primaryPolicy == 'DEFAULT' ? 'ABORT' : primaryPolicy
       ..uniqueKeys.addAll(uniqueKeys)
       ..checks.addAll(tableChecks)
       ..foreignKeys.addAll(foreignKeys);
@@ -518,11 +526,26 @@ final class DatabaseCatalog {
     for (final column in generated) {
       visit(column);
     }
-    final seenKeys = <String>{};
+    final seenKeys = <String, int>{};
     for (final key in autoKeys) {
       if (key.$1 && alias != null && !withoutRowid) continue;
-      if (seenKeys.add(key.$2.map(asciiLower).join('\u0000'))) {
+      final identity = key.$2.map(asciiLower).join('\u0000');
+      final existing = seenKeys[identity];
+      if (existing == null) {
+        seenKeys[identity] = result.autoIndexKeys.length;
         result.autoIndexKeys.add(key.$2);
+        result.autoIndexPolicies.add(key.$3);
+      } else if (key.$3 != 'DEFAULT') {
+        final previous = result.autoIndexPolicies[existing];
+        if (previous != 'DEFAULT' && previous != key.$3) {
+          throw const SqlException('Conflicting ON CONFLICT clauses');
+        }
+        result.autoIndexPolicies[existing] = key.$3;
+      }
+    }
+    for (var i = 0; i < result.autoIndexPolicies.length; i++) {
+      if (result.autoIndexPolicies[i] == 'DEFAULT') {
+        result.autoIndexPolicies[i] = 'ABORT';
       }
     }
     final declaredNames = columns.map((c) => asciiLower(c.name)).toSet();

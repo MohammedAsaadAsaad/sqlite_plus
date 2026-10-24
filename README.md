@@ -401,3 +401,8 @@ INSERT positional values exclude generated columns; explicit writes to them
 fail. ADD permits virtual columns; dependency-aware rename/drop and metadata
 (table_info/table_xinfo hidden flags) are verified. Three pinned SQLite-created
 fixtures cover stored/virtual values, overflow, WITHOUT ROWID and all encodings.
+
+Schema-level PRIMARY KEY/UNIQUE/NOT NULL ON CONFLICT policies support ABORT,
+IGNORE, REPLACE, FAIL and ROLLBACK, with explicit statement policies taking
+precedence. REPLACE deletes fire row triggers when recursive_triggers is enabled;
+BEFORE DELETE RAISE(IGNORE) leaves uniqueness enforcement active.

@@ -183,6 +183,45 @@ def main():
       "CREATE TABLE invalid_gen_clock(a,b AS(CURRENT_TIMESTAMP))",
       "PRAGMA integrity_check"
     ]
+    statements += [
+      "CREATE TABLE schema_policy(id INTEGER PRIMARY KEY ON CONFLICT REPLACE,a INT UNIQUE ON CONFLICT IGNORE,b INT NOT NULL ON CONFLICT REPLACE DEFAULT 7)",
+      "INSERT INTO schema_policy VALUES(1,1,NULL),(2,1,2),(3,3,3) RETURNING *",
+      "INSERT INTO schema_policy VALUES(1,4,4) RETURNING *",
+      "INSERT OR ABORT INTO schema_policy VALUES(5,3,5)",
+      "INSERT OR REPLACE INTO schema_policy VALUES(5,3,NULL) RETURNING *",
+      "CREATE TABLE schema_fail(a INT UNIQUE ON CONFLICT FAIL,b TEXT NOT NULL ON CONFLICT IGNORE)",
+      "INSERT INTO schema_fail VALUES(1,'a'),(2,NULL),(3,'c'),(1,'stop'),(4,'d')",
+      "UPDATE schema_fail SET a=1 WHERE a=3",
+      "CREATE TABLE schema_wr(a INT,b INT,PRIMARY KEY(a,b) ON CONFLICT REPLACE) WITHOUT ROWID",
+      "INSERT INTO schema_wr VALUES(1,2),(1,2),(1,3)",
+      "CREATE TABLE schema_multi(a INT,b INT,UNIQUE(a,b) ON CONFLICT IGNORE)",
+      "INSERT INTO schema_multi VALUES(1,2),(1,2),(2,3)",
+      "CREATE TABLE schema_rollback(a INT UNIQUE ON CONFLICT ROLLBACK)",
+      "INSERT INTO schema_rollback VALUES(1)", "BEGIN", "INSERT INTO schema_fail VALUES(9,'rollback')",
+      "INSERT INTO schema_rollback VALUES(2),(1)", "COMMIT",
+      "CREATE TABLE replacement_audit(kind TEXT,id INT)",
+      "CREATE TRIGGER replacement_before BEFORE DELETE ON schema_policy BEGIN INSERT INTO replacement_audit VALUES('before',old.id); END",
+      "CREATE TRIGGER replacement_after AFTER DELETE ON schema_policy BEGIN INSERT INTO replacement_audit VALUES('after',old.id); END",
+      "PRAGMA recursive_triggers=OFF", "INSERT INTO schema_policy VALUES(1,6,6)",
+      "PRAGMA recursive_triggers=ON", "INSERT INTO schema_policy VALUES(1,7,7)",
+      "UPDATE OR REPLACE schema_policy SET a=7 WHERE id=5 RETURNING *",
+      "PRAGMA recursive_triggers=OFF", "PRAGMA integrity_check"
+    ]
+    statements += [
+      "CREATE TABLE schema_duplicate(a UNIQUE,UNIQUE(a) ON CONFLICT IGNORE)",
+      "INSERT INTO schema_duplicate VALUES(1),(1)",
+      "CREATE TABLE invalid_duplicate(a UNIQUE ON CONFLICT FAIL,UNIQUE(a) ON CONFLICT IGNORE)",
+      "CREATE TABLE schema_check(a,CHECK(a>0) ON CONFLICT IGNORE)",
+      "INSERT INTO schema_check VALUES(1),(-1)",
+      "PRAGMA recursive_triggers=ON",
+      "CREATE TABLE replace_ignore(a INT UNIQUE)", "INSERT INTO replace_ignore VALUES(1)",
+      "CREATE TRIGGER replace_skip BEFORE DELETE ON replace_ignore BEGIN SELECT RAISE(IGNORE); END",
+      "INSERT OR REPLACE INTO replace_ignore VALUES(1),(2)",
+      "DROP TRIGGER replace_skip",
+      "CREATE TRIGGER replace_after_skip AFTER DELETE ON replace_ignore BEGIN SELECT RAISE(IGNORE); END",
+      "INSERT OR REPLACE INTO replace_ignore VALUES(1),(2)",
+      "PRAGMA recursive_triggers=OFF", "PRAGMA integrity_check"
+    ]
     for encoding in [1,2,3]:
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':[],'query':'=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS','TABLE_INFO','TABLE_XINFO'])} for sql in statements]))

@@ -366,6 +366,18 @@ final class ImageMutations {
   }
 
   List<List<String>> _implicitKeys(CatalogTable table) => table.autoIndexKeys;
+  String _indexPolicy(_Index index) {
+    final schema = _tables[asciiLower(index.table)]!.schema;
+    if (index.name == '@pk') return schema.primaryPolicy;
+    if (index.sql != null) return 'ABORT';
+    final ordinal = int.tryParse(index.name.split('_').last);
+    return ordinal != null &&
+            ordinal > 0 &&
+            ordinal <= schema.autoIndexPolicies.length
+        ? schema.autoIndexPolicies[ordinal - 1]
+        : 'ABORT';
+  }
+
   _Index _parseIndex(String sql) {
     final p = SqlParser(sql);
     p.require('CREATE');
@@ -1756,7 +1768,7 @@ final class ImageMutations {
     final insert = p.take('INSERT');
     final update = !insert && p.take('UPDATE');
     if (!insert && !update) p.require('DELETE');
-    var policy = 'ABORT';
+    var policy = 'DEFAULT';
     final explicitPolicy = (insert || update) && p.take('OR');
     if (explicitPolicy) {
       policy = p.identifier().toUpperCase();
@@ -2157,6 +2169,7 @@ final class ImageMutations {
 
     bool conflictError(SqlConstraintException error, String activePolicy) {
       if (error is SqlDatatypeConstraint) throw error;
+      if (activePolicy == 'DEFAULT') activePolicy = error.conflictPolicy;
       if (activePolicy == 'IGNORE') return true;
       if (activePolicy == 'FAIL' || activePolicy == 'ROLLBACK') {
         throw SqlTriggerFailure(activePolicy, error.message);
@@ -2171,7 +2184,9 @@ final class ImageMutations {
 
         for (final col in schema.columns) {
           var value = candidate[asciiLower(col.name)];
-          if (value == null && col.notNull && activePolicy == 'REPLACE') {
+          final columnPolicy =
+              activePolicy == 'DEFAULT' ? col.notNullPolicy : activePolicy;
+          if (value == null && col.notNull && columnPolicy == 'REPLACE') {
             value = col.defaultExpression?.evaluate(_constantContext(bound)) ??
                 col.defaultValue;
             candidate[asciiLower(col.name)] = _stored(value, col);
@@ -2183,7 +2198,8 @@ final class ImageMutations {
                   (schema.withoutRowid ||
                           col.strict && col.name != schema.rowidAlias) &&
                       col.primaryKey != 0)) {
-            throw const SqlConstraintException('NOT NULL constraint failed');
+            throw SqlConstraintException(
+                'NOT NULL constraint failed', null, col.notNullPolicy);
           }
           if (col.strict && value != null) {
             final type = col.declaredType.toUpperCase();
@@ -2215,8 +2231,10 @@ final class ImageMutations {
       }
     }
 
-    void accept(TableRow next,
-        {TableRow? replacing, String? overridePolicy, bool prepared = false}) {
+    Future<void> accept(TableRow next,
+        {TableRow? replacing,
+        String? overridePolicy,
+        bool prepared = false}) async {
       final activePolicy = overridePolicy ?? policy;
       if (!prepared) {
         final candidate = prepare(next, activePolicy);
@@ -2226,7 +2244,10 @@ final class ImageMutations {
       if (insert &&
           replacing == null &&
           upserts.isEmpty &&
-          activePolicy == 'ABORT' &&
+          (activePolicy == 'ABORT' ||
+              activePolicy == 'DEFAULT' &&
+                  schema.primaryPolicy == 'ABORT' &&
+                  schema.autoIndexPolicies.every((p) => p == 'ABORT')) &&
           !other.any((o) =>
               o.type == 'trigger' &&
               asciiLower(o.tableName) == asciiLower(name))) {
@@ -2246,29 +2267,54 @@ final class ImageMutations {
       }
       final old = table.rows.toList();
       if (replacing != null) table.rows.remove(replacing);
-      // REPLACE removes all rows conflicting with any unique key, not just rowid.
-      if (activePolicy == 'REPLACE') {
-        table.rows.removeWhere((row) {
-          if (row.rowId == next.rowId) return true;
-          for (final index in _indexes.where(
-              (i) => i.unique && asciiLower(i.table) == asciiLower(name))) {
-            if (!_includes(index, table, next) ||
-                !_includes(index, table, row)) {
-              continue;
-            }
-            final key = _indexKey(index, table, next);
-            if (key.every((v) => v != null) &&
-                _compare(index, key, _indexKey(index, table, row)) == 0) {
-              return true;
-            }
-          }
-          return false;
-        });
+      final replacingRows = <TableRow>{};
+      final conflicts = <(TableRow, String)>[];
+      if (!schema.withoutRowid) {
+        for (final row in table.rows.where((r) => r.rowId == next.rowId)) {
+          conflicts.add((
+            row,
+            activePolicy == 'DEFAULT' ? schema.primaryPolicy : activePolicy
+          ));
+        }
       }
-      if (foreignKeys && activePolicy == 'REPLACE') {
-        for (final removed in old
-            .where((row) => row != replacing && !table.rows.contains(row))) {
-          _referentialActions(table, removed, null, 0);
+      for (final index in uniqueIndexes.reversed) {
+        if (!_includes(index, table, next)) continue;
+        final key = _indexKey(index, table, next);
+        if (key.any((v) => v == null)) continue;
+        for (final row in table.rows) {
+          if (_includes(index, table, row) &&
+              _compare(index, key, _indexKey(index, table, row)) == 0) {
+            conflicts.add((
+              row,
+              activePolicy == 'DEFAULT' ? _indexPolicy(index) : activePolicy
+            ));
+          }
+        }
+      }
+      // SQLite resolves IGNORE/FAIL/ABORT constraints before deleting REPLACE victims.
+      for (final conflict in conflicts) {
+        if (conflict.$2 != 'REPLACE') {
+          table.rows
+            ..clear()
+            ..addAll(old);
+          conflictError(
+              const SqlConstraintException('UNIQUE constraint failed'),
+              conflict.$2);
+          return;
+        }
+        replacingRows.add(conflict.$1);
+      }
+      for (final removed in replacingRows) {
+        if (_recursiveTriggers &&
+            !await _fire('BEFORE', 'DELETE', table, removed, null, {},
+                foreignKeys: foreignKeys, inTransaction: inTransaction)) {
+          continue;
+        }
+        table.rows.remove(removed);
+        if (foreignKeys) _referentialActions(table, removed, null, 0);
+        if (_recursiveTriggers) {
+          await _fire('AFTER', 'DELETE', table, removed, null, {},
+              foreignKeys: foreignKeys, inTransaction: inTransaction);
         }
       }
       table.rows.add(next);
@@ -2357,7 +2403,7 @@ final class ImageMutations {
               foreignKeys: foreignKeys, inTransaction: inTransaction)) {
             return true;
           }
-          accept(changed, replacing: conflict, overridePolicy: 'ABORT');
+          await accept(changed, replacing: conflict, overridePolicy: 'ABORT');
           emit(changed);
           if (foreignKeys) _referentialActions(table, conflict, changed, 0);
           await _fire('AFTER', 'UPDATE', table, conflict, changed,
@@ -2438,7 +2484,7 @@ final class ImageMutations {
         if (candidate == null) continue;
         next = candidate;
         final handled = upserts.isNotEmpty && await handleUpsert(next);
-        if (!handled) accept(next, prepared: true);
+        if (!handled) await accept(next, prepared: true);
         if (!handled && changes > previousChanges) {
           emit(next);
           await _fire('AFTER', 'INSERT', table, null, next, {},
@@ -2514,7 +2560,7 @@ final class ImageMutations {
         if (candidate == null) continue;
         changed = candidate;
         final previousChanges = changes;
-        accept(changed, replacing: row, prepared: true);
+        await accept(changed, replacing: row, prepared: true);
         if (changes > previousChanges) {
           emit(changed);
           await _fire(
