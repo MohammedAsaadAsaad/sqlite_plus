@@ -217,3 +217,34 @@
   one small Linux memory workload; it does not satisfy M9's benchmark matrix.
 - M6 remains unchecked for remaining SQL breadth and conformance; M7–M9 remain
   pending. Documentation now distinguishes implemented subsets from open gates.
+
+## 2026-10-24 — M6 UPSERT/RETURNING, rename and advanced window expansion (partial)
+
+- Added direct INSERT/UPDATE/DELETE RETURNING results, including empty-result
+  metadata and values captured before AFTER-trigger changes. MutationResult and
+  owner RPC preserve result columns, BigInt and blob values. Trigger-body and
+  aggregate/window RETURNING forms reject before mutation.
+- Added multiple ON CONFLICT clauses, column/rowid targets, DO NOTHING,
+  DO UPDATE/excluded/WHERE, INSERT SELECT, AUTOINCREMENT attempts and WITHOUT
+  ROWID cases. Combined OR policies and partial/expression targets remain open.
+- Added atomic table renaming with supported index/FK/sequence rewrites and
+  transaction rollback. Dependent views/triggers reject the operation; no
+  ambiguous dependency rewrite or destructive migration is performed.
+- Fixed schema-name collisions with views and validated supported trigger-body
+  syntax before storing it. Added regressions for malformed trigger programs,
+  reserved names and statement rollback. Scalar trigger SELECT honors WHERE.
+- Added aggregate FILTER, named/inherited windows, GROUPS/numeric RANGE offsets,
+  EXCLUDE and explicit NULLS FIRST/LAST in ordinary/compound/window ordering.
+  Expanded the pinned SQL oracle to 717 M6 cases and the native mutation verifier
+  to 189 snapshots, now including RETURNING results and FK/header metadata.
+- Final verification: 1,592 engine tests pass; all packages pass formatting and
+  fatal-info analysis with locked dependencies. All fixture/oracle checksum gates,
+  8 mutation/14 transaction snapshots, byte-exact rollback recovery and WAL/native
+  continuation/owner handoff verifiers pass. The final schema verifier covers
+  195 snapshots; extra multi-clause/catch-all UPSERT assertions pass separately.
+- Trigger OLD/NEW DML values now use bound parameters, avoiding SQL text
+  round-tripping for NULs, quotes, infinities and blobs. Added Dart and native
+  cross-open regressions for these values.
+- M6 remains open for remaining SQL/function/PRAGMA/ALTER/grouped-window breadth
+  and hardening. M7 ORM/generator, M8 extensions and M9 platform/release gates
+  are not marked complete.

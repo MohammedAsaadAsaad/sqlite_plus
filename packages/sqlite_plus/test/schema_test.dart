@@ -4,6 +4,224 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('OLD/NEW trigger values are bound independently from SQL text',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(v)');
+    await db.execute('CREATE TABLE audit(v)');
+    await db.execute(
+        'CREATE TRIGGER copy AFTER INSERT ON t BEGIN INSERT INTO audit VALUES(new.v); END');
+    final values = <Object?>[
+      'a\u0000b',
+      "quote' and ?1",
+      double.infinity,
+      double.negativeInfinity,
+      Uint8List.fromList([0, 39, 255])
+    ];
+    for (final value in values) {
+      await db.execute('INSERT INTO t VALUES(?)', [value]);
+    }
+    expect((await db.query('SELECT v FROM audit ORDER BY rowid')).rows,
+        values.map((v) => [v]).toList());
+  });
+  test(
+      'schema collisions and malformed trigger bodies fail before changing the image',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(x)');
+    await db.execute('CREATE VIEW v AS SELECT * FROM t');
+    for (final sql in [
+      'CREATE TABLE v(x)',
+      'CREATE INDEX v ON t(x)',
+      'CREATE VIEW sqlite_bad AS SELECT 1',
+      'CREATE TRIGGER bad AFTER INSERT ON t BEGIN UPDATE t SET ; END',
+      'CREATE TRIGGER bad AFTER INSERT ON t BEGIN INSERT INTO t VALUES(1) RETURNING x; END'
+    ]) {
+      final before = db.exportImage();
+      await expectLater(db.execute(sql), throwsA(isA<SqlException>()),
+          reason: sql);
+      expect(db.exportImage(), before);
+    }
+    await db.execute(
+        "CREATE TRIGGER good AFTER INSERT ON t BEGIN SELECT RAISE(ABORT,'negative') WHERE new.x<0; END");
+    await db.execute('INSERT INTO t VALUES(1)');
+    await expectLater(
+        db.execute('INSERT INTO t VALUES(-1)'), throwsA(isA<SqlException>()));
+  });
+  test(
+      'table rename rewrites index/FK/sequence metadata and rolls back atomically',
+      () async {
+    final db = await MutableSqliteDatabase.create(pageSize: 512);
+    addTearDown(db.close);
+    await db.execute('PRAGMA foreign_keys=1');
+    await db.execute(
+        'CREATE TABLE p(id INTEGER PRIMARY KEY AUTOINCREMENT,k TEXT UNIQUE)');
+    await db.execute('CREATE INDEX p_k ON p(k)');
+    await db.execute("INSERT INTO p(k) VALUES('a')");
+    await db.execute('CREATE TABLE c(pid INT REFERENCES p(id))');
+    await db.execute('INSERT INTO c VALUES(1)');
+    await db.execute('ALTER TABLE p RENAME TO renamed');
+    expect((await db.query("SELECT name FROM sqlite_sequence")).rows, [
+      ['renamed']
+    ]);
+    await db.execute("INSERT INTO renamed(k) VALUES('b')");
+    await db.execute('INSERT INTO c VALUES(2)');
+    expect((await db.query('PRAGMA foreign_key_list(c)')).rows.single[2],
+        'renamed');
+    await db.execute('BEGIN');
+    await db.execute('ALTER TABLE renamed RENAME TO temporary');
+    await db.execute('ROLLBACK');
+    expect((await db.query('SELECT count(*) FROM renamed')).rows, [
+      [BigInt.two]
+    ]);
+    await db.execute('CREATE VIEW v AS SELECT * FROM renamed');
+    final before = db.exportImage();
+    await expectLater(db.execute('ALTER TABLE renamed RENAME TO blocked'),
+        throwsA(isA<SqlException>()));
+    expect(db.exportImage(), before);
+    await db.execute('DROP VIEW v');
+    await db.execute('ALTER TABLE renamed RENAME TO "space name"');
+    expect((await db.query('SELECT count(*) FROM "space name"')).rows, [
+      [BigInt.two]
+    ]);
+  });
+  test('UPSERT resolves target keys, excluded values, conditions and RETURNING',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute(
+        'CREATE TABLE t(id INTEGER PRIMARY KEY AUTOINCREMENT,k TEXT UNIQUE,n INT NOT NULL CHECK(n>0))');
+    await db.execute("INSERT INTO t(k,n) VALUES('a',1),('b',2)");
+    final result = await db.execute(
+        "INSERT INTO t(k,n) VALUES('a',3),('c',4) ON CONFLICT(k) DO UPDATE SET n=t.n+excluded.n RETURNING id,k,n");
+    expect(result.changes, 2);
+    expect(result.lastInsertRowid, BigInt.from(4));
+    expect(result.returning!.rows, [
+      [BigInt.one, 'a', BigInt.from(4)],
+      [BigInt.from(4), 'c', BigInt.from(4)]
+    ]);
+    final ignored = await db.execute(
+        "INSERT INTO t(k,n) VALUES('a',1) ON CONFLICT(k) DO NOTHING RETURNING id");
+    expect(ignored.changes, 0);
+    expect(ignored.returning!.rows, isEmpty);
+    expect(ignored.lastInsertRowid, isNull);
+    expect(
+        (await db.execute(
+                "INSERT INTO t(k,n) VALUES('a',1) ON CONFLICT(k) DO UPDATE SET n=excluded.n WHERE excluded.n>t.n RETURNING id"))
+            .returning!
+            .rows,
+        isEmpty);
+    expect(
+        (await db.execute(
+                "INSERT INTO t(id,k,n) VALUES(1,'new',8) ON CONFLICT(id) DO UPDATE SET n=excluded.n RETURNING n"))
+            .returning!
+            .rows,
+        [
+          [BigInt.from(8)]
+        ]);
+    final before = db.exportImage();
+    await expectLater(
+        db.execute(
+            "INSERT INTO t(k,n) VALUES('a',NULL) ON CONFLICT(k) DO NOTHING"),
+        throwsA(isA<SqlException>()));
+    expect(db.exportImage(), before);
+    await expectLater(
+        db.execute(
+            "INSERT INTO t(k,n) VALUES('a',2) ON CONFLICT(k) DO UPDATE SET k='b'"),
+        throwsA(isA<SqlException>()));
+    expect(db.exportImage(), before);
+    expect(
+        (await db.execute(
+                "INSERT INTO t(k,n) SELECT 'a',2 WHERE 1 ON CONFLICT(k) DO UPDATE SET n=excluded.n RETURNING n"))
+            .returning!
+            .rows,
+        [
+          [BigInt.two]
+        ]);
+    final multiple = await db.execute(
+        "INSERT INTO t(id,k,n) VALUES(1,'unused',1),(99,'b',2),(100,'fresh',3) ON CONFLICT(id) DO NOTHING ON CONFLICT(k) DO UPDATE SET n=excluded.n RETURNING k,n");
+    expect(multiple.returning!.rows, [
+      ['b', BigInt.two],
+      ['fresh', BigInt.from(3)]
+    ]);
+    expect(
+        (await db.execute(
+                "INSERT INTO t(k,n) VALUES('a',9) ON CONFLICT DO UPDATE SET n=excluded.n RETURNING n"))
+            .returning!
+            .rows,
+        [
+          [BigInt.from(9)]
+        ]);
+    await db.execute('CREATE TABLE wr(k TEXT PRIMARY KEY,n INT) WITHOUT ROWID');
+    await db.execute("INSERT INTO wr VALUES('x',1)");
+    expect(
+        (await db.execute(
+                "INSERT INTO wr VALUES('x',2) ON CONFLICT(k) DO UPDATE SET n=excluded.n RETURNING *"))
+            .returning!
+            .rows,
+        [
+          ['x', BigInt.two]
+        ]);
+    await expectLater(
+        db.execute("INSERT INTO wr VALUES('x',3) ON CONFLICT(n) DO NOTHING"),
+        throwsA(isA<SqlException>()));
+  });
+  test(
+      'RETURNING reports direct rows before AFTER triggers and excludes ignored rows',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY,v TEXT UNIQUE)');
+    final insert = await db.execute(
+        "INSERT INTO t(v) VALUES('a'),('b') RETURNING *,id+10 AS next");
+    expect(insert.returning!.columns, ['id', 'v', 'next']);
+    expect(insert.returning!.rows, [
+      [BigInt.one, 'a', BigInt.from(11)],
+      [BigInt.two, 'b', BigInt.from(12)]
+    ]);
+    final ignored =
+        await db.execute("INSERT OR IGNORE INTO t(v) VALUES('a') RETURNING id");
+    expect(ignored.returning!.rows, isEmpty);
+    expect(ignored.returning!.columns, ['id']);
+    await db.execute(
+        "CREATE TRIGGER changed AFTER UPDATE ON t BEGIN UPDATE t SET v='trigger' WHERE id=new.id; END");
+    final updated =
+        await db.execute("UPDATE t SET v='direct' WHERE id=1 RETURNING t.id,v");
+    expect(updated.returning!.rows, [
+      [BigInt.one, 'direct']
+    ]);
+    expect((await db.query('SELECT v FROM t WHERE id=1')).rows, [
+      ['trigger']
+    ]);
+    expect(
+        (await db.execute('DELETE FROM t WHERE id=1 RETURNING *'))
+            .returning!
+            .rows,
+        [
+          [BigInt.one, 'trigger']
+        ]);
+    expect(
+        (await db.execute("INSERT INTO t(v) SELECT 'c' RETURNING id,v"))
+            .returning!
+            .rows,
+        [
+          [BigInt.from(3), 'c']
+        ]);
+    expect(
+        (await db.execute('UPDATE t SET v=? WHERE id=? RETURNING id,? AS bound',
+                ['updated', 3, 'value']))
+            .returning!
+            .rows,
+        [
+          [BigInt.from(3), 'value']
+        ]);
+    final before = db.exportImage();
+    await expectLater(db.execute('DELETE FROM t RETURNING count(*)'),
+        throwsA(isA<SqlException>()));
+    expect(db.exportImage(), before);
+  });
   test('header PRAGMAs persist and roll back with the transaction', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);

@@ -18,15 +18,55 @@ final class _WindowRow {
 
 final class WindowExpr extends Expr {
   WindowExpr(this.function, this.partition, this.order, this.mode, this.start,
-      this.end);
+      this.end,
+      [this.exclusion = 'NO OTHERS']);
   final FunctionExpr function;
   final List<Expr> partition;
   final List<OrderTerm> order;
-  final String mode;
-  final WindowBound start, end;
+  String mode;
+  WindowBound start, end;
+  String exclusion;
+  String? baseName;
+  bool directName = false, explicitFrame = false, _resolved = false;
+  void resolve(Map<String, WindowExpr> definitions, Set<String> visiting) {
+    if (_resolved) return;
+    final name = baseName;
+    if (name != null) {
+      final base = definitions[name];
+      if (base == null || !visiting.add(name)) {
+        throw const SqlException('Unknown or cyclic window');
+      }
+      base.resolve(definitions, visiting);
+      visiting.remove(name);
+      if (directName) {
+        partition.addAll(base.partition);
+        order.addAll(base.order);
+        mode = base.mode;
+        start = base.start;
+        end = base.end;
+        exclusion = base.exclusion;
+        explicitFrame = base.explicitFrame;
+      } else {
+        if (partition.isNotEmpty ||
+            order.isNotEmpty && base.order.isNotEmpty ||
+            base.explicitFrame) {
+          throw const SqlException('Cannot override base window');
+        }
+        partition.addAll(base.partition);
+        if (order.isEmpty) order.addAll(base.order);
+        if (!explicitFrame) {
+          end = WindowBound(
+              order.isEmpty ? 'UNBOUNDED FOLLOWING' : 'CURRENT ROW');
+        }
+      }
+    }
+    _resolved = true;
+  }
+
   @override
   Iterable<Expr> get children => [
         ...function.arguments,
+        if (function.filter != null) function.filter!,
         ...partition,
         ...order.map((o) => o.expression),
         if (start.offset != null) start.offset!,
@@ -48,6 +88,11 @@ final class WindowExpr extends Expr {
     function.validate(columns);
     for (final expr in [...partition, ...order.map((o) => o.expression)]) {
       expr.validate(columns);
+    }
+    if (mode == 'RANGE' &&
+        (start.offset != null || end.offset != null) &&
+        order.length != 1) {
+      throw const SqlException('Offset RANGE requires one ORDER BY expression');
     }
     start.offset?.validate({});
     end.offset?.validate({});
@@ -94,9 +139,8 @@ final class WindowExpr extends Expr {
         final p = compare(a.partition, b.partition, partition);
         if (p != 0) return p;
         for (var i = 0; i < order.length; i++) {
-          final c = compareValues(a.order[i], b.order[i], context.encoding,
-              order[i].expression.collation(context));
-          if (c != 0) return order[i].descending ? -c : c;
+          final c = order[i].compare(a.order[i], b.order[i], context);
+          if (c != 0) return c;
         }
         return a.ordinal.compareTo(b.ordinal);
       });
@@ -150,12 +194,10 @@ final class WindowExpr extends Expr {
           value == value.truncateToDouble()) {
         value = BigInt.from(value);
       }
-      if (value is! BigInt ||
-          value < BigInt.from(positive ? 1 : 0) ||
-          value > BigInt.from(0x7fffffff)) {
+      if (value is! BigInt || value < BigInt.from(positive ? 1 : 0)) {
         throw const SqlException('Window offset must be a nonnegative integer');
       }
-      return value.toInt();
+      return value > BigInt.from(0x7fffffff) ? 0x7fffffff : value.toInt();
     }
 
     if (key == 'row_number') return BigInt.from(index + 1);
@@ -206,12 +248,60 @@ final class WindowExpr extends Expr {
         case 'UNBOUNDED FOLLOWING':
           return group.length - 1;
         case 'CURRENT ROW':
-          return mode == 'RANGE' ? (ending ? peerEnd : peerStart) : index;
+          return mode != 'ROWS' ? (ending ? peerEnd : peerStart) : index;
         default:
-          if (mode != 'ROWS') {
-            throw const SqlException('Offset RANGE frames unsupported');
+          final raw = bound.offset!.evaluate(_context(context, {}));
+          if (mode == 'RANGE') {
+            final offset = numeric(raw);
+            if (offset is! BigInt && offset is! double ||
+                offset is BigInt && offset < BigInt.zero ||
+                offset is double && (offset.isNaN || offset < 0)) {
+              throw const SqlException('RANGE offset must be nonnegative');
+            }
+            final value = group[index].order.single;
+            if (value is! BigInt && value is! double) {
+              return ending ? peerEnd : peerStart;
+            }
+            final subtract =
+                (bound.kind == 'PRECEDING') != order.single.descending;
+            final target = BinaryExpr(
+                    subtract ? '-' : '+', Literal(value), Literal(offset))
+                .evaluate(context);
+            if (ending) {
+              for (var i = group.length - 1; i >= 0; i--) {
+                final c = order.single
+                    .compare(group[i].order.single, target, context);
+                if (c <= 0) return i;
+              }
+              return -1;
+            }
+            for (var i = 0; i < group.length; i++) {
+              final c =
+                  order.single.compare(group[i].order.single, target, context);
+              if (c >= 0) return i;
+            }
+            return group.length;
           }
-          final offset = integer(bound.offset!.evaluate(_context(context, {})));
+          final offset = integer(raw);
+          if (mode == 'GROUPS') {
+            final starts = <int>[0];
+            for (var i = 1; i < group.length; i++) {
+              if (!peer(i - 1, i)) starts.add(i);
+            }
+            final currentGroup =
+                starts.lastIndexWhere((start) => start <= index);
+            final target =
+                currentGroup + (bound.kind == 'PRECEDING' ? -offset : offset);
+            if (target < 0) return ending ? -1 : 0;
+            if (target >= starts.length) {
+              return ending ? group.length - 1 : group.length;
+            }
+            return ending
+                ? (target + 1 < starts.length
+                    ? starts[target + 1] - 1
+                    : group.length - 1)
+                : starts[target];
+          }
           return index + (bound.kind == 'PRECEDING' ? -offset : offset);
       }
     }
@@ -221,7 +311,14 @@ final class WindowExpr extends Expr {
     if (last >= group.length) last = group.length - 1;
     final frame = first > last || first >= group.length || last < 0
         ? <RowValues>[]
-        : [for (var i = first; i <= last; i++) group[i].row];
+        : [
+            for (var i = first; i <= last; i++)
+              if (exclusion == 'NO OTHERS' ||
+                  exclusion == 'CURRENT ROW' && i != index ||
+                  exclusion == 'GROUP' && !peer(i, index) ||
+                  exclusion == 'TIES' && (i == index || !peer(i, index)))
+                group[i].row
+          ];
     if (['first_value', 'last_value', 'nth_value'].contains(key)) {
       final target = key == 'first_value'
           ? 0

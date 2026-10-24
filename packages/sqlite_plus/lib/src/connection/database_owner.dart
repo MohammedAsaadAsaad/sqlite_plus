@@ -107,7 +107,16 @@ final class DatabaseClient {
   Future<MutationResult> execute(String sql,
       [List<Object?> parameters = const []]) async {
     final result = await _request('execute', [sql, parameters]) as List;
-    return MutationResult(result[0] as int, result[1] as BigInt?);
+    return MutationResult(
+        result[0] as int,
+        result[1] as BigInt?,
+        result[2] == null
+            ? null
+            : QueryResult(
+                List<String>.from((result[2] as List)[0] as List),
+                ((result[2] as List)[1] as List)
+                    .map((row) => List<Object?>.from(row as List))
+                    .toList()));
   }
 
   Future<void> checkpoint() async {
@@ -218,7 +227,13 @@ Future<void> _runOwner(List<Object?> args) async {
           transactionOwner = active.inTransaction ? identity : null;
           reply.send([
             'ok',
-            [result.changes, result.lastInsertRowid]
+            [
+              result.changes,
+              result.lastInsertRowid,
+              result.returning == null
+                  ? null
+                  : [result.returning!.columns, result.returning!.rows]
+            ]
           ]);
         } else if (operation == 'checkpoint') {
           if (active.inTransaction || walPager == null) {

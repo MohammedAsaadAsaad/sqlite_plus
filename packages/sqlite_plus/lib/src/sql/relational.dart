@@ -560,9 +560,9 @@ extension _RelationalQueries on SqliteDatabase {
       }
       values.sort((a, b) {
         for (var i = 0; i < positions.length; i++) {
-          final c = compareValues(
-              a[positions[i]], b[positions[i]], _pager.header.textEncoding);
-          if (c != 0) return s.order[i].descending ? -c : c;
+          final c = s.order[i].compare(a[positions[i]], b[positions[i]],
+              EvalContext({}, {}, bound, _pager.header.textEncoding));
+          if (c != 0) return c;
         }
         return 0;
       });

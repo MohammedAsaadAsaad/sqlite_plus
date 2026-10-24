@@ -277,7 +277,18 @@ final class SelectItem {
 }
 
 final class OrderTerm {
-  OrderTerm(this.expression, this.descending);
+  OrderTerm(this.expression, this.descending, [this.nullsFirst]);
+  final bool? nullsFirst;
+  int compare(Object? a, Object? b, EvalContext context) {
+    if (nullsFirst != null && (a == null || b == null)) {
+      if (a == null && b == null) return 0;
+      return a == null ? (nullsFirst! ? -1 : 1) : (nullsFirst! ? 1 : -1);
+    }
+    final result =
+        compareValues(a, b, context.encoding, expression.collation(context));
+    return descending ? -result : result;
+  }
+
   final Expr expression;
   final bool descending;
 }
@@ -455,6 +466,19 @@ final class SqlParser {
       } while (take(','));
     }
     final having = take('HAVING') ? expression() : null;
+    final windows = <String, WindowExpr>{};
+    if (take('WINDOW')) {
+      do {
+        final name = asciiLower(identifier());
+        require('AS');
+        if (windows.containsKey(name)) {
+          throw const SqlException('Duplicate window name');
+        }
+        windows[name] =
+            _window(FunctionExpr('count', [], star: true), definition: true);
+      } while (take(','));
+    }
+
     final compounds = <(String, SelectStatement)>[];
     if (!component) {
       while (['UNION', 'INTERSECT', 'EXCEPT'].contains(current.keyword)) {
@@ -471,7 +495,7 @@ final class SqlParser {
         final expr = expression();
         final desc = take('DESC');
         if (!desc) take('ASC');
-        order.add(OrderTerm(expr, desc));
+        order.add(OrderTerm(expr, desc, _nulls()));
       } while (take(','));
     }
     Expr? limit;
@@ -486,6 +510,22 @@ final class SqlParser {
       }
     }
     if (!nested) finish();
+    void resolve(Expr expr) {
+      if (expr is WindowExpr) expr.resolve(windows, {});
+      for (final child in expr.children) {
+        resolve(child);
+      }
+    }
+
+    for (final expr in [
+      ...items.map((i) => i.expression),
+      where,
+      ...groups,
+      having,
+      ...order.map((o) => o.expression)
+    ]) {
+      if (expr != null) resolve(expr);
+    }
     return SelectStatement(
         items, table, where, order, limit, offset, distinct, parameterCount)
       ..ctes.addAll(ctes)
@@ -493,6 +533,123 @@ final class SqlParser {
       ..compounds.addAll(compounds)
       ..groupBy.addAll(groups)
       ..having = having;
+  }
+
+  WindowExpr _window(FunctionExpr function, {bool definition = false}) {
+    if (!take('(')) {
+      if (definition) {
+        throw const SqlException('Window definition requires parentheses');
+      }
+      final name = identifier();
+      return WindowExpr(
+          function,
+          [],
+          [],
+          'RANGE',
+          WindowBound('UNBOUNDED PRECEDING'),
+          WindowBound('UNBOUNDED FOLLOWING'))
+        ..baseName = asciiLower(name)
+        ..directName = true;
+    }
+    String? baseName;
+    if (current.kind == SqlTokenKind.identifier &&
+        !['PARTITION', 'ORDER', 'ROWS', 'RANGE', 'GROUPS', 'EXCLUDE']
+            .contains(current.keyword)) {
+      baseName = asciiLower(identifier());
+    }
+    final partition = <Expr>[];
+    final order = <OrderTerm>[];
+    if (take('PARTITION')) {
+      require('BY');
+      do {
+        partition.add(expression());
+      } while (take(','));
+    }
+    if (take('ORDER')) {
+      require('BY');
+      do {
+        final expr = expression();
+        final descending = take('DESC');
+        if (!descending) take('ASC');
+        order.add(OrderTerm(expr, descending, _nulls()));
+      } while (take(','));
+    }
+    var mode = 'RANGE';
+    var start = WindowBound('UNBOUNDED PRECEDING');
+    var end =
+        WindowBound(order.isEmpty ? 'UNBOUNDED FOLLOWING' : 'CURRENT ROW');
+    WindowBound bound() {
+      if (take('UNBOUNDED')) {
+        final direction = identifier().toUpperCase();
+        if (!['PRECEDING', 'FOLLOWING'].contains(direction)) {
+          throw const SqlException('Invalid frame bound');
+        }
+        return WindowBound('UNBOUNDED $direction');
+      }
+      if (take('CURRENT')) {
+        require('ROW');
+        return WindowBound('CURRENT ROW');
+      }
+      final offset = expression();
+      final direction = identifier().toUpperCase();
+      if (!['PRECEDING', 'FOLLOWING'].contains(direction)) {
+        throw const SqlException('Invalid frame bound');
+      }
+      return WindowBound(direction, offset);
+    }
+
+    var explicitFrame = false;
+    if (['ROWS', 'RANGE', 'GROUPS'].contains(current.keyword)) {
+      explicitFrame = true;
+      mode = identifier().toUpperCase();
+      if (take('BETWEEN')) {
+        start = bound();
+        require('AND');
+        end = bound();
+      } else {
+        start = bound();
+        end = WindowBound('CURRENT ROW');
+      }
+    }
+    var exclusion = 'NO OTHERS';
+    if (take('EXCLUDE')) {
+      if (take('CURRENT')) {
+        require('ROW');
+        exclusion = 'CURRENT ROW';
+      } else if (take('GROUP')) {
+        exclusion = 'GROUP';
+      } else if (take('TIES')) {
+        exclusion = 'TIES';
+      } else {
+        require('NO');
+        require('OTHERS');
+      }
+    }
+    require(')');
+    if (start.kind == 'UNBOUNDED FOLLOWING' ||
+        end.kind == 'UNBOUNDED PRECEDING') {
+      throw const SqlException('Invalid frame bounds');
+    }
+    const boundOrder = [
+      'UNBOUNDED PRECEDING',
+      'PRECEDING',
+      'CURRENT ROW',
+      'FOLLOWING',
+      'UNBOUNDED FOLLOWING'
+    ];
+    if (boundOrder.indexOf(start.kind) > boundOrder.indexOf(end.kind)) {
+      throw const SqlException('Invalid frame ordering');
+    }
+    return WindowExpr(function, partition, order, mode, start, end, exclusion)
+      ..baseName = baseName
+      ..explicitFrame = explicitFrame;
+  }
+
+  bool? _nulls() {
+    if (!take('NULLS')) return null;
+    if (take('FIRST')) return true;
+    require('LAST');
+    return false;
   }
 
   bool _implicitAlias() =>
@@ -695,78 +852,18 @@ final class SqlParser {
             }
             left =
                 FunctionExpr(token.text, args, distinct: distinct, star: star);
-            if (take('OVER')) {
+            if (take('FILTER')) {
+              final function = left as FunctionExpr;
+              if (!function.isAggregate) {
+                throw const SqlException('FILTER requires an aggregate');
+              }
               require('(');
-              final partition = <Expr>[];
-              final order = <OrderTerm>[];
-              if (take('PARTITION')) {
-                require('BY');
-                do {
-                  partition.add(expression());
-                } while (take(','));
-              }
-              if (take('ORDER')) {
-                require('BY');
-                do {
-                  final expr = expression();
-                  final descending = take('DESC');
-                  if (!descending) take('ASC');
-                  order.add(OrderTerm(expr, descending));
-                } while (take(','));
-              }
-              var mode = 'RANGE';
-              var start = WindowBound('UNBOUNDED PRECEDING');
-              var end = WindowBound(
-                  order.isEmpty ? 'UNBOUNDED FOLLOWING' : 'CURRENT ROW');
-              WindowBound bound() {
-                if (take('UNBOUNDED')) {
-                  final direction = identifier().toUpperCase();
-                  if (!['PRECEDING', 'FOLLOWING'].contains(direction)) {
-                    throw const SqlException('Invalid frame bound');
-                  }
-                  return WindowBound('UNBOUNDED $direction');
-                }
-                if (take('CURRENT')) {
-                  require('ROW');
-                  return WindowBound('CURRENT ROW');
-                }
-                final offset = expression();
-                final direction = identifier().toUpperCase();
-                if (!['PRECEDING', 'FOLLOWING'].contains(direction)) {
-                  throw const SqlException('Invalid frame bound');
-                }
-                return WindowBound(direction, offset);
-              }
-
-              if (['ROWS', 'RANGE'].contains(current.keyword)) {
-                mode = identifier().toUpperCase();
-                if (take('BETWEEN')) {
-                  start = bound();
-                  require('AND');
-                  end = bound();
-                } else {
-                  start = bound();
-                  end = WindowBound('CURRENT ROW');
-                }
-              }
+              require('WHERE');
+              function.filter = expression();
               require(')');
-              if (start.kind == 'UNBOUNDED FOLLOWING' ||
-                  end.kind == 'UNBOUNDED PRECEDING') {
-                throw const SqlException('Invalid frame bounds');
-              }
-              const boundOrder = [
-                'UNBOUNDED PRECEDING',
-                'PRECEDING',
-                'CURRENT ROW',
-                'FOLLOWING',
-                'UNBOUNDED FOLLOWING'
-              ];
-              if (boundOrder.indexOf(start.kind) >
-                  boundOrder.indexOf(end.kind)) {
-                throw const SqlException('Invalid frame ordering');
-              }
-              left = WindowExpr(
-                  left as FunctionExpr, partition, order, mode, start, end);
+            }
+            if (take('OVER')) {
+              left = _window(left as FunctionExpr);
             }
           }
         } else {

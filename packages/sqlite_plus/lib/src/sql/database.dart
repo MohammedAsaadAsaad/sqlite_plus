@@ -491,6 +491,10 @@ final class SqliteDatabase {
               candidate, affinities, bound, _pager.header.textEncoding)
             ..subquery = subquery
             ..collations = collations;
+          if (fn.filter != null &&
+              truth(fn.filter!.evaluate(context), context.encoding) != true) {
+            continue;
+          }
           final value = fn.arguments.single.evaluate(context);
           if (value == null) continue;
           final comparison = best == null
@@ -570,14 +574,9 @@ final class SqliteDatabase {
     }
     output.sort((a, b) {
       for (var i = 0; i < statement.order.length; i++) {
-        final comparison = compareValues(
-            a.$2[i],
-            b.$2[i],
-            _pager.header.textEncoding,
-            statement.order[i].expression.collation(constantContext));
-        if (comparison != 0) {
-          return statement.order[i].descending ? -comparison : comparison;
-        }
+        final comparison =
+            statement.order[i].compare(a.$2[i], b.$2[i], constantContext);
+        if (comparison != 0) return comparison;
       }
       return a.$3.compareTo(b.$3);
     });

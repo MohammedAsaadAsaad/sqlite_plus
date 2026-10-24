@@ -155,7 +155,7 @@ The Dart tests use only the committed JSON and never execute native SQLite.
 
 `MutableSqliteDatabase.create(pageSize: 4096, encoding: 1)` creates an empty
 SQLite image. `fromImage(bytes)` opens an independent existing image. M6 adds
-CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, ADD COLUMN, indexed rowid and WITHOUT ROWID
+CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, ADD COLUMN/table rename, indexed rowid and WITHOUT ROWID
 mutations, constraints and row triggers. `execute(sql, parameters)` returns the
 direct change count and last inserted rowid. `exportImage()` copies the current
 image. Statements are atomic in memory; durability requires an ImagePager.
@@ -276,16 +276,30 @@ The engine now supports:
   Function outputs are bounded; user functions and date/time functions remain open.
 - ROW_NUMBER/RANK/DENSE_RANK/PERCENT_RANK/CUME_DIST/NTILE, LAG/LEAD,
   FIRST_VALUE/LAST_VALUE/NTH_VALUE and aggregate windows. PARTITION/ORDER,
-  ROWS frames and default/peer RANGE frames are covered. Windows are limited
-  to 10,000 input rows. Named windows, GROUPS, numeric RANGE offsets, EXCLUDE,
-  FILTER and windows over grouped aggregates remain unsupported.
-- CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, safe ALTER TABLE ADD COLUMN, defaults,
+  ROWS/GROUPS/RANGE frames, numeric offsets, EXCLUDE, named/inherited windows,
+  aggregate FILTER and explicit NULLS FIRST/LAST are covered. Windows are limited
+  to 10,000 input rows; windows over grouped aggregates remain unsupported.
+- CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, safe ALTER TABLE ADD COLUMN/table rename, defaults,
   NOT NULL/UNIQUE/CHECK, STRICT types, AUTOINCREMENT, INSERT VALUES/DEFAULT
   VALUES/SELECT, UPDATE/DELETE, OR IGNORE/REPLACE, and WITHOUT ROWID writes.
 - `PRAGMA foreign_keys=1` enables FK checks/actions. Deferred keys validate at
   outer commit. Foreign keys default off. BEFORE/AFTER row triggers support
   OLD/NEW, UPDATE OF, WHEN, DML bodies and scalar SELECT/RAISE(ABORT/IGNORE).
   Recursive self-trigger invocation and INSTEAD OF view triggers are unsupported.
+
+`execute` also accepts RETURNING projections on direct INSERT/UPDATE/DELETE
+rows; `MutationResult.returning` contains the QueryResult, including an empty
+result with known column labels when no rows change. AFTER-trigger changes are
+excluded from these rows. Results survive DatabaseClient RPC with BigInt/blob
+types intact. RETURNING in trigger bodies and aggregate/window RETURNING shapes
+are rejected.
+
+UPSERT supports one or more ON CONFLICT clauses, explicit column/rowid targets,
+DO NOTHING, DO UPDATE with `excluded` values and an optional WHERE, including
+INSERT SELECT and RETURNING. Combined OR IGNORE/REPLACE plus UPSERT and partial/
+expression index targets remain unsupported. Table renaming rewrites supported
+index/FK/sequence metadata; it rejects dependent views/triggers before mutation.
+Column renaming/dropping and dependent view/trigger rewrites remain open.
 
 Read-only PRAGMAs include page_size/page_count/freelist_count/schema_version,
 user_version/application_id/encoding/table_info/table_xinfo/index_list/
@@ -299,7 +313,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 624 differential queries across the
+The pinned M6 oracle currently contains 717 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 
@@ -308,7 +322,7 @@ python3 tool/generate_semantics_oracle.py --verify
 python3 tool/verify_schema_oracle.py
 ```
 
-M6 remains open for broader SQL/PRAGMA/function coverage, UPSERT/RETURNING,
+M6 remains open for broader SQL/PRAGMA/function coverage, remaining UPSERT shapes,
 additional ALTER operations, trigger/foreign-key edge cases, and planner work.
 M7–M9 remain pending under the sequential milestone plan.
 

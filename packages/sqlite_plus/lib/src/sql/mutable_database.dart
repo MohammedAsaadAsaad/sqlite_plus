@@ -10,7 +10,8 @@ import 'tokenizer.dart';
 import 'values.dart';
 
 final class MutationResult {
-  const MutationResult(this.changes, this.lastInsertRowid);
+  const MutationResult(this.changes, this.lastInsertRowid, [this.returning]);
+  final QueryResult? returning;
   final int changes;
   final BigInt? lastInsertRowid;
 }
@@ -161,7 +162,8 @@ final class MutableSqliteDatabase {
           }
           _image = result.image;
         }
-        return MutationResult(result.changes, result.lastRowid);
+        return MutationResult(
+            result.changes, result.lastRowid, result.returning);
       });
 
   Future<MutationResult> _transaction(SqlParser parser) async {

@@ -24,12 +24,13 @@ final class FunctionExpr extends Expr {
   final List<Expr> arguments;
   final bool distinct;
   final bool star;
+  Expr? filter;
   String get key => asciiLower(name);
   bool get isAggregate =>
       ['count', 'sum', 'total', 'avg', 'group_concat'].contains(key) ||
       ['min', 'max'].contains(key) && arguments.length == 1;
   @override
-  Iterable<Expr> get children => arguments;
+  Iterable<Expr> get children => [...arguments, if (filter != null) filter!];
   @override
   bool get containsAggregate => isAggregate || super.containsAggregate;
   @override
@@ -97,6 +98,11 @@ final class FunctionExpr extends Expr {
   };
   @override
   void validate(Set<String> columns) {
+    filter?.validate(columns);
+    if (filter != null &&
+        (!isAggregate || filter!.containsAggregate || filter!.containsWindow)) {
+      throw const SqlException('Invalid aggregate FILTER');
+    }
     for (final arg in arguments) {
       arg.validate(columns);
     }
@@ -324,6 +330,10 @@ final class FunctionExpr extends Expr {
           row, context.affinities, context.parameters, context.encoding)
         ..subquery = context.subquery
         ..collations = context.collations;
+      if (filter != null &&
+          truth(filter!.evaluate(ctx), context.encoding) != true) {
+        continue;
+      }
       final value = star || arguments.isEmpty
           ? BigInt.one
           : arguments.first.evaluate(ctx);

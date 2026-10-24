@@ -170,6 +170,45 @@ def main():
       'SELECT ntile(0) OVER () FROM sample',
       'SELECT nth_value(id,0) OVER () FROM sample',
     ]
+    queries += [
+      'SELECT sum(id) FILTER (WHERE id>2),count(*) FILTER (WHERE id>2),count(*) FILTER (WHERE NULL),min(id) FILTER (WHERE id>2),value FROM sample WHERE id>0 AND id<=5',
+      'SELECT id%2,count(*) FILTER (WHERE id>2) FROM sample WHERE id>0 AND id<=5 GROUP BY 1 ORDER BY 1',
+      'SELECT id,sum(id) FILTER (WHERE id%2=0) OVER (ORDER BY id ROWS 2 PRECEDING) FROM sample WHERE id>0 AND id<=5 ORDER BY id',
+      'SELECT lower(id) FILTER (WHERE 1) FROM sample',
+      'SELECT sum(id) FILTER (WHERE count(*)>1) FROM sample',
+      'SELECT rank() FILTER (WHERE 1) OVER () FROM sample',
+    ]
+    queries += [
+      'SELECT id,sum(id) OVER (ORDER BY id%3 GROUPS BETWEEN 1 PRECEDING AND 1 FOLLOWING),sum(id) OVER (ORDER BY id%3 GROUPS CURRENT ROW) FROM sample WHERE id>0 AND id<=8 ORDER BY id',
+      'SELECT id,count(*) OVER (ORDER BY id%3 GROUPS BETWEEN 2 PRECEDING AND 1 PRECEDING),count(*) OVER (ORDER BY id%3 GROUPS BETWEEN 1 FOLLOWING AND 2 FOLLOWING) FROM sample WHERE id>0 AND id<=8 ORDER BY id',
+      'SELECT id,sum(id) OVER (ORDER BY id RANGE BETWEEN 1.5 PRECEDING AND 2 FOLLOWING),sum(id) OVER (ORDER BY id DESC RANGE BETWEEN 1 PRECEDING AND 2 FOLLOWING) FROM sample WHERE id>0 AND id<=8 ORDER BY id',
+      'SELECT id,sum(id) OVER (ORDER BY id%3 ROWS UNBOUNDED PRECEDING EXCLUDE CURRENT ROW),sum(id) OVER (ORDER BY id%3 GROUPS UNBOUNDED PRECEDING EXCLUDE GROUP),sum(id) OVER (ORDER BY id%3 RANGE UNBOUNDED PRECEDING EXCLUDE TIES) FROM sample WHERE id>0 AND id<=8 ORDER BY id',
+      'SELECT id,count(*) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE GROUP),count(*) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE TIES) FROM sample WHERE id>0 AND id<=5 ORDER BY id',
+      'SELECT count(*) OVER (ORDER BY t RANGE 1 PRECEDING) FROM types ORDER BY rowid',
+      'SELECT sum(id) OVER (ORDER BY id,value RANGE 1 PRECEDING) FROM sample',
+      'SELECT sum(id) OVER (ROWS -1 PRECEDING) FROM sample',
+      'SELECT sum(id) OVER (GROUPS 1.5 PRECEDING) FROM sample',
+      'SELECT sum(id) OVER (ORDER BY id RANGE NULL PRECEDING) FROM sample',
+      'SELECT id,count(*) OVER (ROWS 9223372036854775807 PRECEDING) FROM sample WHERE id>0 AND id<=3 ORDER BY id',
+    ]
+    queries += [
+      'SELECT id,row_number() OVER w,sum(id) OVER w FROM sample WHERE id>0 AND id<=8 WINDOW w AS (PARTITION BY id%2 ORDER BY id) ORDER BY id',
+      'SELECT id,sum(id) OVER (w ROWS 1 PRECEDING),sum(id) OVER w FROM sample WHERE id>0 AND id<=8 WINDOW w AS (ORDER BY id) ORDER BY id',
+      'SELECT id,row_number() OVER ordered FROM sample WHERE id>0 AND id<=8 WINDOW base AS (PARTITION BY id%2),ordered AS (base ORDER BY id DESC) ORDER BY id',
+      'SELECT id,sum(id) OVER w FROM sample WHERE id>0 AND id<=5 WINDOW w AS (ORDER BY id ROWS 1 PRECEDING) ORDER BY id',
+      'SELECT sum(id) OVER (w) FROM sample WINDOW w AS (ROWS 1 PRECEDING)',
+      'SELECT sum(id) OVER missing FROM sample',
+      'SELECT sum(id) OVER (w ORDER BY value) FROM sample WINDOW w AS (ORDER BY id)',
+      'SELECT sum(id) OVER (w PARTITION BY value) FROM sample WINDOW w AS (ORDER BY id)',
+    ]
+    queries += [
+      'SELECT i,rowid FROM types ORDER BY i NULLS LAST,rowid',
+      'SELECT i,rowid FROM types ORDER BY i DESC NULLS FIRST,rowid',
+      'SELECT i,row_number() OVER (ORDER BY i NULLS LAST),rank() OVER (ORDER BY i DESC NULLS FIRST),sum(rowid) OVER (ORDER BY i DESC NULLS FIRST RANGE 2 PRECEDING) FROM types ORDER BY rowid',
+      'SELECT NULL AS n UNION ALL SELECT 1 UNION ALL SELECT 2 ORDER BY n NULLS LAST',
+      'SELECT NULL AS n UNION ALL SELECT 1 UNION ALL SELECT 2 ORDER BY n DESC NULLS FIRST',
+      'SELECT id FROM sample ORDER BY id NULLS MIDDLE',
+    ]
     cases = []
     for fixture in manifest['fixtures']:
         with sqlite3.connect(f"file:{ROOT/fixture['file']}?mode=ro",uri=True) as c:

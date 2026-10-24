@@ -61,7 +61,7 @@ void main() {
       'select 1; select 2',
       'select id from sample join types on',
       'select unsupported_function(*) from sample',
-      'select id from sample window w as ()',
+      'select id from sample window w as (rows between current row and unbounded preceding)',
       'select id from sample union select 1,2',
       'delete from sample',
       'select x\'q\'',

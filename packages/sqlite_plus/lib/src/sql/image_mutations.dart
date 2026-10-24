@@ -15,7 +15,8 @@ import 'triggers.dart';
 import 'values.dart';
 
 final class MutationImage {
-  MutationImage(this.image, this.changes, this.lastRowid);
+  MutationImage(this.image, this.changes, this.lastRowid, [this.returning]);
+  final QueryResult? returning;
   final Uint8List image;
   final int changes;
   final BigInt? lastRowid;
@@ -37,6 +38,15 @@ final class _Index {
   final List<String> collations;
   final bool unique;
   final String? sql;
+}
+
+final class _Upsert {
+  _Upsert(this.target, this.index, this.nothing, this.assignments, this.where);
+  final List<String>? target;
+  final _Index? index; // null with a target denotes the rowid key.
+  final bool nothing;
+  final Map<String, Expr> assignments;
+  final Expr? where;
 }
 
 /// Validates complete logical mutations before compact image reconstruction.
@@ -236,19 +246,26 @@ final class ImageMutations {
     return result;
   }
 
-  EvalContext _context(_Table table, TableRow row, List<Object?> params) =>
-      EvalContext(
-          _row(table, row),
-          {
-            for (final col in table.schema.columns)
-              asciiLower(col.name): col.affinity
-          },
-          params,
-          encoding)
-        ..collations = {
-          for (final column in table.schema.columns)
-            asciiLower(column.name): column.collation
-        };
+  EvalContext _context(_Table table, TableRow row, List<Object?> params) {
+    final values = _row(table, row);
+    final prefix = asciiLower(table.schema.name);
+    return EvalContext({
+      ...values,
+      for (final entry in values.entries) '$prefix.${entry.key}': entry.value
+    }, {
+      for (final col in table.schema.columns) ...{
+        asciiLower(col.name): col.affinity,
+        '$prefix.${asciiLower(col.name)}': col.affinity
+      }
+    }, params, encoding)
+      ..collations = {
+        for (final col in table.schema.columns) ...{
+          asciiLower(col.name): col.collation,
+          '$prefix.${asciiLower(col.name)}': col.collation
+        }
+      };
+  }
+
   Object? _stored(Object? value, CatalogColumn column) {
     value = applyAffinity(value, column.affinity);
     if (column.affinity == 'numeric' &&
@@ -588,15 +605,6 @@ final class ImageMutations {
 
   final Set<String> _activeTriggers = {};
 
-  String _literal(Object? value) {
-    if (value == null) return 'NULL';
-    if (value is String) return "'${value.replaceAll("'", "''")}'";
-    if (value is Uint8List) {
-      return "X'${value.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}'";
-    }
-    return value.toString();
-  }
-
   Future<bool> _fire(String timing, String event, _Table table, TableRow? old,
       TableRow? next, Set<String> columns,
       {required bool foreignKeys, required bool inTransaction}) async {
@@ -664,33 +672,8 @@ final class ImageMutations {
               expr.evaluate(context);
             }
           } else {
-            final tokens = parser.tokens;
-            var rewritten = '';
-            var start = 0;
-            for (var i = 0; i + 2 < tokens.length; i++) {
-              final prefix = asciiLower(tokens[i].text);
-              if ((prefix == 'new' || prefix == 'old') &&
-                  tokens[i + 1].text == '.') {
-                final name = '$prefix.${asciiLower(tokens[i + 2].text)}';
-                if (!values.containsKey(name)) {
-                  throw SqlException('No such column: $name');
-                }
-                rewritten += statement.substring(start, tokens[i].offset) +
-                    _literal(values[name]);
-                start = tokens[i + 2].offset + tokens[i + 2].text.length;
-                // Quoted column names have delimiters beyond token.text.
-                if (statement[tokens[i + 2].offset] == '"' ||
-                    statement[tokens[i + 2].offset] == '`' ||
-                    statement[tokens[i + 2].offset] == '[') {
-                  start = i + 3 < tokens.length
-                      ? tokens[i + 3].offset
-                      : statement.length;
-                }
-                i += 2;
-              }
-            }
-            rewritten += statement.substring(start);
-            await execute(rewritten, [],
+            final rewritten = _bindTrigger(statement, values);
+            await execute(rewritten.$1, rewritten.$2,
                 foreignKeys: foreignKeys, inTransaction: inTransaction);
           }
         }
@@ -703,8 +686,84 @@ final class ImageMutations {
     return true;
   }
 
+  (String, List<Object?>) _bindTrigger(String statement, RowValues values) {
+    final parser = SqlParser(statement);
+    final tokens = parser.tokens;
+    if (tokens.any((t) => t.kind == SqlTokenKind.parameter)) {
+      throw const SqlException('Parameters prohibited in trigger SQL');
+    }
+    final parameters = <Object?>[];
+    var rewritten = '';
+    var start = 0;
+    for (var i = 0; i + 2 < tokens.length; i++) {
+      final prefix = asciiLower(tokens[i].text);
+      if ((prefix == 'new' || prefix == 'old') && tokens[i + 1].text == '.') {
+        final name = '$prefix.${asciiLower(tokens[i + 2].text)}';
+        if (!values.containsKey(name)) {
+          throw SqlException('No such column: $name');
+        }
+        parameters.add(values[name]);
+        rewritten +=
+            '${statement.substring(start, tokens[i].offset)}?${parameters.length}';
+        start = tokens[i + 2].offset + tokens[i + 2].text.length;
+        // Quoted column names have delimiters beyond token.text.
+        if (statement[tokens[i + 2].offset] == '"' ||
+            statement[tokens[i + 2].offset] == '`' ||
+            statement[tokens[i + 2].offset] == '[') {
+          start =
+              i + 3 < tokens.length ? tokens[i + 3].offset : statement.length;
+        }
+        i += 2;
+      }
+    }
+    rewritten += statement.substring(start);
+    return (rewritten, parameters);
+  }
+
+  String _rewriteIdentifiers(String sql, Map<int, String> replacements) {
+    var result = '';
+    var start = 0;
+    for (final token in SqlTokenizer.tokenize(sql)) {
+      final replacement = replacements[token.offset];
+      if (replacement == null) continue;
+      var end = token.offset + token.text.length;
+      if (token.quoted) {
+        final open = sql[token.offset];
+        final close = open == '[' ? ']' : open;
+        end = token.offset + 1;
+        while (end < sql.length) {
+          if (sql[end++] == close) {
+            if (end < sql.length && sql[end] == close) {
+              end++;
+            } else {
+              break;
+            }
+          }
+        }
+      }
+      result +=
+          '${sql.substring(start, token.offset)}"${replacement.replaceAll('"', '""')}"';
+      start = end;
+    }
+    return result + sql.substring(start);
+  }
+
+  String _renameReferences(String sql, String old, String renamed) {
+    final tokens = SqlTokenizer.tokenize(sql);
+    final replacements = <int, String>{};
+    for (var i = 0; i + 1 < tokens.length; i++) {
+      if (tokens[i].keyword == 'REFERENCES' &&
+          asciiLower(tokens[i + 1].text) == asciiLower(old)) {
+        replacements[tokens[i + 1].offset] = renamed;
+      }
+    }
+    return _rewriteIdentifiers(sql, replacements);
+  }
+
   Future<MutationImage> execute(String sql, List<Object?> parameters,
-      {bool foreignKeys = false, bool inTransaction = false}) async {
+      {bool foreignKeys = false,
+      bool inTransaction = false,
+      bool compileOnly = false}) async {
     final p = SqlParser(sql);
     if (p.take('CREATE')) {
       final unique = p.take('UNIQUE');
@@ -726,6 +785,59 @@ final class ImageMutations {
             asciiLower(trigger.name).startsWith('sqlite_')) {
           throw const SqlException('Trigger target unsupported');
         }
+        final values = <String, Object?>{};
+        for (final prefix in [
+          if (trigger.event != 'INSERT') 'old',
+          if (trigger.event != 'DELETE') 'new'
+        ]) {
+          for (final col in [
+            ...table.schema.columns.map((c) => asciiLower(c.name)),
+            if (!table.schema.withoutRowid) ...['rowid', '_rowid_', 'oid']
+          ]) {
+            values['$prefix.$col'] = null;
+          }
+        }
+        trigger.when?.validate(values.keys.toSet());
+        if (trigger.when != null &&
+            (trigger.when!.containsAggregate || trigger.when!.containsWindow)) {
+          throw const SqlException('Aggregate/window in trigger WHEN');
+        }
+        for (final statement in trigger.statements) {
+          final body = SqlParser(statement);
+          if (body.tokens.any((t) => t.keyword == 'RETURNING')) {
+            throw const SqlException('RETURNING prohibited in trigger bodies');
+          }
+          if (body.take('SELECT')) {
+            final select = SqlParser(statement).select();
+            if (select.sources.isNotEmpty ||
+                select.ctes.isNotEmpty ||
+                select.groupBy.isNotEmpty ||
+                select.having != null ||
+                select.compounds.isNotEmpty ||
+                select.limit != null ||
+                select.offset != null ||
+                select.parameterCount != 0) {
+              throw const SqlException('Trigger SELECT shape unsupported');
+            }
+            for (final expr in [
+              ...select.items.map((item) => item.expression),
+              select.where
+            ]) {
+              if (expr == null) continue;
+              expr.validate(values.keys.toSet());
+              if (expr.containsAggregate || expr.containsWindow) {
+                throw const SqlException('Aggregate/window in trigger SELECT');
+              }
+            }
+          } else {
+            if (!['INSERT', 'UPDATE', 'DELETE']
+                .contains(body.current.keyword)) {
+              throw const SqlException('Invalid trigger statement');
+            }
+            final bound = _bindTrigger(statement, values);
+            await execute(bound.$1, bound.$2, compileOnly: true);
+          }
+        }
         other.add(ImageObject('trigger', trigger.name, table.schema.name, sql));
         schemaChanged = true;
         return MutationImage(serialize(), 0, null);
@@ -740,6 +852,9 @@ final class ImageMutations {
         }
         final name = p.identifier();
         final key = asciiLower(name);
+        if (key.startsWith('sqlite_')) {
+          throw const SqlException('Reserved object name');
+        }
         if (_tables.containsKey(key) ||
             _indexes.any((i) => asciiLower(i.name) == key) ||
             other.any((o) => o.type == 'view' && asciiLower(o.name) == key)) {
@@ -772,7 +887,8 @@ final class ImageMutations {
         final name = p.identifier();
         final key = asciiLower(name);
         if (_tables.containsKey(key) ||
-            _indexes.any((i) => asciiLower(i.name) == key)) {
+            _indexes.any((i) => asciiLower(i.name) == key) ||
+            other.any((o) => o.type == 'view' && asciiLower(o.name) == key)) {
           if (ifNotExists) return MutationImage(original, 0, null);
           throw const SqlException('Object already exists');
         }
@@ -820,6 +936,8 @@ final class ImageMutations {
           throw const SqlException('Index exists');
         }
         if (_tables.containsKey(asciiLower(name)) ||
+            other.any((o) =>
+                o.type == 'view' && asciiLower(o.name) == asciiLower(name)) ||
             asciiLower(name).startsWith('sqlite_')) {
           throw const SqlException('Invalid index name');
         }
@@ -843,6 +961,86 @@ final class ImageMutations {
       final key = asciiLower(name);
       final table = _tables[key];
       if (table == null) throw const SqlException('No such table');
+      if (p.take('RENAME')) {
+        p.require('TO');
+        final renamed = p.identifier();
+        p.finish();
+        if (parameters.isNotEmpty ||
+            key.startsWith('sqlite_') ||
+            asciiLower(renamed).startsWith('sqlite_')) {
+          throw const SqlException('Invalid rename');
+        }
+        final renamedKey = asciiLower(renamed);
+        if (_tables.containsKey(renamedKey) ||
+            _indexes.any((i) => asciiLower(i.name) == renamedKey) ||
+            other.any(
+                (o) => o.type == 'view' && asciiLower(o.name) == renamedKey)) {
+          throw const SqlException('Rename target exists');
+        }
+        if (other.any((o) =>
+            o.sql != null &&
+            SqlTokenizer.tokenize(o.sql!).any((t) =>
+                t.kind == SqlTokenKind.identifier &&
+                asciiLower(t.text) == key))) {
+          throw const SqlException(
+              'Rename with dependent views/triggers unsupported');
+        }
+        final declaration = SqlParser(table.sql);
+        declaration.require('CREATE');
+        declaration.require('TABLE');
+        if (declaration.take('IF')) {
+          declaration.require('NOT');
+          declaration.require('EXISTS');
+        }
+        final token = declaration.current;
+        final changed = _renameReferences(
+            _rewriteIdentifiers(table.sql, {token.offset: renamed}),
+            name,
+            renamed);
+        _tables.remove(key);
+        _tables[renamedKey] =
+            _Table(DatabaseCatalog.parseTable(changed, 0), changed, table.rows);
+        for (final entry in _tables.entries.toList()) {
+          if (entry.key == renamedKey) continue;
+          final updated = _renameReferences(entry.value.sql, name, renamed);
+          if (updated != entry.value.sql) {
+            _tables[entry.key] = _Table(DatabaseCatalog.parseTable(updated, 0),
+                updated, entry.value.rows);
+          }
+        }
+        for (var i = 0; i < _indexes.length; i++) {
+          final index = _indexes[i];
+          if (asciiLower(index.table) != key) continue;
+          var updated = index.sql;
+          if (updated != null) {
+            final parser = SqlParser(updated);
+            parser.require('CREATE');
+            parser.take('UNIQUE');
+            parser.require('INDEX');
+            if (parser.take('IF')) {
+              parser.require('NOT');
+              parser.require('EXISTS');
+            }
+            parser.identifier();
+            parser.require('ON');
+            updated =
+                _rewriteIdentifiers(updated, {parser.current.offset: renamed});
+          }
+          final indexName = index.sql == null
+              ? 'sqlite_autoindex_${renamed}_${index.name.split('_').last}'
+              : index.name;
+          _indexes[i] = _Index(indexName, renamed, index.columns,
+              index.descending, index.collations, index.unique, updated);
+        }
+        final sequence = _sequences.remove(key);
+        if (sequence != null) _sequences[renamedKey] = sequence;
+        schemaChanged = true;
+        return MutationImage(
+            serialize(
+                foreignKeys: foreignKeys, includeDeferred: !inTransaction),
+            0,
+            null);
+      }
       p.require('ADD');
       p.take('COLUMN');
       final declaration = sql
@@ -967,9 +1165,13 @@ final class ImageMutations {
     if (table == null) throw SqlException('No such table: $name');
     final schema = table.schema;
     final columnNames = schema.columns.map((c) => asciiLower(c.name)).toList();
-    final valid = {
+    final writable = {
       ...columnNames,
-      if (!schema.withoutRowid) ...['rowid', '_rowid_', 'oid']
+      if (!schema.withoutRowid) ...['rowid', '_rowid_', 'oid'],
+    };
+    final valid = {
+      ...writable,
+      for (final col in writable) '${asciiLower(name)}.$col'
     };
     final input = <String>[];
     final inserts = <List<Expr>>[];
@@ -985,7 +1187,7 @@ final class ImageMutations {
         input.addAll(columnNames);
       }
       if (input.toSet().length != input.length ||
-          input.any((c) => !valid.contains(c))) {
+          input.any((c) => !writable.contains(c))) {
         throw const SqlException('Invalid INSERT columns');
       }
       if (p.take('DEFAULT')) {
@@ -993,13 +1195,29 @@ final class ImageMutations {
         input.clear();
         inserts.add([]);
       } else if (['SELECT', 'WITH'].contains(p.current.keyword)) {
-        final query = sql.substring(p.current.offset);
+        var tail = p.tokens.length - 1;
+        var depth = 0;
+        for (var i = p.position; i < p.tokens.length; i++) {
+          final token = p.tokens[i];
+          if (token.text == '(') depth++;
+          if (token.text == ')') depth--;
+          if (depth == 0 &&
+              (token.keyword == 'RETURNING' ||
+                  token.keyword == 'ON' &&
+                      i + 1 < p.tokens.length &&
+                      p.tokens[i + 1].keyword == 'CONFLICT')) {
+            tail = i;
+            break;
+          }
+        }
+        final query = sql.substring(p.current.offset, p.tokens[tail].offset);
         final statement = SqlParser(query).select();
         final storage = MemoryStorageBackend();
         await storage.write(0, serialize());
         final db = await SqliteDatabase.openReadOnly(storage);
         try {
-          final result = await db.query(query, parameters);
+          final result = await db.query(
+              query, parameters.take(statement.parameterCount).toList());
           if (result.columns.length != input.length) {
             throw const SqlException('INSERT SELECT width mismatch');
           }
@@ -1008,7 +1226,7 @@ final class ImageMutations {
         } finally {
           await db.close();
         }
-        p.position = p.tokens.length - 1;
+        p.position = tail;
         p.parameterCount = statement.parameterCount;
       } else {
         p.require('VALUES');
@@ -1035,7 +1253,9 @@ final class ImageMutations {
         p.require('SET');
         do {
           final name = asciiLower(p.identifier());
-          if (!valid.contains(name)) throw const SqlException('Unknown column');
+          if (!writable.contains(name)) {
+            throw const SqlException('Unknown column');
+          }
           p.require('=');
           final expr = p.expression();
           expr.validate(valid);
@@ -1053,10 +1273,141 @@ final class ImageMutations {
         }
       }
     }
+    final upserts = <_Upsert>[];
+    if (insert) {
+      while (p.take('ON')) {
+        p.require('CONFLICT');
+        List<String>? target;
+        _Index? targetIndex;
+        if (p.take('(')) {
+          target = <String>[];
+          final targetCollations = <String?>[];
+          do {
+            final key = asciiLower(p.identifier());
+            if (!valid.contains(key) || key.contains('.')) {
+              throw const SqlException('Invalid conflict target');
+            }
+            target.add(key);
+            targetCollations
+                .add(p.take('COLLATE') ? asciiLower(p.identifier()) : null);
+            if (!p.take('DESC')) p.take('ASC');
+          } while (p.take(','));
+          p.require(')');
+          bool matches(_Index index) {
+            if (!index.unique ||
+                asciiLower(index.table) != asciiLower(name) ||
+                index.columns.length != target!.length) {
+              return false;
+            }
+            for (var i = 0; i < target.length; i++) {
+              final position =
+                  index.columns.indexWhere((c) => asciiLower(c) == target![i]);
+              if (position < 0 ||
+                  targetCollations[i] != null &&
+                      targetCollations[i] != index.collations[position]) {
+                return false;
+              }
+            }
+            return target.toSet().length == target.length;
+          }
+
+          final candidates = _indexes.toList();
+          if (schema.withoutRowid) {
+            final pk = schema.columns.where((c) => c.primaryKey != 0).toList()
+              ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+            candidates.add(_Index('@pk', name, pk.map((c) => c.name).toList(),
+                [], pk.map((c) => c.collation).toList(), true, null));
+          }
+          targetIndex = candidates.where(matches).firstOrNull;
+          final rowid = !schema.withoutRowid &&
+              target.length == 1 &&
+              (target.single == asciiLower(schema.rowidAlias ?? '') ||
+                  ['rowid', '_rowid_', 'oid'].contains(target.single) &&
+                      !columnNames.contains(target.single));
+          if (targetIndex == null && !rowid) {
+            throw const SqlException('ON CONFLICT target is not unique');
+          }
+        }
+        p.require('DO');
+        final nothing = p.take('NOTHING');
+        final changes = <String, Expr>{};
+        Expr? predicate;
+        if (!nothing) {
+          p.require('UPDATE');
+          p.require('SET');
+          final scope = {
+            ...valid,
+            for (final key in [...columnNames, 'rowid', '_rowid_', 'oid'])
+              'excluded.$key'
+          };
+          do {
+            final column = asciiLower(p.identifier());
+            if (!valid.contains(column) || column.contains('.')) {
+              throw const SqlException('Invalid UPSERT column');
+            }
+            p.require('=');
+            final expr = p.expression();
+            expr.validate(scope);
+            if (expr.containsAggregate || expr.containsWindow) {
+              throw const SqlException('Aggregate/window in UPSERT');
+            }
+            changes[column] = expr;
+          } while (p.take(','));
+          if (p.take('WHERE')) {
+            predicate = p.expression();
+            predicate.validate(scope);
+            if (predicate.containsAggregate || predicate.containsWindow) {
+              throw const SqlException('Aggregate/window in UPSERT WHERE');
+            }
+          }
+        }
+        upserts.add(_Upsert(target, targetIndex, nothing, changes, predicate));
+        if (target == null) break;
+      }
+    }
+    if (upserts.isNotEmpty && policy != 'ABORT') {
+      throw const SqlException('Combined conflict policies unsupported');
+    }
+    final returning = <SelectItem>[];
+    final hasReturning = p.take('RETURNING');
+    if (hasReturning) {
+      if (_activeTriggers.isNotEmpty) {
+        throw const SqlException('RETURNING prohibited in trigger bodies');
+      }
+      do {
+        if (p.take('*')) {
+          returning.addAll(schema.columns
+              .map((c) => SelectItem(ColumnExpr(c.name), c.name)));
+        } else {
+          final start = p.current.offset;
+          final expression = p.expression();
+          var label = sql.substring(start, p.current.offset).trim();
+          if (expression is ColumnExpr) {
+            final key = expression.key.split('.').last;
+            label = schema.columns
+                    .where((c) => asciiLower(c.name) == key)
+                    .firstOrNull
+                    ?.name ??
+                key;
+          }
+          if (p.take('AS')) {
+            label = p.identifier();
+          } else if (p.current.kind == SqlTokenKind.identifier) {
+            label = p.identifier();
+          }
+          expression.validate(valid);
+          if (expression.containsAggregate || expression.containsWindow) {
+            throw const SqlException('Aggregate/window in RETURNING');
+          }
+          returning.add(SelectItem(expression, label));
+        }
+      } while (p.take(','));
+    }
     p.finish();
     if (parameters.length != p.parameterCount) {
       throw const SqlException('Incorrect parameter count');
     }
+    if (compileOnly) return MutationImage(original, 0, null);
     final bound = parameters.map(sqlValue).toList();
     BigInt id(Object? value) {
       value = value is String ? numeric(value) : value;
@@ -1073,6 +1424,18 @@ final class ImageMutations {
       return value;
     }
 
+    final returnedRows = <List<Object?>>[];
+    void emit(TableRow row) {
+      if (!hasReturning) return;
+      final context = _context(table, row, bound);
+      returnedRows.add(
+          returning.map((item) => item.expression!.evaluate(context)).toList());
+    }
+
+    QueryResult? returned() => hasReturning
+        ? QueryResult(
+            returning.map((item) => item.label).toList(), returnedRows)
+        : null;
     var changes = 0;
     BigInt? last;
     final originalRows = table.rows.toList();
@@ -1117,9 +1480,12 @@ final class ImageMutations {
         }
     };
 
-    void accept(TableRow next, {TableRow? replacing}) {
+    void accept(TableRow next, {TableRow? replacing, String? overridePolicy}) {
+      final activePolicy = overridePolicy ?? policy;
       if (insert &&
-          policy == 'ABORT' &&
+          replacing == null &&
+          upserts.isEmpty &&
+          activePolicy == 'ABORT' &&
           !other.any((o) =>
               o.type == 'trigger' &&
               asciiLower(o.tableName) == asciiLower(name))) {
@@ -1151,13 +1517,13 @@ final class ImageMutations {
         }
         table.rows.add(next);
         changes++;
-        last = next.rowId;
+        if (replacing == null && insert) last = next.rowId;
         return;
       }
       final old = table.rows.toList();
       if (replacing != null) table.rows.remove(replacing);
       // REPLACE removes all rows conflicting with any unique key, not just rowid.
-      if (policy == 'REPLACE') {
+      if (activePolicy == 'REPLACE') {
         table.rows.removeWhere((row) {
           if (row.rowId == next.rowId) return true;
           for (final index in _indexes.where(
@@ -1171,7 +1537,7 @@ final class ImageMutations {
           return false;
         });
       }
-      if (foreignKeys && policy == 'REPLACE') {
+      if (foreignKeys && activePolicy == 'REPLACE') {
         for (final removed in old
             .where((row) => row != replacing && !table.rows.contains(row))) {
           _referentialActions(table, removed, null, 0);
@@ -1184,11 +1550,118 @@ final class ImageMutations {
         table.rows
           ..clear()
           ..addAll(old);
-        if (policy == 'IGNORE') return;
+        if (activePolicy == 'IGNORE') return;
         rethrow;
       }
       changes++;
-      last = next.rowId;
+      if (replacing == null && insert) last = next.rowId;
+    }
+
+    Future<bool> handleUpsert(TableRow excluded) async {
+      for (final clause in upserts) {
+        TableRow? conflict;
+        bool equal(_Index index, TableRow existing) {
+          final key = _key(table, excluded, index.columns);
+          return key.every((v) => v != null) &&
+              _compare(index, key, _key(table, existing, index.columns)) == 0;
+        }
+
+        if (clause.target != null) {
+          conflict = table.rows
+              .where((row) => clause.index == null
+                  ? row.rowId == excluded.rowId
+                  : equal(clause.index!, row))
+              .firstOrNull;
+        } else {
+          for (final index in uniqueIndexes.reversed) {
+            conflict = table.rows.where((row) => equal(index, row)).firstOrNull;
+            if (conflict != null) break;
+          }
+          if (conflict == null && !schema.withoutRowid) {
+            conflict = table.rows
+                .where((row) => row.rowId == excluded.rowId)
+                .firstOrNull;
+          }
+        }
+        if (conflict == null) continue;
+        // NOT NULL/CHECK/STRICT precede uniqueness resolution.
+        final candidate = _row(table, excluded);
+        final candidateContext = _context(table, excluded, bound);
+        for (final col in schema.columns) {
+          final value = candidate[asciiLower(col.name)];
+          if (value == null &&
+              (col.notNull ||
+                  (schema.withoutRowid ||
+                          col.strict && col.name != schema.rowidAlias) &&
+                      col.primaryKey != 0)) {
+            throw const SqlException('NOT NULL constraint failed');
+          }
+          if (col.strict && value != null) {
+            final type = col.declaredType.toUpperCase();
+            if (!(type == 'ANY' ||
+                ['INT', 'INTEGER'].contains(type) && value is BigInt ||
+                type == 'REAL' && (value is BigInt || value is double) ||
+                type == 'TEXT' && value is String ||
+                type == 'BLOB' && value is Uint8List)) {
+              throw const SqlException('STRICT datatype constraint failed');
+            }
+          }
+        }
+        for (final check in [
+          ...schema.checks,
+          ...schema.columns.expand((c) => c.checks)
+        ]) {
+          if (truth(check.evaluate(candidateContext), encoding) == false) {
+            throw const SqlException('CHECK constraint failed');
+          }
+        }
+        if (clause.nothing) return true;
+        final context = _context(table, conflict, bound);
+        final excludedValues = _row(table, excluded);
+        for (final entry in excludedValues.entries) {
+          context.row['excluded.${entry.key}'] = entry.value;
+        }
+        for (final col in schema.columns) {
+          context.affinities['excluded.${asciiLower(col.name)}'] = col.affinity;
+          context.collations['excluded.${asciiLower(col.name)}'] =
+              col.collation;
+        }
+        if (clause.where != null &&
+            truth(clause.where!.evaluate(context), encoding) != true) {
+          return true;
+        }
+        final values = _row(table, conflict);
+        for (final assignment in clause.assignments.entries) {
+          values[assignment.key] = assignment.value.evaluate(context);
+        }
+        var rowid = conflict.rowId;
+        if (schema.rowidAlias != null &&
+            clause.assignments.containsKey(asciiLower(schema.rowidAlias!))) {
+          rowid = id(values[asciiLower(schema.rowidAlias!)]);
+        }
+        if (!schema.withoutRowid) {
+          for (final alias in ['rowid', '_rowid_', 'oid']) {
+            if (!columnNames.contains(alias) &&
+                clause.assignments.containsKey(alias)) {
+              rowid = id(values[alias]);
+            }
+          }
+        }
+        final changed = _physical(table, values, rowid);
+        if (!await _fire('BEFORE', 'UPDATE', table, conflict, changed,
+            clause.assignments.keys.toSet(),
+            foreignKeys: foreignKeys, inTransaction: inTransaction)) {
+          return true;
+        }
+        accept(changed, replacing: conflict, overridePolicy: 'ABORT');
+        emit(changed);
+        if (foreignKeys) _referentialActions(table, conflict, changed, 0);
+        await _fire('AFTER', 'UPDATE', table, conflict, changed,
+            clause.assignments.keys.toSet(),
+            foreignKeys: foreignKeys, inTransaction: inTransaction);
+        return true;
+      }
+      return false;
     }
 
     var insertMax = table.rows.isEmpty
@@ -1229,12 +1702,16 @@ final class ImageMutations {
             foreignKeys: foreignKeys, inTransaction: inTransaction)) {
           continue;
         }
-        accept(next);
-        if (changes > previousChanges) {
+        final handled = upserts.isNotEmpty && await handleUpsert(next);
+        if (!handled) accept(next);
+        if (!handled && changes > previousChanges) {
+          emit(next);
           await _fire('AFTER', 'INSERT', table, null, next, {},
               foreignKeys: foreignKeys, inTransaction: inTransaction);
         }
-        if (changes > previousChanges && rowid > insertMax) insertMax = rowid;
+        if (!handled && changes > previousChanges && rowid > insertMax) {
+          insertMax = rowid;
+        }
         if (auto && rowid > (_sequences[asciiLower(name)] ?? BigInt.zero)) {
           _sequences[asciiLower(name)] = rowid;
           sequenceChanged = true;
@@ -1255,6 +1732,7 @@ final class ImageMutations {
           table.rows.remove(row);
           if (foreignKeys) _referentialActions(table, row, null, 0);
           changes++;
+          emit(row);
           await _fire('AFTER', 'DELETE', table, row, null, {},
               foreignKeys: foreignKeys, inTransaction: inTransaction);
           continue;
@@ -1285,6 +1763,7 @@ final class ImageMutations {
         final previousChanges = changes;
         accept(changed, replacing: row);
         if (changes > previousChanges) {
+          emit(changed);
           await _fire(
               'AFTER', 'UPDATE', table, row, changed, assignments.keys.toSet(),
               foreignKeys: foreignKeys, inTransaction: inTransaction);
@@ -1297,11 +1776,12 @@ final class ImageMutations {
     if (changes == 0 &&
         !sequenceChanged &&
         !other.any((o) => o.type == 'trigger')) {
-      return MutationImage(original, 0, null);
+      return MutationImage(original, 0, null, returned());
     }
     return MutationImage(
         serialize(foreignKeys: foreignKeys, includeDeferred: !inTransaction),
         changes,
-        insert ? last : null);
+        insert ? last : null,
+        returned());
   }
 }

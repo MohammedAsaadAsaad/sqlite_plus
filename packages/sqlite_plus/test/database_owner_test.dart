@@ -24,6 +24,18 @@ void main() {
     return path;
   }
 
+  test('RETURNING crosses the owner isolate without losing result types',
+      () async {
+    final owner = await DatabaseOwner.open(provision(wal: false),
+        directoryEntriesDurable: true, wal: false);
+    addTearDown(owner.close);
+    final result = await owner.client
+        .execute('UPDATE notes SET n=n+1 WHERE id=1 RETURNING id,n');
+    expect(result.returning!.columns, ['id', 'n']);
+    expect(result.returning!.rows, [
+      [BigInt.one, BigInt.from(-998)]
+    ]);
+  });
   test('shared clients serialize updates from multiple isolates', () async {
     final path = provision();
     final owner = await DatabaseOwner.open(path,
