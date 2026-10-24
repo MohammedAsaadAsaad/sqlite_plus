@@ -9779,6 +9779,307 @@
   },
   {
     "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "group_concat(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        "5,4,3,2,1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(id,'|' ORDER BY id DESC) FILTER(WHERE id%2=1) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "group_concat(id,'|' ORDER BY id DESC) FILTER(WHERE id%2=1)"
+    ],
+    "rows": [
+      [
+        "5|3|1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT string_agg(id,'|' ORDER BY id DESC),string_agg(id,NULL) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "string_agg(id,'|' ORDER BY id DESC)",
+      "string_agg(id,NULL)"
+    ],
+    "rows": [
+      [
+        "5|4|3|2|1",
+        "12345"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT count(id ORDER BY id),sum(id ORDER BY id DESC),avg(id ORDER BY id),total(id ORDER BY id) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "count(id ORDER BY id)",
+      "sum(id ORDER BY id DESC)",
+      "avg(id ORDER BY id)",
+      "total(id ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "15"
+        },
+        3.0,
+        15.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id%2,group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5 GROUP BY id%2 ORDER BY 1",
+    "parameters": [],
+    "columns": [
+      "id%2",
+      "group_concat(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "4,2"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "5,3,1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(DISTINCT x ORDER BY x),group_concat(DISTINCT x ORDER BY y),group_concat(DISTINCT x ORDER BY x COLLATE BINARY) FROM (SELECT 'a' COLLATE NOCASE AS x,3 AS y UNION ALL SELECT 'A',1 UNION ALL SELECT 'b',2 UNION ALL SELECT NULL,0)",
+    "parameters": [],
+    "columns": [
+      "group_concat(DISTINCT x ORDER BY x)",
+      "group_concat(DISTINCT x ORDER BY y)",
+      "group_concat(DISTINCT x ORDER BY x COLLATE BINARY)"
+    ],
+    "rows": [
+      [
+        "A,b",
+        "b,a",
+        "a,b"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter() ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "1,2,3",
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT count(dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "count(dart_counter() ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(dart_counter(),dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter(),dart_counter() ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "26598",
+        {
+          "integer": "10"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(dart_counter() ORDER BY dart_counter() COLLATE BINARY),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter() ORDER BY dart_counter() COLLATE BINARY)",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "2,4,6",
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(DISTINCT id%2 ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(DISTINCT id%2 ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "1,0",
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT dart_sum(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "dart_sum(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "15"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT string_agg(id,'|') OVER(ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) FROM sample WHERE id>0 AND id<=4 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "string_agg(id,'|') OVER(ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)"
+    ],
+    "rows": [
+      [
+        "1"
+      ],
+      [
+        "1|2"
+      ],
+      [
+        "2|3"
+      ],
+      [
+        "3|4"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(id ORDER BY id),group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=3 ORDER BY group_concat(id ORDER BY id DESC)",
+    "parameters": [],
+    "columns": [
+      "group_concat(id ORDER BY id)",
+      "group_concat(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        "1,2,3",
+        "3,2,1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(id ORDER BY sum(id)) FROM sample",
+    "parameters": [],
+    "error": "misuse of aggregate function sum()"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT abs(id ORDER BY id) FROM sample",
+    "parameters": [],
+    "error": "ORDER BY may not be used with non-aggregate abs()"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT count(* ORDER BY id) FROM sample",
+    "parameters": [],
+    "error": "near \"ORDER\": syntax error"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT sum(id ORDER BY id) OVER() FROM sample",
+    "parameters": [],
+    "error": "ORDER BY may not be used with non-aggregate sum()"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(dart_counter(),dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter(),dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "14365",
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT group_concat(dart_counter() ORDER BY dart_counter()) FILTER(WHERE 0),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter() ORDER BY dart_counter()) FILTER(WHERE 0)",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
     "sql": "SELECT :x,:x,?",
     "parameters": [
       {
@@ -19887,6 +20188,307 @@
   },
   {
     "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "group_concat(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        "5,4,3,2,1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(id,'|' ORDER BY id DESC) FILTER(WHERE id%2=1) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "group_concat(id,'|' ORDER BY id DESC) FILTER(WHERE id%2=1)"
+    ],
+    "rows": [
+      [
+        "5|3|1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT string_agg(id,'|' ORDER BY id DESC),string_agg(id,NULL) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "string_agg(id,'|' ORDER BY id DESC)",
+      "string_agg(id,NULL)"
+    ],
+    "rows": [
+      [
+        "5|4|3|2|1",
+        "12345"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT count(id ORDER BY id),sum(id ORDER BY id DESC),avg(id ORDER BY id),total(id ORDER BY id) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "count(id ORDER BY id)",
+      "sum(id ORDER BY id DESC)",
+      "avg(id ORDER BY id)",
+      "total(id ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "15"
+        },
+        3.0,
+        15.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id%2,group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5 GROUP BY id%2 ORDER BY 1",
+    "parameters": [],
+    "columns": [
+      "id%2",
+      "group_concat(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "4,2"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "5,3,1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(DISTINCT x ORDER BY x),group_concat(DISTINCT x ORDER BY y),group_concat(DISTINCT x ORDER BY x COLLATE BINARY) FROM (SELECT 'a' COLLATE NOCASE AS x,3 AS y UNION ALL SELECT 'A',1 UNION ALL SELECT 'b',2 UNION ALL SELECT NULL,0)",
+    "parameters": [],
+    "columns": [
+      "group_concat(DISTINCT x ORDER BY x)",
+      "group_concat(DISTINCT x ORDER BY y)",
+      "group_concat(DISTINCT x ORDER BY x COLLATE BINARY)"
+    ],
+    "rows": [
+      [
+        "A,b",
+        "b,a",
+        "a,b"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter() ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "1,2,3",
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT count(dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "count(dart_counter() ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(dart_counter(),dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter(),dart_counter() ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "26598",
+        {
+          "integer": "10"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(dart_counter() ORDER BY dart_counter() COLLATE BINARY),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter() ORDER BY dart_counter() COLLATE BINARY)",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "2,4,6",
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(DISTINCT id%2 ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(DISTINCT id%2 ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "1,0",
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT dart_sum(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "dart_sum(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "15"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT string_agg(id,'|') OVER(ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) FROM sample WHERE id>0 AND id<=4 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "string_agg(id,'|') OVER(ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)"
+    ],
+    "rows": [
+      [
+        "1"
+      ],
+      [
+        "1|2"
+      ],
+      [
+        "2|3"
+      ],
+      [
+        "3|4"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(id ORDER BY id),group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=3 ORDER BY group_concat(id ORDER BY id DESC)",
+    "parameters": [],
+    "columns": [
+      "group_concat(id ORDER BY id)",
+      "group_concat(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        "1,2,3",
+        "3,2,1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(id ORDER BY sum(id)) FROM sample",
+    "parameters": [],
+    "error": "misuse of aggregate function sum()"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT abs(id ORDER BY id) FROM sample",
+    "parameters": [],
+    "error": "ORDER BY may not be used with non-aggregate abs()"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT count(* ORDER BY id) FROM sample",
+    "parameters": [],
+    "error": "near \"ORDER\": syntax error"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT sum(id ORDER BY id) OVER() FROM sample",
+    "parameters": [],
+    "error": "ORDER BY may not be used with non-aggregate sum()"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(dart_counter(),dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter(),dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "14365",
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT group_concat(dart_counter() ORDER BY dart_counter()) FILTER(WHERE 0),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter() ORDER BY dart_counter()) FILTER(WHERE 0)",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
     "sql": "SELECT :x,:x,?",
     "parameters": [
       {
@@ -29989,6 +30591,307 @@
         },
         {
           "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "group_concat(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        "5,4,3,2,1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(id,'|' ORDER BY id DESC) FILTER(WHERE id%2=1) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "group_concat(id,'|' ORDER BY id DESC) FILTER(WHERE id%2=1)"
+    ],
+    "rows": [
+      [
+        "5|3|1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT string_agg(id,'|' ORDER BY id DESC),string_agg(id,NULL) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "string_agg(id,'|' ORDER BY id DESC)",
+      "string_agg(id,NULL)"
+    ],
+    "rows": [
+      [
+        "5|4|3|2|1",
+        "12345"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT count(id ORDER BY id),sum(id ORDER BY id DESC),avg(id ORDER BY id),total(id ORDER BY id) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "count(id ORDER BY id)",
+      "sum(id ORDER BY id DESC)",
+      "avg(id ORDER BY id)",
+      "total(id ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "15"
+        },
+        3.0,
+        15.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id%2,group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5 GROUP BY id%2 ORDER BY 1",
+    "parameters": [],
+    "columns": [
+      "id%2",
+      "group_concat(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "4,2"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "5,3,1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(DISTINCT x ORDER BY x),group_concat(DISTINCT x ORDER BY y),group_concat(DISTINCT x ORDER BY x COLLATE BINARY) FROM (SELECT 'a' COLLATE NOCASE AS x,3 AS y UNION ALL SELECT 'A',1 UNION ALL SELECT 'b',2 UNION ALL SELECT NULL,0)",
+    "parameters": [],
+    "columns": [
+      "group_concat(DISTINCT x ORDER BY x)",
+      "group_concat(DISTINCT x ORDER BY y)",
+      "group_concat(DISTINCT x ORDER BY x COLLATE BINARY)"
+    ],
+    "rows": [
+      [
+        "A,b",
+        "b,a",
+        "a,b"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter() ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "1,2,3",
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT count(dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "count(dart_counter() ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(dart_counter(),dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter(),dart_counter() ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "26598",
+        {
+          "integer": "10"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(dart_counter() ORDER BY dart_counter() COLLATE BINARY),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter() ORDER BY dart_counter() COLLATE BINARY)",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "2,4,6",
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(DISTINCT id%2 ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(DISTINCT id%2 ORDER BY dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "1,0",
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT dart_sum(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5",
+    "parameters": [],
+    "columns": [
+      "dart_sum(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "15"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT string_agg(id,'|') OVER(ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) FROM sample WHERE id>0 AND id<=4 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "string_agg(id,'|') OVER(ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)"
+    ],
+    "rows": [
+      [
+        "1"
+      ],
+      [
+        "1|2"
+      ],
+      [
+        "2|3"
+      ],
+      [
+        "3|4"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(id ORDER BY id),group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=3 ORDER BY group_concat(id ORDER BY id DESC)",
+    "parameters": [],
+    "columns": [
+      "group_concat(id ORDER BY id)",
+      "group_concat(id ORDER BY id DESC)"
+    ],
+    "rows": [
+      [
+        "1,2,3",
+        "3,2,1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(id ORDER BY sum(id)) FROM sample",
+    "parameters": [],
+    "error": "misuse of aggregate function sum()"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT abs(id ORDER BY id) FROM sample",
+    "parameters": [],
+    "error": "ORDER BY may not be used with non-aggregate abs()"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT count(* ORDER BY id) FROM sample",
+    "parameters": [],
+    "error": "near \"ORDER\": syntax error"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT sum(id ORDER BY id) OVER() FROM sample",
+    "parameters": [],
+    "error": "ORDER BY may not be used with non-aggregate sum()"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(dart_counter(),dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter(),dart_counter())",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        "14365",
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT group_concat(dart_counter() ORDER BY dart_counter()) FILTER(WHERE 0),dart_counter() FROM sample WHERE id>0 AND id<=3",
+    "parameters": [],
+    "columns": [
+      "group_concat(dart_counter() ORDER BY dart_counter()) FILTER(WHERE 0)",
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "integer": "1"
         }
       ]
     ]

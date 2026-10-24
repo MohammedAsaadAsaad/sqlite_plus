@@ -973,6 +973,7 @@ final class SqlParser {
             left = RaiseExpr(action, message);
           } else {
             final args = <Expr>[];
+            final argumentOrder = <OrderTerm>[];
             var star = false;
             final distinct = take('DISTINCT');
             if (take('*')) {
@@ -982,10 +983,19 @@ final class SqlParser {
               do {
                 args.add(expression());
               } while (take(','));
+              if (take('ORDER')) {
+                require('BY');
+                do {
+                  final expr = expression(), descending = take('DESC');
+                  if (!descending) take('ASC');
+                  argumentOrder.add(OrderTerm(expr, descending, _nulls()));
+                } while (take(','));
+              }
               require(')');
             }
             left =
-                FunctionExpr(token.text, args, distinct: distinct, star: star);
+                FunctionExpr(token.text, args, distinct: distinct, star: star)
+                  ..order.addAll(argumentOrder);
             if (take('FILTER')) {
               final function = left as FunctionExpr;
               if (!function.isAggregate) {

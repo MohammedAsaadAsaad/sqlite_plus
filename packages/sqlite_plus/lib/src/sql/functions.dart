@@ -6,6 +6,7 @@ import 'values.dart';
 import 'function_registry.dart';
 import 'core_functions.dart';
 import 'date_functions.dart';
+import 'index_definition.dart' show sameExpression;
 
 final class FunctionExpr extends Expr {
   FunctionExpr(this.name, this.arguments,
@@ -31,14 +32,20 @@ final class FunctionExpr extends Expr {
   final bool distinct;
   final bool star;
   Expr? filter;
+  final List<OrderTerm> order = [];
   bool windowFunction = false;
   String get key => asciiLower(name);
   bool get isAggregate => registered != null
       ? registered!.aggregate != null
-      : ['count', 'sum', 'total', 'avg', 'group_concat'].contains(key) ||
+      : ['count', 'sum', 'total', 'avg', 'group_concat', 'string_agg']
+              .contains(key) ||
           ['min', 'max'].contains(key) && arguments.length == 1;
   @override
-  Iterable<Expr> get children => [...arguments, if (filter != null) filter!];
+  Iterable<Expr> get children => [
+        ...arguments,
+        if (filter != null) filter!,
+        ...order.map((t) => t.expression)
+      ];
   @override
   bool get containsAggregate => isAggregate || super.containsAggregate;
   @override
@@ -106,6 +113,7 @@ final class FunctionExpr extends Expr {
     'min': (1, 127),
     'max': (1, 127),
     'group_concat': (1, 2),
+    'string_agg': (2, 2),
   };
   @override
   void validate(Set<String> columns) {
@@ -113,6 +121,16 @@ final class FunctionExpr extends Expr {
         !windowFunction &&
         arguments.any((arg) => arg.containsAggregate)) {
       throw const SqlException('Nested aggregate');
+    }
+    if (order.isNotEmpty && (!isAggregate || windowFunction)) {
+      throw const SqlException(
+          'Aggregate ORDER BY requires a non-window aggregate');
+    }
+    for (final term in order) {
+      term.expression.validate(columns);
+      if (term.expression.containsAggregate || term.expression.containsWindow) {
+        throw const SqlException('Aggregate/window in aggregate ORDER BY');
+      }
     }
     filter?.validate(columns);
     if (filter != null &&
@@ -367,7 +385,7 @@ final class FunctionExpr extends Expr {
     if (group == null) {
       throw const SqlException('Aggregate used outside aggregate query');
     }
-    if (registered != null) {
+    if (registered != null && order.isEmpty) {
       try {
         final state = registered!.aggregate!();
         final seen = <List<Object?>>[];
@@ -395,28 +413,62 @@ final class FunctionExpr extends Expr {
         throw SqlException('User aggregate $name failed');
       }
     }
-    final values = <Object?>[];
-    final contexts = <EvalContext>[];
+    final prepared = <(List<Object?>, List<Object?>, int)>[];
+    final reuse = arguments.length == 1 &&
+        order.length == 1 &&
+        sameExpression(arguments.single, order.single.expression);
     for (final row in group) {
       final ctx = context.forRow(row);
       if (filter != null &&
-          truth(filter!.evaluate(ctx), context.encoding) != true) {
+          truth(filter!.evaluate(ctx), ctx.encoding) != true) {
         continue;
       }
-      final value = star || arguments.isEmpty
-          ? BigInt.one
-          : arguments.first.evaluate(ctx);
-      if (value == null) continue;
-      if (distinct &&
-          values.any((v) =>
-              compareValues(v, value, context.encoding,
-                  arguments.first.collation(context)) ==
-              0)) {
-        continue;
+      final keys = reuse
+          ? <Object?>[]
+          : order.map((t) => t.expression.evaluate(ctx)).toList();
+      final args = star || arguments.isEmpty
+          ? (registered == null ? <Object?>[BigInt.one] : <Object?>[])
+          : arguments.map((arg) => arg.evaluate(ctx)).toList();
+      if (reuse) keys.add(args.single);
+      if (distinct) {
+        final existing = prepared.indexWhere((entry) =>
+            compareValues(entry.$1.single, args.single, context.encoding,
+                arguments.single.collation(context)) ==
+            0);
+        if (existing >= 0) {
+          if (reuse) prepared[existing] = (args, keys, prepared[existing].$3);
+          continue;
+        }
       }
-      values.add(value);
-      contexts.add(ctx);
+      prepared.add((args, keys, prepared.length));
     }
+    if (order.isNotEmpty) {
+      prepared.sort((a, b) {
+        for (var i = 0; i < order.length; i++) {
+          final comparison = order[i].compare(a.$2[i], b.$2[i], context);
+          if (comparison != 0) return comparison;
+        }
+        return a.$3.compareTo(b.$3);
+      });
+    }
+    if (registered != null) {
+      try {
+        final state = registered!.aggregate!();
+        for (final entry in prepared) {
+          state.step(List.unmodifiable(entry.$1.map(sqlValue)));
+        }
+        return sqlValue(state.finish());
+      } on SqlException {
+        rethrow;
+      } catch (_) {
+        throw SqlException('User aggregate $name failed');
+      }
+    }
+    final argumentsByRow = [
+      for (final entry in prepared)
+        if (entry.$1.first != null) entry.$1
+    ];
+    final values = [for (final args in argumentsByRow) args.first];
     if (key == 'count') return BigInt.from(values.length);
     if (key == 'min' || key == 'max') {
       if (values.isEmpty) return null;
@@ -428,13 +480,12 @@ final class FunctionExpr extends Expr {
       }
       return result;
     }
-    if (key == 'group_concat') {
+    if (key == 'group_concat' || key == 'string_agg') {
       if (values.isEmpty) return null;
       final result = StringBuffer();
       for (var i = 0; i < values.length; i++) {
         if (i > 0) {
-          final separator =
-              arguments.length == 1 ? ',' : arguments[1].evaluate(contexts[i]);
+          final separator = arguments.length == 1 ? ',' : argumentsByRow[i][1];
           if (separator != null) {
             _checkOutput(
                 result.length + stringify(separator, context.encoding).length);

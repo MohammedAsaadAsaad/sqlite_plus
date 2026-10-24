@@ -346,7 +346,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 1,461 differential queries across the
+The pinned M6 oracle currently contains 1,521 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 
@@ -418,3 +418,8 @@ use the existing positional argument list. Repeated names share an index; case
 and prefixes distinguish names. They compose with ?/?NNN placeholders and share
 one index map through INSERT SELECT, UPSERT and RETURNING. Schema parameters
 remain prohibited.
+
+Aggregate ORDER BY supports multiple terms, direction, collations and NULLS
+placement, including FILTER/DISTINCT and registered Dart aggregates. STRING_AGG
+is available in grouped and window queries. ORDER BY inside window aggregate
+calls remains prohibited, matching the reference.

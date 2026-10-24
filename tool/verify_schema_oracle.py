@@ -259,6 +259,15 @@ def main():
       "CREATE TRIGGER shorthand_trigger AFTER INSERT ON shorthand WHEN new.id=4 BEGIN REPLACE INTO shorthand VALUES(1,new.v+10); END",
       "REPLACE INTO shorthand VALUES(4,4)", "PRAGMA integrity_check"
     ]
+    statements += [
+      "CREATE TABLE aggregate_rows(v TEXT COLLATE NOCASE,k INT)",
+      "INSERT INTO aggregate_rows VALUES('a',3),('A',1),('λ😀',2),(NULL,0)",
+      "CREATE TABLE aggregate_copy AS SELECT string_agg(v,'|' ORDER BY k) AS value,group_concat(DISTINCT v ORDER BY v) AS distinct_value FROM aggregate_rows",
+      "CREATE VIEW aggregate_view AS SELECT group_concat(v ORDER BY k DESC) AS value FROM aggregate_rows",
+      "INSERT INTO aggregate_copy(value) SELECT value FROM aggregate_view",
+      "CREATE TRIGGER aggregate_guard BEFORE INSERT ON aggregate_rows BEGIN SELECT string_agg(v,'|' ORDER BY k) FROM aggregate_rows; END",
+      "INSERT INTO aggregate_rows VALUES('b',4)", "PRAGMA integrity_check"
+    ]
     bound_parameters = {
       "INSERT INTO named_rows VALUES(:id,:v) RETURNING :id,id,:v,v": [1,7],
       "UPDATE named_rows SET v=:v WHERE id=:id RETURNING :v,v,:id": [8,1],

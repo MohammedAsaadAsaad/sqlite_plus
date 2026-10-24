@@ -362,6 +362,28 @@ def main():
       "SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x LIMIT 0)"
     ]
     queries += ["SELECT 1 AS 'λ😀'", "SELECT 1 'value'", "SELECT a.x FROM (SELECT 1 AS x) AS 'a'", "SELECT 1 AS '',2 AS ''"]
+    queries += [
+      "SELECT group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5",
+      "SELECT group_concat(id,'|' ORDER BY id DESC) FILTER(WHERE id%2=1) FROM sample WHERE id>0 AND id<=5",
+      "SELECT string_agg(id,'|' ORDER BY id DESC),string_agg(id,NULL) FROM sample WHERE id>0 AND id<=5",
+      "SELECT count(id ORDER BY id),sum(id ORDER BY id DESC),avg(id ORDER BY id),total(id ORDER BY id) FROM sample WHERE id>0 AND id<=5",
+      "SELECT id%2,group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5 GROUP BY id%2 ORDER BY 1",
+      "SELECT group_concat(DISTINCT x ORDER BY x),group_concat(DISTINCT x ORDER BY y),group_concat(DISTINCT x ORDER BY x COLLATE BINARY) FROM (SELECT 'a' COLLATE NOCASE AS x,3 AS y UNION ALL SELECT 'A',1 UNION ALL SELECT 'b',2 UNION ALL SELECT NULL,0)",
+      "SELECT group_concat(dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+      "SELECT count(dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+      "SELECT group_concat(dart_counter(),dart_counter() ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+      "SELECT group_concat(dart_counter() ORDER BY dart_counter() COLLATE BINARY),dart_counter() FROM sample WHERE id>0 AND id<=3",
+      "SELECT group_concat(DISTINCT id%2 ORDER BY dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+      "SELECT dart_sum(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=5",
+      "SELECT string_agg(id,'|') OVER(ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) FROM sample WHERE id>0 AND id<=4 ORDER BY id",
+      "SELECT group_concat(id ORDER BY id),group_concat(id ORDER BY id DESC) FROM sample WHERE id>0 AND id<=3 ORDER BY group_concat(id ORDER BY id DESC)",
+      "SELECT group_concat(id ORDER BY sum(id)) FROM sample", "SELECT abs(id ORDER BY id) FROM sample",
+      "SELECT count(* ORDER BY id) FROM sample", "SELECT sum(id ORDER BY id) OVER() FROM sample",
+    ]
+    queries += [
+      "SELECT group_concat(dart_counter(),dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
+      "SELECT group_concat(dart_counter() ORDER BY dart_counter()) FILTER(WHERE 0),dart_counter() FROM sample WHERE id>0 AND id<=3"
+    ]
     parameter_queries = {
       'SELECT :x,:x,?': [7,8],
       'SELECT :x,@x,$x,:x': [1,2,3],

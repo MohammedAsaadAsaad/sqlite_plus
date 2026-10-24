@@ -15,7 +15,7 @@
   schema/statement conflict policies and REPLACE triggers; recursive CTE priority
   queues, LIMIT/OFFSET and duplicate suppression; VALUES queries/CTEs/subqueries/
   trigger bodies; CREATE TABLE AS and REPLACE shorthand; named parameter indices;
-  metadata/integrity PRAGMAs.
+  aggregate ORDER BY/STRING_AGG; metadata/integrity PRAGMAs.
   Open: dependent view/trigger rewrites and broader ALTER, SQL/function/PRAGMA,
   foreign-key/trigger interaction, planner and differential hardening audit.
 - [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.

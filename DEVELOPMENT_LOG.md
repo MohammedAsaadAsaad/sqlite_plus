@@ -506,3 +506,18 @@
   oracle has 1,461 cases; pinned SQLite verifies 550 schema/DML snapshots in each
   encoding (1,650 total), including parameterized writes and atomic errors.
 - M6 remains open for dependency rewrites and the documented conformance audit.
+
+## 2026-10-24 — M6 aggregate ORDER BY and STRING_AGG
+
+- Added aggregate-local ORDER BY with stable ties, direction, collations/NULLS,
+  FILTER/DISTINCT and registered aggregate inputs. STRING_AGG shares GROUP_CONCAT
+  semantics for grouped/window execution. Invalid scalar/window/star ordering
+  and nested aggregate/window order expressions reject during preparation.
+- Match native argument/key callback order and exact-expression reuse, DISTINCT
+  representative selection for a shared ordering key, and separator evaluation.
+  Preserve streaming callback/step interleaving for unordered registered functions.
+- Verification: all 2,452 engine tests, all-package locked installs/fatal-info
+  analysis, formatting and all fixture/oracle hashes pass. The M6 corpus has
+  1,521 cases. Pinned SQLite verifies 558 snapshots per encoding (1,674 total),
+  including ordered aggregation in CTAS, views and trigger bodies. M6 remains
+  open for the documented dependency rewrites and broader conformance audit.
