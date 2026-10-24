@@ -370,3 +370,20 @@
   and fatal-info analysis pass for all packages. All fixture/oracle hashes,
   native mutation/transaction cross-open checks, byte-exact rollback recovery
   and WAL/checkpoint/owner-handoff interoperability checks pass.
+
+## 2026-10-24 — M6 INSTEAD OF view triggers
+
+- Added view INSERT/UPDATE/DELETE through INSTEAD OF triggers, UPDATE OF filters,
+  initial-row snapshots and typed OLD/NEW contexts. View rows remain virtual;
+  only underlying table mutations are serialized. Direct changes are zero and
+  lastInsertRowid is unset; RETURNING reflects the view values.
+- Matched pinned REAL output/pseudo-row behavior, ignored view rowid assignments,
+  absent pseudo-rowid reads, timing restrictions, rollback and reopen behavior.
+- Preserved declared types and collations through view/derived/CTE materialization
+  and query metadata. Fixed UNION duplicate comparison/representative selection
+  with inherited collations. Added 24 pinned query cases (1,236 total).
+- Verification: all 2,138 engine tests, all-package locked installs and fatal-info
+  analysis, formatting and oracle checksum verification pass. Pinned SQLite
+  cross-opens 390 schema/DML snapshots in each encoding (1,170 total), checking
+  RETURNING, direct changes, metadata, rows and native integrity_check. M6 remains
+  open for the remaining documented SQL/schema and conformance audit work.

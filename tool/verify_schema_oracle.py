@@ -92,6 +92,29 @@ def main():
     statements += ["CREATE TABLE typed_trigger(v TEXT COLLATE NOCASE,n NUMERIC,b BLOB)", "CREATE TABLE typed_hits(x INT)", "INSERT INTO typed_hits VALUES(0)", "CREATE TABLE typed_audit(v,b)", "CREATE TRIGGER typed_guard BEFORE INSERT ON typed_trigger WHEN new.v=1 AND new.n='2' -- comment\n BEGIN SELECT RAISE(ABORT,'wrong blob') WHERE typeof(new.b)!='blob'; UPDATE typed_hits SET x=x+1 WHERE new.v=1; INSERT INTO typed_audit SELECT new.v,new.b WHERE new.n='2'; END", "INSERT INTO typed_trigger VALUES('1','2',X'00ff')", "CREATE TRIGGER typed_case AFTER INSERT ON typed_trigger WHEN new.v='A' BEGIN UPDATE typed_hits SET x=x+1 WHERE new.v='A'; END", "INSERT INTO typed_trigger VALUES('a',3,X'00')"]
     statements += ["CREATE TRIGGER typed_guard_exact BEFORE INSERT ON typed_trigger WHEN new.v='1' AND new.n=2 BEGIN SELECT RAISE(ABORT,'wrong blob') WHERE typeof(new.b)!='blob'; UPDATE typed_hits SET x=x+1 WHERE new.v='1'; INSERT INTO typed_audit SELECT new.v,new.b WHERE new.n=2; END", "CREATE TABLE typed_flags(a,b,c)", "CREATE TRIGGER typed_flags_capture AFTER INSERT ON typed_trigger BEGIN INSERT INTO typed_flags SELECT new.v=1,new.n='2',new.v='A'; END", "INSERT INTO typed_trigger VALUES('1','2',X'00ff')", "INSERT INTO typed_trigger VALUES('a',2,X'00')"]
     statements += ["CREATE TABLE fail_before(x INT)","CREATE TABLE fail_audit(x INT)","CREATE TRIGGER fail_policy BEFORE INSERT ON fail_before WHEN new.x=2 BEGIN INSERT INTO fail_audit VALUES(new.x); SELECT RAISE(FAIL,'stop'); END", "INSERT INTO fail_before VALUES(1),(2),(3)", "CREATE TABLE fail_after(x INT)", "CREATE TRIGGER fail_after_policy AFTER INSERT ON fail_after WHEN new.x=2 BEGIN INSERT INTO fail_audit VALUES(new.x); SELECT RAISE(FAIL,'after'); END", "INSERT INTO fail_after VALUES(1),(2),(3)", "BEGIN", "SAVEPOINT fail_save", "INSERT INTO fail_before VALUES(4),(2),(5)", "ROLLBACK TO fail_save", "COMMIT", "CREATE TABLE rollback_policy(x INT)", "CREATE TRIGGER rollback_stop BEFORE INSERT ON rollback_policy WHEN new.x=2 BEGIN SELECT RAISE(ROLLBACK,'stop'); END", "INSERT INTO rollback_policy VALUES(9)", "INSERT INTO rollback_policy VALUES(1),(2)", "BEGIN", "INSERT INTO rollback_policy VALUES(8)", "SAVEPOINT rollback_save", "INSERT INTO rollback_policy VALUES(1),(2)", "RELEASE rollback_save"]
+    statements += [
+        "CREATE TABLE view_base(id INTEGER PRIMARY KEY,v TEXT,n REAL DEFAULT 4)",
+        "CREATE VIEW editable(key,label,num) AS SELECT id,v,n FROM view_base",
+        "INSERT INTO editable VALUES(1,'blocked',1)",
+        "CREATE TRIGGER invalid_view BEFORE INSERT ON editable BEGIN SELECT 1; END",
+        "CREATE TRIGGER invalid_table INSTEAD OF INSERT ON view_base BEGIN SELECT 1; END",
+        "CREATE TRIGGER view_insert INSTEAD OF INSERT ON editable BEGIN INSERT INTO view_base VALUES(new.key,new.label,new.num); END",
+        "INSERT INTO editable(label,num) VALUES('a',1),('b',2) RETURNING *",
+        "CREATE TRIGGER view_update INSTEAD OF UPDATE OF label,num ON editable BEGIN UPDATE view_base SET v=new.label,n=new.num WHERE id=old.key; END",
+        "UPDATE editable SET label=label||'!',num=num+1 WHERE key=1 RETURNING *",
+        "UPDATE editable SET key=99 WHERE key=1 RETURNING *",
+        "CREATE TRIGGER view_delete INSTEAD OF DELETE ON editable BEGIN DELETE FROM view_base WHERE id=old.key; END",
+        "DELETE FROM editable WHERE key=2 RETURNING *",
+        "INSERT INTO editable VALUES(7,42,'3') RETURNING typeof(label),typeof(num)",
+        "INSERT INTO editable DEFAULT VALUES RETURNING *",
+        "INSERT INTO editable(rowid) VALUES(9)",
+        "CREATE TRIGGER view_no_rowid INSTEAD OF INSERT ON editable BEGIN INSERT INTO view_base VALUES(new.rowid,'bad',0); END",
+        "INSERT INTO editable VALUES(8,'bad',0)",
+        "DROP TRIGGER view_no_rowid",
+        "INSERT INTO editable VALUES(9,'bad',0) ON CONFLICT DO NOTHING",
+        "BEGIN", "DELETE FROM editable", "ROLLBACK",
+        "PRAGMA integrity_check"
+    ]
     for encoding in [1,2,3]:
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':[],'query':'=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS'])} for sql in statements]))

@@ -93,7 +93,11 @@ extension _RelationalQueries on SqliteDatabase {
                 [
                   for (var i = 0; i < names.length; i++)
                     CatalogColumn(
-                        names[i], _affinityType(result.columnAffinities[i]))
+                        names[i],
+                        result.columnDeclaredTypes[i].isEmpty
+                            ? _affinityType(result.columnAffinities[i])
+                            : result.columnDeclaredTypes[i],
+                        collation: result.columnCollations[i])
                 ],
                 withoutRowid: true),
             [
@@ -216,8 +220,12 @@ extension _RelationalQueries on SqliteDatabase {
                     0,
                     [
                       for (var i = 0; i < columns.length; i++)
-                        CatalogColumn(columns[i],
-                            _affinityType(first.columnAffinities[i]))
+                        CatalogColumn(
+                            columns[i],
+                            first.columnDeclaredTypes[i].isEmpty
+                                ? _affinityType(first.columnAffinities[i])
+                                : first.columnDeclaredTypes[i],
+                            collation: first.columnCollations[i])
                     ],
                     withoutRowid: true),
                 [
@@ -321,8 +329,12 @@ extension _RelationalQueries on SqliteDatabase {
             0,
             [
               for (var i = 0; i < result.columns.length; i++)
-                CatalogColumn(result.columns[i],
-                    _affinityType(result.columnAffinities[i]))
+                CatalogColumn(
+                    result.columns[i],
+                    result.columnDeclaredTypes[i].isEmpty
+                        ? _affinityType(result.columnAffinities[i])
+                        : result.columnDeclaredTypes[i],
+                    collation: result.columnCollations[i])
             ],
             withoutRowid: true);
         rows = [
@@ -455,15 +467,13 @@ extension _RelationalQueries on SqliteDatabase {
       keysBefore = {...keysBefore, ...rightKeys};
     }
     final columns = <CatalogColumn>[
-      ...declared.entries.map((e) => CatalogColumn(
-          e.key, _affinityType(e.value.affinity),
+      ...declared.entries.map((e) => CatalogColumn(e.key, e.value.declaredType,
           collation: e.value.collation))
     ];
     for (final entry in refs.entries) {
       if (entry.value.length == 1 || merged.contains(entry.key)) {
         final original = declared[entry.value.first]!;
-        columns.add(CatalogColumn(
-            original.name, _affinityType(original.affinity),
+        columns.add(CatalogColumn(original.name, original.declaredType,
             collation: original.collation));
       }
     }
@@ -515,21 +525,36 @@ extension _RelationalQueries on SqliteDatabase {
             _relational(query, bound, cache, context));
     if (s.compounds.isEmpty) return result;
     var values = result.rows.map((row) => row.toList()).toList();
-    bool same(List<Object?> a, List<Object?> b) => _same(a, b);
+    final compoundCollations = result.columnCollations.toList();
+    bool same(List<Object?> a, List<Object?> b) {
+      for (var i = 0; i < a.length; i++) {
+        if (compareValues(a[i], b[i], _pager.header.textEncoding,
+                compoundCollations[i]) !=
+            0) {
+          return false;
+        }
+      }
+      return true;
+    }
+
     for (final part in s.compounds) {
       final rhs = _relational(part.$2, bound, cache, outer);
       if (rhs.columns.length != result.columns.length) {
         throw const SqlException('Compound SELECT width mismatch');
       }
+      for (var i = 0; i < compoundCollations.length; i++) {
+        if (compoundCollations[i].isEmpty) {
+          compoundCollations[i] = rhs.columnCollations[i];
+        }
+      }
       if (part.$1 == 'UNION ALL') {
         values.addAll(rhs.rows);
       } else if (part.$1 == 'UNION') {
-        for (final row in rhs.rows) {
-          if (!values.any((old) => same(old, row))) values.add(row);
-        }
+        values.addAll(rhs.rows);
         final unique = <List<Object?>>[];
         for (final row in values) {
-          if (!unique.any((old) => same(old, row))) unique.add(row);
+          unique.removeWhere((old) => same(old, row));
+          unique.add(row);
         }
         values = unique;
       } else {
@@ -597,6 +622,10 @@ extension _RelationalQueries on SqliteDatabase {
     var selected = values.skip(offset < 0 ? 0 : offset);
     if (limit >= 0) selected = selected.take(limit);
     return QueryResult(
-        result.columns, selected.toList(), result.columnAffinities);
+        result.columns,
+        selected.toList(),
+        result.columnAffinities,
+        result.columnDeclaredTypes,
+        compoundCollations);
   }
 }

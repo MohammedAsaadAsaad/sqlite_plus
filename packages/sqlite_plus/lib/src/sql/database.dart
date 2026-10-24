@@ -16,13 +16,21 @@ part 'relational.dart';
 
 final class QueryResult implements SqlRows {
   QueryResult(List<String> columns, List<List<Object?>> rows,
-      [List<String>? affinities])
-      : columnAffinities = List.unmodifiable(
+      [List<String>? affinities,
+      List<String>? declaredTypes,
+      List<String>? collations])
+      : columnDeclaredTypes =
+            List.unmodifiable(declaredTypes ?? List.filled(columns.length, '')),
+        columnCollations = List.unmodifiable(
+            collations ?? List.filled(columns.length, 'binary')),
+        columnAffinities = List.unmodifiable(
             affinities ?? List.filled(columns.length, 'none')),
         columns = List.unmodifiable(columns),
         rows = List.unmodifiable(rows.map(List<Object?>.unmodifiable));
   @override
   final List<String> columnAffinities;
+  final List<String> columnDeclaredTypes;
+  final List<String> columnCollations;
   @override
   final List<String> columns;
   @override
@@ -745,6 +753,20 @@ final class SqliteDatabase {
         rows.toList(),
         items
             .map((item) => item.expression!.affinity(constantContext))
+            .toList(),
+        items.map((item) {
+          final expr = item.expression;
+          return expr is ColumnExpr
+              ? columns
+                      .where((c) => asciiLower(c.name) == expr.key)
+                      .firstOrNull
+                      ?.declaredType ??
+                  ''
+              : '';
+        }).toList(),
+        items
+            .map((item) =>
+                item.expression!.collation(constantContext) ?? 'binary')
             .toList());
   }
 

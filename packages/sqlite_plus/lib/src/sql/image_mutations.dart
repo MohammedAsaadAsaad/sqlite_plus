@@ -35,7 +35,8 @@ final class MutationFailure implements Exception {
 }
 
 final class _Table {
-  _Table(this.schema, this.sql, this.rows);
+  _Table(this.schema, this.sql, this.rows, {this.view = false});
+  final bool view;
   final CatalogTable schema;
   final String sql;
   final List<TableRow> rows;
@@ -433,13 +434,14 @@ final class ImageMutations {
     for (final column in table.schema.columns) {
       final type = column.declaredType.toUpperCase();
       final key = asciiLower(column.name);
-      if (!type.contains('INT') &&
+      if (!table.view &&
+          !type.contains('INT') &&
           ['REAL', 'FLOA', 'DOUB'].any(type.contains) &&
           result[key] is BigInt) {
         result[key] = (result[key] as BigInt).toDouble();
       }
     }
-    if (!table.schema.withoutRowid) {
+    if (!table.view && !table.schema.withoutRowid) {
       for (final name in ['rowid', '_rowid_', 'oid']) {
         result.putIfAbsent(name, () => row.rowId);
       }
@@ -499,7 +501,9 @@ final class ImageMutations {
         for (final col in table.schema.columns)
           col.name == table.schema.rowidAlias
               ? null
-              : _stored(values[asciiLower(col.name)], col)
+              : table.view
+                  ? values[asciiLower(col.name)]
+                  : _stored(values[asciiLower(col.name)], col)
       ]);
   int _compare(_Index index, List<Object?> a, List<Object?> b) {
     for (var i = 0; i < a.length && i < b.length; i++) {
@@ -826,6 +830,47 @@ final class ImageMutations {
   final List<String> _activeTriggers = [];
   bool _recursiveTriggers = false;
 
+  Future<_Table?> _target(String name) async {
+    final physical = _tables[asciiLower(name)];
+    if (physical != null) return physical;
+    final view = other
+        .where(
+            (o) => o.type == 'view' && asciiLower(o.name) == asciiLower(name))
+        .firstOrNull;
+    if (view == null) return null;
+    final storage = MemoryStorageBackend();
+    await storage.write(0, serialize());
+    final reader = await SqliteDatabase.openReadOnly(storage,
+        functions: SqlFunctionRegistry.current);
+    try {
+      final escaped = name.replaceAll('"', '""');
+      final result = await reader.query('SELECT * FROM "$escaped"');
+      final columns = <CatalogColumn>[
+        for (var i = 0; i < result.columns.length; i++)
+          CatalogColumn(
+              result.columns[i],
+              result.columnDeclaredTypes[i].isEmpty
+                  ? const {
+                        'text': 'TEXT',
+                        'numeric': 'NUMERIC'
+                      }[result.columnAffinities[i]] ??
+                      'BLOB'
+                  : result.columnDeclaredTypes[i],
+              collation: result.columnCollations[i])
+      ];
+      return _Table(
+          CatalogTable(view.name, 0, columns),
+          view.sql!,
+          [
+            for (var i = 0; i < result.rows.length; i++)
+              TableRow(BigInt.from(i + 1), result.rows[i])
+          ],
+          view: true);
+    } finally {
+      await reader.close();
+    }
+  }
+
   Future<QueryResult> _triggerSelect(String sql) async {
     final parsed = SqlParser(sql).select();
     if (parsed.parameterCount != 0) {
@@ -876,6 +921,19 @@ final class ImageMutations {
           for (final entry in _row(table, next).entries)
             'new.${entry.key}': entry.value,
       };
+      if (table.view) {
+        for (final prefix in ['old', 'new']) {
+          for (final column in table.schema.columns.where((c) =>
+              ['REAL', 'FLOA', 'DOUB']
+                  .any(c.declaredType.toUpperCase().contains) &&
+              !c.declaredType.toUpperCase().contains('INT'))) {
+            final key = '$prefix.${asciiLower(column.name)}';
+            if (values[key] is BigInt) {
+              values[key] = (values[key] as BigInt).toDouble();
+            }
+          }
+        }
+      }
       final context = EvalContext(values, {}, [], encoding)..inTrigger = true;
       for (final prefix in ['old', 'new']) {
         for (final column in table.schema.columns) {
@@ -1166,9 +1224,9 @@ final class ImageMutations {
           if (p.take('IF')) return MutationImage(original, 0, null);
           throw const SqlException('Trigger exists');
         }
-        final table = _tables[asciiLower(trigger.table)];
+        final table = await _target(trigger.table);
         if (table == null ||
-            trigger.timing == 'INSTEAD OF' ||
+            (trigger.timing == 'INSTEAD OF') != table.view ||
             asciiLower(trigger.name).startsWith('sqlite_')) {
           throw const SqlException('Trigger target unsupported');
         }
@@ -1670,8 +1728,24 @@ final class ImageMutations {
     if (insert) p.require('INTO');
     if (!insert && !update) p.require('FROM');
     final name = p.identifier();
-    final table = _tables[asciiLower(name)];
+    final table = await _target(name);
     if (table == null) throw SqlException('No such table: $name');
+    if (table.view &&
+        !other
+            .where((o) =>
+                o.type == 'trigger' &&
+                asciiLower(o.tableName) == asciiLower(name))
+            .map((o) => TriggerDefinition.parse(o.sql!))
+            .any((t) =>
+                t.timing == 'INSTEAD OF' &&
+                t.event ==
+                    (insert
+                        ? 'INSERT'
+                        : update
+                            ? 'UPDATE'
+                            : 'DELETE'))) {
+      throw SqlException('Cannot modify view: $name');
+    }
     final schema = table.schema;
     final columnNames = schema.columns.map((c) => asciiLower(c.name)).toList();
     final writable = {
@@ -1679,8 +1753,9 @@ final class ImageMutations {
       if (!schema.withoutRowid) ...['rowid', '_rowid_', 'oid'],
     };
     final valid = {
-      ...writable,
-      for (final col in writable) '${asciiLower(name)}.$col',
+      ...(table.view ? columnNames : writable),
+      for (final col in table.view ? columnNames : writable)
+        '${asciiLower(name)}.$col',
       ...?_triggerContexts.lastOrNull?.row.keys
     };
     final input = <String>[];
@@ -1903,6 +1978,9 @@ final class ImageMutations {
         if (target == null) break;
       }
     }
+    if (table.view && upserts.isNotEmpty) {
+      throw const SqlException('UPSERT on view unsupported');
+    }
     if (upserts.isNotEmpty && policy != 'ABORT') {
       throw const SqlException('Combined conflict policies unsupported');
     }
@@ -1966,8 +2044,21 @@ final class ImageMutations {
     void emit(TableRow row) {
       if (!hasReturning) return;
       final context = _context(table, row, bound);
-      returnedRows.add(
-          returning.map((item) => item.expression!.evaluate(context)).toList());
+      returnedRows.add(returning.map((item) {
+        final expr = item.expression!;
+        final value = expr.evaluate(context);
+        if (table.view &&
+            expr is ColumnExpr &&
+            value is BigInt &&
+            schema.columns.any((c) =>
+                asciiLower(c.name) == expr.key.split('.').last &&
+                ['REAL', 'FLOA', 'DOUB']
+                    .any(c.declaredType.toUpperCase().contains) &&
+                !c.declaredType.toUpperCase().contains('INT'))) {
+          return value.toDouble();
+        }
+        return value;
+      }).toList());
     }
 
     QueryResult? returned() => hasReturning
@@ -2187,7 +2278,7 @@ final class ImageMutations {
             clause.assignments.containsKey(asciiLower(schema.rowidAlias!))) {
           rowid = id(values[asciiLower(schema.rowidAlias!)]);
         }
-        if (!schema.withoutRowid) {
+        if (!table.view && !schema.withoutRowid) {
           for (final alias in ['rowid', '_rowid_', 'oid']) {
             if (!columnNames.contains(alias) &&
                 clause.assignments.containsKey(alias)) {
@@ -2237,12 +2328,20 @@ final class ImageMutations {
         Object? requested = schema.rowidAlias == null
             ? null
             : data[asciiLower(schema.rowidAlias!)];
-        if (!schema.withoutRowid) {
+        if (!table.view && !schema.withoutRowid) {
           for (final alias in ['rowid', '_rowid_', 'oid']) {
             if (!columnNames.contains(alias) && input.contains(alias)) {
               requested = data[alias];
             }
           }
+        }
+        if (table.view) {
+          final next = _physical(table, data, BigInt.zero);
+          if (await _fire('INSTEAD OF', 'INSERT', table, null, next, {},
+              foreignKeys: foreignKeys, inTransaction: inTransaction)) {
+            emit(next);
+          }
+          continue;
         }
         final max = insertMax;
         final auto = schema.columns.any((col) => col.autoIncrement);
@@ -2290,6 +2389,13 @@ final class ImageMutations {
         }
         if (!table.rows.contains(row)) continue;
         if (!update) {
+          if (table.view) {
+            if (await _fire('INSTEAD OF', 'DELETE', table, row, null, {},
+                foreignKeys: foreignKeys, inTransaction: inTransaction)) {
+              emit(row);
+            }
+            continue;
+          }
           if (!await _fire('BEFORE', 'DELETE', table, row, null, {},
               foreignKeys: foreignKeys, inTransaction: inTransaction)) {
             continue;
@@ -2311,7 +2417,7 @@ final class ImageMutations {
             assignments.containsKey(asciiLower(schema.rowidAlias!))) {
           rowid = id(data[asciiLower(schema.rowidAlias!)]);
         }
-        if (!schema.withoutRowid) {
+        if (!table.view && !schema.withoutRowid) {
           for (final alias in ['rowid', '_rowid_', 'oid']) {
             if (!columnNames.contains(alias) &&
                 assignments.containsKey(alias)) {
@@ -2320,6 +2426,14 @@ final class ImageMutations {
           }
         }
         final changed = _physical(table, data, rowid);
+        if (table.view) {
+          if (await _fire('INSTEAD OF', 'UPDATE', table, row, changed,
+              assignments.keys.toSet(),
+              foreignKeys: foreignKeys, inTransaction: inTransaction)) {
+            emit(changed);
+          }
+          continue;
+        }
         if (!await _fire(
             'BEFORE', 'UPDATE', table, row, changed, assignments.keys.toSet(),
             foreignKeys: foreignKeys, inTransaction: inTransaction)) {

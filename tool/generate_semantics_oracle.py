@@ -299,6 +299,16 @@ def main():
       'SELECT count(*) FROM sample GROUP BY -1',
       "SELECT value AS v,count(*) FROM sample GROUP BY 1 COLLATE NOCASE ORDER BY v LIMIT 3",
     ]
+    queries += [
+      "SELECT v='A' FROM (SELECT 'a' COLLATE NOCASE AS v)",
+      "SELECT v='a' FROM (SELECT 'a ' COLLATE RTRIM AS v)",
+      "SELECT v FROM (SELECT 'b' COLLATE NOCASE AS v UNION ALL SELECT 'A') ORDER BY v",
+      "WITH c(v) AS (SELECT 'a' COLLATE NOCASE) SELECT v='A' FROM c",
+      "SELECT v='A' FROM (SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v))",
+      "SELECT v,count(*) FROM (SELECT 'a' COLLATE NOCASE AS v UNION ALL SELECT 'A') GROUP BY v",
+      "SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v) UNION SELECT 'A'",
+      "SELECT typeof(v) FROM (SELECT CAST(1 AS REAL) AS v)",
+    ]
     cases = []
     for fixture in manifest['fixtures']:
         with sqlite3.connect(f"file:{ROOT/fixture['file']}?mode=ro",uri=True) as c:

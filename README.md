@@ -290,7 +290,8 @@ The engine now supports:
   outer commit. Foreign keys default off. BEFORE/AFTER row triggers support
   OLD/NEW, UPDATE OF, WHEN, DML and SELECT/WITH bodies, WHEN subqueries, and RAISE(ABORT/FAIL/ROLLBACK/IGNORE).
   Recursive invocation is controlled by PRAGMA recursive_triggers (default off,
-  1,000-level bound). INSTEAD OF view triggers remain unsupported.
+  1,000-level bound). INSTEAD OF INSERT/UPDATE/DELETE view triggers are supported with zero direct
+  change counts and view-row RETURNING values.
 
 `execute` also accepts RETURNING projections on direct INSERT/UPDATE/DELETE
 rows; `MutationResult.returning` contains the QueryResult, including an empty
@@ -345,7 +346,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 1,212 differential queries across the
+The pinned M6 oracle currently contains 1,236 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 

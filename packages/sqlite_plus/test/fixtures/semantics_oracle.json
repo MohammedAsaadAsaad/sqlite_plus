@@ -8235,6 +8235,125 @@
     ]
   },
   {
+    "file": "sqlite-512.db",
+    "sql": "SELECT v='A' FROM (SELECT 'a' COLLATE NOCASE AS v)",
+    "parameters": [],
+    "columns": [
+      "v='A'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT v='a' FROM (SELECT 'a ' COLLATE RTRIM AS v)",
+    "parameters": [],
+    "columns": [
+      "v='a'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT v FROM (SELECT 'b' COLLATE NOCASE AS v UNION ALL SELECT 'A') ORDER BY v",
+    "parameters": [],
+    "columns": [
+      "v"
+    ],
+    "rows": [
+      [
+        "A"
+      ],
+      [
+        "b"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH c(v) AS (SELECT 'a' COLLATE NOCASE) SELECT v='A' FROM c",
+    "parameters": [],
+    "columns": [
+      "v='A'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT v='A' FROM (SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v))",
+    "parameters": [],
+    "columns": [
+      "v='A'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT v,count(*) FROM (SELECT 'a' COLLATE NOCASE AS v UNION ALL SELECT 'A') GROUP BY v",
+    "parameters": [],
+    "columns": [
+      "v",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v) UNION SELECT 'A'",
+    "parameters": [],
+    "columns": [
+      "v"
+    ],
+    "rows": [
+      [
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT typeof(v) FROM (SELECT CAST(1 AS REAL) AS v)",
+    "parameters": [],
+    "columns": [
+      "typeof(v)"
+    ],
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
     "file": "sqlite-4096.db",
     "sql": "select abs(-7) as result",
     "parameters": [],
@@ -16470,6 +16589,125 @@
     ]
   },
   {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT v='A' FROM (SELECT 'a' COLLATE NOCASE AS v)",
+    "parameters": [],
+    "columns": [
+      "v='A'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT v='a' FROM (SELECT 'a ' COLLATE RTRIM AS v)",
+    "parameters": [],
+    "columns": [
+      "v='a'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT v FROM (SELECT 'b' COLLATE NOCASE AS v UNION ALL SELECT 'A') ORDER BY v",
+    "parameters": [],
+    "columns": [
+      "v"
+    ],
+    "rows": [
+      [
+        "A"
+      ],
+      [
+        "b"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH c(v) AS (SELECT 'a' COLLATE NOCASE) SELECT v='A' FROM c",
+    "parameters": [],
+    "columns": [
+      "v='A'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT v='A' FROM (SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v))",
+    "parameters": [],
+    "columns": [
+      "v='A'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT v,count(*) FROM (SELECT 'a' COLLATE NOCASE AS v UNION ALL SELECT 'A') GROUP BY v",
+    "parameters": [],
+    "columns": [
+      "v",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v) UNION SELECT 'A'",
+    "parameters": [],
+    "columns": [
+      "v"
+    ],
+    "rows": [
+      [
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT typeof(v) FROM (SELECT CAST(1 AS REAL) AS v)",
+    "parameters": [],
+    "columns": [
+      "typeof(v)"
+    ],
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
     "file": "sqlite-65536.db",
     "sql": "select abs(-7) as result",
     "parameters": [],
@@ -24701,6 +24939,125 @@
         {
           "integer": "1"
         }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT v='A' FROM (SELECT 'a' COLLATE NOCASE AS v)",
+    "parameters": [],
+    "columns": [
+      "v='A'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT v='a' FROM (SELECT 'a ' COLLATE RTRIM AS v)",
+    "parameters": [],
+    "columns": [
+      "v='a'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT v FROM (SELECT 'b' COLLATE NOCASE AS v UNION ALL SELECT 'A') ORDER BY v",
+    "parameters": [],
+    "columns": [
+      "v"
+    ],
+    "rows": [
+      [
+        "A"
+      ],
+      [
+        "b"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH c(v) AS (SELECT 'a' COLLATE NOCASE) SELECT v='A' FROM c",
+    "parameters": [],
+    "columns": [
+      "v='A'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT v='A' FROM (SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v))",
+    "parameters": [],
+    "columns": [
+      "v='A'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT v,count(*) FROM (SELECT 'a' COLLATE NOCASE AS v UNION ALL SELECT 'A') GROUP BY v",
+    "parameters": [],
+    "columns": [
+      "v",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v) UNION SELECT 'A'",
+    "parameters": [],
+    "columns": [
+      "v"
+    ],
+    "rows": [
+      [
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT typeof(v) FROM (SELECT CAST(1 AS REAL) AS v)",
+    "parameters": [],
+    "columns": [
+      "typeof(v)"
+    ],
+    "rows": [
+      [
+        "real"
       ]
     ]
   }
