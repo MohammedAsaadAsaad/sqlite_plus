@@ -158,4 +158,14 @@ void main() {
     await expectLater(
         TableImageWriter.replace(bytes, 'notes', []), throwsFormatException);
   });
+  test('raw image writer rejects constrained targets before serialization',
+      () async {
+    final image = fixture();
+    await expectLater(
+        TableImageWriter.replace(image, 'guarded', [
+          TableRow(BigInt.one, [null])
+        ]),
+        throwsUnsupportedError);
+    expect(image, fixture());
+  });
 }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus/sqlite_plus_io.dart';
@@ -89,6 +90,12 @@ void main() {
       expect(
           (await database.query('select id from sample limit 1')).rows.length,
           1);
+    });
+    test('bound blob results are independent copies', () async {
+      final value = Uint8List.fromList([1, 2]);
+      final result = await database.query('SELECT ?', [value]);
+      value[0] = 99;
+      expect(result.rows.single.single, [1, 2]);
     });
     test('closed database refuses queries', () async {
       await database.close();

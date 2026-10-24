@@ -13,3 +13,4 @@ export 'src/pager/rollback_journal_pager.dart';
 export 'src/format/record_encoder.dart';
 export 'src/btree/table_image_writer.dart';
 export 'src/sql/mutable_database.dart';
+export 'src/format/wal_snapshot.dart';

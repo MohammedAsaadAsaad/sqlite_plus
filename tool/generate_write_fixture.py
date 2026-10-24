@@ -19,6 +19,7 @@ def main():
         with sqlite3.connect(path) as c:
             c.execute('pragma page_size=512')
             c.execute('create table notes(id integer primary key, value text, n integer)')
+            c.execute('create table guarded(x text not null)')
             c.executemany('insert into notes values (?,?,?)',
                           [(i, f'value-{i}', i - 1000) for i in range(1, 2001)])
             c.commit()

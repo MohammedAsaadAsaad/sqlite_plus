@@ -10,6 +10,7 @@ final _maxInt = (BigInt.one << 63) - BigInt.one;
 Object narrowInteger(BigInt value) =>
     value < _minInt || value > _maxInt ? value.toDouble() : value;
 Object? sqlValue(Object? value) {
+  if (value is Uint8List) return Uint8List.fromList(value);
   if (value is BigInt && (value < _minInt || value > _maxInt)) {
     throw const SqlException('Integer binding outside signed 64-bit range');
   }

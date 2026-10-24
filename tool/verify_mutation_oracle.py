@@ -8,7 +8,7 @@ import tempfile
 from generate_fixtures import PIN, ROOT
 
 
-def main():
+def main(transactions=False):
     manifest = json.loads((ROOT / 'manifest.json').read_text())
     with sqlite3.connect(':memory:') as c:
         if c.execute('select sqlite_source_id()').fetchone()[0] != PIN:
@@ -26,6 +26,23 @@ def main():
         {'sql': 'DELETE FROM notes', 'parameters': []},
         {'sql': 'INSERT INTO notes(value,n) VALUES(?,?)', 'parameters': ['restart', 1]},
     ]
+    if transactions:
+        operations = [
+            {'sql': 'BEGIN', 'parameters': []},
+            {'sql': "UPDATE notes SET value='transaction' WHERE id=1", 'parameters': []},
+            {'sql': 'SAVEPOINT a', 'parameters': []},
+            {'sql': 'DELETE FROM notes WHERE id>5', 'parameters': []},
+            {'sql': 'SAVEPOINT b', 'parameters': []},
+            {'sql': "INSERT INTO notes VALUES(6,'temporary',6)", 'parameters': []},
+            {'sql': 'ROLLBACK TO b', 'parameters': []},
+            {'sql': 'RELEASE b', 'parameters': []},
+            {'sql': 'ROLLBACK TO a', 'parameters': []},
+            {'sql': 'RELEASE a', 'parameters': []},
+            {'sql': 'COMMIT', 'parameters': []},
+            {'sql': 'SAVEPOINT outer', 'parameters': []},
+            {'sql': 'DELETE FROM notes', 'parameters': []},
+            {'sql': 'ROLLBACK', 'parameters': []},
+        ]
     with tempfile.TemporaryDirectory() as directory:
         directory = Path(directory)
         (directory / 'operations.json').write_text(json.dumps(operations))
@@ -36,10 +53,11 @@ def main():
         with sqlite3.connect(expected_path) as reference:
             for i, operation in enumerate(operations):
                 cursor = reference.execute(operation['sql'], operation['parameters'])
-                reference.commit()
+                if not transactions:
+                    reference.commit()
                 expected = reference.execute('select * from notes order by id').fetchall()
                 metadata = json.loads((directory / f'{i}.json').read_text())
-                if metadata['changes'] != cursor.rowcount:
+                if metadata['changes'] != max(0, cursor.rowcount):
                     raise RuntimeError(f'Change count mismatch at step {i}')
                 with sqlite3.connect(f'file:{directory / str(i)}.db?mode=ro', uri=True) as actual:
                     if actual.execute('pragma integrity_check').fetchone() != ('ok',):
@@ -50,4 +68,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    main(transactions='--transactions' in sys.argv)

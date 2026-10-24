@@ -27,6 +27,10 @@ final class MutableSqliteDatabase {
   bool _busy = false;
   bool _closed = false;
   bool _failed = false;
+  Uint8List? _transactionStart;
+  bool _explicitTransaction = false;
+  final List<(String, Uint8List)> _savepoints = [];
+  bool get inTransaction => _transactionStart != null;
   static Future<MutableSqliteDatabase> fromImage(Uint8List image) async {
     final storage = MemoryStorageBackend();
     await storage.write(0, image);
@@ -73,6 +77,14 @@ final class MutableSqliteDatabase {
           [List<Object?> parameters = const []]) =>
       _exclusive(() async {
         final parser = SqlParser(sql);
+        if (['BEGIN', 'COMMIT', 'END', 'ROLLBACK', 'SAVEPOINT', 'RELEASE']
+            .contains(parser.current.keyword)) {
+          if (parameters.isNotEmpty) {
+            throw const SqlException(
+                'Transaction statements take no parameters');
+          }
+          return _transaction(parser);
+        }
         final insert = parser.take('INSERT');
         final update = !insert && parser.take('UPDATE');
         if (!insert && !update) parser.require('DELETE');
@@ -276,7 +288,7 @@ final class MutableSqliteDatabase {
           }
           if (changes == 0) return MutationResult(0, null);
           final image = await TableImageWriter.replace(_image, tableName, next);
-          if (_journal != null) {
+          if (_journal != null && !inTransaction) {
             try {
               await _journal.commitImage(image);
             } catch (_) {
@@ -290,9 +302,84 @@ final class MutableSqliteDatabase {
           await pager.close();
         }
       });
+  Future<MutationResult> _transaction(SqlParser parser) async {
+    final op = parser.current.keyword;
+    parser.position++;
+    if (op == 'BEGIN') {
+      if (!parser.take('DEFERRED') && !parser.take('IMMEDIATE')) {
+        parser.take('EXCLUSIVE');
+      }
+      parser.take('TRANSACTION');
+      parser.finish();
+      if (inTransaction) throw const SqlException('Transaction already active');
+      _transactionStart = Uint8List.fromList(_image);
+      _explicitTransaction = true;
+    } else if (op == 'SAVEPOINT') {
+      final name = asciiLower(parser.identifier());
+      parser.finish();
+      _transactionStart ??= Uint8List.fromList(_image);
+      _savepoints.add((name, Uint8List.fromList(_image)));
+    } else if (op == 'RELEASE') {
+      parser.take('SAVEPOINT');
+      final name = asciiLower(parser.identifier());
+      parser.finish();
+      final index = _savepoints.lastIndexWhere((entry) => entry.$1 == name);
+      if (index < 0) throw const SqlException('No such savepoint');
+      if (index == 0 && !_explicitTransaction) {
+        await _commitTransaction();
+      } else {
+        _savepoints.removeRange(index, _savepoints.length);
+      }
+    } else if (op == 'ROLLBACK') {
+      parser.take('TRANSACTION');
+      if (parser.take('TO')) {
+        parser.take('SAVEPOINT');
+        final name = asciiLower(parser.identifier());
+        parser.finish();
+        final index = _savepoints.lastIndexWhere((entry) => entry.$1 == name);
+        if (index < 0) throw const SqlException('No such savepoint');
+        _image = Uint8List.fromList(_savepoints[index].$2);
+        _savepoints.removeRange(index + 1, _savepoints.length);
+      } else {
+        parser.finish();
+        if (!inTransaction) throw const SqlException('No active transaction');
+        _image = _transactionStart!;
+        _clearTransaction();
+      }
+    } else {
+      parser.take('TRANSACTION');
+      parser.finish();
+      if (!inTransaction) throw const SqlException('No active transaction');
+      await _commitTransaction();
+    }
+    return const MutationResult(0, null);
+  }
+
+  void _clearTransaction() {
+    _transactionStart = null;
+    _explicitTransaction = false;
+    _savepoints.clear();
+  }
+
+  Future<void> _commitTransaction() async {
+    if (_journal != null) {
+      try {
+        await _journal.commitImage(_image);
+      } catch (_) {
+        _failed = true;
+        rethrow;
+      }
+    }
+    _clearTransaction();
+  }
+
   Future<void> close() async {
     if (_busy) throw StateError('Database operation in progress');
     if (_closed) return;
+    if (inTransaction) {
+      _image = _transactionStart!;
+      _clearTransaction();
+    }
     _closed = true;
     await _journal?.close();
   }

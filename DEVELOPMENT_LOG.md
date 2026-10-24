@@ -108,3 +108,29 @@
 - M5 remains next: SQL transactions/savepoints, locking, WAL and recovery. M4
   storage durability is conditional on its documented backend contract, not a
   claim that the cloud filesystem has been power-loss certified.
+
+## 2026-10-24 — M5 foundations; milestone not complete
+
+- Added private-image BEGIN/COMMIT/ROLLBACK and nested savepoint scopes to the
+  limited mutable writer. Deferred physical writes until outer commit; closing
+  rolls back, statement errors preserve the transaction, and commit I/O failures
+  poison the session. A 14-step transaction/savepoint sequence matches the pinned
+  SQLite reference and each exported image passes SQLite integrity_check.
+- Added offline WAL snapshot recovery, checksum/salt validation, committed-prefix
+  selection and independent rollback-format copy generation. Tests use real WAL
+  captures from the pinned build and check every truncated final-frame tail,
+  corrupt frame/header data, multiple commits and bounds. No live WAL writing,
+  shared-memory wal-index management or checkpoint protocol is implemented.
+- Added an optional exclusive SQLite lock-byte-range lease. A separate SQLite
+  process is blocked under the lease and succeeds after release; same-isolate
+  duplicate opens are rejected. SDK documentation confirms POSIX locks are
+  process-wide, permit overlapping isolates, and can be dropped by another file
+  descriptor closing. General multi-isolate ownership remains unfinished.
+- Hardened raw image writes to reject constrained targets, and made bound blob
+  results independent copies. Added regressions and a constrained fixture table.
+- All 834 engine tests pass; all packages pass formatting, locked installation
+  and fatal-info analysis. All fixture/oracle checksum checks and M4 reference
+  verification pass. Runtime remains Pure Dart; native SQLite is development-only.
+- M5 remains unchecked. M6–M9 are unstarted to preserve the user's requirement
+  to finish and verify each milestone before moving on. No claim that all
+  remaining milestones are completed, or that production WAL/concurrency works.

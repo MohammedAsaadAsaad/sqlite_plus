@@ -48,6 +48,17 @@ abstract final class TableImageWriter {
       }
       final catalog = await DatabaseCatalog.read(pager);
       final table = catalog.table(tableName);
+      final definition = catalog.entries
+          .where((entry) => entry.name.toLowerCase() == tableName.toLowerCase())
+          .firstOrNull;
+      if (definition == null ||
+          definition.sql == null ||
+          RegExp(r'\b(NOT|UNIQUE|CHECK|REFERENCES|DEFAULT|COLLATE|AUTOINCREMENT|GENERATED|CONSTRAINT)\b',
+                  caseSensitive: false)
+              .hasMatch(definition.sql!)) {
+        throw UnsupportedError('Unsupported writable table constraints');
+      }
+
       if (table.rootPage == 1 ||
           table.withoutRowid ||
           catalog.entries.any((e) =>

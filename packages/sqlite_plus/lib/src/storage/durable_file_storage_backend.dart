@@ -14,6 +14,33 @@ final class DurableFileStorageBackend implements DurableStorageBackend {
   final RandomAccessFile _file;
   Future<void> _pending = Future.value();
   bool _closed = false;
+  String? _lockPath;
+  static final Set<String> _leases = {};
+
+  /// Exclusive SQLite lock-byte-range lease for a single owning Dart isolate.
+  /// On POSIX, ANY other descriptor close can drop process locks, and other
+  /// isolates can obtain overlapping locks. All handles in a process must be
+  /// coordinated by one owner; this is not a general cross-isolate lock manager.
+  static Future<DurableFileStorageBackend> openExclusive(String path,
+      {required bool directoryEntryIsDurable}) async {
+    final canonical = await File(path).resolveSymbolicLinks();
+    if (!_leases.add(canonical)) {
+      throw StateError('Database already leased in this isolate');
+    }
+    DurableFileStorageBackend? storage;
+    try {
+      storage = await openExisting(canonical,
+          directoryEntryIsDurable: directoryEntryIsDurable);
+      await storage._file.lock(FileLock.exclusive, 0x40000000, 0x40000200);
+      storage._lockPath = canonical;
+      return storage;
+    } catch (_) {
+      _leases.remove(canonical);
+      await storage?.close();
+      rethrow;
+    }
+  }
+
   static Future<DurableFileStorageBackend> openExisting(String path,
       {required bool directoryEntryIsDurable}) async {
     if (!directoryEntryIsDurable) {
@@ -63,7 +90,15 @@ final class DurableFileStorageBackend implements DurableStorageBackend {
     final result = _pending.then((_) async {
       if (_closed) return;
       _closed = true;
-      await _file.close();
+      try {
+        if (_lockPath != null) await _file.unlock(0x40000000, 0x40000200);
+      } finally {
+        try {
+          await _file.close();
+        } finally {
+          if (_lockPath != null) _leases.remove(_lockPath);
+        }
+      }
     });
     _pending = result.then<void>((_) {}, onError: (Object _, StackTrace __) {});
     return result;

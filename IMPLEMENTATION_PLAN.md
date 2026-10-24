@@ -5,7 +5,7 @@
 - [x] M2: Read-only pager and B-tree traversal; open SQLite-created files and compare records.
 - [x] M3: Catalog, tokenizer, parser, single-table SELECT execution and differential tests (M3 subset; full semantics remain M6).
 - [x] M4: Write pager, rowid B-tree mutation, INSERT/UPDATE/DELETE and rollback journal (simple unindexed tables; durability requires pre-provisioned storage contract).
-- [ ] M5: Transactions, savepoints, locking and WAL with recovery tests.
+- [ ] M5: Transactions, savepoints, locking and WAL with recovery tests. Partial: transaction/savepoint control, exclusive owner lease and offline WAL recovery verified; live WAL writing/checkpoint coordination and isolate ownership remain unfinished.
 - [ ] M6: Complete SQL semantics, indexes, planner, functions and PRAGMAs.
 - [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.
 - [ ] M8: Advanced extensions, JSON/JSONB, FTS, R-tree, virtual tables.
