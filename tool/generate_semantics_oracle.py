@@ -283,12 +283,33 @@ def main():
       'round(1.23456789,30)','round(0.000000000000000000000000123456789,30)','round(1e999,2)',
       "round('12.34x',1)","round(12.34,'bad')",'round(NULL,2)','round(1,-5)','round(-0.1)',
     ]]
+    queries += ['SELECT dart_counter() AS v',
+      'SELECT dart_counter() AS v FROM sample WHERE id>0 AND id<=3 ORDER BY dart_counter()',
+      'SELECT dart_counter() AS v FROM sample WHERE id>0 AND id<=3 ORDER BY v',
+      'SELECT abs(-9223372036854775808),count(*) FROM sample HAVING 0',
+      'SELECT id AS value,value AS old_value FROM sample WHERE id>0 AND id<=3 ORDER BY value DESC',
+      'SELECT i FROM types ORDER BY 1 COLLATE BINARY NULLS LAST',
+      'SELECT id FROM sample ORDER BY 0 COLLATE BINARY',
+      'SELECT id%2,sum(id) FILTER (WHERE id<3) FROM sample WHERE id>0 AND id<=5 GROUP BY id%2 ORDER BY sum(id) FILTER (WHERE id>3)',
+    ]
+    queries += ['SELECT i FROM types ORDER BY TRUE', 'SELECT i FROM types ORDER BY FALSE',
+      'SELECT i FROM types ORDER BY +1 NULLS LAST','SELECT i FROM types ORDER BY -(-1) NULLS LAST',
+      'SELECT i FROM types ORDER BY -1','SELECT count(*) FROM sample GROUP BY TRUE',
+      'SELECT id%2,count(*) FROM sample WHERE id>0 AND id<=5 GROUP BY +1 ORDER BY 1',
+      'SELECT count(*) FROM sample GROUP BY -1',
+      "SELECT value AS v,count(*) FROM sample GROUP BY 1 COLLATE NOCASE ORDER BY v LIMIT 3",
+    ]
     cases = []
     for fixture in manifest['fixtures']:
         with sqlite3.connect(f"file:{ROOT/fixture['file']}?mode=ro",uri=True) as c:
             c.create_function('dart_twice',1,lambda value:None if value is None else value*2)
             c.create_aggregate('dart_sum',1,DartSum)
             for sql in queries:
+                counter=[0]
+                def next_counter():
+                    counter[0]+=1
+                    return counter[0]
+                c.create_function('dart_counter',0,next_counter)
                 parameters = [128] if sql.endswith('id=?') else []
                 case={'file':fixture['file'],'sql':sql,'parameters':[encode(v) for v in parameters]}
                 try:

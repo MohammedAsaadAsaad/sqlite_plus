@@ -4,10 +4,12 @@ import 'values.dart';
 
 final class TriggerDefinition {
   TriggerDefinition(this.name, this.table, this.timing, this.event,
-      this.columns, this.when, this.statements);
+      this.columns, this.when, this.statements,
+      [this.whenSql]);
   final String name, table, timing, event;
   final List<String> columns, statements;
   final Expr? when;
+  final String? whenSql;
   static TriggerDefinition parse(String sql) {
     final p = SqlParser(sql);
     p.require('CREATE');
@@ -42,7 +44,13 @@ final class TriggerDefinition {
       p.require('EACH');
       p.require('ROW');
     }
-    final when = p.take('WHEN') ? p.expression() : null;
+    Expr? when;
+    String? whenSql;
+    if (p.take('WHEN')) {
+      final start = p.current.offset;
+      when = p.expression();
+      whenSql = sql.substring(start, p.current.offset);
+    }
     p.require('BEGIN');
     final end = p.tokens.lastIndexWhere((token) => token.keyword == 'END');
     if (end < p.position) throw const SqlException('Unterminated trigger');
@@ -63,14 +71,18 @@ final class TriggerDefinition {
     p.position = end + 1;
     p.finish();
     return TriggerDefinition(
-        name, table, timing, event, columns, when, statements);
+        name, table, timing, event, columns, when, statements, whenSql);
   }
 }
 
 final class TriggerIgnore implements Exception {}
 
 final class RaiseExpr extends Expr {
-  RaiseExpr(this.action, this.message);
+  RaiseExpr(this.action, this.message) {
+    if (!['ABORT', 'FAIL', 'ROLLBACK', 'IGNORE'].contains(action)) {
+      throw const SqlException('Invalid RAISE policy');
+    }
+  }
   final String action;
   final Expr? message;
   @override
@@ -83,12 +95,11 @@ final class RaiseExpr extends Expr {
       throw const SqlException('RAISE is only valid in a trigger');
     }
     if (action == 'IGNORE') throw TriggerIgnore();
-    if (action != 'ABORT') {
-      throw const SqlException('Trigger RAISE policy unsupported');
-    }
     final value = message?.evaluate(context);
-    throw SqlException(value == null
+    final text = value == null
         ? 'constraint failed'
-        : stringify(value, context.encoding));
+        : stringify(value, context.encoding);
+    if (action == 'ABORT') throw SqlException(text);
+    throw SqlTriggerFailure(action, text);
   }
 }

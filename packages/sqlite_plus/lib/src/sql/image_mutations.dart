@@ -24,6 +24,16 @@ final class MutationImage {
   final BigInt? lastRowid;
 }
 
+/// A failed SQL statement may retain prior work (FAIL), or roll back its owner
+/// transaction. Only the mutable connection can apply that commit boundary.
+final class MutationFailure implements Exception {
+  MutationFailure(this.error,
+      {this.partialImage, this.rollbackTransaction = false});
+  final SqlException error;
+  final Uint8List? partialImage;
+  final bool rollbackTransaction;
+}
+
 final class _Table {
   _Table(this.schema, this.sql, this.rows);
   final CatalogTable schema;
@@ -437,19 +447,33 @@ final class ImageMutations {
     return result;
   }
 
+  final List<EvalContext> _triggerContexts = [];
+  EvalContext _constantContext(List<Object?> parameters) {
+    final trigger = _triggerContexts.lastOrNull;
+    return EvalContext(
+        {...?trigger?.row}, {...?trigger?.affinities}, parameters, encoding)
+      ..collations = {...?trigger?.collations}
+      ..inTrigger = trigger != null;
+  }
+
   EvalContext _context(_Table table, TableRow row, List<Object?> params) {
     final values = _row(table, row);
     final prefix = asciiLower(table.schema.name);
+    final trigger = _triggerContexts.lastOrNull;
     return EvalContext({
+      ...?trigger?.row,
       ...values,
       for (final entry in values.entries) '$prefix.${entry.key}': entry.value
     }, {
+      ...?trigger?.affinities,
       for (final col in table.schema.columns) ...{
         asciiLower(col.name): col.affinity,
         '$prefix.${asciiLower(col.name)}': col.affinity
       }
     }, params, encoding)
+      ..inTrigger = trigger != null
       ..collations = {
+        ...?trigger?.collations,
         for (final col in table.schema.columns) ...{
           asciiLower(col.name): col.collation,
           '$prefix.${asciiLower(col.name)}': col.collation
@@ -799,7 +823,28 @@ final class ImageMutations {
         schemaChanged: schemaChanged);
   }
 
-  final Set<String> _activeTriggers = {};
+  final List<String> _activeTriggers = [];
+  bool _recursiveTriggers = false;
+
+  Future<QueryResult> _triggerSelect(String sql) async {
+    final parsed = SqlParser(sql).select();
+    if (parsed.parameterCount != 0) {
+      throw const SqlException('Parameters prohibited in trigger SELECT');
+    }
+    if (parsed.sources.isEmpty &&
+        parsed.items.any((item) => item.expression == null)) {
+      throw const SqlException('SELECT wildcard requires a source');
+    }
+    final storage = MemoryStorageBackend();
+    await storage.write(0, serialize());
+    final reader = await SqliteDatabase.openReadOnly(storage,
+        functions: SqlFunctionRegistry.current);
+    try {
+      return await reader.queryWithContext(sql, [], _triggerContexts.last);
+    } finally {
+      await reader.close();
+    }
+  }
 
   Future<bool> _fire(String timing, String event, _Table table, TableRow? old,
       TableRow? next, Set<String> columns,
@@ -815,12 +860,12 @@ final class ImageMutations {
       final key = asciiLower(trigger.name);
       if (trigger.timing != timing ||
           trigger.event != event ||
-          _activeTriggers.contains(key) ||
+          !_recursiveTriggers && _activeTriggers.contains(key) ||
           trigger.columns.isNotEmpty &&
               !trigger.columns.any(columns.contains)) {
         continue;
       }
-      if (_activeTriggers.length >= 64) {
+      if (_activeTriggers.length >= 1000) {
         throw const SqlException('Trigger recursion limit');
       }
       final values = <String, Object?>{
@@ -831,52 +876,44 @@ final class ImageMutations {
           for (final entry in _row(table, next).entries)
             'new.${entry.key}': entry.value,
       };
-      final context = (EvalContext(values, {}, [], encoding)..inTrigger = true);
-      if (trigger.when != null) {
-        trigger.when!.validate(values.keys.toSet());
-        if (truth(trigger.when!.evaluate(context), encoding) != true) continue;
+      final context = EvalContext(values, {}, [], encoding)..inTrigger = true;
+      for (final prefix in ['old', 'new']) {
+        for (final column in table.schema.columns) {
+          context.affinities['$prefix.${asciiLower(column.name)}'] = 'none';
+          context.collations['$prefix.${asciiLower(column.name)}'] =
+              column.collation;
+        }
+        for (final alias in ['rowid', '_rowid_', 'oid']) {
+          context.affinities.putIfAbsent('$prefix.$alias', () => 'none');
+        }
       }
       _activeTriggers.add(key);
+      _triggerContexts.add(context);
       try {
+        if (trigger.whenSql != null &&
+            (await _triggerSelect('SELECT 1 WHERE (${trigger.whenSql})'))
+                .rows
+                .isEmpty) {
+          continue;
+        }
         for (final statement in trigger.statements) {
           final parser = SqlParser(statement);
-          if (parser.take('SELECT')) {
-            // RAISE is evaluated in the trigger's row context.
-            final select = SqlParser(statement).select();
-            if (select.sources.isNotEmpty || select.table != null) {
-              throw const SqlException('Trigger SELECT sources unsupported');
-            }
-            if (select.groupBy.isNotEmpty ||
-                select.having != null ||
-                select.compounds.isNotEmpty ||
-                select.ctes.isNotEmpty ||
-                select.limit != null ||
-                select.offset != null) {
-              throw const SqlException('Trigger SELECT shape unsupported');
-            }
-            select.where?.validate(values.keys.toSet());
-            if (select.where != null &&
-                truth(select.where!.evaluate(context), encoding) != true) {
-              continue;
-            }
-            for (final projection in select.items) {
-              final expr = projection.expression;
-              if (expr == null) {
-                throw const SqlException('Trigger wildcard unsupported');
-              }
-              expr.validate(values.keys.toSet());
-              expr.evaluate(context);
-            }
+          if (['SELECT', 'WITH'].contains(parser.current.keyword)) {
+            await _triggerSelect(statement);
           } else {
-            final rewritten = _bindTrigger(statement, values);
-            await execute(rewritten.$1, rewritten.$2,
+            await execute(statement, [],
                 foreignKeys: foreignKeys, inTransaction: inTransaction);
           }
         }
       } on TriggerIgnore {
         return false;
       } finally {
-        _activeTriggers.remove(key);
+        final depth = _activeTriggers.length;
+        _activeTriggers.removeLast();
+        _triggerContexts.removeLast();
+        // Future listeners can unwind synchronously. Break long return/error
+        // chains so the SQL depth bound does not become a VM stack overflow.
+        if (depth % 32 == 0) await Future<void>.delayed(Duration.zero);
       }
     }
     return true;
@@ -1082,10 +1119,38 @@ final class ImageMutations {
     }
   }
 
+  int _executionDepth = 0;
   Future<MutationImage> execute(String sql, List<Object?> parameters,
       {bool foreignKeys = false,
       bool inTransaction = false,
-      bool compileOnly = false}) async {
+      bool compileOnly = false,
+      bool? recursiveTriggers}) async {
+    final outer = _executionDepth++ == 0;
+    try {
+      return await _execute(sql, parameters,
+          foreignKeys: foreignKeys,
+          inTransaction: inTransaction,
+          compileOnly: compileOnly,
+          recursiveTriggers: recursiveTriggers);
+    } on SqlTriggerFailure catch (error) {
+      if (!outer) rethrow;
+      if (error.action == 'ROLLBACK') {
+        throw MutationFailure(error, rollbackTransaction: true);
+      }
+      throw MutationFailure(error,
+          partialImage: serialize(
+              foreignKeys: foreignKeys, includeDeferred: !inTransaction));
+    } finally {
+      _executionDepth--;
+    }
+  }
+
+  Future<MutationImage> _execute(String sql, List<Object?> parameters,
+      {bool foreignKeys = false,
+      bool inTransaction = false,
+      bool compileOnly = false,
+      bool? recursiveTriggers}) async {
+    if (recursiveTriggers != null) _recursiveTriggers = recursiveTriggers;
     final p = SqlParser(sql);
     if (p.take('CREATE')) {
       final unique = p.take('UNIQUE');
@@ -1129,27 +1194,11 @@ final class ImageMutations {
           if (body.tokens.any((t) => t.keyword == 'RETURNING')) {
             throw const SqlException('RETURNING prohibited in trigger bodies');
           }
-          if (body.take('SELECT')) {
+          if (['SELECT', 'WITH'].contains(body.current.keyword)) {
             final select = SqlParser(statement).select();
-            if (select.sources.isNotEmpty ||
-                select.ctes.isNotEmpty ||
-                select.groupBy.isNotEmpty ||
-                select.having != null ||
-                select.compounds.isNotEmpty ||
-                select.limit != null ||
-                select.offset != null ||
-                select.parameterCount != 0) {
-              throw const SqlException('Trigger SELECT shape unsupported');
-            }
-            for (final expr in [
-              ...select.items.map((item) => item.expression),
-              select.where
-            ]) {
-              if (expr == null) continue;
-              expr.validate(values.keys.toSet());
-              if (expr.containsAggregate || expr.containsWindow) {
-                throw const SqlException('Aggregate/window in trigger SELECT');
-              }
+            if (select.parameterCount != 0) {
+              throw const SqlException(
+                  'Parameters prohibited in trigger SELECT');
             }
           } else {
             if (!['INSERT', 'UPDATE', 'DELETE']
@@ -1631,7 +1680,8 @@ final class ImageMutations {
     };
     final valid = {
       ...writable,
-      for (final col in writable) '${asciiLower(name)}.$col'
+      for (final col in writable) '${asciiLower(name)}.$col',
+      ...?_triggerContexts.lastOrNull?.row.keys
     };
     final input = <String>[];
     final inserts = <List<Expr>>[];
@@ -1672,20 +1722,25 @@ final class ImageMutations {
         }
         final query = sql.substring(p.current.offset, p.tokens[tail].offset);
         final statement = SqlParser(query).select();
-        final storage = MemoryStorageBackend();
-        await storage.write(0, serialize());
-        final db = await SqliteDatabase.openReadOnly(storage,
-            functions: SqlFunctionRegistry.current);
-        try {
-          final result = await db.query(
-              query, parameters.take(statement.parameterCount).toList());
-          if (result.columns.length != input.length) {
-            throw const SqlException('INSERT SELECT width mismatch');
+        if (!compileOnly) {
+          final storage = MemoryStorageBackend();
+          await storage.write(0, serialize());
+          final db = await SqliteDatabase.openReadOnly(storage,
+              functions: SqlFunctionRegistry.current);
+          try {
+            final params = parameters.take(statement.parameterCount).toList();
+            final result = _triggerContexts.isEmpty
+                ? await db.query(query, params)
+                : await db.queryWithContext(
+                    query, params, _triggerContexts.last);
+            if (result.columns.length != input.length) {
+              throw const SqlException('INSERT SELECT width mismatch');
+            }
+            inserts.addAll(
+                result.rows.map((row) => row.map(Literal.new).toList()));
+          } finally {
+            await db.close();
           }
-          inserts
-              .addAll(result.rows.map((row) => row.map(Literal.new).toList()));
-        } finally {
-          await db.close();
         }
         p.position = tail;
         p.parameterCount = statement.parameterCount;
@@ -1696,7 +1751,7 @@ final class ImageMutations {
           final row = <Expr>[];
           do {
             final expr = p.expression();
-            expr.validate({});
+            expr.validate(_triggerContexts.lastOrNull?.row.keys.toSet() ?? {});
             if (expr.containsAggregate || expr.containsWindow) {
               throw const SqlException('Aggregate in INSERT');
             }
@@ -2162,14 +2217,20 @@ final class ImageMutations {
         : table.rows.map((r) => r.rowId).reduce((a, b) => a > b ? a : b);
     var sequenceChanged = false;
     if (insert) {
+      final triggered = other.any((o) =>
+          o.type == 'trigger' && asciiLower(o.tableName) == asciiLower(name));
+      BigInt largestRowid() => table.rows.isEmpty
+          ? BigInt.zero
+          : table.rows.map((r) => r.rowId).reduce((a, b) => a > b ? a : b);
       for (final expressions in inserts) {
+        if (triggered) insertMax = largestRowid();
         final data = <String, Object?>{
           for (final c in schema.columns)
             asciiLower(c.name): c.defaultExpression
                     ?.evaluate(EvalContext({}, {}, bound, encoding)) ??
                 c.defaultValue
         };
-        final context = EvalContext({}, {}, bound, encoding);
+        final context = _constantContext(bound);
         for (var i = 0; i < input.length; i++) {
           data[input[i]] = expressions[i].evaluate(context);
         }
@@ -2188,15 +2249,23 @@ final class ImageMutations {
         final high = auto && (_sequences[asciiLower(name)] ?? BigInt.zero) > max
             ? _sequences[asciiLower(name)]!
             : max;
-        final rowid = requested == null ? high + BigInt.one : id(requested);
-        if (rowid >= BigInt.one << 63) {
-          throw const SqlException('Automatic rowid exhausted');
-        }
+        var rowid = requested == null ? high + BigInt.one : id(requested);
         final previousChanges = changes;
-        final next = _physical(table, data, rowid);
-        if (!await _fire('BEFORE', 'INSERT', table, null, next, {},
+        var next = _physical(table, data, rowid);
+        final before =
+            requested == null ? _physical(table, data, -BigInt.one) : next;
+        if (!await _fire('BEFORE', 'INSERT', table, null, before, {},
             foreignKeys: foreignKeys, inTransaction: inTransaction)) {
           continue;
+        }
+        if (requested == null && triggered) {
+          final max = largestRowid();
+          final sequence = _sequences[asciiLower(name)] ?? BigInt.zero;
+          rowid = (auto && sequence > max ? sequence : max) + BigInt.one;
+          next = _physical(table, data, rowid);
+        }
+        if (rowid >= BigInt.one << 63) {
+          throw const SqlException('Automatic rowid exhausted');
         }
         final handled = upserts.isNotEmpty && await handleUpsert(next);
         if (!handled) accept(next);

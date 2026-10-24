@@ -418,7 +418,8 @@ final class SqliteDatabase {
 
   QueryResult _evaluate(SelectStatement statement, List<Object?> bound,
       CatalogTable? table, List<RowValues> input,
-      {SqlRows Function(SelectStatement, EvalContext)? subquery}) {
+      {SqlRows Function(SelectStatement, EvalContext)? subquery,
+      bool inTrigger = false}) {
     final columns = table?.columns ?? <CatalogColumn>[];
     final collations = {
       for (final column in columns) asciiLower(column.name): column.collation
@@ -458,12 +459,15 @@ final class SqliteDatabase {
       for (final item in items) asciiLower(item.label): item.expression!
     };
     for (var expr in statement.groupBy) {
-      if (expr is Literal && expr.value is BigInt) {
-        final ordinal = expr.value as BigInt;
+      final ordinal = expressionOrdinal(expr);
+      if (ordinal != null) {
         if (ordinal < BigInt.one || ordinal > BigInt.from(items.length)) {
           throw const SqlException('GROUP BY index out of range');
         }
+        final collation = expr.explicitCollation(
+            EvalContext({}, {}, [], _pager.header.textEncoding));
         expr = items[ordinal.toInt() - 1].expression!;
+        if (collation != null) expr = CollateExpr(expr, collation);
       } else if (expr is ColumnExpr &&
           !names.contains(expr.key) &&
           aliasExpressions.containsKey(expr.key)) {
@@ -488,23 +492,46 @@ final class SqliteDatabase {
     }
     final windowCache = <Expr, Object>{};
 
-    for (final term in statement.order) {
-      final expr = term.expression;
-      if (expr is Literal &&
-          expr.value is BigInt &&
-          ((expr.value as BigInt) < BigInt.one ||
-              (expr.value as BigInt) > BigInt.from(items.length))) {
-        throw const SqlException('ORDER BY index out of range');
-      }
-    }
     final aliases = items.map((item) => asciiLower(item.label)).toSet();
     for (final term in statement.order) {
       term.expression.validate({...names, ...aliases});
     }
+    int projectionSlot(Expr expression) {
+      final operand = indexOperand(expression);
+      final ordinal = expressionOrdinal(expression);
+      if (ordinal != null) {
+        if (ordinal < BigInt.one || ordinal > BigInt.from(items.length)) {
+          throw const SqlException('ORDER BY index out of range');
+        }
+        return ordinal.toInt() - 1;
+      }
+      if (operand is ColumnExpr) {
+        final alias =
+            items.indexWhere((item) => asciiLower(item.label) == operand.key);
+        if (alias >= 0) return alias;
+      }
+      return items.indexWhere(
+          (item) => sameExpression(indexOperand(item.expression!), operand));
+    }
+
+    final orderSlots =
+        statement.order.map((term) => projectionSlot(term.expression)).toList();
+    final havingAliases = <String>{};
+    void havingReferences(Expr expr) {
+      havingAliases.addAll(expr.unaggregatedColumns);
+      for (final query in _nested(expr)) {
+        for (final item in _expressions(query)) {
+          havingReferences(item);
+        }
+      }
+    }
+
+    if (statement.having != null) havingReferences(statement.having!);
     statement.limit?.validate({});
     statement.offset?.validate({});
     final constantContext =
         EvalContext({}, {}, bound, _pager.header.textEncoding)
+          ..inTrigger = inTrigger
           ..subquery = subquery
           ..collations = collations;
     int? count(Expr? expr) {
@@ -531,6 +558,7 @@ final class SqliteDatabase {
     final filtered = input.where((row) {
       final ctx =
           EvalContext(row, affinities, bound, _pager.header.textEncoding)
+            ..inTrigger = inTrigger
             ..subquery = subquery
             ..collations = collations;
       return statement.where == null ||
@@ -544,6 +572,7 @@ final class SqliteDatabase {
       for (final row in filtered) {
         final ctx =
             EvalContext(row, affinities, bound, _pager.header.textEncoding)
+              ..inTrigger = inTrigger
               ..subquery = subquery
               ..collations = collations;
         final keys = groupBy.map((expr) => expr.evaluate(ctx)).toList();
@@ -580,6 +609,7 @@ final class SqliteDatabase {
           for (final candidate in group.$2) {
             final context = EvalContext(
                 candidate, affinities, bound, _pager.header.textEncoding)
+              ..inTrigger = inTrigger
               ..subquery = subquery
               ..collations = collations;
             if (fn.filter != null &&
@@ -606,6 +636,7 @@ final class SqliteDatabase {
               ..windowRows = filtered
               ..windowRow = group.$2.isEmpty ? null : group.$2.first
               ..windowCache = windowCache
+              ..inTrigger = inTrigger
               ..subquery = subquery
               ..collations = collations;
         if (aggregate) {
@@ -621,6 +652,7 @@ final class SqliteDatabase {
         }
         for (final item in items) {
           if (!item.expression!.containsWindow &&
+              havingAliases.contains(asciiLower(item.label)) &&
               !names.contains(asciiLower(item.label))) {
             row[asciiLower(item.label)] = item.expression!.evaluate(ctx);
           }
@@ -666,30 +698,42 @@ final class SqliteDatabase {
             ..windowRows = windowRows
             ..windowRow = row
             ..windowCache = windowCache
+            ..inTrigger = inTrigger
             ..subquery = subquery
             ..collations = collations;
       orderCtx.windowGroups = windowGroups;
       orderCtx.windowAggregates = windowAggregates;
       orderCtx.aggregateValues.addAll(ctx.aggregateValues);
       final keys = <Object?>[];
-      for (final term in statement.order) {
-        final expr = term.expression;
-        if (expr is Literal && expr.value is BigInt) {
-          final ordinal = expr.value as BigInt;
-          if (ordinal < BigInt.one || ordinal > BigInt.from(values.length)) {
-            throw const SqlException('ORDER BY index out of range');
-          }
-          keys.add(values[ordinal.toInt() - 1]);
-        } else {
-          keys.add(expr.evaluate(orderCtx));
-        }
+      for (var i = 0; i < statement.order.length; i++) {
+        final slot = orderSlots[i];
+        keys.add(slot >= 0
+            ? values[slot]
+            : statement.order[i].expression.evaluate(orderCtx));
       }
       output.add((values, keys, output.length));
     }
+    final sortTerms = [
+      for (var i = 0; i < statement.order.length; i++)
+        OrderTerm(
+            CollateExpr(
+                statement.order[i].expression,
+                statement.order[i].expression
+                        .explicitCollation(constantContext) ??
+                    (orderSlots[i] >= 0
+                        ? items[orderSlots[i]]
+                            .expression!
+                            .collation(constantContext)
+                        : statement.order[i].expression
+                            .collation(constantContext)) ??
+                    'binary'),
+            statement.order[i].descending,
+            statement.order[i].nullsFirst)
+    ];
     output.sort((a, b) {
       for (var i = 0; i < statement.order.length; i++) {
         final comparison =
-            statement.order[i].compare(a.$2[i], b.$2[i], constantContext);
+            sortTerms[i].compare(a.$2[i], b.$2[i], constantContext);
         if (comparison != 0) return comparison;
       }
       return a.$3.compareTo(b.$3);

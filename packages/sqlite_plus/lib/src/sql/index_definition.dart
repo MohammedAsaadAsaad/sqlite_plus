@@ -42,7 +42,8 @@ String? expressionSignature(Expr expression) {
         e.key,
         e.distinct,
         e.star,
-        e.arguments.map(shape).toList()
+        e.arguments.map(shape).toList(),
+        e.filter == null ? 'absent' : shape(e.filter!)
       ];
     }
     if (e is CastExpr) return ['cast', e.type.toUpperCase(), shape(e.operand)];

@@ -53,6 +53,9 @@ void main() {
       tearDownAll(() => database.close());
       for (final entry in cases.where((c) => c['file'] == 'sqlite-$size.db')) {
         test(entry['sql'] as String, () async {
+          var counter = 0;
+          database.functions
+              .registerScalar('dart_counter', 0, (args) => ++counter);
           if (entry.containsKey('error')) {
             await expectLater(
                 database.query(entry['sql'] as String,

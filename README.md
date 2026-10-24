@@ -288,8 +288,9 @@ The engine now supports:
   VALUES/SELECT, UPDATE/DELETE, OR IGNORE/REPLACE, and WITHOUT ROWID writes.
 - `PRAGMA foreign_keys=1` enables FK checks/actions. Deferred keys validate at
   outer commit. Foreign keys default off. BEFORE/AFTER row triggers support
-  OLD/NEW, UPDATE OF, WHEN, DML bodies and scalar SELECT/RAISE(ABORT/IGNORE).
-  Recursive self-trigger invocation and INSTEAD OF view triggers are unsupported.
+  OLD/NEW, UPDATE OF, WHEN, DML and SELECT/WITH bodies, WHEN subqueries, and RAISE(ABORT/FAIL/ROLLBACK/IGNORE).
+  Recursive invocation is controlled by PRAGMA recursive_triggers (default off,
+  1,000-level bound). INSTEAD OF view triggers remain unsupported.
 
 `execute` also accepts RETURNING projections on direct INSERT/UPDATE/DELETE
 rows; `MutationResult.returning` contains the QueryResult, including an empty
@@ -306,6 +307,17 @@ Column rename rewrites supported CHECK/key/index/FK references; explicit DROP
 COLUMN rewrites stored records and rejects key/index/CHECK/FK dependencies.
 Dependent view/trigger rewrites remain open; alterations involving them reject
 before mutation. No automatic destructive migration is performed.
+
+RAISE(FAIL) reports an error while retaining prior rows and trigger effects;
+these partial images cross the pager commit boundary outside an explicit
+transaction. RAISE(ROLLBACK) discards the active transaction and savepoints.
+ABORT discards the statement; foreign-key failures still abort the statement.
+Owner clients release logical transaction ownership when ROLLBACK ends it.
+
+OLD/NEW preserve stored value types and declared collations, with no comparison
+affinity. BEFORE INSERT sees an unassigned automatic rowid as -1; actual
+allocation follows BEFORE-trigger writes. SELECT and INSERT SELECT bodies use
+working-image snapshots and typed pseudo-row context without SQL interpolation.
 
 Expression indexes evaluate deterministic scalar expressions; partial indexes
 store and enforce uniqueness only for rows whose WHERE predicate is true.
@@ -333,7 +345,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 1,161 differential queries across the
+The pinned M6 oracle currently contains 1,212 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 

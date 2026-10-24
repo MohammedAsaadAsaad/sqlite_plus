@@ -14,6 +14,12 @@ final class SqlConstraintException extends SqlException {
   const SqlConstraintException(super.message, [super.offset]);
 }
 
+/// Internal trigger control flow; still an SQL error to API callers.
+final class SqlTriggerFailure extends SqlException {
+  const SqlTriggerFailure(this.action, super.message);
+  final String action;
+}
+
 enum SqlTokenKind { identifier, string, number, blob, parameter, symbol, end }
 
 final class SqlToken {

@@ -24,7 +24,8 @@ final class EvalContext {
       ..subquery = subquery
       ..collations = collations
       ..group = windowGroups[values]
-      ..schemaExpression = schemaExpression;
+      ..schemaExpression = schemaExpression
+      ..inTrigger = inTrigger;
     result.windowGroups = windowGroups;
     result.windowAggregates = windowAggregates;
     result.aggregateValues.addAll(windowAggregates[values] ?? {});
@@ -74,6 +75,28 @@ final class Literal extends Expr {
   final String? spelling;
   @override
   Object? evaluate(EvalContext context) => value;
+}
+
+/// SQLite treats signed integer syntax (including COLLATE wrappers) as result
+/// ordinals, but TRUE/FALSE and real literals remain ordinary constants.
+BigInt? expressionOrdinal(Expr expression) {
+  var sign = BigInt.one;
+  var expr = expression;
+  while (true) {
+    if (expr is CollateExpr) {
+      expr = expr.operand;
+      continue;
+    }
+    if (expr is UnaryExpr && ['+', '-'].contains(expr.op)) {
+      if (expr.op == '-') sign = -sign;
+      expr = expr.operand;
+      continue;
+    }
+    break;
+  }
+  return expr is Literal && expr.value is BigInt && expr.spelling == null
+      ? (expr.value as BigInt) * sign
+      : null;
 }
 
 final class ColumnExpr extends Expr {

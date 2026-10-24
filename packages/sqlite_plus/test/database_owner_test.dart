@@ -24,6 +24,25 @@ void main() {
     return path;
   }
 
+  test(
+      'RAISE ROLLBACK releases logical transaction ownership after the SQL error',
+      () async {
+    final owner = await DatabaseOwner.open(provision(wal: false),
+        directoryEntriesDurable: true);
+    addTearDown(owner.close);
+    await owner.client.execute(
+        "CREATE TRIGGER stop BEFORE UPDATE ON notes BEGIN SELECT RAISE(ROLLBACK,'stop'); END");
+    final other = DatabaseClient.connect(owner.sendPort);
+    addTearDown(other.close);
+    await owner.client.execute('BEGIN');
+    await expectLater(owner.client.execute('UPDATE notes SET n=1 WHERE id=1'),
+        throwsA(isA<SqlException>()));
+    expect((await other.query('SELECT id FROM notes WHERE id=1')).rows, [
+      [BigInt.one]
+    ]);
+    await other.execute('BEGIN');
+    await other.execute('ROLLBACK');
+  });
   test('RETURNING crosses the owner isolate without losing result types',
       () async {
     final owner = await DatabaseOwner.open(provision(wal: false),

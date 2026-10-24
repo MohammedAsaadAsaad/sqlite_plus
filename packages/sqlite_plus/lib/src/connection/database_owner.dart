@@ -246,6 +246,7 @@ Future<void> _runOwner(List<Object?> args) async {
           throw ArgumentError('Unknown owner operation');
         }
       } catch (error) {
+        if (!active.inTransaction) transactionOwner = null;
         reply.send([
           'error',
           error is SqlException ? 'sql' : 'state',

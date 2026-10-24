@@ -342,3 +342,31 @@
   rows, with forced scans, raw timings, image size and whole-process RSS.
 - M6 remains open for the documented trigger/dependency/generated-column and
   broader SQL conformance work; no full milestone-completion claim is made.
+
+## 2026-10-24 — M6 trigger queries, recursion and RAISE policies
+
+- Added SELECT/WITH trigger bodies and WHEN subqueries against working images.
+  OLD/NEW values keep their types and declared collations, without comparison
+  affinity, matching the pinned reference. Removed runtime SQL interpolation;
+  compile-only trigger validation no longer executes INSERT SELECT bodies.
+- Added connection-local PRAGMA recursive_triggers, default off, with a 1,000-frame
+  bound. Long success/error unwinds yield periodically to avoid Dart Future
+  listener stack overflow. Tests exercise successful deep recursion, depth errors,
+  full statement rollback, setting changes and savepoint behavior.
+- Corrected automatic rowid timing: BEFORE INSERT sees -1 before allocation;
+  final rowid allocation and subsequent multirow inserts account for trigger
+  writes to the target table. Preserved trailing WHEN comments safely.
+- Added RAISE FAIL partial-image persistence and RAISE ROLLBACK transaction/
+  savepoint restoration. Owner RPC releases transaction ownership after rollback
+  errors. Tested pager commits, poisoned I/O failure and FK precedence over FAIL.
+- Fixed redundant scalar projection evaluation and output-expression ORDER BY
+  reuse; preserved FILTER distinctions in expression matching. Added pinned
+  callback-count results, HAVING laziness, alias/ordinal collation cases, signed
+  ordinal syntax and TRUE/FALSE constant behavior. The M6 oracle has 1,212 cases.
+- The native verifier now compares direct DML change counts as well as rows,
+  RETURNING, metadata and integrity across 367 snapshots per encoding (1,101
+  snapshots total). Advanced view triggers and remaining M6 audit items stay open.
+- Final verification: all 2,112 engine tests pass; locked dependencies, formatting
+  and fatal-info analysis pass for all packages. All fixture/oracle hashes,
+  native mutation/transaction cross-open checks, byte-exact rollback recovery
+  and WAL/checkpoint/owner-handoff interoperability checks pass.

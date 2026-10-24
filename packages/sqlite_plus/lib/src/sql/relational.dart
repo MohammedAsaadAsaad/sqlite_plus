@@ -429,6 +429,7 @@ extension _RelationalQueries on SqliteDatabase {
           if (!equal) continue;
           final ctx = EvalContext(
               scope(combined), af, bound, _pager.header.textEncoding)
+            ..inTrigger = outer?.inTrigger ?? false
             ..subquery =
                 (query, context) => _relational(query, bound, cache, context);
           if (source.on != null &&
@@ -470,7 +471,8 @@ extension _RelationalQueries on SqliteDatabase {
       for (final name in outer.row.keys) {
         if (!columns.any((c) => asciiLower(c.name) == name)) {
           columns.add(CatalogColumn(
-              name, _affinityType(outer.affinities[name] ?? 'none')));
+              name, _affinityType(outer.affinities[name] ?? 'none'),
+              collation: outer.collations[name] ?? 'binary'));
         }
       }
     }
@@ -508,6 +510,7 @@ extension _RelationalQueries on SqliteDatabase {
     final component = _copy(s, items, tail: s.compounds.isEmpty);
     var result = _evaluate(
         component, bound, virtual, joined.map(scope).toList(),
+        inTrigger: outer?.inTrigger ?? false,
         subquery: (query, context) =>
             _relational(query, bound, cache, context));
     if (s.compounds.isEmpty) return result;
@@ -570,8 +573,9 @@ extension _RelationalQueries on SqliteDatabase {
     int count(Expr? expr, int fallback) {
       if (expr == null) return fallback;
       expr.validate({});
-      var value =
-          expr.evaluate(EvalContext({}, {}, bound, _pager.header.textEncoding));
+      var value = expr.evaluate(
+          EvalContext({}, {}, bound, _pager.header.textEncoding)
+            ..inTrigger = outer?.inTrigger ?? false);
       if (value is String) value = numeric(value);
       if (value is double &&
           value.isFinite &&

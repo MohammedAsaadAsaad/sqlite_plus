@@ -28,6 +28,7 @@ final class MutableSqliteDatabase {
   bool _closed = false;
   bool _failed = false;
   bool _foreignKeys = false;
+  bool _recursiveTriggers = false;
   final functions = SqlFunctionRegistry();
   Uint8List? _transactionStart;
   bool _explicitTransaction = false;
@@ -73,15 +74,21 @@ final class MutableSqliteDatabase {
           [List<Object?> parameters = const []]) =>
       _exclusive(() async {
         final pp = SqlParser(sql);
-        if (pp.take('PRAGMA') && pp.take('FOREIGN_KEYS')) {
+        if (pp.take('PRAGMA') &&
+            ['FOREIGN_KEYS', 'RECURSIVE_TRIGGERS']
+                .contains(pp.current.keyword)) {
+          final name = asciiLower(pp.identifier());
           pp.finish();
           if (parameters.isNotEmpty) {
             throw const SqlException('PRAGMA bindings unsupported');
           }
           return QueryResult([
-            'foreign_keys'
+            name
           ], [
-            [boolean(_foreignKeys)]
+            [
+              boolean(
+                  name == 'foreign_keys' ? _foreignKeys : _recursiveTriggers)
+            ]
           ]);
         }
         final storage = MemoryStorageBackend();
@@ -100,19 +107,33 @@ final class MutableSqliteDatabase {
         final parser = SqlParser(sql);
         if (parser.take('PRAGMA')) {
           final name = asciiLower(parser.identifier());
-          if (!['foreign_keys', 'user_version', 'application_id']
-              .contains(name)) {
+          if (![
+            'foreign_keys',
+            'recursive_triggers',
+            'user_version',
+            'application_id'
+          ].contains(name)) {
             throw const SqlException('Unsupported writable PRAGMA');
           }
           parser.require('=');
-          final expr = parser.expression();
+          final word = asciiLower(parser.current.text);
+          final Expr expr;
+          if (['foreign_keys', 'recursive_triggers'].contains(name) &&
+              ['on', 'off', 'yes', 'no'].contains(word)) {
+            expr = Literal(boolean(['on', 'yes'].contains(word)));
+            parser.position++;
+          } else {
+            expr = parser.expression();
+          }
           parser.finish();
           expr.validate({});
           if (parameters.isNotEmpty) {
             throw const SqlException('PRAGMA bindings unsupported');
           }
           final value = expr.evaluate(EvalContext({}, {}, []));
-          if (name == 'foreign_keys') {
+          if (name == 'recursive_triggers') {
+            _recursiveTriggers = truth(value) == true;
+          } else if (name == 'foreign_keys') {
             if (!inTransaction) _foreignKeys = truth(value) == true;
           } else {
             var number = numeric(value);
@@ -151,9 +172,32 @@ final class MutableSqliteDatabase {
           }
           return _transaction(parser);
         }
-        final result = await (await ImageMutations.load(_image)).execute(
-            sql, parameters,
-            foreignKeys: _foreignKeys, inTransaction: inTransaction);
+        final MutationImage result;
+        try {
+          result = await (await ImageMutations.load(_image)).execute(
+              sql, parameters,
+              foreignKeys: _foreignKeys,
+              inTransaction: inTransaction,
+              recursiveTriggers: _recursiveTriggers);
+        } on MutationFailure catch (failure) {
+          if (failure.rollbackTransaction) {
+            if (inTransaction) {
+              _image = _transactionStart!;
+              _clearTransaction();
+            }
+          } else if (failure.partialImage != null) {
+            if (_journal != null && !inTransaction) {
+              try {
+                await _journal.commitImage(failure.partialImage!);
+              } catch (_) {
+                _failed = true;
+                rethrow;
+              }
+            }
+            _image = failure.partialImage!;
+          }
+          throw failure.error;
+        }
         if (!identical(result.image, _image)) {
           if (_journal != null && !inTransaction) {
             try {
