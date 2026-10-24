@@ -614,7 +614,7 @@ final class ImageMutations {
             type == 'TEXT' && value is String ||
             type == 'BLOB' && value is Uint8List;
         if (!valid) {
-          throw const SqlConstraintException(
+          throw const SqlDatatypeConstraint(
               'STRICT datatype constraint failed');
         }
       }
@@ -1178,12 +1178,14 @@ final class ImageMutations {
   }
 
   int _executionDepth = 0;
+  final List<String?> _conflictPolicies = [];
   Future<MutationImage> execute(String sql, List<Object?> parameters,
       {bool foreignKeys = false,
       bool inTransaction = false,
       bool compileOnly = false,
       bool? recursiveTriggers}) async {
     final outer = _executionDepth++ == 0;
+    _conflictPolicies.add(_conflictPolicies.lastOrNull);
     try {
       return await _execute(sql, parameters,
           foreignKeys: foreignKeys,
@@ -1200,6 +1202,7 @@ final class ImageMutations {
               foreignKeys: foreignKeys, includeDeferred: !inTransaction));
     } finally {
       _executionDepth--;
+      _conflictPolicies.removeLast();
     }
   }
 
@@ -1719,12 +1722,17 @@ final class ImageMutations {
     final update = !insert && p.take('UPDATE');
     if (!insert && !update) p.require('DELETE');
     var policy = 'ABORT';
-    if ((insert || update) && p.take('OR')) {
+    final explicitPolicy = (insert || update) && p.take('OR');
+    if (explicitPolicy) {
       policy = p.identifier().toUpperCase();
-      if (!['ABORT', 'IGNORE', 'REPLACE'].contains(policy)) {
+      if (!['ABORT', 'IGNORE', 'REPLACE', 'FAIL', 'ROLLBACK']
+          .contains(policy)) {
         throw const SqlException('Unsupported conflict policy');
       }
     }
+    _conflictPolicies[_conflictPolicies.length - 1] ??=
+        explicitPolicy ? policy : null;
+    policy = _conflictPolicies.last ?? policy;
     if (insert) p.require('INTO');
     if (!insert && !update) p.require('FROM');
     final name = p.identifier();
@@ -1981,9 +1989,6 @@ final class ImageMutations {
     if (table.view && upserts.isNotEmpty) {
       throw const SqlException('UPSERT on view unsupported');
     }
-    if (upserts.isNotEmpty && policy != 'ABORT') {
-      throw const SqlException('Combined conflict policies unsupported');
-    }
     final returning = <SelectItem>[];
     final hasReturning = p.take('RETURNING');
     if (hasReturning) {
@@ -2110,8 +2115,74 @@ final class ImageMutations {
         }
     };
 
-    void accept(TableRow next, {TableRow? replacing, String? overridePolicy}) {
+    bool conflictError(SqlConstraintException error, String activePolicy) {
+      if (error is SqlDatatypeConstraint) throw error;
+      if (activePolicy == 'IGNORE') return true;
+      if (activePolicy == 'FAIL' || activePolicy == 'ROLLBACK') {
+        throw SqlTriggerFailure(activePolicy, error.message);
+      }
+      throw error;
+    }
+
+    TableRow? prepare(TableRow next, String activePolicy) {
+      try {
+        var defaulted = false;
+        final candidate = _row(table, next);
+
+        for (final col in schema.columns) {
+          var value = candidate[asciiLower(col.name)];
+          if (value == null && col.notNull && activePolicy == 'REPLACE') {
+            value = col.defaultExpression?.evaluate(_constantContext(bound)) ??
+                col.defaultValue;
+            candidate[asciiLower(col.name)] = _stored(value, col);
+            value = candidate[asciiLower(col.name)];
+            defaulted = true;
+          }
+          if (value == null &&
+              (col.notNull ||
+                  (schema.withoutRowid ||
+                          col.strict && col.name != schema.rowidAlias) &&
+                      col.primaryKey != 0)) {
+            throw const SqlConstraintException('NOT NULL constraint failed');
+          }
+          if (col.strict && value != null) {
+            final type = col.declaredType.toUpperCase();
+            if (!(type == 'ANY' ||
+                ['INT', 'INTEGER'].contains(type) && value is BigInt ||
+                type == 'REAL' && (value is BigInt || value is double) ||
+                type == 'TEXT' && value is String ||
+                type == 'BLOB' && value is Uint8List)) {
+              throw const SqlDatatypeConstraint(
+                  'STRICT datatype constraint failed');
+            }
+          }
+        }
+        if (defaulted) next = _physical(table, candidate, next.rowId);
+        final candidateContext = _context(table, next, bound);
+        for (final check in [
+          ...schema.checks,
+          ...schema.columns.expand((c) => c.checks)
+        ]) {
+          if (truth(check.evaluate(candidateContext), encoding) == false) {
+            throw const SqlConstraintException('CHECK constraint failed');
+          }
+        }
+
+        return next;
+      } on SqlConstraintException catch (error) {
+        conflictError(error, activePolicy);
+        return null;
+      }
+    }
+
+    void accept(TableRow next,
+        {TableRow? replacing, String? overridePolicy, bool prepared = false}) {
       final activePolicy = overridePolicy ?? policy;
+      if (!prepared) {
+        final candidate = prepare(next, activePolicy);
+        if (candidate == null) return;
+        next = candidate;
+      }
       if (insert &&
           replacing == null &&
           upserts.isEmpty &&
@@ -2121,23 +2192,6 @@ final class ImageMutations {
               asciiLower(o.tableName) == asciiLower(name))) {
         if (!rowids.add(next.rowId)) {
           throw const SqlConstraintException('UNIQUE constraint failed: rowid');
-        }
-        final values = _row(table, next);
-        final context = _context(table, next, bound);
-        for (final column in schema.columns) {
-          if ((column.notNull ||
-                  schema.withoutRowid && column.primaryKey != 0) &&
-              values[asciiLower(column.name)] == null) {
-            throw const SqlConstraintException('NOT NULL constraint failed');
-          }
-        }
-        for (final check in [
-          ...schema.checks,
-          ...schema.columns.expand((c) => c.checks)
-        ]) {
-          if (truth(check.evaluate(context), encoding) == false) {
-            throw const SqlConstraintException('CHECK constraint failed');
-          }
         }
         for (final index in uniqueIndexes) {
           final key = keyFor(index, next);
@@ -2180,12 +2234,12 @@ final class ImageMutations {
       table.rows.add(next);
       try {
         _validate();
-      } on SqlConstraintException {
+      } on SqlConstraintException catch (error) {
         table.rows
           ..clear()
           ..addAll(old);
-        if (activePolicy == 'IGNORE') return;
-        rethrow;
+        conflictError(error, activePolicy);
+        return;
       }
       changes++;
       if (replacing == null && insert) last = next.rowId;
@@ -2222,38 +2276,6 @@ final class ImageMutations {
           }
         }
         if (conflict == null) continue;
-        // NOT NULL/CHECK/STRICT precede uniqueness resolution.
-        final candidate = _row(table, excluded);
-        final candidateContext = _context(table, excluded, bound);
-        for (final col in schema.columns) {
-          final value = candidate[asciiLower(col.name)];
-          if (value == null &&
-              (col.notNull ||
-                  (schema.withoutRowid ||
-                          col.strict && col.name != schema.rowidAlias) &&
-                      col.primaryKey != 0)) {
-            throw const SqlConstraintException('NOT NULL constraint failed');
-          }
-          if (col.strict && value != null) {
-            final type = col.declaredType.toUpperCase();
-            if (!(type == 'ANY' ||
-                ['INT', 'INTEGER'].contains(type) && value is BigInt ||
-                type == 'REAL' && (value is BigInt || value is double) ||
-                type == 'TEXT' && value is String ||
-                type == 'BLOB' && value is Uint8List)) {
-              throw const SqlConstraintException(
-                  'STRICT datatype constraint failed');
-            }
-          }
-        }
-        for (final check in [
-          ...schema.checks,
-          ...schema.columns.expand((c) => c.checks)
-        ]) {
-          if (truth(check.evaluate(candidateContext), encoding) == false) {
-            throw const SqlConstraintException('CHECK constraint failed');
-          }
-        }
         if (clause.nothing) return true;
         final context = _context(table, conflict, bound);
         final excludedValues = _row(table, excluded);
@@ -2287,18 +2309,24 @@ final class ImageMutations {
           }
         }
         final changed = _physical(table, values, rowid);
-        if (!await _fire('BEFORE', 'UPDATE', table, conflict, changed,
-            clause.assignments.keys.toSet(),
-            foreignKeys: foreignKeys, inTransaction: inTransaction)) {
+        final previousPolicy = _conflictPolicies.last;
+        _conflictPolicies[_conflictPolicies.length - 1] = 'ABORT';
+        try {
+          if (!await _fire('BEFORE', 'UPDATE', table, conflict, changed,
+              clause.assignments.keys.toSet(),
+              foreignKeys: foreignKeys, inTransaction: inTransaction)) {
+            return true;
+          }
+          accept(changed, replacing: conflict, overridePolicy: 'ABORT');
+          emit(changed);
+          if (foreignKeys) _referentialActions(table, conflict, changed, 0);
+          await _fire('AFTER', 'UPDATE', table, conflict, changed,
+              clause.assignments.keys.toSet(),
+              foreignKeys: foreignKeys, inTransaction: inTransaction);
           return true;
+        } finally {
+          _conflictPolicies[_conflictPolicies.length - 1] = previousPolicy;
         }
-        accept(changed, replacing: conflict, overridePolicy: 'ABORT');
-        emit(changed);
-        if (foreignKeys) _referentialActions(table, conflict, changed, 0);
-        await _fire('AFTER', 'UPDATE', table, conflict, changed,
-            clause.assignments.keys.toSet(),
-            foreignKeys: foreignKeys, inTransaction: inTransaction);
-        return true;
       }
       return false;
     }
@@ -2366,8 +2394,11 @@ final class ImageMutations {
         if (rowid >= BigInt.one << 63) {
           throw const SqlException('Automatic rowid exhausted');
         }
+        final candidate = prepare(next, policy);
+        if (candidate == null) continue;
+        next = candidate;
         final handled = upserts.isNotEmpty && await handleUpsert(next);
-        if (!handled) accept(next);
+        if (!handled) accept(next, prepared: true);
         if (!handled && changes > previousChanges) {
           emit(next);
           await _fire('AFTER', 'INSERT', table, null, next, {},
@@ -2425,7 +2456,7 @@ final class ImageMutations {
             }
           }
         }
-        final changed = _physical(table, data, rowid);
+        var changed = _physical(table, data, rowid);
         if (table.view) {
           if (await _fire('INSTEAD OF', 'UPDATE', table, row, changed,
               assignments.keys.toSet(),
@@ -2439,8 +2470,11 @@ final class ImageMutations {
             foreignKeys: foreignKeys, inTransaction: inTransaction)) {
           continue;
         }
+        final candidate = prepare(changed, policy);
+        if (candidate == null) continue;
+        changed = candidate;
         final previousChanges = changes;
-        accept(changed, replacing: row);
+        accept(changed, replacing: row, prepared: true);
         if (changes > previousChanges) {
           emit(changed);
           await _fire(

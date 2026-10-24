@@ -285,7 +285,7 @@ The engine now supports:
   `SUM(COUNT(*)) OVER (...)` and windows over registered aggregate results.
 - CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, safe ALTER TABLE ADD/RENAME/DROP COLUMN and table rename, defaults,
   NOT NULL/UNIQUE/CHECK, STRICT types, AUTOINCREMENT, INSERT VALUES/DEFAULT
-  VALUES/SELECT, UPDATE/DELETE, OR IGNORE/REPLACE, and WITHOUT ROWID writes.
+  VALUES/SELECT, UPDATE/DELETE, OR IGNORE/REPLACE/FAIL/ROLLBACK, and WITHOUT ROWID writes.
 - `PRAGMA foreign_keys=1` enables FK checks/actions. Deferred keys validate at
   outer commit. Foreign keys default off. BEFORE/AFTER row triggers support
   OLD/NEW, UPDATE OF, WHEN, DML and SELECT/WITH bodies, WHEN subqueries, and RAISE(ABORT/FAIL/ROLLBACK/IGNORE).
@@ -302,7 +302,7 @@ are rejected.
 
 UPSERT supports one or more ON CONFLICT clauses, explicit column/rowid targets,
 DO NOTHING, DO UPDATE with `excluded` values and an optional WHERE, including
-INSERT SELECT and RETURNING. Combined OR IGNORE/REPLACE plus UPSERT remains unsupported. Table renaming rewrites supported
+INSERT SELECT and RETURNING. INSERT conflict policies compose with UPSERT; DO UPDATE always uses ABORT. Table renaming rewrites supported
 index/FK/sequence metadata; it rejects dependent views/triggers before mutation.
 Column rename rewrites supported CHECK/key/index/FK references; explicit DROP
 COLUMN rewrites stored records and rejects key/index/CHECK/FK dependencies.

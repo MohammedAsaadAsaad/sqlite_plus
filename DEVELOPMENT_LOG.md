@@ -387,3 +387,21 @@
   cross-opens 390 schema/DML snapshots in each encoding (1,170 total), checking
   RETURNING, direct changes, metadata, rows and native integrity_check. M6 remains
   open for the remaining documented SQL/schema and conformance audit work.
+
+## 2026-10-24 — M6 SQL conflict policies and UPSERT combinations
+
+- Added INSERT/UPDATE OR FAIL and OR ROLLBACK, reusing verified partial-image and
+  transaction-owner rollback boundaries. NOT NULL/CHECK preparation precedes
+  uniqueness/UPSERT resolution; REPLACE applies declared NOT NULL defaults.
+- Allowed conflict policies with UPSERT; DO UPDATE and its trigger bodies always
+  abort on constraints. Explicit outer policies propagate into ordinary trigger
+  statements, overriding their own OR clauses. STRICT datatype errors always
+  abort, including under IGNORE/FAIL; expression failures remain non-ignorable.
+- Preserved row identity during candidate checks so FK cascades still execute;
+  verified default substitution, partial writes and transaction/savepoint cleanup.
+- Verification: all 2,142 engine tests, formatting, all-package locked dependency
+  installation and fatal-info analysis pass. Fixture/oracle checksums and all
+  native mutation/transaction/rollback/WAL interoperability checks pass. Pinned
+  SQLite verifies 418 snapshots per encoding (1,254 total), including policies,
+  UPSERT constraints, trigger inheritance and STRICT/default regressions. M6 is
+  still open for schema constraint policies and the remaining documented audit.

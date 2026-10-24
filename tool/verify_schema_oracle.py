@@ -115,6 +115,35 @@ def main():
         "BEGIN", "DELETE FROM editable", "ROLLBACK",
         "PRAGMA integrity_check"
     ]
+    statements += [
+      "CREATE TABLE conflict_rows(id INT UNIQUE,v INT NOT NULL DEFAULT 7 CHECK(v>0)) STRICT",
+      "INSERT OR FAIL INTO conflict_rows VALUES(1,1),(2,NULL),(3,3)",
+      "INSERT OR IGNORE INTO conflict_rows VALUES(2,NULL),(3,3) ON CONFLICT(id) DO NOTHING RETURNING *",
+      "INSERT OR REPLACE INTO conflict_rows VALUES(2,NULL),(3,4) ON CONFLICT(id) DO UPDATE SET v=excluded.v RETURNING *",
+      "INSERT OR IGNORE INTO conflict_rows VALUES(4,4),(1,5) ON CONFLICT(id) DO UPDATE SET v=NULL",
+      "INSERT OR FAIL INTO conflict_rows VALUES(4,4),(1,5) ON CONFLICT(id) DO UPDATE SET v=-1",
+      "INSERT OR FAIL INTO conflict_rows VALUES(4,4),(5,-1) ON CONFLICT(id) DO NOTHING",
+      "INSERT OR FAIL INTO conflict_rows VALUES(6,6),(7,'bad') ON CONFLICT(id) DO NOTHING",
+      "UPDATE OR FAIL conflict_rows SET v=CASE WHEN id=3 THEN NULL ELSE v+1 END",
+      "BEGIN", "INSERT INTO conflict_rows VALUES(8,8)",
+      "INSERT OR ROLLBACK INTO conflict_rows VALUES(9,9),(1,1)",
+      "COMMIT", "PRAGMA integrity_check"
+    ]
+    statements += [
+      "CREATE TABLE policy_source(x INT)", "CREATE TABLE policy_target(x INT UNIQUE)",
+      "INSERT INTO policy_target VALUES(1)",
+      "CREATE TRIGGER policy_trigger AFTER INSERT ON policy_source BEGIN INSERT OR REPLACE INTO policy_target VALUES(new.x); END",
+      "INSERT OR IGNORE INTO policy_source VALUES(1),(2)",
+      "INSERT OR FAIL INTO policy_source VALUES(3),(1),(4)",
+      "INSERT INTO policy_source VALUES(1)",
+      "CREATE TRIGGER upsert_abort AFTER UPDATE ON conflict_rows BEGIN INSERT OR REPLACE INTO policy_target VALUES(1); END",
+      "INSERT OR IGNORE INTO conflict_rows VALUES(1,2) ON CONFLICT(id) DO UPDATE SET v=excluded.v",
+      "DROP TRIGGER upsert_abort",
+      "UPDATE OR REPLACE conflict_rows SET v=NULL WHERE id=1 RETURNING *",
+      "CREATE TABLE default_type(x INT NOT NULL DEFAULT '7') STRICT",
+      "INSERT OR REPLACE INTO default_type VALUES(NULL) RETURNING *",
+      "PRAGMA integrity_check"
+    ]
     for encoding in [1,2,3]:
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':[],'query':'=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS'])} for sql in statements]))

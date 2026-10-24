@@ -14,6 +14,11 @@ final class SqlConstraintException extends SqlException {
   const SqlConstraintException(super.message, [super.offset]);
 }
 
+/// STRICT datatype violations always abort, even with OR IGNORE/FAIL.
+final class SqlDatatypeConstraint extends SqlConstraintException {
+  const SqlDatatypeConstraint(super.message);
+}
+
 /// Internal trigger control flow; still an SQL error to API callers.
 final class SqlTriggerFailure extends SqlException {
   const SqlTriggerFailure(this.action, super.message);
