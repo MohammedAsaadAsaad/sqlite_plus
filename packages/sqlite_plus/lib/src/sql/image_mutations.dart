@@ -15,6 +15,7 @@ import 'triggers.dart';
 import 'function_registry.dart';
 import 'values.dart';
 import 'index_definition.dart';
+import 'schema_rewriter.dart';
 
 final class MutationImage {
   MutationImage(this.image, this.changes, this.lastRowid, [this.returning]);
@@ -1651,14 +1652,11 @@ final class ImageMutations {
                 (o) => o.type == 'view' && asciiLower(o.name) == renamedKey)) {
           throw const SqlException('Rename target exists');
         }
-        if (other.any((o) =>
-            o.sql != null &&
-            SqlTokenizer.tokenize(o.sql!).any((t) =>
-                t.kind == SqlTokenKind.identifier &&
-                asciiLower(t.text) == key))) {
-          throw const SqlException(
-              'Rename with dependent views/triggers unsupported');
-        }
+        final dependentEdits = {
+          for (final object in other.where((o) => o.sql != null))
+            object:
+                renamedTableReferences(object.sql!, object.type, name, renamed)
+        };
         final declaration = SqlParser(table.sql);
         declaration.require('CREATE');
         declaration.require('TABLE');
@@ -1709,6 +1707,18 @@ final class ImageMutations {
                   ? null
                   : IndexDefinition.parse(
                       updated, _tables[renamedKey]!.schema));
+        }
+        for (var i = 0; i < other.length; i++) {
+          final object = other[i];
+          final edits = dependentEdits[object];
+          if (edits == null || edits.isEmpty) continue;
+          other[i] = ImageObject(
+              object.type,
+              object.name,
+              object.type == 'trigger' && asciiLower(object.tableName) == key
+                  ? renamed
+                  : object.tableName,
+              _rewriteIdentifiers(object.sql!, edits));
         }
         final sequence = _sequences.remove(key);
         if (sequence != null) _sequences[renamedKey] = sequence;

@@ -303,10 +303,10 @@ are rejected.
 UPSERT supports one or more ON CONFLICT clauses, explicit column/rowid targets,
 DO NOTHING, DO UPDATE with `excluded` values and an optional WHERE, including
 INSERT SELECT and RETURNING. INSERT conflict policies compose with UPSERT; DO UPDATE always uses ABORT. Table renaming rewrites supported
-index/FK/sequence metadata; it rejects dependent views/triggers before mutation.
+index/FK/sequence metadata and resolved references in dependent views/triggers.
 Column rename rewrites supported CHECK/key/index/FK references; explicit DROP
 COLUMN rewrites stored records and rejects key/index/CHECK/FK dependencies.
-Dependent view/trigger rewrites remain open; alterations involving them reject
+Dependent column rewrites in views/triggers remain open; column alterations involving them reject
 before mutation. No automatic destructive migration is performed.
 
 RAISE(FAIL) reports an error while retaining prior rows and trigger effects;
@@ -423,3 +423,11 @@ Aggregate ORDER BY supports multiple terms, direction, collations and NULLS
 placement, including FILTER/DISTINCT and registered Dart aggregates. STRING_AGG
 is available in grouped and window queries. ORDER BY inside window aggregate
 calls remains prohibited, matching the reference.
+
+Table renaming tracks parsed source bindings through views, subqueries, CTE
+shadows, qualifiers, wildcards and trigger DML/WHEN bodies. Aliases and literals
+retain their meaning. Unresolved/duplicate aliases and trigger pseudo-row/table
+namespace collisions reject atomically. Column alteration dependency guards remain.
+The pinned SQLite 3.53.1 trigger-target rename also rebinds UPSERT EXCLUDED
+qualifiers to the renamed target; this observed reference quirk is reproduced
+and tested, including its effect on subsequent updates.

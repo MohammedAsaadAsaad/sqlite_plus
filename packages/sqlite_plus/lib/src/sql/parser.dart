@@ -100,7 +100,9 @@ BigInt? expressionOrdinal(Expr expression) {
 }
 
 final class ColumnExpr extends Expr {
-  ColumnExpr(this.name);
+  ColumnExpr(this.name, {this.offset, this.qualifier});
+  final int? offset;
+  final String? qualifier;
   final String name;
   String get key => asciiLower(name);
   @override
@@ -306,7 +308,9 @@ final class BinaryExpr extends Expr {
 }
 
 final class SelectItem {
-  SelectItem(this.expression, this.label, {this.explicitAlias = false});
+  SelectItem(this.expression, this.label,
+      {this.explicitAlias = false, this.qualifierOffset});
+  final int? qualifierOffset;
   final bool explicitAlias;
   final Expr? expression; // null denotes *
   final String label;
@@ -351,6 +355,7 @@ final class SelectStatement {
 final class QuerySource {
   QuerySource(
       {this.table,
+      this.tableOffset,
       this.query,
       this.alias,
       this.join = 'CROSS',
@@ -358,6 +363,7 @@ final class QuerySource {
       this.using = const [],
       this.natural = false});
   final String? table, alias;
+  final int? tableOffset;
   final SelectStatement? query;
   final String join;
   final Expr? on;
@@ -466,7 +472,7 @@ final class SqlParser {
               ? expr.name
               : display;
       items.add(expr is ColumnExpr && expr.name.endsWith('.*')
-          ? SelectItem(null, expr.name)
+          ? SelectItem(null, expr.name, qualifierOffset: expr.offset)
           : SelectItem(expr, label, explicitAlias: explicitAlias));
     } while (take(','));
     final sources = <QuerySource>[];
@@ -816,11 +822,13 @@ final class SqlParser {
       }.contains(current.keyword);
   QuerySource _source(String join, bool natural) {
     String? table;
+    int? tableOffset;
     SelectStatement? query;
     if (take('(')) {
       query = select(nested: true);
       require(')');
     } else {
+      tableOffset = current.offset;
       table = identifier();
     }
     final alias = take('AS') || _implicitAlias() ? _alias() : null;
@@ -840,6 +848,7 @@ final class SqlParser {
     }
     return QuerySource(
         table: table,
+        tableOffset: tableOffset,
         query: query,
         alias: alias,
         join: join,
@@ -1012,8 +1021,12 @@ final class SqlParser {
           }
         } else {
           var name = token.text;
-          if (take('.')) name += '.${take('*') ? '*' : identifier()}';
-          left = ColumnExpr(name);
+          String? qualifier;
+          if (take('.')) {
+            qualifier = token.text;
+            name += '.${take('*') ? '*' : identifier()}';
+          }
+          left = ColumnExpr(name, offset: token.offset, qualifier: qualifier);
         }
       } else {
         throw SqlException('Expected expression', token.offset);

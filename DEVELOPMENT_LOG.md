@@ -521,3 +521,21 @@
   1,521 cases. Pinned SQLite verifies 558 snapshots per encoding (1,674 total),
   including ordered aggregation in CTAS, views and trigger bodies. M6 remains
   open for the documented dependency rewrites and broader conformance audit.
+
+## 2026-10-24 — M6 table rename dependencies
+
+- Added parsed source offsets and scope-aware table-reference rewriting for
+  dependent views and triggers. Follow source/qualified/wildcard/correlated
+  references, derived/compound/CTE scopes, trigger owners/WHEN and DML bodies;
+  preserve aliases, column names, trigger names and string literals.
+- Rewriting rejects unresolved qualifiers, duplicate source aliases and trigger
+  pseudo-row/table namespace collisions atomically. Column dependency guards stay.
+- Pinned comparison exposed SQLite 3.53.1 rebinding trigger UPSERT EXCLUDED
+  qualifiers to the renamed target. Reproduce and document that reference quirk,
+  including resulting updates, rather than silently claiming different behavior.
+- Verification: all 2,455 engine tests, all-package locked installs/fatal-info
+  analysis, formatting and all fixture/oracle checksums pass. Pinned SQLite
+  verifies 598 schema/DML/query snapshots per encoding (1,794 total), checking
+  rewritten views/triggers, rollback, quoted names and unresolved-reference errors.
+  Existing mutation/transaction/journal/WAL/owner-handoff checks also pass.
+- M6 remains open for dependent column rewrites and the broader documented audit.

@@ -210,8 +210,12 @@ void main() {
     ]);
     await db.execute('CREATE VIEW v AS SELECT * FROM renamed');
     final before = db.exportImage();
-    await expectLater(db.execute('ALTER TABLE renamed RENAME TO blocked'),
-        throwsA(isA<SqlException>()));
+    await db.execute('BEGIN');
+    await db.execute('ALTER TABLE renamed RENAME TO blocked');
+    expect((await db.query('SELECT count(*) FROM v')).rows, [
+      [BigInt.two]
+    ]);
+    await db.execute('ROLLBACK');
     expect(db.exportImage(), before);
     await db.execute('DROP VIEW v');
     await db.execute('ALTER TABLE renamed RENAME TO "space name"');

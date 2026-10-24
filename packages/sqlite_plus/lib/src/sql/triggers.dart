@@ -5,11 +5,13 @@ import 'values.dart';
 final class TriggerDefinition {
   TriggerDefinition(this.name, this.table, this.timing, this.event,
       this.columns, this.when, this.statements,
-      [this.whenSql]);
+      [this.whenSql, this.tableOffset = 0, this.statementOffsets = const []]);
   final String name, table, timing, event;
   final List<String> columns, statements;
   final Expr? when;
   final String? whenSql;
+  final int tableOffset;
+  final List<int> statementOffsets;
   static TriggerDefinition parse(String sql) {
     final p = SqlParser(sql);
     p.require('CREATE');
@@ -39,6 +41,7 @@ final class TriggerDefinition {
       } while (p.take(','));
     }
     p.require('ON');
+    final tableOffset = p.current.offset;
     final table = p.identifier();
     if (p.take('FOR')) {
       p.require('EACH');
@@ -55,12 +58,16 @@ final class TriggerDefinition {
     final end = p.tokens.lastIndexWhere((token) => token.keyword == 'END');
     if (end < p.position) throw const SqlException('Unterminated trigger');
     final statements = <String>[];
+    final offsets = <int>[];
     var start = p.current.offset;
     for (var i = p.position; i < end; i++) {
       final token = p.tokens[i];
       if (token.kind == SqlTokenKind.symbol && token.text == ';') {
         final statement = sql.substring(start, token.offset).trim();
-        if (statement.isNotEmpty) statements.add(statement);
+        if (statement.isNotEmpty) {
+          statements.add(statement);
+          offsets.add(sql.indexOf(statement, start));
+        }
         start = token.offset + 1;
       }
     }
@@ -70,8 +77,8 @@ final class TriggerDefinition {
     }
     p.position = end + 1;
     p.finish();
-    return TriggerDefinition(
-        name, table, timing, event, columns, when, statements, whenSql);
+    return TriggerDefinition(name, table, timing, event, columns, when,
+        statements, whenSql, tableOffset, offsets);
   }
 }
 

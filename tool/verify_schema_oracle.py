@@ -268,6 +268,39 @@ def main():
       "CREATE TRIGGER aggregate_guard BEFORE INSERT ON aggregate_rows BEGIN SELECT string_agg(v,'|' ORDER BY k) FROM aggregate_rows; END",
       "INSERT INTO aggregate_rows VALUES('b',4)", "PRAGMA integrity_check"
     ]
+    statements += [
+      "CREATE TABLE rename_source(id INTEGER PRIMARY KEY,v INT,rename_source TEXT)",
+      "CREATE TABLE rename_events(id INT,v INT)", "CREATE TABLE rename_audit(v INT)",
+      "INSERT INTO rename_source VALUES(1,1,'one'),(2,2,'two')",
+      "CREATE VIEW rename_plain AS SELECT rename_source.* FROM rename_source",
+      "CREATE VIEW rename_nested AS SELECT a.id,(SELECT count(*) FROM rename_source WHERE rename_source.id<=a.id) AS n FROM rename_source AS a",
+      "CREATE VIEW rename_shadow AS WITH rename_source(id) AS(VALUES(99)) SELECT rename_source.id FROM rename_source",
+      "CREATE VIEW rename_alias AS SELECT rename_source.id,'rename_source' AS rename_source FROM rename_plain AS rename_source",
+      "CREATE VIEW rename_agg AS SELECT string_agg(rename_source.v,'|' ORDER BY rename_source.id) AS value FROM rename_source",
+      "CREATE TRIGGER rename_source AFTER UPDATE OF rename_source ON rename_source BEGIN INSERT INTO rename_audit VALUES(new.v); END",
+      "CREATE TRIGGER rename_route AFTER INSERT ON rename_events WHEN EXISTS(SELECT 1 FROM rename_source) BEGIN INSERT INTO rename_source(id,v) VALUES(new.id,new.v) ON CONFLICT(id) DO UPDATE SET v=rename_source.v+excluded.v; END",
+      "CREATE VIEW rename_edit AS SELECT * FROM rename_source",
+      "CREATE TRIGGER rename_edit_insert INSTEAD OF INSERT ON rename_edit BEGIN REPLACE INTO rename_source VALUES(new.id,new.v,new.rename_source); END",
+      "ALTER TABLE rename_source RENAME TO renamed_source",
+      "SELECT * FROM rename_plain ORDER BY id", "SELECT * FROM rename_nested ORDER BY id",
+      "SELECT * FROM rename_shadow", "SELECT * FROM rename_alias ORDER BY id", "SELECT * FROM rename_agg",
+      "INSERT INTO rename_events VALUES(1,2),(1,3)",
+      "UPDATE renamed_source SET rename_source='rename_source' WHERE id=1",
+      "INSERT INTO rename_edit VALUES(3,7,'three')",
+      "SELECT name,tbl_name FROM sqlite_schema WHERE name='rename_source' AND type='trigger'",
+      "BEGIN", "ALTER TABLE renamed_source RENAME TO rename_undone", "SELECT * FROM rename_agg", "ROLLBACK",
+      "SELECT * FROM rename_plain ORDER BY id",
+      "CREATE TABLE \"odd.name\"(x INT)", "INSERT INTO \"odd.name\" VALUES(3)",
+      "CREATE VIEW rename_quoted AS SELECT \"odd.name\".* FROM \"odd.name\"",
+      "ALTER TABLE \"odd.name\" RENAME TO \"new name\"", "SELECT * FROM rename_quoted",
+      "PRAGMA integrity_check"
+    ]
+    statements += [
+      "CREATE VIEW rename_invalid_qualifier AS SELECT renamed_source.id FROM renamed_source AS a",
+      "ALTER TABLE renamed_source RENAME TO invalid_target", "DROP VIEW rename_invalid_qualifier",
+      "CREATE VIEW rename_invalid_wildcard AS SELECT renamed_source.* FROM renamed_source AS a",
+      "ALTER TABLE renamed_source RENAME TO invalid_target", "DROP VIEW rename_invalid_wildcard"
+    ]
     bound_parameters = {
       "INSERT INTO named_rows VALUES(:id,:v) RETURNING :id,id,:v,v": [1,7],
       "UPDATE named_rows SET v=:v WHERE id=:id RETURNING :v,v,:id": [8,1],
@@ -286,7 +319,7 @@ def main():
     ]
     for encoding in [1,2,3]:
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':bound_parameters.get(sql,[]),'query':'=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS','TABLE_INFO','TABLE_XINFO'])} for sql in statements]))
+            root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':bound_parameters.get(sql,[]),'query':sql.split()[0].upper() in ['SELECT','WITH','VALUES'] or '=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS','TABLE_INFO','TABLE_XINFO'])} for sql in statements]))
             subprocess.run(['dart','--suppress-analytics','run','tool/export_schema.dart',directory,str(encoding)],cwd=ROOT.parents[1],check=True)
             with sqlite3.connect(root/'reference.db',isolation_level=None) as ref:
                 ref.execute('pragma page_size=512')
