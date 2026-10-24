@@ -11,7 +11,9 @@ abstract class SqlAggregate {
 
 final class RegisteredSqlFunction {
   RegisteredSqlFunction(
-      this.name, this.argumentCount, this.scalar, this.aggregate);
+      this.name, this.argumentCount, this.scalar, this.aggregate,
+      {this.deterministic = false});
+  final bool deterministic;
   final String name;
   final int argumentCount;
   final Object? Function(List<Object?>)? scalar;
@@ -34,8 +36,10 @@ final class SqlFunctionRegistry {
   static final Object _zoneKey = Object();
   final Map<String, Map<int, RegisteredSqlFunction>> _functions = {};
   void registerScalar(String name, int argumentCount,
-          Object? Function(List<Object?>) callback) =>
-      _register(RegisteredSqlFunction(name, argumentCount, callback, null));
+          Object? Function(List<Object?>) callback,
+          {bool deterministic = false}) =>
+      _register(RegisteredSqlFunction(name, argumentCount, callback, null,
+          deterministic: deterministic));
   void registerAggregate(
           String name, int argumentCount, SqlAggregate Function() factory) =>
       _register(RegisteredSqlFunction(name, argumentCount, null, factory));

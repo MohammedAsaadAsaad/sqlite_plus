@@ -8,6 +8,12 @@ final class SqlException implements Exception {
       'SqlException: $message${offset == null ? '' : ' at $offset'}';
 }
 
+/// A constraint failure eligible for an SQL conflict policy. Evaluation and
+/// callback errors remain SqlException and must not be swallowed by OR IGNORE.
+final class SqlConstraintException extends SqlException {
+  const SqlConstraintException(super.message, [super.offset]);
+}
+
 enum SqlTokenKind { identifier, string, number, blob, parameter, symbol, end }
 
 final class SqlToken {

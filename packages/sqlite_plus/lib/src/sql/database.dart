@@ -10,6 +10,7 @@ import 'values.dart';
 import 'expressions.dart';
 import 'function_registry.dart';
 import 'image_mutations.dart';
+import 'index_definition.dart';
 
 part 'relational.dart';
 
@@ -155,18 +156,24 @@ final class SqliteDatabase {
       }
 
       collect(statement.where);
-      final context = EvalContext({}, {}, bound, _pager.header.textEncoding);
+      final context = EvalContext(
+          {},
+          {for (final c in table.columns) asciiLower(c.name): c.affinity},
+          bound,
+          _pager.header.textEncoding)
+        ..collations = {
+          for (final c in table.columns) asciiLower(c.name): c.collation
+        };
       List<(String, Object?)> bounds(
-          String name, String affinity, String collation) {
+          Expr sought, String affinity, String collation) {
         final result = <(String, Object?)>[];
         for (final expr in constraints) {
           Expr? constant;
           var op = expr.op;
-          if (expr.left is ColumnExpr &&
-              (expr.left as ColumnExpr).key == asciiLower(name)) {
+          if (sameExpression(indexOperand(expr.left), indexOperand(sought))) {
             constant = expr.right;
-          } else if (expr.right is ColumnExpr &&
-              (expr.right as ColumnExpr).key == asciiLower(name)) {
+          } else if (sameExpression(
+              indexOperand(expr.right), indexOperand(sought))) {
             constant = expr.left;
             op = const {
               '<': '>',
@@ -178,11 +185,17 @@ final class SqliteDatabase {
             }[op]!;
           }
           if (constant == null || !_planningConstant(constant)) continue;
-          if (affinity == 'text' && constant.affinity(context) == 'numeric') {
+          final otherAffinity = constant.affinity(context);
+          if (otherAffinity == 'numeric' && affinity != 'numeric' ||
+              otherAffinity == 'text' && affinity == 'none') {
             continue;
           }
-          final explicit = constant.explicitCollation(context);
-          if (explicit != null && explicit != collation) continue;
+          final comparisonCollation = expr.left.explicitCollation(context) ??
+              expr.right.explicitCollation(context) ??
+              expr.left.collation(context) ??
+              expr.right.collation(context) ??
+              'binary';
+          if (comparisonCollation != collation) continue;
           result.add((op, applyAffinity(constant.evaluate(context), affinity)));
         }
         return result;
@@ -215,7 +228,8 @@ final class SqliteDatabase {
           if (!table.columns.any((c) => asciiLower(c.name) == alias)) alias
       ];
       final rowBounds = [
-        for (final name in rowidNames) ...bounds(name, 'numeric', 'binary')
+        for (final name in rowidNames)
+          ...bounds(ColumnExpr(name), 'numeric', 'binary')
       ];
       if (rowBounds.isNotEmpty) {
         return QueryPlan._indexed(
@@ -231,19 +245,20 @@ final class SqliteDatabase {
           e.type == 'index' &&
           asciiLower(e.tableName) == asciiLower(table.name))) {
         try {
-          if (entry.sql != null &&
-              SqlParser(entry.sql!).tokens.any((t) => t.keyword == 'WHERE')) {
+          final parsed = entry.sql == null
+              ? null
+              : IndexDefinition.parse(entry.sql!, table);
+          if (!impliesIndexPredicate(statement.where, parsed?.predicate)) {
             continue;
           }
           final definition = _indexDefinition(entry);
           final prefix = <List<(String, Object?)>>[];
           var range = false;
           for (var i = 0; i < definition.$1.length; i++) {
-            final column = table.columns.firstWhere(
-                (c) => asciiLower(c.name) == asciiLower(definition.$1[i]));
-            if (column.collation != definition.$3[i]) break;
-            final matches =
-                bounds(column.name, column.affinity, column.collation);
+            final expression =
+                parsed?.terms[i].expression ?? ColumnExpr(definition.$1[i]);
+            final matches = bounds(
+                expression, expression.affinity(context), definition.$3[i]);
             if (matches.isEmpty) break;
             prefix.add(matches);
             if (!matches.any((b) => b.$1 == '=' || b.$1 == '==')) {
@@ -732,34 +747,14 @@ final class SqliteDatabase {
         true
       );
     }
-    final p = SqlParser(entry.sql!);
-    p.require('CREATE');
-    final unique = p.take('UNIQUE');
-    p.require('INDEX');
-    if (p.take('IF')) {
-      p.require('NOT');
-      p.require('EXISTS');
-    }
-    p.identifier();
-    p.require('ON');
-    p.identifier();
-    p.require('(');
-    final keys = <String>[];
-    final descending = <bool>[];
-    final collations = <String>[];
-    do {
-      final name = p.identifier();
-      final col = table.columns
-          .firstWhere((c) => asciiLower(c.name) == asciiLower(name));
-      keys.add(col.name);
-      collations
-          .add(p.take('COLLATE') ? asciiLower(p.identifier()) : col.collation);
-      final desc = p.take('DESC');
-      if (!desc) p.take('ASC');
-      descending.add(desc);
-    } while (p.take(','));
-    p.require(')');
-    return (keys, descending, collations, 'c', unique);
+    final definition = IndexDefinition.parse(entry.sql!, table);
+    return (
+      definition.terms.map((t) => t.columnName ?? '').toList(),
+      definition.terms.map((t) => t.descending).toList(),
+      definition.terms.map((t) => t.collation).toList(),
+      'c',
+      definition.unique
+    );
   }
 
   Future<QueryResult> _pragma(SqlParser parser) async {
@@ -923,6 +918,16 @@ final class SqliteDatabase {
       final descending = definition.$2.toList();
       final collations = definition.$3.toList();
       final keyCount = keys.length;
+      final expressions = entry.sql == null
+          ? <int>{}
+          : {
+              for (var i = 0; i < keyCount; i++)
+                if (IndexDefinition.parse(entry.sql!, table)
+                        .terms[i]
+                        .columnName ==
+                    null)
+                  i
+            };
       if (extended) {
         if (!table.withoutRowid) {
           keys.add('');
@@ -932,7 +937,12 @@ final class SqliteDatabase {
           final pk = table.columns.where((c) => c.primaryKey != 0).toList()
             ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
           for (final col in pk) {
-            if (!keys.any((key) => asciiLower(key) == asciiLower(col.name))) {
+            if (!List.generate(
+                keyCount,
+                (i) =>
+                    !expressions.contains(i) &&
+                    asciiLower(keys[i]) == asciiLower(col.name) &&
+                    collations[i] == col.collation).any((v) => v)) {
               keys.add(col.name);
               descending.add(col.primaryDescending);
               collations.add(col.collation);
@@ -944,11 +954,15 @@ final class SqliteDatabase {
         for (var i = 0; i < keys.length; i++)
           [
             BigInt.from(i),
-            BigInt.from(keys[i].isEmpty
-                ? -1
-                : table.columns.indexWhere(
-                    (c) => asciiLower(c.name) == asciiLower(keys[i]))),
-            keys[i].isEmpty ? null : keys[i],
+            BigInt.from(expressions.contains(i)
+                ? -2
+                : i >= keyCount && !table.withoutRowid
+                    ? -1
+                    : table.columns.indexWhere(
+                        (c) => asciiLower(c.name) == asciiLower(keys[i]))),
+            expressions.contains(i) || i >= keyCount && !table.withoutRowid
+                ? null
+                : keys[i],
             if (extended) ...[
               boolean(descending[i]),
               collations[i].toUpperCase(),

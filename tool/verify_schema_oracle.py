@@ -49,36 +49,76 @@ def main():
     statements += ["CREATE TABLE alter_p(id INTEGER PRIMARY KEY,code TEXT UNIQUE,junk BLOB,value INT CHECK(value>0),CHECK(length(code)>0))", "CREATE INDEX alter_idx ON alter_p(code,value DESC)", "CREATE TABLE alter_c(code TEXT REFERENCES alter_p(code))", "INSERT INTO alter_p VALUES(1,'a',zeroblob(2000),7)", "INSERT INTO alter_c VALUES('a')", "ALTER TABLE alter_p RENAME COLUMN code TO label", "ALTER TABLE alter_p DROP COLUMN junk", "ALTER TABLE alter_p RENAME value TO length", "ALTER TABLE alter_p RENAME COLUMN length TO amount", "ALTER TABLE alter_p DROP COLUMN amount", "DROP INDEX alter_idx", "ALTER TABLE alter_p DROP amount", "ALTER TABLE alter_p DROP label", "ALTER TABLE alter_p DROP id", "ALTER TABLE alter_p RENAME label TO id", "PRAGMA integrity_check"]
     statements += ["CREATE TABLE alter_wr(k TEXT PRIMARY KEY,pad BLOB,n INT) WITHOUT ROWID", "INSERT INTO alter_wr VALUES('key',zeroblob(1000),7)", "ALTER TABLE alter_wr DROP pad", "ALTER TABLE alter_wr RENAME k TO ident", "PRAGMA integrity_check"]
     statements += ['CREATE TABLE punct("(" TEXT,")" INT,"," BLOB)', "INSERT INTO punct VALUES('x',7,X'00')", 'ALTER TABLE punct RENAME COLUMN ")" TO number', 'ALTER TABLE punct DROP COLUMN ","']
-    with tempfile.TemporaryDirectory() as directory:
-        root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':[],'query':any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK'])} for sql in statements]))
-        subprocess.run(['dart','--suppress-analytics','run','tool/export_schema.dart',directory],cwd=ROOT.parents[1],check=True)
-        with sqlite3.connect(root/'reference.db',isolation_level=None) as ref:
-            ref.execute('pragma page_size=512')
-            for i,sql in enumerate(statements):
-                error=None
-                returned=None
-                try:
-                    cursor=ref.execute(sql)
-                    if cursor.description is not None:returned={'columns':[c[0] for c in cursor.description],'rows':[[encode(v) for v in row] for row in cursor.fetchall()]}
-                except sqlite3.Error as exc:error=str(exc)
-                metadata=json.loads((root/f'{i}.json').read_text())
-                if (error is None)!=(metadata['error'] is None):
-                    raise RuntimeError(f'Error mismatch at {i}: {sql}; SQLite={error}; Dart={metadata}')
-                if returned!=metadata['returning']:raise RuntimeError(f'RETURNING mismatch at {i}: {sql}; SQLite={returned}; Dart={metadata}')
-                with sqlite3.connect(f'file:{root/i.__str__()}.db?mode=ro',uri=True) as actual:
-                    for pragma in ['user_version','application_id']:
-                        if actual.execute('pragma '+pragma).fetchall()!=ref.execute('pragma '+pragma).fetchall():raise RuntimeError(f'Header {pragma} differs at {i}')
-                    integrity=actual.execute('pragma integrity_check').fetchall()
-                    if integrity!=[('ok',)]:raise RuntimeError(f'Integrity failure at {i}: {sql}; {integrity}')
-                    names=[r[0] for r in ref.execute("select name from sqlite_schema where type='table' order by name")]
-                    if names!=[r[0] for r in actual.execute("select name from sqlite_schema where type='table' order by name")]:raise RuntimeError(f'Schema names differ at {i}')
-                    for name in names:
-                        escaped='"'+name.replace('"','""')+'"'
-                        expected=ref.execute(f'select * from {escaped}').fetchall();rows=actual.execute(f'select * from {escaped}').fetchall()
-                        if sorted(expected,key=repr)!=sorted(rows,key=repr):raise RuntimeError(f'Rows differ at {i}: {name}')
-                        if ref.execute(f'pragma index_list({escaped})').fetchall()!=actual.execute(f'pragma index_list({escaped})').fetchall():raise RuntimeError(f'Index metadata differs at {i}: {name}')
-                        if ref.execute(f'pragma foreign_key_list({escaped})').fetchall()!=actual.execute(f'pragma foreign_key_list({escaped})').fetchall():raise RuntimeError(f'Foreign-key metadata differs at {i}: {name}')
-        print(f'Pinned SQLite verified {len(statements)} Dart schema/index/constraint mutation snapshots')
+    statements += [
+        "CREATE TABLE expr_idx(id INTEGER PRIMARY KEY,name TEXT COLLATE NOCASE,active INT,n INT)",
+        "CREATE UNIQUE INDEX expr_live ON expr_idx(lower(name)) WHERE active=1",
+        "CREATE INDEX expr_mag ON expr_idx(abs(n) DESC,substr(name,1,1) COLLATE RTRIM) WHERE n IS NOT NULL",
+        "INSERT INTO expr_idx VALUES(1,'Alpha',1,-7),(2,'ALPHA',0,8),(3,NULL,1,NULL),(4,NULL,1,9)",
+        "CREATE UNIQUE INDEX invalid_full ON expr_idx(lower(name))",
+        "INSERT INTO expr_idx VALUES(5,'alpha',1,2)",
+        "INSERT OR IGNORE INTO expr_idx VALUES(5,'alpha',1,2)",
+        "UPDATE expr_idx SET active=1 WHERE id=2",
+        "INSERT OR REPLACE INTO expr_idx VALUES(5,'alpha',1,2)",
+        "INSERT INTO expr_idx VALUES(6,'Alpha',1,3) ON CONFLICT(lower(name)) WHERE active=1 DO UPDATE SET n=excluded.n RETURNING id,n",
+        "INSERT INTO expr_idx VALUES(7,'ALPHA',1,4) ON CONFLICT DO UPDATE SET n=excluded.n RETURNING id,n",
+        "INSERT INTO expr_idx VALUES(8,'alpha',1,5) ON CONFLICT(lower(name)) DO NOTHING",
+        "UPDATE expr_idx SET n=-n",
+        "UPDATE expr_idx SET active=0 WHERE id=5",
+        "INSERT INTO expr_idx VALUES(8,'ALPHA',1,5) RETURNING lower(name)='alpha',lower(name)='ALPHA',name='alpha',CAST(name AS TEXT)='alpha',(name||'')='alpha'",
+        "DELETE FROM expr_idx WHERE id=8",
+        "PRAGMA index_info(expr_live)","PRAGMA index_xinfo(expr_live)","PRAGMA index_xinfo(expr_mag)",
+        "ALTER TABLE expr_idx RENAME COLUMN name TO label", "ALTER TABLE expr_idx RENAME TO expr_renamed",
+        "UPDATE expr_renamed SET label='Beta' WHERE id=5", "PRAGMA integrity_check",
+        "ALTER TABLE expr_renamed DROP active", "ALTER TABLE expr_renamed DROP label",
+        "DROP INDEX expr_live", "ALTER TABLE expr_renamed DROP active",
+        "CREATE TABLE expr_wr(k TEXT PRIMARY KEY,n INT) WITHOUT ROWID", "INSERT INTO expr_wr VALUES('A',1),('a',2),('b',3)",
+        "CREATE INDEX expr_wr_case ON expr_wr(k COLLATE NOCASE)", "CREATE INDEX expr_wr_mag ON expr_wr(abs(n)) WHERE n>1",
+        "PRAGMA index_xinfo(expr_wr_case)","PRAGMA index_xinfo(expr_wr_mag)", "UPDATE expr_wr SET n=-n", "INSERT INTO expr_wr VALUES('c',7)",
+        "CREATE INDEX invalid_agg ON expr_renamed(sum(n))", "CREATE INDEX invalid_subquery ON expr_renamed((SELECT 1))",
+        "CREATE INDEX invalid_parameter ON expr_renamed(?)", "CREATE INDEX invalid_rowid ON expr_renamed(rowid)",
+        "CREATE INDEX invalid_now ON expr_renamed(CURRENT_TIMESTAMP)",
+        "CREATE INDEX expr_clock ON expr_renamed(datetime(n))", "INSERT OR IGNORE INTO expr_renamed VALUES(99,'now','now')",
+        "INSERT OR IGNORE INTO expr_renamed VALUES(99,'overflow',-9223372036854775808)",
+        "PRAGMA integrity_check",
+    ]
+    statements += ["INSERT INTO expr_renamed VALUES(100,'"+('X'*4000)+"',100)","PRAGMA integrity_check"]
+    statements += ["CREATE TABLE expr_target(a INT,active INT)","CREATE UNIQUE INDEX expr_target_partial ON expr_target(a) WHERE active=1", "INSERT INTO expr_target VALUES(1,1)"]
+    statements += [f"INSERT INTO expr_target VALUES(1,1) ON CONFLICT(a) WHERE {predicate} DO NOTHING" for predicate in ['active=TRUE','active=1 AND a>0','1=active','active=1.0']]
+    statements += ["CREATE UNIQUE INDEX expr_real_key ON expr_target(a+1.0)", "INSERT INTO expr_target VALUES(1,1) ON CONFLICT(a+1.00) DO NOTHING", "INSERT INTO expr_target VALUES(1,1) ON CONFLICT(a+1.0) DO NOTHING", "CREATE INDEX expr_fixed_clock ON expr_target(datetime('2000-01-01','subsec'))"]
+    statements += ["CREATE TABLE unicode_expr(id INTEGER PRIMARY KEY,v TEXT,b BLOB)", "CREATE UNIQUE INDEX unicode_expr_key ON unicode_expr(lower(v))", "CREATE INDEX unicode_blob_key ON unicode_expr(substr(b,2,2))", "INSERT INTO unicode_expr VALUES(1,'λ😀A',X'0001ff'),(2,'😀λA',X'0002fe')", "INSERT INTO unicode_expr VALUES(3,'λ😀a',X'00')", "CREATE INDEX invalid_raise ON unicode_expr(RAISE(ABORT,'bad'))", "PRAGMA integrity_check"]
+    statements += ["CREATE TABLE expr_reals(id INTEGER PRIMARY KEY,r REAL)","INSERT INTO expr_reals VALUES(1,1),(2,2.0)","CREATE INDEX expr_real_type ON expr_reals(typeof(r))","CREATE INDEX expr_real_text ON expr_reals(CAST(r AS TEXT))","UPDATE expr_reals SET r=r+1 RETURNING typeof(r)","PRAGMA integrity_check"]
+    for encoding in [1,2,3]:
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':[],'query':any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST'])} for sql in statements]))
+            subprocess.run(['dart','--suppress-analytics','run','tool/export_schema.dart',directory,str(encoding)],cwd=ROOT.parents[1],check=True)
+            with sqlite3.connect(root/'reference.db',isolation_level=None) as ref:
+                ref.execute('pragma page_size=512')
+                ref.execute("pragma encoding='"+{1:'UTF-8',2:'UTF-16le',3:'UTF-16be'}[encoding]+"'")
+                for i,sql in enumerate(statements):
+                    error=None
+                    returned=None
+                    try:
+                        cursor=ref.execute(sql)
+                        if cursor.description is not None:returned={'columns':[c[0] for c in cursor.description],'rows':[[encode(v) for v in row] for row in cursor.fetchall()]}
+                    except sqlite3.Error as exc:error=str(exc)
+                    metadata=json.loads((root/f'{i}.json').read_text())
+                    if (error is None)!=(metadata['error'] is None):
+                        raise RuntimeError(f'Error mismatch at {i}: {sql}; SQLite={error}; Dart={metadata}')
+                    if returned!=metadata['returning']:raise RuntimeError(f'RETURNING mismatch at {i}: {sql}; SQLite={returned}; Dart={metadata}')
+                    with sqlite3.connect(f'file:{root/i.__str__()}.db?mode=ro',uri=True) as actual:
+                        for pragma in ['user_version','application_id']:
+                            if actual.execute('pragma '+pragma).fetchall()!=ref.execute('pragma '+pragma).fetchall():raise RuntimeError(f'Header {pragma} differs at {i}')
+                        integrity=actual.execute('pragma integrity_check').fetchall()
+                        if integrity!=[('ok',)]:raise RuntimeError(f'Integrity failure at {i}: {sql}; {integrity}')
+                        names=[r[0] for r in ref.execute("select name from sqlite_schema where type='table' order by name")]
+                        if names!=[r[0] for r in actual.execute("select name from sqlite_schema where type='table' order by name")]:raise RuntimeError(f'Schema names differ at {i}')
+                        for name in names:
+                            escaped='"'+name.replace('"','""')+'"'
+                            expected=ref.execute(f'select * from {escaped}').fetchall();rows=actual.execute(f'select * from {escaped}').fetchall()
+                            if sorted(expected,key=repr)!=sorted(rows,key=repr):raise RuntimeError(f'Rows differ at {i}: {name}')
+                            if ref.execute(f'pragma index_list({escaped})').fetchall()!=actual.execute(f'pragma index_list({escaped})').fetchall():raise RuntimeError(f'Index metadata differs at {i}: {name}')
+                            if ref.execute(f'pragma foreign_key_list({escaped})').fetchall()!=actual.execute(f'pragma foreign_key_list({escaped})').fetchall():raise RuntimeError(f'Foreign-key metadata differs at {i}: {name}')
+            print(f'Pinned SQLite verified {len(statements)} Dart schema/index/constraint mutation snapshots; encoding={encoding}')
 
 
 if __name__=='__main__':main()

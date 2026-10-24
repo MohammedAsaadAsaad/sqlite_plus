@@ -14,10 +14,12 @@ Object? encode(Object? value) {
 }
 
 Future<void> main(List<String> args) async {
-  final root = args.single;
+  final root = args.first;
+  final encoding = args.length > 1 ? int.parse(args[1]) : 1;
   final operations =
       jsonDecode(File('$root/operations.json').readAsStringSync()) as List;
-  final db = await MutableSqliteDatabase.create(pageSize: 512);
+  final db =
+      await MutableSqliteDatabase.create(pageSize: 512, encoding: encoding);
   try {
     for (var i = 0; i < operations.length; i++) {
       final operation = operations[i];

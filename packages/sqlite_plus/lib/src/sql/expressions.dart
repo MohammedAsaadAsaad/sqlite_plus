@@ -135,6 +135,8 @@ final class CastExpr extends Expr {
   final Expr operand;
   final String type;
   @override
+  String? collation(EvalContext context) => operand.collation(context);
+  @override
   Iterable<Expr> get children => [operand];
   @override
   void validate(Set<String> columns) => operand.validate(columns);

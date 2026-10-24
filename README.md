@@ -300,19 +300,31 @@ are rejected.
 
 UPSERT supports one or more ON CONFLICT clauses, explicit column/rowid targets,
 DO NOTHING, DO UPDATE with `excluded` values and an optional WHERE, including
-INSERT SELECT and RETURNING. Combined OR IGNORE/REPLACE plus UPSERT and partial/
-expression index targets remain unsupported. Table renaming rewrites supported
+INSERT SELECT and RETURNING. Combined OR IGNORE/REPLACE plus UPSERT remains unsupported. Table renaming rewrites supported
 index/FK/sequence metadata; it rejects dependent views/triggers before mutation.
 Column rename rewrites supported CHECK/key/index/FK references; explicit DROP
 COLUMN rewrites stored records and rejects key/index/CHECK/FK dependencies.
 Dependent view/trigger rewrites remain open; alterations involving them reject
 before mutation. No automatic destructive migration is performed.
 
+Expression indexes evaluate deterministic scalar expressions; partial indexes
+store and enforce uniqueness only for rows whose WHERE predicate is true.
+These keys are rebuilt for INSERT/UPDATE/DELETE, conflict handling and supported
+schema changes, including WITHOUT ROWID primary-key suffixes. Explicit UPSERT
+expression/partial targets use SQLite's stricter structural matching rules.
+
+Expression equality/range plans require a matching expression tree. A partial
+index is used only when the query proves its predicate through supported
+conjunct/OR/null-rejection rules; otherwise the query scans. `index_info` and
+`index_xinfo` report expression slots with cid -2. Index schemas reject parameters,
+subqueries, aggregates/windows and non-deterministic functions. Dart scalar
+callbacks require `deterministic: true` to participate in schema expressions.
+
 Read-only PRAGMAs include page_size/page_count/freelist_count/schema_version,
 user_version/application_id/encoding/table_info/table_xinfo/index_list/
 index_info/index_xinfo/foreign_key_list/integrity_check/quick_check/foreign_key_check. Foreign-key state and user_version/
-application_id can be set through the mutable API. Index metadata is limited to
-column indexes; unsupported shapes fail explicitly.
+application_id can be set through the mutable API. Index metadata includes column/expression terms and partial status; unsupported
+shapes fail explicitly.
 
 Eligible rowid equalities/ranges and secondary-index equality prefixes/ranges
 descend B-tree paths. Multi-column prefixes are preferred when more constraints

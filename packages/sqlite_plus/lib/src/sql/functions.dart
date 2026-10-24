@@ -161,6 +161,21 @@ final class FunctionExpr extends Expr {
         .firstOrNull;
     final args = arguments.map((arg) => arg.evaluate(context)).toList();
     if (dateFunctionArities.containsKey(key)) {
+      final timeArgs = key == 'strftime' ? args.skip(1).toList() : args;
+      bool rawNow(Object? value) =>
+          value is String &&
+          ['now', 'subsec', 'subsecond'].contains(asciiLower(value));
+      if (context.schemaExpression &&
+          (timeArgs.isEmpty ||
+              (key == 'timediff'
+                  ? timeArgs.any(rawNow)
+                  : rawNow(timeArgs.first)) ||
+              timeArgs.any((value) =>
+                  value is String &&
+                  ['localtime', 'utc'].contains(asciiLower(value))))) {
+        throw const SqlException(
+            'Non-deterministic date/time in schema expression');
+      }
       return dateFunction(key, args, context.encoding);
     }
     if (extraFunctionArities.containsKey(key)) {

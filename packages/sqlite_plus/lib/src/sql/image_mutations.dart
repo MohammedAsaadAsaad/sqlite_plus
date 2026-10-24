@@ -14,6 +14,7 @@ import 'tokenizer.dart';
 import 'triggers.dart';
 import 'function_registry.dart';
 import 'values.dart';
+import 'index_definition.dart';
 
 final class MutationImage {
   MutationImage(this.image, this.changes, this.lastRowid, [this.returning]);
@@ -32,18 +33,26 @@ final class _Table {
 
 final class _Index {
   _Index(this.name, this.table, this.columns, this.descending, this.collations,
-      this.unique, this.sql);
+      this.unique, this.sql,
+      {this.definition});
   final String name, table;
   final List<String> columns;
   final List<bool> descending;
   final List<String> collations;
   final bool unique;
   final String? sql;
+  final IndexDefinition? definition;
+  bool get parentKey =>
+      definition?.predicate == null &&
+      (definition == null ||
+          definition!.terms.every((t) => t.columnName != null));
+  Set<String> get referencedColumns =>
+      definition?.referencedColumns ?? columns.map(asciiLower).toSet();
 }
 
 final class _Upsert {
   _Upsert(this.target, this.index, this.nothing, this.assignments, this.where);
-  final List<String>? target;
+  final List<Expr>? target;
   final _Index? index; // null with a target denotes the rowid key.
   final bool nothing;
   final Map<String, Expr> assignments;
@@ -277,6 +286,7 @@ final class ImageMutations {
                 names.containsAll(pk.map((c) => asciiLower(c.name)));
         final unique = _indexes.any((index) =>
             index.unique &&
+            index.parentKey &&
             asciiLower(index.table) == asciiLower(parent.schema.name) &&
             index.columns.length == target.length &&
             index.columns.map(asciiLower).toSet().containsAll(names) &&
@@ -348,36 +358,58 @@ final class ImageMutations {
   _Index _parseIndex(String sql) {
     final p = SqlParser(sql);
     p.require('CREATE');
-    final unique = p.take('UNIQUE');
+    p.take('UNIQUE');
     p.require('INDEX');
     if (p.take('IF')) {
       p.require('NOT');
       p.require('EXISTS');
     }
-    final name = p.identifier();
+    p.identifier();
     p.require('ON');
     final tableName = p.identifier();
     final table = _tables[asciiLower(tableName)];
-    if (table == null) throw SqlException('No such table: $tableName');
-    p.require('(');
-    final cols = <String>[];
-    final desc = <bool>[];
-    final coll = <String>[];
-    do {
-      final column = _column(table.schema, p.identifier());
-      cols.add(column.name);
-      coll.add(
-          p.take('COLLATE') ? asciiLower(p.identifier()) : column.collation);
-      if (!['binary', 'nocase', 'rtrim'].contains(coll.last)) {
-        throw const SqlException('Unknown index collation');
+    if (table == null) throw const SqlException('No such table');
+    final definition = IndexDefinition.parse(sql, table.schema);
+    return _Index(
+        definition.name,
+        definition.table,
+        definition.terms.map((t) => t.columnName ?? '').toList(),
+        definition.terms.map((t) => t.descending).toList(),
+        definition.terms.map((t) => t.collation).toList(),
+        definition.unique,
+        sql,
+        definition: definition);
+  }
+
+  bool _includes(_Index index, _Table table, TableRow row) {
+    final predicate = index.definition?.predicate;
+    return predicate == null ||
+        truth(
+                predicate.evaluate(
+                    _context(table, row, [])..schemaExpression = true),
+                encoding) ==
+            true;
+  }
+
+  bool _containsPrimary(_Index index, CatalogColumn column) {
+    for (var i = 0; i < index.columns.length; i++) {
+      final name = index.definition == null
+          ? index.columns[i]
+          : index.definition!.terms[i].columnName;
+      if (name != null &&
+          asciiLower(name) == asciiLower(column.name) &&
+          index.collations[i] == column.collation) {
+        return true;
       }
-      final d = p.take('DESC');
-      if (!d) p.take('ASC');
-      desc.add(d);
-    } while (p.take(','));
-    p.require(')');
-    p.finish();
-    return _Index(name, tableName, cols, desc, coll, unique, sql);
+    }
+    return false;
+  }
+
+  List<Object?> _indexKey(_Index index, _Table table, TableRow row) {
+    final definition = index.definition;
+    if (definition == null) return _key(table, row, index.columns);
+    final context = _context(table, row, [])..schemaExpression = true;
+    return definition.terms.map((t) => t.expression.evaluate(context)).toList();
   }
 
   RowValues _row(_Table table, TableRow row) {
@@ -388,6 +420,15 @@ final class ImageMutations {
                 ? row.rowId
                 : row.values[i]
     };
+    for (final column in table.schema.columns) {
+      final type = column.declaredType.toUpperCase();
+      final key = asciiLower(column.name);
+      if (!type.contains('INT') &&
+          ['REAL', 'FLOA', 'DOUB'].any(type.contains) &&
+          result[key] is BigInt) {
+        result[key] = (result[key] as BigInt).toDouble();
+      }
+    }
     if (!table.schema.withoutRowid) {
       for (final name in ['rowid', '_rowid_', 'oid']) {
         result.putIfAbsent(name, () => row.rowId);
@@ -495,7 +536,7 @@ final class ImageMutations {
         }).toList();
         if (matches.isEmpty) continue;
         if (action == 'RESTRICT') {
-          throw const SqlException('FOREIGN KEY constraint failed');
+          throw const SqlConstraintException('FOREIGN KEY constraint failed');
         }
         if (action == 'NO ACTION') continue;
         for (final row in matches) {
@@ -545,14 +586,15 @@ final class ImageMutations {
             type == 'TEXT' && value is String ||
             type == 'BLOB' && value is Uint8List;
         if (!valid) {
-          throw const SqlException('STRICT datatype constraint failed');
+          throw const SqlConstraintException(
+              'STRICT datatype constraint failed');
         }
       }
 
       final seen = <BigInt>{};
       for (final row in table.rows) {
         if (!seen.add(row.rowId)) {
-          throw const SqlException('UNIQUE constraint failed: rowid');
+          throw const SqlConstraintException('UNIQUE constraint failed: rowid');
         }
         final values = _row(table, row);
         final ctx = _context(table, row, const []);
@@ -563,7 +605,7 @@ final class ImageMutations {
                           col.strict && col.name != table.schema.rowidAlias) &&
                       col.primaryKey != 0) &&
               values[asciiLower(col.name)] == null) {
-            throw SqlException(
+            throw SqlConstraintException(
                 'NOT NULL constraint failed: ${table.schema.name}.${col.name}');
           }
         }
@@ -572,7 +614,7 @@ final class ImageMutations {
           ...table.schema.columns.expand((c) => c.checks)
         ]) {
           if (truth(check.evaluate(ctx), encoding) == false) {
-            throw const SqlException('CHECK constraint failed');
+            throw const SqlConstraintException('CHECK constraint failed');
           }
         }
       }
@@ -594,12 +636,14 @@ final class ImageMutations {
       }
       for (final index in unique) {
         final keys = [
-          for (final row in table.rows) _key(table, row, index.columns)
+          for (final row in table.rows)
+            if (_includes(index, table, row)) _indexKey(index, table, row)
         ]..sort((a, b) => _compare(index, a, b));
         for (var i = 1; i < keys.length; i++) {
           if (keys[i].every((v) => v != null) &&
               _compare(index, keys[i - 1], keys[i]) == 0) {
-            throw SqlException('UNIQUE constraint failed: ${index.name}');
+            throw SqlConstraintException(
+                'UNIQUE constraint failed: ${index.name}');
           }
         }
       }
@@ -635,6 +679,7 @@ final class ImageMutations {
                 pk.containsAll(normalized);
             final validUnique = _indexes.any((index) =>
                 index.unique &&
+                index.parentKey &&
                 asciiLower(index.table) == asciiLower(parent.schema.name) &&
                 index.columns.length == target.length &&
                 index.columns.map(asciiLower).toSet().containsAll(normalized) &&
@@ -661,7 +706,8 @@ final class ImageMutations {
               return true;
             });
             if (!exists) {
-              throw const SqlException('FOREIGN KEY constraint failed');
+              throw const SqlConstraintException(
+                  'FOREIGN KEY constraint failed');
             }
           }
         }
@@ -723,21 +769,18 @@ final class ImageMutations {
         ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
       final rows = [
         for (final row in table.rows)
-          [
-            ..._key(table, row, index.columns),
-            if (!table.schema.withoutRowid) row.rowId,
-            if (table.schema.withoutRowid)
-              for (final col in pk)
-                if (!index.columns
-                    .any((name) => asciiLower(name) == asciiLower(col.name)))
-                  _row(table, row)[asciiLower(col.name)]
-          ]
+          if (_includes(index, table, row))
+            [
+              ..._indexKey(index, table, row),
+              if (!table.schema.withoutRowid) row.rowId,
+              if (table.schema.withoutRowid)
+                for (final col in pk)
+                  if (!_containsPrimary(index, col))
+                    _row(table, row)[asciiLower(col.name)]
+            ]
       ];
       final auxiliary = table.schema.withoutRowid
-          ? pk
-              .where((c) => !index.columns
-                  .any((name) => asciiLower(name) == asciiLower(c.name)))
-              .toList()
+          ? pk.where((c) => !_containsPrimary(index, c)).toList()
           : <CatalogColumn>[];
       final sorting = _Index(
           index.name,
@@ -1280,36 +1323,35 @@ final class ImageMutations {
               final tokens = SqlTokenizer.tokenize(updated);
               final on = tokens.indexWhere((t) => t.keyword == 'ON');
               final replacements = <int, String>{};
-              var open = on + 2;
-              while (open < tokens.length &&
-                  !(tokens[open].kind == SqlTokenKind.symbol &&
-                      tokens[open].text == '(')) {
-                open++;
-              }
-              for (var j = open + 1;
-                  j < tokens.length &&
-                      !(tokens[j].kind == SqlTokenKind.symbol &&
-                          tokens[j].text == ')');
-                  j++) {
-                if ((j == open + 1 ||
-                        tokens[j - 1].kind == SqlTokenKind.symbol &&
-                            tokens[j - 1].text == ',') &&
-                    asciiLower(tokens[j].text) == oldKey) {
+              if (index.referencedColumns.contains(oldKey)) {
+                for (var j = on + 2; j < tokens.length; j++) {
+                  if (tokens[j].kind != SqlTokenKind.identifier ||
+                      asciiLower(tokens[j].text) != oldKey) {
+                    continue;
+                  }
+                  if (j + 1 < tokens.length &&
+                          tokens[j + 1].kind == SqlTokenKind.symbol &&
+                          tokens[j + 1].text == '(' ||
+                      ['COLLATE', 'AS'].contains(tokens[j - 1].keyword)) {
+                    continue;
+                  }
                   replacements[tokens[j].offset] = renamed;
                 }
               }
               updated = _rewriteIdentifiers(updated, replacements);
             }
-            _indexes[i] = _Index(
-                index.name,
-                index.table,
-                index.columns
-                    .map((c) => asciiLower(c) == oldKey ? renamed : c)
-                    .toList(),
-                index.descending,
-                index.collations,
-                index.unique,
-                updated);
+            _indexes[i] = updated != null
+                ? _parseIndex(updated)
+                : _Index(
+                    index.name,
+                    index.table,
+                    index.columns
+                        .map((c) => asciiLower(c) == oldKey ? renamed : c)
+                        .toList(),
+                    index.descending,
+                    index.collations,
+                    index.unique,
+                    null);
           }
         } else {
           if (table.schema.columns.length == 1 ||
@@ -1319,7 +1361,7 @@ final class ImageMutations {
                   .any((cols) => cols.any((c) => asciiLower(c) == oldKey)) ||
               _indexes.any((i) =>
                   asciiLower(i.table) == key &&
-                  i.columns.any((c) => asciiLower(c) == oldKey))) {
+                  i.referencedColumns.contains(oldKey))) {
             throw const SqlException('Cannot drop key/index column');
           }
           for (final check in [
@@ -1444,7 +1486,11 @@ final class ImageMutations {
               ? 'sqlite_autoindex_${renamed}_${index.name.split('_').last}'
               : index.name;
           _indexes[i] = _Index(indexName, renamed, index.columns,
-              index.descending, index.collations, index.unique, updated);
+              index.descending, index.collations, index.unique, updated,
+              definition: updated == null
+                  ? null
+                  : IndexDefinition.parse(
+                      updated, _tables[renamedKey]!.schema));
         }
         final sequence = _sequences.remove(key);
         if (sequence != null) _sequences[renamedKey] = sequence;
@@ -1692,38 +1738,58 @@ final class ImageMutations {
     if (insert) {
       while (p.take('ON')) {
         p.require('CONFLICT');
-        List<String>? target;
+        List<Expr>? target;
         _Index? targetIndex;
         if (p.take('(')) {
-          target = <String>[];
+          target = <Expr>[];
           final targetCollations = <String?>[];
           do {
-            final key = asciiLower(p.identifier());
-            if (!valid.contains(key) || key.contains('.')) {
+            final expression = p.expression();
+            expression.validate(writable);
+            if (expression.containsAggregate || expression.containsWindow) {
               throw const SqlException('Invalid conflict target');
             }
-            target.add(key);
-            targetCollations
-                .add(p.take('COLLATE') ? asciiLower(p.identifier()) : null);
+            target.add(expression);
+            targetCollations.add(expression
+                .explicitCollation(EvalContext({}, {}, [], encoding)));
             if (!p.take('DESC')) p.take('ASC');
           } while (p.take(','));
           p.require(')');
+          final targetWhere = p.take('WHERE') ? p.expression() : null;
+          targetWhere?.validate(writable);
+          if (targetWhere != null &&
+              (targetWhere.containsAggregate || targetWhere.containsWindow)) {
+            throw const SqlException('Invalid conflict target WHERE');
+          }
           bool matches(_Index index) {
             if (!index.unique ||
                 asciiLower(index.table) != asciiLower(name) ||
-                index.columns.length != target!.length) {
+                index.columns.length != target!.length ||
+                index.definition?.predicate != null &&
+                    (targetWhere == null ||
+                        !sameExpression(
+                            targetWhere, index.definition!.predicate!))) {
               return false;
             }
+            final used = <int>{};
             for (var i = 0; i < target.length; i++) {
-              final position =
-                  index.columns.indexWhere((c) => asciiLower(c) == target![i]);
-              if (position < 0 ||
-                  targetCollations[i] != null &&
-                      targetCollations[i] != index.collations[position]) {
-                return false;
+              var matched = false;
+              for (var j = 0; j < index.columns.length; j++) {
+                final expression = index.definition?.terms[j].expression ??
+                    ColumnExpr(index.columns[j]);
+                if (!used.contains(j) &&
+                    sameExpression(
+                        indexOperand(expression), indexOperand(target[i])) &&
+                    (targetCollations[i] == null ||
+                        targetCollations[i] == index.collations[j])) {
+                  used.add(j);
+                  matched = true;
+                  break;
+                }
               }
+              if (!matched) return false;
             }
-            return target.toSet().length == target.length;
+            return true;
           }
 
           final candidates = _indexes.toList();
@@ -1734,11 +1800,13 @@ final class ImageMutations {
                 [], pk.map((c) => c.collation).toList(), true, null));
           }
           targetIndex = candidates.where(matches).firstOrNull;
+          final single =
+              target.length == 1 ? indexOperand(target.single) : null;
           final rowid = !schema.withoutRowid &&
-              target.length == 1 &&
-              (target.single == asciiLower(schema.rowidAlias ?? '') ||
-                  ['rowid', '_rowid_', 'oid'].contains(target.single) &&
-                      !columnNames.contains(target.single));
+              single is ColumnExpr &&
+              (single.key == asciiLower(schema.rowidAlias ?? '') ||
+                  ['rowid', '_rowid_', 'oid'].contains(single.key) &&
+                      !columnNames.contains(single.key));
           if (targetIndex == null && !rowid) {
             throw const SqlException('ON CONFLICT target is not unique');
           }
@@ -1878,7 +1946,8 @@ final class ImageMutations {
           pk.map((c) => c.collation).toList(), true, null));
     }
     String? keyFor(_Index index, TableRow row) {
-      final key = _key(table, row, index.columns);
+      if (!_includes(index, table, row)) return null;
+      final key = _indexKey(index, table, row);
       if (key.any((v) => v == null)) return null;
       return jsonEncode([
         for (var i = 0; i < key.length; i++)
@@ -1905,7 +1974,7 @@ final class ImageMutations {
               o.type == 'trigger' &&
               asciiLower(o.tableName) == asciiLower(name))) {
         if (!rowids.add(next.rowId)) {
-          throw const SqlException('UNIQUE constraint failed: rowid');
+          throw const SqlConstraintException('UNIQUE constraint failed: rowid');
         }
         final values = _row(table, next);
         final context = _context(table, next, bound);
@@ -1913,7 +1982,7 @@ final class ImageMutations {
           if ((column.notNull ||
                   schema.withoutRowid && column.primaryKey != 0) &&
               values[asciiLower(column.name)] == null) {
-            throw const SqlException('NOT NULL constraint failed');
+            throw const SqlConstraintException('NOT NULL constraint failed');
           }
         }
         for (final check in [
@@ -1921,13 +1990,13 @@ final class ImageMutations {
           ...schema.columns.expand((c) => c.checks)
         ]) {
           if (truth(check.evaluate(context), encoding) == false) {
-            throw const SqlException('CHECK constraint failed');
+            throw const SqlConstraintException('CHECK constraint failed');
           }
         }
         for (final index in uniqueIndexes) {
           final key = keyFor(index, next);
           if (key != null && !uniqueSets[index]!.add(key)) {
-            throw const SqlException('UNIQUE constraint failed');
+            throw const SqlConstraintException('UNIQUE constraint failed');
           }
         }
         table.rows.add(next);
@@ -1943,9 +2012,13 @@ final class ImageMutations {
           if (row.rowId == next.rowId) return true;
           for (final index in _indexes.where(
               (i) => i.unique && asciiLower(i.table) == asciiLower(name))) {
-            final key = _key(table, next, index.columns);
+            if (!_includes(index, table, next) ||
+                !_includes(index, table, row)) {
+              continue;
+            }
+            final key = _indexKey(index, table, next);
             if (key.every((v) => v != null) &&
-                _compare(index, key, _key(table, row, index.columns)) == 0) {
+                _compare(index, key, _indexKey(index, table, row)) == 0) {
               return true;
             }
           }
@@ -1961,7 +2034,7 @@ final class ImageMutations {
       table.rows.add(next);
       try {
         _validate();
-      } on SqlException {
+      } on SqlConstraintException {
         table.rows
           ..clear()
           ..addAll(old);
@@ -1976,9 +2049,13 @@ final class ImageMutations {
       for (final clause in upserts) {
         TableRow? conflict;
         bool equal(_Index index, TableRow existing) {
-          final key = _key(table, excluded, index.columns);
+          if (!_includes(index, table, excluded) ||
+              !_includes(index, table, existing)) {
+            return false;
+          }
+          final key = _indexKey(index, table, excluded);
           return key.every((v) => v != null) &&
-              _compare(index, key, _key(table, existing, index.columns)) == 0;
+              _compare(index, key, _indexKey(index, table, existing)) == 0;
         }
 
         if (clause.target != null) {
@@ -2009,7 +2086,7 @@ final class ImageMutations {
                   (schema.withoutRowid ||
                           col.strict && col.name != schema.rowidAlias) &&
                       col.primaryKey != 0)) {
-            throw const SqlException('NOT NULL constraint failed');
+            throw const SqlConstraintException('NOT NULL constraint failed');
           }
           if (col.strict && value != null) {
             final type = col.declaredType.toUpperCase();
@@ -2018,7 +2095,8 @@ final class ImageMutations {
                 type == 'REAL' && (value is BigInt || value is double) ||
                 type == 'TEXT' && value is String ||
                 type == 'BLOB' && value is Uint8List)) {
-              throw const SqlException('STRICT datatype constraint failed');
+              throw const SqlConstraintException(
+                  'STRICT datatype constraint failed');
             }
           }
         }
@@ -2027,7 +2105,7 @@ final class ImageMutations {
           ...schema.columns.expand((c) => c.checks)
         ]) {
           if (truth(check.evaluate(candidateContext), encoding) == false) {
-            throw const SqlException('CHECK constraint failed');
+            throw const SqlConstraintException('CHECK constraint failed');
           }
         }
         if (clause.nothing) return true;

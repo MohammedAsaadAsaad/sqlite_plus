@@ -23,7 +23,8 @@ final class EvalContext {
     final result = EvalContext(values, affinities, parameters, encoding)
       ..subquery = subquery
       ..collations = collations
-      ..group = windowGroups[values];
+      ..group = windowGroups[values]
+      ..schemaExpression = schemaExpression;
     result.windowGroups = windowGroups;
     result.windowAggregates = windowAggregates;
     result.aggregateValues.addAll(windowAggregates[values] ?? {});
@@ -32,6 +33,7 @@ final class EvalContext {
 
   SqlRows Function(SelectStatement, EvalContext)? subquery;
   bool inTrigger = false;
+  bool schemaExpression = false;
   List<RowValues>? windowRows;
   RowValues? windowRow;
   Map<Expr, Object> windowCache = {};
@@ -61,20 +63,15 @@ abstract class Expr {
     return null;
   }
 
-  String? collation(EvalContext context) {
-    for (final child in children) {
-      final value = child.collation(context);
-      if (value != null) return value;
-    }
-    return null;
-  }
+  String? collation(EvalContext context) => explicitCollation(context);
 
   void validate(Set<String> columns) {}
 }
 
 final class Literal extends Expr {
-  Literal(this.value);
+  Literal(this.value, [this.spelling]);
   final Object? value;
+  final String? spelling;
   @override
   Object? evaluate(EvalContext context) => value;
 }
@@ -114,6 +111,9 @@ final class UnaryExpr extends Expr {
   UnaryExpr(this.op, this.operand);
   final String op;
   final Expr operand;
+  @override
+  String? collation(EvalContext context) =>
+      op == '+' ? operand.collation(context) : super.collation(context);
   @override
   Iterable<Expr> get children => [operand];
   @override
@@ -819,7 +819,7 @@ final class SqlParser {
           value = numeric(text) ??
               (throw SqlException('Invalid number', token.offset));
         }
-        left = Literal(value);
+        left = Literal(value, value is double ? asciiLower(token.text) : null);
       } else if (token.kind == SqlTokenKind.string) {
         left = Literal(token.text);
       } else if (token.kind == SqlTokenKind.blob) {
@@ -839,7 +839,7 @@ final class SqlParser {
       } else if (token.keyword == 'NULL') {
         left = Literal(null);
       } else if (token.keyword == 'TRUE' || token.keyword == 'FALSE') {
-        left = Literal(boolean(token.keyword == 'TRUE'));
+        left = Literal(boolean(token.keyword == 'TRUE'), token.keyword);
       } else if (['CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP']
           .contains(token.keyword)) {
         left = FunctionExpr(asciiLower(token.text), []);

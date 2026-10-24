@@ -311,3 +311,34 @@
 - Final checks pass: all 2,044 engine tests, all-package formatting/fatal-info
   analysis, fixture/oracle checksums and pinned mutation/transaction/journal/WAL
   interoperability verifiers. No platform or full-M6 completion claim is made.
+
+## 2026-10-24 — M6 expression and partial indexes
+
+- Added a shared index definition for deterministic scalar terms, ordering,
+  collations and WHERE predicates. Image reconstruction maintains key values,
+  partial membership, unique constraints and WITHOUT ROWID primary-key suffixes.
+  Foreign keys cannot use expression/partial unique indexes as parent keys.
+- Added expression equality/range planning and conservative partial-predicate
+  proofs. Exact AST matching preserves operand order, boolean nodes and real
+  literal spelling; unsupported/unproved conditions retain scans. Explicit
+  UPSERT targets use stricter matching than query-plan predicate implication.
+- Added expression-aware index_info/index_xinfo, column/table rename handling and
+  drop dependency guards. Added deterministic flags to Dart scalar registration
+  and runtime checks for non-deterministic date/time values in index expressions.
+- Fixed inherited collations for function/arithmetic results while preserving
+  explicit COLLATE and column affinity through unary plus/CAST. Fixed REAL
+  column semantics when physical records store integer serial values.
+- Distinguished constraint failures from expression/callback failures, preventing
+  OR IGNORE from swallowing ABS overflow and other evaluation errors.
+- The pinned verifier now checks 305 mutation/query snapshots independently for
+  UTF-8, UTF-16le and UTF-16be (915 total), comparing data/metadata and native
+  integrity_check after every operation. It covers Unicode/blob expressions,
+  unique membership transitions, UPSERT, overflow records, schema alterations,
+  invalid expressions and differing PK/index collations.
+- Verification: all 2,051 engine tests pass; all packages pass locked installation,
+  formatting and fatal-info analysis. Fixture/oracle checksums and pinned
+  mutation/transaction/journal/WAL interoperability checks pass. Added a real
+  five-sample AOT expression/partial-index point/range benchmark over 10,000
+  rows, with forced scans, raw timings, image size and whole-process RSS.
+- M6 remains open for the documented trigger/dependency/generated-column and
+  broader SQL conformance work; no full milestone-completion claim is made.
