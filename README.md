@@ -346,7 +346,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 1,419 differential queries across the
+The pinned M6 oracle currently contains 1,461 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 
@@ -412,3 +412,9 @@ result order and SQLite-compatible column names and affinity types. It accepts
 query parameters and copies values without source constraints or defaults.
 REPLACE INTO is supported with the same conflict, UPSERT and trigger behavior
 as INSERT OR REPLACE. String-quoted projection/source aliases are supported.
+
+Named SQL parameters (:name, @name and $name, including namespace/suffix forms)
+use the existing positional argument list. Repeated names share an index; case
+and prefixes distinguish names. They compose with ?/?NNN placeholders and share
+one index map through INSERT SELECT, UPSERT and RETURNING. Schema parameters
+remain prohibited.

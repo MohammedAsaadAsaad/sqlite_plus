@@ -1921,7 +1921,9 @@ final class ImageMutations {
           }
         }
         final query = sql.substring(p.current.offset, p.tokens[tail].offset);
-        final statement = SqlParser(query).select();
+        final queryParser = SqlParser(query);
+        final statement = queryParser.select();
+        p.parameterNames.addAll(queryParser.parameterNames);
         if (!compileOnly) {
           final storage = MemoryStorageBackend();
           await storage.write(0, serialize());

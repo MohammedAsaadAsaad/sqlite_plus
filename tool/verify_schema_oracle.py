@@ -1,4 +1,6 @@
 """Cross-open Pure Dart-created schemas/indexes and compare to pinned SQLite."""
+import warnings
+warnings.filterwarnings("ignore", message="Binding .* is a named parameter.*", category=DeprecationWarning)
 import json
 import sqlite3
 import subprocess
@@ -257,9 +259,25 @@ def main():
       "CREATE TRIGGER shorthand_trigger AFTER INSERT ON shorthand WHEN new.id=4 BEGIN REPLACE INTO shorthand VALUES(1,new.v+10); END",
       "REPLACE INTO shorthand VALUES(4,4)", "PRAGMA integrity_check"
     ]
+    bound_parameters = {
+      "INSERT INTO named_rows VALUES(:id,:v) RETURNING :id,id,:v,v": [1,7],
+      "UPDATE named_rows SET v=:v WHERE id=:id RETURNING :v,v,:id": [8,1],
+      "INSERT INTO named_rows SELECT :id,:v RETURNING :id,:v": [2,9],
+      "INSERT INTO named_rows SELECT :id,:v ON CONFLICT(id) DO UPDATE SET v=:v+1 RETURNING :id,:v,v": [2,10],
+      "DELETE FROM named_rows WHERE id=@id RETURNING @id,v": [1],
+      "CREATE TABLE named_copy AS SELECT :x AS x,CAST(:x AS INT) AS y": [12],
+      "INSERT INTO named_rows VALUES(:id,:v) RETURNING :id": [],
+    }
+    statements += ["CREATE TABLE named_rows(id INTEGER PRIMARY KEY,v INT)"] + list(bound_parameters) + [
+      "CREATE TABLE invalid_check_parameter(x CHECK(x>:v))",
+      "CREATE VIEW invalid_view_parameter AS SELECT :v",
+      "CREATE INDEX invalid_index_parameter ON named_rows(:v)",
+      "CREATE TRIGGER invalid_trigger_parameter AFTER INSERT ON named_rows BEGIN SELECT :v; END",
+      "PRAGMA integrity_check"
+    ]
     for encoding in [1,2,3]:
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':[],'query':'=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS','TABLE_INFO','TABLE_XINFO'])} for sql in statements]))
+            root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':bound_parameters.get(sql,[]),'query':'=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS','TABLE_INFO','TABLE_XINFO'])} for sql in statements]))
             subprocess.run(['dart','--suppress-analytics','run','tool/export_schema.dart',directory,str(encoding)],cwd=ROOT.parents[1],check=True)
             with sqlite3.connect(root/'reference.db',isolation_level=None) as ref:
                 ref.execute('pragma page_size=512')
@@ -268,7 +286,7 @@ def main():
                     error=None
                     returned=None
                     try:
-                        cursor=ref.execute(sql)
+                        cursor=ref.execute(sql,bound_parameters.get(sql,[]))
                         if cursor.description is not None:returned={'columns':[c[0] for c in cursor.description],'rows':[[encode(v) for v in row] for row in cursor.fetchall()]}
                     except sqlite3.Error as exc:error=str(exc)
                     metadata=json.loads((root/f'{i}.json').read_text())

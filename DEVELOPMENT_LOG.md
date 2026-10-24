@@ -491,3 +491,18 @@
   Mutation/transaction interoperability, byte-exact rollback recovery and WAL/
   checkpoint/native continuation/owner handoff checks pass after the storage fix.
 - M6 remains open for dependency rewrites and the remaining conformance audit.
+
+## 2026-10-24 — M6 named parameter indices
+
+- Added :name/@name/$name and native namespace/suffix token forms, repeated-name
+  index reuse, case/prefix distinction and mixed ?/?NNN indexing. The existing
+  list API binds by native index; INSERT SELECT transfers its index map into
+  UPSERT/RETURNING. Tested Unicode names, gaps and the 32,766-variable boundary.
+- Reject parameters in CHECK expressions during schema preparation, avoiding an
+  evaluation-time range error. Defaults/generated/view/index/trigger parameter
+  restrictions are covered as well.
+- Verification: all 2,389 engine tests, formatting, all-package locked dependency
+  installation/fatal-info analysis and all fixture/oracle hashes pass. The M6
+  oracle has 1,461 cases; pinned SQLite verifies 550 schema/DML snapshots in each
+  encoding (1,650 total), including parameterized writes and atomic errors.
+- M6 remains open for dependency rewrites and the documented conformance audit.

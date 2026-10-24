@@ -140,6 +140,41 @@ abstract final class SqlTokenizer {
             SqlToken(SqlTokenKind.parameter, sql.substring(start, i), start));
         continue;
       }
+      if (c == 58 || c == 64 || c == 36) {
+        i++;
+        var nameUnits = 0;
+        while (i < sql.length) {
+          final current = sql.codeUnitAt(i);
+          if (identifierStart(current) || digit(current) || current == 36) {
+            nameUnits++;
+            i++;
+            continue;
+          }
+          if (current == 58 &&
+              i + 1 < sql.length &&
+              sql.codeUnitAt(i + 1) == 58) {
+            i += 2;
+            continue;
+          }
+          if (current == 40 && nameUnits > 0) {
+            i++;
+            while (i < sql.length &&
+                sql.codeUnitAt(i) > 32 &&
+                sql.codeUnitAt(i) != 41) {
+              i++;
+            }
+            if (i >= sql.length || sql.codeUnitAt(i) != 41) {
+              throw SqlException('Invalid parameter suffix', start);
+            }
+            i++;
+          }
+          break;
+        }
+        if (nameUnits == 0) throw SqlException('Missing parameter name', start);
+        result.add(
+            SqlToken(SqlTokenKind.parameter, sql.substring(start, i), start));
+        continue;
+      }
       final pair = i + 1 < sql.length ? sql.substring(i, i + 2) : '';
       if (['<=', '>=', '!=', '<>', '==', '||', '<<', '>>'].contains(pair)) {
         result.add(SqlToken(SqlTokenKind.symbol, pair, start));

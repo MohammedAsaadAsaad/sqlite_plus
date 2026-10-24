@@ -375,6 +375,7 @@ final class SqlParser {
   final List<SqlToken> tokens;
   int position = 0;
   int parameterCount = 0;
+  final Map<String, int> parameterNames = {};
   SqlToken get current => tokens[position];
   bool take(String text) {
     if (current.keyword == text ||
@@ -942,9 +943,11 @@ final class SqlParser {
             int.parse(token.text.substring(i, i + 2), radix: 16)
         ]));
       } else if (token.kind == SqlTokenKind.parameter) {
-        final index = token.text.length == 1
-            ? parameterCount + 1
-            : int.tryParse(token.text.substring(1));
+        final index = token.text.startsWith('?')
+            ? token.text.length == 1
+                ? parameterCount + 1
+                : int.tryParse(token.text.substring(1))
+            : parameterNames.putIfAbsent(token.text, () => parameterCount + 1);
         if (index == null || index < 1 || index > 32766) {
           throw const SqlException('Invalid parameter index');
         }

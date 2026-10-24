@@ -1,4 +1,6 @@
 """Pinned SQLite M6 functions/aggregate/metadata differential cases."""
+import warnings
+warnings.filterwarnings("ignore", message="Binding .* is a named parameter.*", category=DeprecationWarning)
 import hashlib
 import json
 import sqlite3
@@ -360,6 +362,23 @@ def main():
       "SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x LIMIT 0)"
     ]
     queries += ["SELECT 1 AS 'λ😀'", "SELECT 1 'value'", "SELECT a.x FROM (SELECT 1 AS x) AS 'a'", "SELECT 1 AS '',2 AS ''"]
+    parameter_queries = {
+      'SELECT :x,:x,?': [7,8],
+      'SELECT :x,@x,$x,:x': [1,2,3],
+      'SELECT ?3,:x,?1,:x,?': [10,20,30,40,50],
+      'SELECT :x,?1,:X,@x': [1,2,3],
+      'SELECT $namespace::value(suffix),$namespace::value(suffix)': ['λ😀'],
+      'SELECT @x::y,:123,:$, $::x': [1,2,3,4],
+      'WITH c(x) AS(VALUES(:x)) SELECT x,:x,?2 FROM c': [7,8],
+      'VALUES(:x),(:x),(@x)': [3,4],
+      'SELECT :λ,:😀': [1,2],
+      'SELECT :x': [],
+      'SELECT :x,:X': [1],
+      'SELECT :': [],
+      'SELECT $x(foo bar)': [],
+      'SELECT $x(unclosed': [],
+    }
+    queries += list(parameter_queries)
     cases = []
     for fixture in manifest['fixtures']:
         with sqlite3.connect(f"file:{ROOT/fixture['file']}?mode=ro",uri=True) as c:
@@ -371,7 +390,7 @@ def main():
                     counter[0]+=1
                     return counter[0]
                 c.create_function('dart_counter',0,next_counter)
-                parameters = [128] if sql.endswith('id=?') else []
+                parameters = parameter_queries.get(sql, [128] if sql.endswith('id=?') else [])
                 case={'file':fixture['file'],'sql':sql,'parameters':[encode(v) for v in parameters]}
                 try:
                     cursor = c.execute(sql,parameters)

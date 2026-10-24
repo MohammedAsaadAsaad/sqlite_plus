@@ -555,6 +555,7 @@ final class DatabaseCatalog {
       }
     }
     bool invalidCheck(Expr expr) =>
+        expr is ParameterExpr ||
         expr is SubqueryExpr ||
         expr is InSelectExpr ||
         expr.containsAggregate ||
