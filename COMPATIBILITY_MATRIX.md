@@ -20,7 +20,7 @@ development reference tools. Production engine code is Pure Dart.
 | Scalar / aggregate functions | Verified subset | Core/string/math/ROUND/variadic IF/IIF and aggregates; connection-local scalar/aggregate callbacks; DATE/TIME/DATETIME/JULIANDAY/UNIXEPOCH/STRFTIME/TIMEDIFF and dynamic defaults; broader edge cases remain |
 | GROUP BY / HAVING | Verified subset | Expressions/ordinals/aliases, HAVING aliases, distinct aggregates, empty inputs and bare-column MIN/MAX selection in differential cases |
 | Window functions | Verified bounded subset | Ranking, NTILE, LAG/LEAD, first/last/nth values, aggregate ROWS/GROUPS/RANGE frames/offsets, EXCLUDE, FILTER, named/inherited windows and NULLS FIRST/LAST; max 10,000 rows; grouped aggregates and HAVING feed windows |
-| Schema creation / index maintenance | Verified subset | CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, ADD COLUMN/table rename, ordinary and WITHOUT ROWID B-trees, auto/secondary indexes, overflow; 210 SQLite cross-open/integrity mutation snapshots |
+| Schema creation / index maintenance | Verified subset | CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, ADD/RENAME/DROP COLUMN and table rename, ordinary and WITHOUT ROWID B-trees, auto/secondary indexes, overflow; 235 SQLite cross-open/integrity mutation snapshots |
 | Constraints | Verified subset | Defaults, NOT NULL/UNIQUE/CHECK, STRICT, AUTOINCREMENT, FK enable state/actions/deferral, OR IGNORE/REPLACE; broader edge-case conformance pending |
 | Views / row triggers | Verified subset | Read views; BEFORE/AFTER INSERT/UPDATE/DELETE, UPDATE OF, WHEN, OLD/NEW, DML bodies, scalar SELECT/RAISE ABORT/IGNORE; self-recursion and INSTEAD OF triggers unsupported |
 | DML | Verified subset | INSERT VALUES/multirow/DEFAULT VALUES/SELECT, UPDATE/DELETE, UPSERT target/DO NOTHING/DO UPDATE, RETURNING with owner RPC; combined conflict policies/partial targets and broader syntax pending |
@@ -31,7 +31,7 @@ development reference tools. Production engine code is Pure Dart.
 | Isolate ownership / file lease | Single-owner architecture | Serialized SendPort requests, client-owned transactions, loopback duplicate-owner guard, native SQLite lock-byte exclusion and handoff |
 | ORM / generator | Placeholders, M7 pending | No behavior or tests yet |
 | JSON/JSONB / FTS / R-tree / virtual tables | M8 pending | No implementation claim |
-| Linux x64 | Development verified | Dart 3.13.7; 2,043 engine tests, format, fatal-info analysis and locked dependencies pass |
+| Linux x64 | Development verified | Dart 3.13.7; 2,044 engine tests, format, fatal-info analysis and locked dependencies pass |
 | Windows/macOS/Android/iOS/Web | Unverified, M9 pending | Core has no dart:io dependency; optional file/owner adapter does; no execution claim |
 
 ## Query and format limits
@@ -63,7 +63,7 @@ Complete non-auto-vacuum images without reserved page bytes are required, with a
 64 MiB bound. Image mutation favors a simple atomic boundary over in-place
 splits; write scaling and all native schema edge cases remain open. Unsupported
 index expressions/partial indexes, schema syntax or constraints may reject access.
-ALTER supports safe ADD COLUMN and table renaming (dependent views/triggers rejected) and never silently performs destructive
+ALTER supports ADD/RENAME/DROP COLUMN and table renaming (dependent views/triggers rejected; explicit DROP rejects schema dependencies) and never silently performs destructive
 migration. Schema/index comparisons are backed by native integrity_check for the
 specified snapshots, not a universal conformance claim.
 
@@ -100,8 +100,7 @@ for small Linux memory workloads, not the required 1k/10k/100k/1m scale and
 platform/ORM/native-engine comparison matrix. No release-ready or all-milestones
 completion claim is made.
 
-M6 completion audit still has concrete open items: column ALTER variants and
-view/trigger dependency rewrites; expression/partial indexes and related UPSERT
+M6 completion audit still has concrete open items: view/trigger dependency rewrites and broader ALTER conformance; expression/partial indexes and related UPSERT
 shapes; additional trigger recursion/INSTEAD OF/RAISE policies and body queries;
 generated columns; remaining SQL/function/PRAGMA conformance and hardening.
 These are not marked implemented by passing the expanded subset tests.

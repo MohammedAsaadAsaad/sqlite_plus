@@ -292,3 +292,22 @@
   trigger policies/view/recursion/body shapes, generated columns and broader
   SQL/function/PRAGMA conformance. These missing features are not hidden by
   checking the milestone or relabeling the verified subset as full SQLite parity.
+
+## 2026-10-24 — M6 column ALTER operations
+
+- Added explicit RENAME [COLUMN] and DROP [COLUMN] on supported schemas. Rename
+  updates declarations, CHECK/key constraints, column indexes, parent FK column
+  references and INTEGER PRIMARY KEY metadata. Function/type/collation names
+  are preserved even when they match a renamed column.
+- Drop reconstructs record widths and rejects keys, index/CHECK/FK dependencies,
+  last-column deletion and ambiguous declarations. Dependent views/triggers fail
+  before mutation; this does not silently rewrite them or perform migrations.
+- Added ordinary/WITHOUT ROWID, overflow reclamation, transaction rollback,
+  collision/dependency and punctuation-quoted column regressions. Structural
+  token checks distinguish quoted parentheses/commas from SQL punctuation.
+- The native schema verifier now covers 235 snapshots, including rename/drop
+  metadata and integrity checks. M6's remaining open scope is documented; it is
+  not marked complete while those features are missing.
+- Final checks pass: all 2,044 engine tests, all-package formatting/fatal-info
+  analysis, fixture/oracle checksums and pinned mutation/transaction/journal/WAL
+  interoperability verifiers. No platform or full-M6 completion claim is made.

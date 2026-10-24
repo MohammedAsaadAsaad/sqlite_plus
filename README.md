@@ -283,7 +283,7 @@ The engine now supports:
   aggregate FILTER and explicit NULLS FIRST/LAST are covered. Windows are limited
   to 10,000 input rows. Group aggregation and HAVING run before windows, including
   `SUM(COUNT(*)) OVER (...)` and windows over registered aggregate results.
-- CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, safe ALTER TABLE ADD COLUMN/table rename, defaults,
+- CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, safe ALTER TABLE ADD/RENAME/DROP COLUMN and table rename, defaults,
   NOT NULL/UNIQUE/CHECK, STRICT types, AUTOINCREMENT, INSERT VALUES/DEFAULT
   VALUES/SELECT, UPDATE/DELETE, OR IGNORE/REPLACE, and WITHOUT ROWID writes.
 - `PRAGMA foreign_keys=1` enables FK checks/actions. Deferred keys validate at
@@ -303,7 +303,10 @@ DO NOTHING, DO UPDATE with `excluded` values and an optional WHERE, including
 INSERT SELECT and RETURNING. Combined OR IGNORE/REPLACE plus UPSERT and partial/
 expression index targets remain unsupported. Table renaming rewrites supported
 index/FK/sequence metadata; it rejects dependent views/triggers before mutation.
-Column renaming/dropping and dependent view/trigger rewrites remain open.
+Column rename rewrites supported CHECK/key/index/FK references; explicit DROP
+COLUMN rewrites stored records and rejects key/index/CHECK/FK dependencies.
+Dependent view/trigger rewrites remain open; alterations involving them reject
+before mutation. No automatic destructive migration is performed.
 
 Read-only PRAGMAs include page_size/page_count/freelist_count/schema_version,
 user_version/application_id/encoding/table_info/table_xinfo/index_list/

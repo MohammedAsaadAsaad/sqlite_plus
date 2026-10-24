@@ -913,6 +913,132 @@ final class ImageMutations {
     return _rewriteIdentifiers(sql, replacements);
   }
 
+  (List<SqlToken>, int, int, List<(int, int)>) _tableParts(String sql) {
+    final parser = SqlParser(sql);
+    parser.require('CREATE');
+    parser.require('TABLE');
+    if (parser.take('IF')) {
+      parser.require('NOT');
+      parser.require('EXISTS');
+    }
+    parser.identifier();
+    parser.require('(');
+    final open = parser.position - 1;
+    final tokens = parser.tokens;
+    var depth = 1, start = parser.position;
+    final parts = <(int, int)>[];
+    for (var i = start; i < tokens.length; i++) {
+      if (tokens[i].kind == SqlTokenKind.symbol && tokens[i].text == '(') {
+        depth++;
+      }
+      if (tokens[i].kind == SqlTokenKind.symbol && tokens[i].text == ')') {
+        depth--;
+      }
+      if (depth == 0) {
+        parts.add((start, i));
+        return (tokens, open, i, parts);
+      }
+      if (depth == 1 &&
+          tokens[i].kind == SqlTokenKind.symbol &&
+          tokens[i].text == ',') {
+        parts.add((start, i));
+        start = i + 1;
+      }
+    }
+    throw const SqlException('Unterminated table declaration');
+  }
+
+  Map<int, String> _referenceColumnReplacements(
+      String sql, String parent, String old, String renamed) {
+    final tokens = SqlTokenizer.tokenize(sql);
+    final replacements = <int, String>{};
+    for (var i = 0; i + 2 < tokens.length; i++) {
+      if (tokens[i].keyword != 'REFERENCES' ||
+          asciiLower(tokens[i + 1].text) != asciiLower(parent) ||
+          tokens[i + 2].text != '(') {
+        continue;
+      }
+      for (var j = i + 3;
+          j < tokens.length &&
+              !(tokens[j].kind == SqlTokenKind.symbol && tokens[j].text == ')');
+          j++) {
+        if (tokens[j].kind == SqlTokenKind.identifier &&
+            asciiLower(tokens[j].text) == asciiLower(old)) {
+          replacements[tokens[j].offset] = renamed;
+        }
+      }
+    }
+    return replacements;
+  }
+
+  String _renameColumnSql(_Table table, String old, String renamed) {
+    final parts = _tableParts(table.sql);
+    final tokens = parts.$1;
+    final replacements = _referenceColumnReplacements(
+        table.sql, table.schema.name, old, renamed);
+    void namesIn(int first, int last) {
+      for (var i = first; i < last; i++) {
+        if (tokens[i].kind != SqlTokenKind.identifier ||
+            asciiLower(tokens[i].text) != asciiLower(old)) {
+          continue;
+        }
+        if (i + 1 < last && ['(', '.'].contains(tokens[i + 1].text)) continue;
+        if (i > first && ['COLLATE', 'AS'].contains(tokens[i - 1].keyword)) {
+          continue;
+        }
+        replacements[tokens[i].offset] = renamed;
+      }
+    }
+
+    for (final part in parts.$4) {
+      var first = part.$1;
+      if (tokens[first].keyword == 'CONSTRAINT') first += 2;
+      final constraint = ['PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN']
+          .contains(tokens[first].keyword);
+      if (!constraint && asciiLower(tokens[first].text) == asciiLower(old)) {
+        replacements[tokens[first].offset] = renamed;
+      }
+      for (var i = first; i < part.$2; i++) {
+        final kind = tokens[i].keyword;
+        if (kind == 'CHECK' ||
+            constraint && ['PRIMARY', 'UNIQUE', 'FOREIGN'].contains(kind)) {
+          var open = i + 1;
+          while (open < part.$2 &&
+              !(tokens[open].kind == SqlTokenKind.symbol &&
+                  tokens[open].text == '(')) {
+            open++;
+          }
+          var depth = 1, end = open + 1;
+          while (end < part.$2 && depth > 0) {
+            if (tokens[end].kind == SqlTokenKind.symbol &&
+                tokens[end].text == '(') {
+              depth++;
+            }
+            if (tokens[end].kind == SqlTokenKind.symbol &&
+                tokens[end].text == ')') {
+              depth--;
+            }
+            end++;
+          }
+          namesIn(open + 1, end - 1);
+          i = end - 1;
+        }
+      }
+    }
+    return _rewriteIdentifiers(table.sql, replacements);
+  }
+
+  void _checkColumnDependencies(String tableName) {
+    if (other.any((object) =>
+        object.sql != null &&
+        SqlTokenizer.tokenize(object.sql!).any((t) =>
+            t.kind == SqlTokenKind.identifier &&
+            asciiLower(t.text) == asciiLower(tableName)))) {
+      throw const SqlException(
+          'Column alteration with dependent views/triggers unsupported');
+    }
+  }
+
   Future<MutationImage> execute(String sql, List<Object?> parameters,
       {bool foreignKeys = false,
       bool inTransaction = false,
@@ -1114,6 +1240,141 @@ final class ImageMutations {
       final key = asciiLower(name);
       final table = _tables[key];
       if (table == null) throw const SqlException('No such table');
+      if (p.current.keyword == 'DROP' ||
+          p.current.keyword == 'RENAME' &&
+              p.tokens[p.position + 1].keyword != 'TO') {
+        if (parameters.isNotEmpty || key.startsWith('sqlite_')) {
+          throw const SqlException('Invalid column alteration');
+        }
+        final drop = p.take('DROP');
+        if (!drop) p.require('RENAME');
+        p.take('COLUMN');
+        final old = p.identifier();
+        final column = _column(table.schema, old);
+        final oldKey = asciiLower(column.name);
+        final renamed = drop ? null : (p..require('TO')).identifier();
+        p.finish();
+        _checkColumnDependencies(name);
+        if (!drop) {
+          if (table.schema.columns
+              .any((c) => asciiLower(c.name) == asciiLower(renamed!))) {
+            throw const SqlException('Column exists');
+          }
+          final changed = _renameColumnSql(table, column.name, renamed!);
+          _tables[key] = _Table(
+              DatabaseCatalog.parseTable(changed, 0), changed, table.rows);
+          for (final entry in _tables.entries.toList()) {
+            if (entry.key == key) continue;
+            final replacements = _referenceColumnReplacements(
+                entry.value.sql, name, column.name, renamed);
+            if (replacements.isEmpty) continue;
+            final updated = _rewriteIdentifiers(entry.value.sql, replacements);
+            _tables[entry.key] = _Table(DatabaseCatalog.parseTable(updated, 0),
+                updated, entry.value.rows);
+          }
+          for (var i = 0; i < _indexes.length; i++) {
+            final index = _indexes[i];
+            if (asciiLower(index.table) != key) continue;
+            var updated = index.sql;
+            if (updated != null) {
+              final tokens = SqlTokenizer.tokenize(updated);
+              final on = tokens.indexWhere((t) => t.keyword == 'ON');
+              final replacements = <int, String>{};
+              var open = on + 2;
+              while (open < tokens.length &&
+                  !(tokens[open].kind == SqlTokenKind.symbol &&
+                      tokens[open].text == '(')) {
+                open++;
+              }
+              for (var j = open + 1;
+                  j < tokens.length &&
+                      !(tokens[j].kind == SqlTokenKind.symbol &&
+                          tokens[j].text == ')');
+                  j++) {
+                if ((j == open + 1 ||
+                        tokens[j - 1].kind == SqlTokenKind.symbol &&
+                            tokens[j - 1].text == ',') &&
+                    asciiLower(tokens[j].text) == oldKey) {
+                  replacements[tokens[j].offset] = renamed;
+                }
+              }
+              updated = _rewriteIdentifiers(updated, replacements);
+            }
+            _indexes[i] = _Index(
+                index.name,
+                index.table,
+                index.columns
+                    .map((c) => asciiLower(c) == oldKey ? renamed : c)
+                    .toList(),
+                index.descending,
+                index.collations,
+                index.unique,
+                updated);
+          }
+        } else {
+          if (table.schema.columns.length == 1 ||
+              column.primaryKey != 0 ||
+              column.unique ||
+              table.schema.autoIndexKeys
+                  .any((cols) => cols.any((c) => asciiLower(c) == oldKey)) ||
+              _indexes.any((i) =>
+                  asciiLower(i.table) == key &&
+                  i.columns.any((c) => asciiLower(c) == oldKey))) {
+            throw const SqlException('Cannot drop key/index column');
+          }
+          for (final check in [
+            ...table.schema.checks,
+            ...table.schema.columns
+                .where((c) => c != column)
+                .expand((c) => c.checks)
+          ]) {
+            if (check.unaggregatedColumns
+                .any((c) => c.split('.').last == oldKey)) {
+              throw const SqlException('Column is used by CHECK');
+            }
+          }
+          for (final child in _tables.values) {
+            for (final fk in child.schema.foreignKeys) {
+              if (identical(child, table) &&
+                      fk.columns.any((c) => asciiLower(c) == oldKey) ||
+                  asciiLower(fk.table) == key &&
+                      fk.targetColumns.any((c) => asciiLower(c) == oldKey)) {
+                throw const SqlException('Column is used by foreign key');
+              }
+            }
+          }
+          final parts = _tableParts(table.sql);
+          final tokens = parts.$1;
+          final remaining = parts.$4
+              .where((part) => asciiLower(tokens[part.$1].text) != oldKey)
+              .toList();
+          if (remaining.length != parts.$4.length - 1) {
+            throw const SqlException('Ambiguous column declaration');
+          }
+          final changed = table.sql.substring(0, tokens[parts.$2].offset + 1) +
+              remaining
+                  .map((part) => table.sql
+                      .substring(tokens[part.$1].offset, tokens[part.$2].offset)
+                      .trim())
+                  .join(', ') +
+              table.sql.substring(tokens[parts.$3].offset);
+          final definition = DatabaseCatalog.parseTable(changed, 0);
+          final ordinal = table.schema.columns.indexOf(column);
+          _tables[key] = _Table(definition, changed, [
+            for (final row in table.rows)
+              TableRow(row.rowId, [
+                for (var i = 0; i < row.values.length; i++)
+                  if (i != ordinal) row.values[i]
+              ])
+          ]);
+        }
+        schemaChanged = true;
+        return MutationImage(
+            serialize(
+                foreignKeys: foreignKeys, includeDeferred: !inTransaction),
+            0,
+            null);
+      }
       if (p.take('RENAME')) {
         p.require('TO');
         final renamed = p.identifier();

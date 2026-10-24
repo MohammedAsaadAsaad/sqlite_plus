@@ -4,6 +4,73 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('column ALTER preserves constraints, index/FK metadata and rollback',
+      () async {
+    final db = await MutableSqliteDatabase.create(pageSize: 512);
+    addTearDown(db.close);
+    await db.execute(
+        'CREATE TABLE alter_p(id INTEGER PRIMARY KEY,code TEXT UNIQUE,junk BLOB,value INT CHECK(value>0),CHECK(length(code)>0))');
+    await db.execute('CREATE INDEX alter_idx ON alter_p(code,value DESC)');
+    await db
+        .execute('CREATE TABLE alter_c(code TEXT REFERENCES alter_p(code))');
+    await db.execute("INSERT INTO alter_p VALUES(1,'a',zeroblob(2000),7)");
+    await db.execute("INSERT INTO alter_c VALUES('a')");
+    await db.execute('ALTER TABLE alter_p RENAME COLUMN code TO label');
+    expect((await db.query('PRAGMA foreign_key_list(alter_c)')).rows.single[4],
+        'label');
+    await db.execute('ALTER TABLE alter_p DROP COLUMN junk');
+    expect((await db.query('SELECT * FROM alter_p')).rows, [
+      [BigInt.one, 'a', BigInt.from(7)]
+    ]);
+    await db.execute('ALTER TABLE alter_p RENAME value TO length');
+    await db.execute('ALTER TABLE alter_p RENAME COLUMN length TO amount');
+    final before = db.exportImage();
+    await expectLater(db.execute('ALTER TABLE alter_p DROP COLUMN amount'),
+        throwsA(isA<SqlException>()));
+    expect(db.exportImage(), before);
+    await db.execute('DROP INDEX alter_idx');
+    await db.execute('ALTER TABLE alter_p DROP amount');
+    expect((await db.query('SELECT * FROM alter_p')).rows, [
+      [BigInt.one, 'a']
+    ]);
+    expect((await db.query('PRAGMA integrity_check')).rows, [
+      ['ok']
+    ]);
+    await db.execute('BEGIN');
+    await db.execute('ALTER TABLE alter_p RENAME label TO temporary');
+    await db.execute('ROLLBACK');
+    expect((await db.query('SELECT label FROM alter_p')).rows, [
+      ['a']
+    ]);
+    for (final sql in [
+      'ALTER TABLE alter_p DROP label',
+      'ALTER TABLE alter_p DROP id',
+      'ALTER TABLE alter_p RENAME label TO id'
+    ]) {
+      await expectLater(db.execute(sql), throwsA(isA<SqlException>()));
+    }
+    await db.execute(
+        'CREATE TABLE alter_wr(k TEXT PRIMARY KEY,pad BLOB,n INT) WITHOUT ROWID');
+    await db.execute("INSERT INTO alter_wr VALUES('key',zeroblob(1000),7)");
+    await db.execute('ALTER TABLE alter_wr DROP pad');
+    await db.execute('ALTER TABLE alter_wr RENAME k TO ident');
+    expect((await db.query('SELECT * FROM alter_wr')).rows, [
+      ['key', BigInt.from(7)]
+    ]);
+    expect((await db.query('PRAGMA integrity_check')).rows, [
+      ['ok']
+    ]);
+    await db.execute('CREATE TABLE punct("(" TEXT,")" INT,"," BLOB)');
+    await db.execute("INSERT INTO punct VALUES('x',7,X'00')");
+    await db.execute('ALTER TABLE punct RENAME COLUMN ")" TO number');
+    await db.execute('ALTER TABLE punct DROP COLUMN ","');
+    expect((await db.query('SELECT * FROM punct')).rows, [
+      ['x', BigInt.from(7)]
+    ]);
+    await db.execute('CREATE VIEW alter_view AS SELECT * FROM alter_p');
+    await expectLater(db.execute('ALTER TABLE alter_p RENAME label TO blocked'),
+        throwsA(isA<SqlException>()));
+  });
   test('integrity checks detect stale index keys without mutating data',
       () async {
     final db = await MutableSqliteDatabase.create(pageSize: 512);
