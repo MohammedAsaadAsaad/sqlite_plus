@@ -1,11 +1,9 @@
 import 'dart:typed_data';
 
-import '../btree/btree_reader.dart';
-import '../btree/table_image_writer.dart';
-import '../pager/read_only_pager.dart';
+import '../btree/database_image_builder.dart';
+import 'image_mutations.dart';
 import '../pager/image_pager.dart';
 import '../storage/memory_storage_backend.dart';
-import 'catalog.dart';
 import 'database.dart';
 import 'parser.dart';
 import 'tokenizer.dart';
@@ -17,9 +15,9 @@ final class MutationResult {
   final BigInt? lastInsertRowid;
 }
 
-/// Experimental M4 image writer for ordinary, unconstrained, unindexed rowid
-/// tables. In-memory by default. An explicitly durable pager can commit images.
-/// No concurrent calls or indexed/triggered writes. Transactions use image snapshots.
+/// Serialized image mutations with constraints, secondary indexes and row triggers.
+/// In-memory by default; an ImagePager supplies the durable commit boundary.
+/// Transactions and savepoints retain independent image snapshots.
 final class MutableSqliteDatabase {
   MutableSqliteDatabase._(this._image, this._journal);
   Uint8List _image;
@@ -27,10 +25,15 @@ final class MutableSqliteDatabase {
   bool _busy = false;
   bool _closed = false;
   bool _failed = false;
+  bool _foreignKeys = false;
   Uint8List? _transactionStart;
   bool _explicitTransaction = false;
   final List<(String, Uint8List)> _savepoints = [];
   bool get inTransaction => _transactionStart != null;
+  static Future<MutableSqliteDatabase> create(
+          {int pageSize = 4096, int encoding = 1}) =>
+      fromImage(
+          DatabaseImageBuilder.empty(pageSize: pageSize, encoding: encoding));
   static Future<MutableSqliteDatabase> fromImage(Uint8List image) async {
     final storage = MemoryStorageBackend();
     await storage.write(0, image);
@@ -66,6 +69,18 @@ final class MutableSqliteDatabase {
   Future<QueryResult> query(String sql,
           [List<Object?> parameters = const []]) =>
       _exclusive(() async {
+        final pp = SqlParser(sql);
+        if (pp.take('PRAGMA') && pp.take('FOREIGN_KEYS')) {
+          pp.finish();
+          if (parameters.isNotEmpty) {
+            throw const SqlException('PRAGMA bindings unsupported');
+          }
+          return QueryResult([
+            'foreign_keys'
+          ], [
+            [boolean(_foreignKeys)]
+          ]);
+        }
         final storage = MemoryStorageBackend();
         await storage.write(0, _image);
         final reader = await SqliteDatabase.openReadOnly(storage);
@@ -79,6 +94,51 @@ final class MutableSqliteDatabase {
           [List<Object?> parameters = const []]) =>
       _exclusive(() async {
         final parser = SqlParser(sql);
+        if (parser.take('PRAGMA')) {
+          final name = asciiLower(parser.identifier());
+          if (!['foreign_keys', 'user_version', 'application_id']
+              .contains(name)) {
+            throw const SqlException('Unsupported writable PRAGMA');
+          }
+          parser.require('=');
+          final expr = parser.expression();
+          parser.finish();
+          expr.validate({});
+          if (parameters.isNotEmpty) {
+            throw const SqlException('PRAGMA bindings unsupported');
+          }
+          final value = expr.evaluate(EvalContext({}, {}, []));
+          if (name == 'foreign_keys') {
+            if (!inTransaction) _foreignKeys = truth(value) == true;
+          } else {
+            var number = numeric(value);
+            final integer = number is BigInt
+                ? number
+                : number is double && number.isFinite
+                    ? BigInt.from(number)
+                    : BigInt.zero;
+            final signed = integer >= BigInt.from(-2147483648) &&
+                    integer <= BigInt.from(2147483647)
+                ? integer.toInt()
+                : 0;
+            final image = Uint8List.fromList(_image);
+            final fields = ByteData.sublistView(image);
+            fields.setInt32(name == 'user_version' ? 60 : 68, signed);
+            final counter = (fields.getUint32(24) + 1) & 0xffffffff;
+            fields.setUint32(24, counter);
+            fields.setUint32(92, counter);
+            if (_journal != null && !inTransaction) {
+              try {
+                await _journal.commitImage(image);
+              } catch (_) {
+                _failed = true;
+                rethrow;
+              }
+            }
+            _image = image;
+          }
+          return const MutationResult(0, null);
+        }
         if (['BEGIN', 'COMMIT', 'END', 'ROLLBACK', 'SAVEPOINT', 'RELEASE']
             .contains(parser.current.keyword)) {
           if (parameters.isNotEmpty) {
@@ -87,232 +147,23 @@ final class MutableSqliteDatabase {
           }
           return _transaction(parser);
         }
-        final insert = parser.take('INSERT');
-        final update = !insert && parser.take('UPDATE');
-        if (!insert && !update) parser.require('DELETE');
-        if (insert) parser.require('INTO');
-        if (!insert && !update) parser.require('FROM');
-        final tableName = parser.identifier();
-        final storage = MemoryStorageBackend();
-        await storage.write(0, _image);
-        final pager = await ReadOnlyPager.open(storage);
-        try {
-          final catalog = await DatabaseCatalog.read(pager);
-          final table = catalog.table(tableName);
-          final definition = catalog.entries
-              .where((e) => asciiLower(e.name) == asciiLower(tableName))
-              .firstOrNull;
-          if (definition == null ||
-              table.withoutRowid ||
-              table.rootPage == 1 ||
-              RegExp(r'\b(NOT|UNIQUE|CHECK|REFERENCES|DEFAULT|COLLATE|AUTOINCREMENT|GENERATED|CONSTRAINT)\b',
-                      caseSensitive: false)
-                  .hasMatch(definition.sql!) ||
-              catalog.entries.any((e) =>
-                  asciiLower(e.tableName) == asciiLower(tableName) &&
-                  e.type != 'table')) {
-            throw UnsupportedError(
-                'M4 mutations require a simple unindexed rowid table without constraints');
-          }
-          final names = table.columns.map((c) => asciiLower(c.name)).toList();
-          final rowNames = {...names, 'rowid', '_rowid_', 'oid'};
-          final affinities = {
-            for (final c in table.columns) asciiLower(c.name): c.affinity
-          };
-          final inputs = <String>[];
-          final values = <List<Expr>>[];
-          final assignments = <String, Expr>{};
-          Expr? where;
-          if (insert) {
-            if (parser.take('(')) {
-              do {
-                inputs.add(asciiLower(parser.identifier()));
-              } while (parser.take(','));
-              parser.require(')');
-            } else {
-              inputs.addAll(names);
-            }
-            if (inputs.toSet().length != inputs.length ||
-                inputs.any((n) => !rowNames.contains(n))) {
-              throw const SqlException('Invalid INSERT columns');
-            }
-            parser.require('VALUES');
-            do {
-              parser.require('(');
-              final row = <Expr>[];
-              do {
-                final expr = parser.expression();
-                expr.validate({});
-                if (expr.containsAggregate) {
-                  throw const SqlException('Aggregate in INSERT');
-                }
-                row.add(expr);
-              } while (parser.take(','));
-              parser.require(')');
-              if (row.length != inputs.length) {
-                throw const SqlException('INSERT width mismatch');
-              }
-              values.add(row);
-            } while (parser.take(','));
-          } else {
-            if (update) {
-              parser.require('SET');
-              do {
-                final name = asciiLower(parser.identifier());
-                if (!rowNames.contains(name) || assignments.containsKey(name)) {
-                  throw const SqlException('Invalid UPDATE column');
-                }
-                parser.require('=');
-                final expr = parser.expression();
-                expr.validate(rowNames);
-                if (expr.containsAggregate) {
-                  throw const SqlException('Aggregate in UPDATE');
-                }
-                assignments[name] = expr;
-              } while (parser.take(','));
-            }
-            if (parser.take('WHERE')) {
-              where = parser.expression();
-              where.validate(rowNames);
-              if (where.containsAggregate) {
-                throw const SqlException('Aggregate in WHERE');
-              }
-            }
-          }
-          parser.finish();
-          if (parameters.length != parser.parameterCount) {
-            throw const SqlException('Incorrect parameter count');
-          }
-          final bound = parameters.map(sqlValue).toList();
-          final rows = <TableRow>[];
-          await for (final record
-              in BtreeReader(pager).scanTable(table.rootPage)) {
-            rows.add(TableRow(record.rowId!, record.values));
-          }
-          RowValues rowMap(TableRow row) {
-            final result = <String, Object?>{};
-            for (var i = 0; i < names.length; i++) {
-              result[names[i]] = table.columns[i].name == table.rowidAlias
-                  ? row.rowId
-                  : row.values[i];
-            }
-            for (final n in ['rowid', '_rowid_', 'oid']) {
-              result.putIfAbsent(n, () => row.rowId);
-            }
-            return result;
-          }
-
-          BigInt rowId(Object? value) {
-            value = value is String ? numeric(value) : value;
-            if (value is double &&
-                value.isFinite &&
-                value == value.truncateToDouble()) {
-              value = BigInt.from(value);
-            }
-            if (value is! BigInt ||
-                value < -(BigInt.one << 63) ||
-                value >= BigInt.one << 63) {
-              throw const SqlException('Rowid datatype mismatch');
-            }
-            return value;
-          }
-
-          Object? stored(Object? value, CatalogColumn column) {
-            value = applyAffinity(value, column.affinity);
-            if (column.affinity == 'numeric' &&
-                value is double &&
-                value.isFinite &&
-                value == value.truncateToDouble() &&
-                value >= -(BigInt.one << 63).toDouble() &&
-                value < (BigInt.one << 63).toDouble()) {
-              value = BigInt.from(value);
-            }
-            return value;
-          }
-
-          TableRow physical(RowValues row, BigInt id) => TableRow(id, [
-                for (final column in table.columns)
-                  column.name == table.rowidAlias
-                      ? null
-                      : stored(row[asciiLower(column.name)], column)
-              ]);
-          var changes = 0;
-          BigInt? last;
-          final next = <TableRow>[];
-          if (insert) {
-            next.addAll(rows);
-            for (final input in values) {
-              final ctx = EvalContext({}, {}, bound, pager.header.textEncoding);
-              final data = <String, Object?>{};
-              for (var i = 0; i < inputs.length; i++) {
-                data[inputs[i]] = input[i].evaluate(ctx);
-              }
-              Object? requested = table.rowidAlias == null
-                  ? null
-                  : data[asciiLower(table.rowidAlias!)];
-              for (final n in ['rowid', '_rowid_', 'oid']) {
-                if (!names.contains(n) && data.containsKey(n)) {
-                  requested = data[n];
-                }
-              }
-              final max = next.fold<BigInt>(
-                  BigInt.zero, (a, r) => r.rowId > a ? r.rowId : a);
-              final id =
-                  requested == null ? max + BigInt.one : rowId(requested);
-              if (id >= BigInt.one << 63) {
-                throw const SqlException('Automatic rowid exhausted');
-              }
-              next.add(physical(data, id));
-              last = id;
-              changes++;
-            }
-          } else {
-            for (final row in rows) {
-              final data = rowMap(row);
-              final ctx = EvalContext(
-                  data, affinities, bound, pager.header.textEncoding);
-              if (where != null &&
-                  truth(where.evaluate(ctx), pager.header.textEncoding) !=
-                      true) {
-                next.add(row);
-                continue;
-              }
-              changes++;
-              if (update) {
-                final updated = {...data};
-                for (final entry in assignments.entries) {
-                  updated[entry.key] = entry.value.evaluate(ctx);
-                }
-                var id = row.rowId;
-                if (table.rowidAlias != null &&
-                    assignments.containsKey(asciiLower(table.rowidAlias!))) {
-                  id = rowId(updated[asciiLower(table.rowidAlias!)]);
-                }
-                for (final n in ['rowid', '_rowid_', 'oid']) {
-                  if (!names.contains(n) && assignments.containsKey(n)) {
-                    id = rowId(updated[n]);
-                  }
-                }
-                next.add(physical(updated, id));
-              }
-            }
-          }
-          if (changes == 0) return MutationResult(0, null);
-          final image = await TableImageWriter.replace(_image, tableName, next);
+        final result = await (await ImageMutations.load(_image)).execute(
+            sql, parameters,
+            foreignKeys: _foreignKeys, inTransaction: inTransaction);
+        if (!identical(result.image, _image)) {
           if (_journal != null && !inTransaction) {
             try {
-              await _journal.commitImage(image);
+              await _journal.commitImage(result.image);
             } catch (_) {
               _failed = true;
               rethrow;
             }
           }
-          _image = image;
-          return MutationResult(changes, last);
-        } finally {
-          await pager.close();
+          _image = result.image;
         }
+        return MutationResult(result.changes, result.lastRowid);
       });
+
   Future<MutationResult> _transaction(SqlParser parser) async {
     final op = parser.current.keyword;
     parser.position++;
@@ -373,6 +224,7 @@ final class MutableSqliteDatabase {
   }
 
   Future<void> _commitTransaction() async {
+    if (_foreignKeys) (await ImageMutations.load(_image)).validateForeignKeys();
     if (_journal != null) {
       try {
         await _journal.commitImage(_image);

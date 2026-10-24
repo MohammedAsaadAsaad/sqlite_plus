@@ -184,3 +184,36 @@
 - M6 still needs joins/subqueries/compounds, remaining expression semantics,
   secondary indexes and maintenance, constraints, DDL and full conformance.
   M7–M9 remain unstarted to preserve sequential verification.
+
+## 2026-10-24 — M6 relational execution, schema/index writes and windows (partial)
+
+- Added joins (including outer/NATURAL/USING), qualified/derived sources,
+  correlated/scalar/EXISTS/IN subqueries, compounds and ordinary/forward/bounded
+  recursive CTEs. Added IN/BETWEEN/CASE/CAST/LIKE/GLOB/bitwise expressions,
+  explicit/declared BINARY/NOCASE/RTRIM, expression/ordinal/alias grouping,
+  HAVING aliases and differential MIN/MAX bare-column selection.
+- Added fresh SQLite image creation and compact rowid/index B-tree construction,
+  promoted interior index records, overflow pages and schema reconstruction.
+  Mutations validate cross-tree ownership and freelists before rebuilding.
+  Indexed/WITHOUT ROWID writes, DDL/ADD COLUMN, defaults, NOT NULL/UNIQUE/CHECK,
+  STRICT, AUTOINCREMENT, FK actions/deferral, views and BEFORE/AFTER row triggers
+  now have verified subsets. Unsupported schema/trigger forms remain explicit.
+- Added column-index prefix descent and ordinary-table rowid fetches for safe
+  equality plans. Tests compare results/page reads against scans for duplicate,
+  descending, missing and NULL keys. Broader planner work remains open.
+- Added bounded ranking/value/offset/aggregate windows, PARTITION/ORDER, ROWS and
+  default/peer RANGE frames; unsupported grouped/named/advanced frames remain
+  rejected. Added table/index/FK PRAGMAs and transactional user/application header
+  metadata writes. Fixed trigger IGNORE row skipping and atomic ABORT rollback.
+- Expanded the pinned M6 oracle from 291 to 624 cases across the three encodings.
+  Added 153 schema/index/constraint/trigger mutation snapshots; pinned SQLite
+  cross-opens each image, compares rows/metadata and passes integrity_check.
+- All 1,493 engine tests pass. All three packages pass locked dependency
+  installation, formatting and fatal-info analysis. Fixture/oracle checksums,
+  8 mutation and 14 transaction snapshots, byte-exact hot-journal recovery,
+  WAL both-endian/checkpoint/native continuation and owner handoff checks pass.
+- Collected a real AOT five-sample index-versus-scan benchmark over 10,000 rows
+  and saved raw microseconds, image size, SDK and whole-process RSS. This remains
+  one small Linux memory workload; it does not satisfy M9's benchmark matrix.
+- M6 remains unchecked for remaining SQL breadth and conformance; M7–M9 remain
+  pending. Documentation now distinguishes implemented subsets from open gates.

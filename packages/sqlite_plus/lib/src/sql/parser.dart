@@ -3,11 +3,26 @@ import 'dart:typed_data';
 import 'tokenizer.dart';
 import 'values.dart';
 import 'functions.dart';
+import 'expressions.dart';
+import 'triggers.dart';
+import 'windows.dart';
+
+abstract interface class SqlRows {
+  List<String> get columns;
+  List<List<Object?>> get rows;
+  List<String> get columnAffinities;
+}
 
 typedef RowValues = Map<String, Object?>;
 
 final class EvalContext {
   EvalContext(this.row, this.affinities, this.parameters, [this.encoding = 1]);
+  SqlRows Function(SelectStatement, EvalContext)? subquery;
+  bool inTrigger = false;
+  List<RowValues>? windowRows;
+  RowValues? windowRow;
+  Map<Expr, Object> windowCache = {};
+  Map<String, String> collations = {};
   List<RowValues>? group;
   final Map<Expr, Object?> aggregateValues = {};
   final int encoding;
@@ -17,6 +32,7 @@ final class EvalContext {
 }
 
 abstract class Expr {
+  bool get containsWindow => children.any((c) => c.containsWindow);
   Iterable<Expr> get children => const [];
   bool get containsAggregate =>
       children.any((child) => child.containsAggregate);
@@ -24,6 +40,22 @@ abstract class Expr {
   Set<String> get unaggregatedColumns =>
       children.expand((child) => child.unaggregatedColumns).toSet();
   String affinity(EvalContext context) => 'none';
+  String? explicitCollation(EvalContext context) {
+    for (final child in children) {
+      final value = child.explicitCollation(context);
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  String? collation(EvalContext context) {
+    for (final child in children) {
+      final value = child.collation(context);
+      if (value != null) return value;
+    }
+    return null;
+  }
+
   void validate(Set<String> columns) {}
 }
 
@@ -50,6 +82,8 @@ final class ColumnExpr extends Expr {
 
   @override
   String affinity(EvalContext context) => context.affinities[key] ?? 'none';
+  @override
+  String? collation(EvalContext context) => context.collations[key];
   @override
   void validate(Set<String> columns) {
     if (!columns.contains(key)) throw SqlException('No such column: $name');
@@ -157,11 +191,26 @@ final class BinaryExpr extends Expr {
       if (op == 'IS' || op == 'IS NOT') {
         final equal = a == null || b == null
             ? a == b
-            : compareValues(a, b, context.encoding) == 0;
+            : compareValues(
+                    a,
+                    b,
+                    context.encoding,
+                    left.explicitCollation(context) ??
+                        right.explicitCollation(context) ??
+                        left.collation(context) ??
+                        right.collation(context)) ==
+                0;
         return boolean(op == 'IS' ? equal : !equal);
       }
       if (a == null || b == null) return null;
-      final c = compareValues(a, b, context.encoding);
+      final c = compareValues(
+          a,
+          b,
+          context.encoding,
+          left.explicitCollation(context) ??
+              right.explicitCollation(context) ??
+              left.collation(context) ??
+              right.collation(context));
       return boolean(switch (op) {
         '=' || '==' => c == 0,
         '!=' || '<>' => c != 0,
@@ -177,6 +226,17 @@ final class BinaryExpr extends Expr {
     }
     a = numeric(a, prefix: true, encoding: context.encoding) ?? BigInt.zero;
     b = numeric(b, prefix: true, encoding: context.encoding) ?? BigInt.zero;
+    if (['&', '|', '<<', '>>'].contains(op)) {
+      final aa = toSqlInteger(a);
+      final bb = toSqlInteger(b);
+      if (op == '&') return (aa & bb).toSigned(64);
+      if (op == '|') return (aa | bb).toSigned(64);
+      final shift = bb.abs() > BigInt.from(64) ? 64 : bb.abs().toInt();
+      final leftShift = (op == '<<') == (bb >= BigInt.zero);
+      return leftShift
+          ? (aa << shift).toSigned(64)
+          : (aa.toSigned(64) >> shift);
+    }
     if ((op == '/' || op == '%') && compareValues(b, BigInt.zero) == 0) {
       return null;
     }
@@ -225,6 +285,9 @@ final class OrderTerm {
 final class SelectStatement {
   SelectStatement(this.items, this.table, this.where, this.order, this.limit,
       this.offset, this.distinct, this.parameterCount);
+  final Map<String, (List<String>, SelectStatement)> ctes = {};
+  final List<QuerySource> sources = [];
+  final List<(String, SelectStatement)> compounds = [];
   final List<Expr> groupBy = [];
   Expr? having;
   final List<SelectItem> items;
@@ -235,6 +298,23 @@ final class SelectStatement {
   final Expr? offset;
   final bool distinct;
   final int parameterCount;
+}
+
+final class QuerySource {
+  QuerySource(
+      {this.table,
+      this.query,
+      this.alias,
+      this.join = 'CROSS',
+      this.on,
+      this.using = const [],
+      this.natural = false});
+  final String? table, alias;
+  final SelectStatement? query;
+  final String join;
+  final Expr? on;
+  final List<String> using;
+  final bool natural;
 }
 
 /// Strict parser for the M3 single-table SELECT grammar. Unsupported syntax fails.
@@ -275,7 +355,45 @@ final class SqlParser {
     }
   }
 
-  SelectStatement select() {
+  int _selectDepth = 0;
+  SelectStatement select({bool nested = false, bool component = false}) {
+    if (++_selectDepth > 64) {
+      _selectDepth--;
+      throw const SqlException('SELECT nesting limit exceeded');
+    }
+    try {
+      return _select(nested: nested, component: component);
+    } finally {
+      _selectDepth--;
+    }
+  }
+
+  SelectStatement _select({bool nested = false, bool component = false}) {
+    final ctes = <String, (List<String>, SelectStatement)>{};
+    if (take('WITH')) {
+      take('RECURSIVE');
+      do {
+        final name = asciiLower(identifier());
+        if (ctes.containsKey(name)) throw const SqlException('Duplicate CTE');
+        final columns = <String>[];
+        if (take('(')) {
+          do {
+            columns.add(identifier());
+          } while (take(','));
+          require(')');
+        }
+        require('AS');
+        if (take('NOT')) {
+          require('MATERIALIZED');
+        } else {
+          take('MATERIALIZED');
+        }
+        require('(');
+        final query = select(nested: true);
+        require(')');
+        ctes[name] = (columns, query);
+      } while (take(','));
+    }
     require('SELECT');
     final distinct = take('DISTINCT');
     if (!distinct) take('ALL');
@@ -289,16 +407,45 @@ final class SqlParser {
       final expr = expression();
       final display =
           source?.substring(start.offset, current.offset).trim() ?? start.text;
-      final explicitAlias = take('AS');
+      final explicitAlias = take('AS') || _implicitAlias();
       final label = explicitAlias
           ? identifier()
           : expr is ColumnExpr
               ? expr.name
               : display;
-      items.add(SelectItem(expr, label, explicitAlias: explicitAlias));
+      items.add(expr is ColumnExpr && expr.name.endsWith('.*')
+          ? SelectItem(null, expr.name)
+          : SelectItem(expr, label, explicitAlias: explicitAlias));
     } while (take(','));
-    String? table;
-    if (take('FROM')) table = identifier();
+    final sources = <QuerySource>[];
+    if (take('FROM')) {
+      sources.add(_source('CROSS', false));
+      while (true) {
+        if (take(',')) {
+          sources.add(_source('CROSS', false));
+          continue;
+        }
+        final natural = take('NATURAL');
+        String? join;
+        for (final type in ['LEFT', 'RIGHT', 'FULL', 'INNER', 'CROSS']) {
+          if (take(type)) {
+            join = type;
+            break;
+          }
+        }
+        if (join != null) {
+          take('OUTER');
+          require('JOIN');
+        } else if (take('JOIN')) {
+          join = 'INNER';
+        } else {
+          if (natural) throw const SqlException('Expected JOIN');
+          break;
+        }
+        sources.add(_source(join, natural));
+      }
+    }
+    final table = sources.isEmpty ? null : sources.first.table;
     final where = take('WHERE') ? expression() : null;
     final groups = <Expr>[];
     if (take('GROUP')) {
@@ -308,8 +455,17 @@ final class SqlParser {
       } while (take(','));
     }
     final having = take('HAVING') ? expression() : null;
+    final compounds = <(String, SelectStatement)>[];
+    if (!component) {
+      while (['UNION', 'INTERSECT', 'EXCEPT'].contains(current.keyword)) {
+        var op = current.keyword;
+        position++;
+        if (op == 'UNION' && take('ALL')) op = 'UNION ALL';
+        compounds.add((op, select(nested: true, component: true)));
+      }
+    }
     final order = <OrderTerm>[];
-    if (take('ORDER')) {
+    if (!component && take('ORDER')) {
       require('BY');
       do {
         final expr = expression();
@@ -320,7 +476,7 @@ final class SqlParser {
     }
     Expr? limit;
     Expr? offset;
-    if (take('LIMIT')) {
+    if (!component && take('LIMIT')) {
       limit = expression();
       if (take('OFFSET')) {
         offset = expression();
@@ -329,11 +485,81 @@ final class SqlParser {
         limit = expression();
       }
     }
-    finish();
+    if (!nested) finish();
     return SelectStatement(
         items, table, where, order, limit, offset, distinct, parameterCount)
+      ..ctes.addAll(ctes)
+      ..sources.addAll(sources)
+      ..compounds.addAll(compounds)
       ..groupBy.addAll(groups)
       ..having = having;
+  }
+
+  bool _implicitAlias() =>
+      current.kind == SqlTokenKind.identifier &&
+      !const {
+        'FROM',
+        'WHERE',
+        'GROUP',
+        'HAVING',
+        'ORDER',
+        'LIMIT',
+        'OFFSET',
+        'UNION',
+        'INTERSECT',
+        'EXCEPT',
+        'JOIN',
+        'LEFT',
+        'RIGHT',
+        'FULL',
+        'INNER',
+        'OUTER',
+        'CROSS',
+        'NATURAL',
+        'ON',
+        'USING',
+        'WINDOW',
+        'WHEN',
+        'THEN',
+        'ELSE',
+        'END',
+        'AS',
+        'COLLATE',
+        'ASC',
+        'DESC'
+      }.contains(current.keyword);
+  QuerySource _source(String join, bool natural) {
+    String? table;
+    SelectStatement? query;
+    if (take('(')) {
+      query = select(nested: true);
+      require(')');
+    } else {
+      table = identifier();
+    }
+    final alias = take('AS') || _implicitAlias() ? identifier() : null;
+    Expr? on;
+    final using = <String>[];
+    if (take('ON')) {
+      on = expression();
+    } else if (take('USING')) {
+      require('(');
+      do {
+        using.add(identifier());
+      } while (take(','));
+      require(')');
+    }
+    if (natural && (on != null || using.isNotEmpty)) {
+      throw const SqlException('NATURAL JOIN cannot have ON/USING');
+    }
+    return QuerySource(
+        table: table,
+        query: query,
+        alias: alias,
+        join: join,
+        on: on,
+        using: using,
+        natural: natural);
   }
 
   int _depth = 0;
@@ -351,22 +577,60 @@ final class SqlParser {
 
   Expr _expression(int minimum) {
     Expr left;
-    if (take('NOT')) {
+    if (take('CASE')) {
+      Expr? base;
+      if (current.keyword != 'WHEN') base = expression();
+      final branches = <(Expr, Expr)>[];
+      do {
+        require('WHEN');
+        final condition = expression();
+        require('THEN');
+        final value = expression();
+        branches.add((condition, value));
+      } while (current.keyword == 'WHEN');
+      final otherwise = take('ELSE') ? expression() : null;
+      require('END');
+      left = CaseExpr(base, branches, otherwise);
+    } else if (take('CAST')) {
+      require('(');
+      final value = expression();
+      require('AS');
+      final type = <String>[identifier()];
+      while (current.kind == SqlTokenKind.identifier) {
+        type.add(identifier());
+      }
+      if (take('(')) {
+        if (current.kind != SqlTokenKind.number) {
+          throw const SqlException('Invalid cast type');
+        }
+        position++;
+        if (take(',')) position++;
+        require(')');
+      }
+      require(')');
+      left = CastExpr(value, type.join(' '));
+    } else if (take('NOT')) {
       left = UnaryExpr('NOT', expression(3));
     } else if (take('+')) {
-      left = UnaryExpr('+', expression(8));
+      left = UnaryExpr('+', expression(15));
     } else if (take('-')) {
       if (current.kind == SqlTokenKind.number &&
           current.text == '9223372036854775808') {
         position++;
         left = Literal(-(BigInt.one << 63));
       } else {
-        left = UnaryExpr('-', expression(8));
+        left = UnaryExpr('-', expression(15));
       }
     } else if (take('~')) {
-      left = UnaryExpr('~', expression(8));
+      left = UnaryExpr('~', expression(15));
+    } else if (take('EXISTS')) {
+      require('(');
+      left = SubqueryExpr(select(nested: true), exists: true);
+      require(')');
     } else if (take('(')) {
-      left = expression();
+      left = ['SELECT', 'WITH'].contains(current.keyword)
+          ? SubqueryExpr(select(nested: true))
+          : expression();
       require(')');
     } else {
       final token = current;
@@ -407,21 +671,108 @@ final class SqlParser {
         left = Literal(boolean(token.keyword == 'TRUE'));
       } else if (token.kind == SqlTokenKind.identifier) {
         if (take('(')) {
-          final args = <Expr>[];
-          var star = false;
-          final distinct = take('DISTINCT');
-          if (take('*')) {
-            star = true;
+          if (asciiLower(token.text) == 'raise') {
+            final action = identifier().toUpperCase();
+            Expr? message;
+            if (action != 'IGNORE') {
+              require(',');
+              message = expression();
+            }
             require(')');
-          } else if (!take(')')) {
-            do {
-              args.add(expression());
-            } while (take(','));
-            require(')');
+            left = RaiseExpr(action, message);
+          } else {
+            final args = <Expr>[];
+            var star = false;
+            final distinct = take('DISTINCT');
+            if (take('*')) {
+              star = true;
+              require(')');
+            } else if (!take(')')) {
+              do {
+                args.add(expression());
+              } while (take(','));
+              require(')');
+            }
+            left =
+                FunctionExpr(token.text, args, distinct: distinct, star: star);
+            if (take('OVER')) {
+              require('(');
+              final partition = <Expr>[];
+              final order = <OrderTerm>[];
+              if (take('PARTITION')) {
+                require('BY');
+                do {
+                  partition.add(expression());
+                } while (take(','));
+              }
+              if (take('ORDER')) {
+                require('BY');
+                do {
+                  final expr = expression();
+                  final descending = take('DESC');
+                  if (!descending) take('ASC');
+                  order.add(OrderTerm(expr, descending));
+                } while (take(','));
+              }
+              var mode = 'RANGE';
+              var start = WindowBound('UNBOUNDED PRECEDING');
+              var end = WindowBound(
+                  order.isEmpty ? 'UNBOUNDED FOLLOWING' : 'CURRENT ROW');
+              WindowBound bound() {
+                if (take('UNBOUNDED')) {
+                  final direction = identifier().toUpperCase();
+                  if (!['PRECEDING', 'FOLLOWING'].contains(direction)) {
+                    throw const SqlException('Invalid frame bound');
+                  }
+                  return WindowBound('UNBOUNDED $direction');
+                }
+                if (take('CURRENT')) {
+                  require('ROW');
+                  return WindowBound('CURRENT ROW');
+                }
+                final offset = expression();
+                final direction = identifier().toUpperCase();
+                if (!['PRECEDING', 'FOLLOWING'].contains(direction)) {
+                  throw const SqlException('Invalid frame bound');
+                }
+                return WindowBound(direction, offset);
+              }
+
+              if (['ROWS', 'RANGE'].contains(current.keyword)) {
+                mode = identifier().toUpperCase();
+                if (take('BETWEEN')) {
+                  start = bound();
+                  require('AND');
+                  end = bound();
+                } else {
+                  start = bound();
+                  end = WindowBound('CURRENT ROW');
+                }
+              }
+              require(')');
+              if (start.kind == 'UNBOUNDED FOLLOWING' ||
+                  end.kind == 'UNBOUNDED PRECEDING') {
+                throw const SqlException('Invalid frame bounds');
+              }
+              const boundOrder = [
+                'UNBOUNDED PRECEDING',
+                'PRECEDING',
+                'CURRENT ROW',
+                'FOLLOWING',
+                'UNBOUNDED FOLLOWING'
+              ];
+              if (boundOrder.indexOf(start.kind) >
+                  boundOrder.indexOf(end.kind)) {
+                throw const SqlException('Invalid frame ordering');
+              }
+              left = WindowExpr(
+                  left as FunctionExpr, partition, order, mode, start, end);
+            }
           }
-          left = FunctionExpr(token.text, args, distinct: distinct, star: star);
         } else {
-          left = ColumnExpr(token.text);
+          var name = token.text;
+          if (take('.')) name += '.${take('*') ? '*' : identifier()}';
+          left = ColumnExpr(name);
         }
       } else {
         throw SqlException('Expected expression', token.offset);
@@ -430,29 +781,91 @@ final class SqlParser {
     const precedence = {
       'OR': 1,
       'AND': 2,
-      '=': 3,
-      '==': 3,
-      '!=': 3,
-      '<>': 3,
-      'IS': 3,
-      '<': 4,
-      '>': 4,
-      '<=': 4,
-      '>=': 4,
-      '+': 5,
-      '-': 5,
-      '*': 6,
-      '/': 6,
-      '%': 6,
-      '||': 7
+      '=': 7,
+      '==': 7,
+      '!=': 7,
+      '<>': 7,
+      'IS': 7,
+      '<': 8,
+      '>': 8,
+      '<=': 8,
+      '>=': 8,
+      '&': 10,
+      '|': 10,
+      '<<': 10,
+      '>>': 10,
+      '+': 11,
+      '-': 11,
+      '*': 12,
+      '/': 12,
+      '%': 12,
+      '||': 13,
     };
     while (true) {
+      if (minimum <= 14 && take('COLLATE')) {
+        left = CollateExpr(left, identifier());
+        continue;
+      }
+      if (minimum <=
+              (current.keyword == 'BETWEEN' ||
+                      current.keyword == 'NOT' &&
+                          tokens[position + 1].keyword == 'BETWEEN'
+                  ? 6
+                  : 5) &&
+          (current.keyword == 'IN' ||
+              current.keyword == 'BETWEEN' ||
+              current.keyword == 'LIKE' ||
+              current.keyword == 'GLOB' ||
+              current.keyword == 'NOT' &&
+                  ['IN', 'BETWEEN', 'LIKE', 'GLOB']
+                      .contains(tokens[position + 1].keyword))) {
+        final negate = take('NOT');
+        final op = current.keyword;
+        position++;
+        if (op == 'IN') {
+          require('(');
+          if (['SELECT', 'WITH'].contains(current.keyword)) {
+            left = InSelectExpr(left, select(nested: true), negate: negate);
+            require(')');
+            continue;
+          }
+          final values = <Expr>[];
+          if (!take(')')) {
+            do {
+              values.add(expression());
+            } while (take(','));
+            require(')');
+          }
+          left = InExpr(left, values, negate: negate);
+        } else if (op == 'BETWEEN') {
+          final low = expression(7);
+          require('AND');
+          left = BetweenExpr(left, low, expression(7), negate: negate);
+        } else {
+          final pattern = expression(6);
+          final escape = take('ESCAPE') ? expression(10) : null;
+          left = PatternExpr(left, pattern,
+              escape: escape, glob: op == 'GLOB', negate: negate);
+        }
+        continue;
+      }
+      if (minimum <= 4 && (take('ISNULL') || take('NOTNULL'))) {
+        left = BinaryExpr(
+            tokens[position - 1].keyword == 'ISNULL' ? 'IS' : 'IS NOT',
+            left,
+            Literal(null));
+        continue;
+      }
       var op =
           current.kind == SqlTokenKind.symbol ? current.text : current.keyword;
       final level = precedence[op];
       if (level == null || level < minimum) break;
       position++;
       if (op == 'IS' && take('NOT')) op = 'IS NOT';
+      if ((op == 'IS' || op == 'IS NOT') && take('DISTINCT')) {
+        require('FROM');
+        op = op == 'IS' ? 'IS NOT' : 'IS';
+      }
       if ((op == 'IS' || op == 'IS NOT') &&
           (current.keyword == 'TRUE' || current.keyword == 'FALSE')) {
         final expected = current.keyword == 'TRUE';

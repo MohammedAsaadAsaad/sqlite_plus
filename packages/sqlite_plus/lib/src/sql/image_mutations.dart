@@ -1,0 +1,1307 @@
+import 'dart:typed_data';
+import 'dart:convert';
+
+import '../btree/btree_reader.dart';
+import '../btree/database_image_builder.dart';
+import '../btree/table_image_writer.dart';
+import '../format/database_header.dart';
+import '../pager/read_only_pager.dart';
+import '../storage/memory_storage_backend.dart';
+import 'catalog.dart';
+import 'database.dart';
+import 'parser.dart';
+import 'tokenizer.dart';
+import 'triggers.dart';
+import 'values.dart';
+
+final class MutationImage {
+  MutationImage(this.image, this.changes, this.lastRowid);
+  final Uint8List image;
+  final int changes;
+  final BigInt? lastRowid;
+}
+
+final class _Table {
+  _Table(this.schema, this.sql, this.rows);
+  final CatalogTable schema;
+  final String sql;
+  final List<TableRow> rows;
+}
+
+final class _Index {
+  _Index(this.name, this.table, this.columns, this.descending, this.collations,
+      this.unique, this.sql);
+  final String name, table;
+  final List<String> columns;
+  final List<bool> descending;
+  final List<String> collations;
+  final bool unique;
+  final String? sql;
+}
+
+/// Validates complete logical mutations before compact image reconstruction.
+/// File atomicity remains the responsibility of ImagePager.
+final class ImageMutations {
+  ImageMutations._(this.original, this.encoding);
+  final Uint8List original;
+  final int encoding;
+  final Map<String, _Table> _tables = {};
+  final List<_Index> _indexes = [];
+  final List<ImageObject> other = [];
+  bool schemaChanged = false;
+  final Map<String, BigInt> _sequences = {};
+  static Future<ImageMutations> load(Uint8List image) async {
+    final header = DatabaseHeader.decode(image);
+    final result = ImageMutations._(image, header.textEncoding);
+    final storage = MemoryStorageBackend();
+    await storage.write(0, image);
+    final pager = await ReadOnlyPager.open(storage);
+    try {
+      if (image.length > 64 * 1024 * 1024 ||
+          !header.hasValidDatabaseSize ||
+          header.databaseSize * header.pageSize != image.length ||
+          header.largestRootPage != 0 ||
+          header.reservedBytes != 0) {
+        throw UnsupportedError(
+            'Writer requires complete non-auto-vacuum image without reserved bytes');
+      }
+      final catalog = await DatabaseCatalog.read(pager);
+      final owned = <int>{};
+      for (final root in [
+        1,
+        ...catalog.entries.where((e) => e.rootPage != 0).map((e) => e.rootPage)
+      ]) {
+        final first = await pager.readPage(root);
+        final reader = BtreeReader(pager, onPageRead: (number) {
+          if (!owned.add(number)) {
+            throw const FormatException('Cross-tree page alias');
+          }
+        });
+        await ([5, 13].contains(first[root == 1 ? 100 : 0])
+                ? reader.scanTable(root)
+                : reader.scanIndex(root))
+            .drain<void>();
+      }
+      var trunk = header.firstFreelistTrunk;
+      var freeCount = 0;
+      while (trunk != 0) {
+        if (trunk < 2 || !owned.add(trunk)) {
+          throw const FormatException('Invalid freelist trunk');
+        }
+        final bytes = ByteData.sublistView(await pager.readPage(trunk));
+        final count = bytes.getUint32(4);
+        if (count > header.usableSize ~/ 4 - 2) {
+          throw const FormatException('Invalid freelist count');
+        }
+        freeCount++;
+        for (var i = 0; i < count; i++) {
+          final page = bytes.getUint32(8 + 4 * i);
+          if (page < 2 || page > pager.pageCount || !owned.add(page)) {
+            throw const FormatException('Invalid freelist leaf');
+          }
+          freeCount++;
+        }
+        trunk = bytes.getUint32(0);
+      }
+      if (freeCount != header.freelistPages ||
+          owned.length != pager.pageCount) {
+        throw const FormatException('Freelist count mismatch or unowned pages');
+      }
+      for (final entry
+          in catalog.entries.where((entry) => entry.type == 'table')) {
+        final table = catalog.table(entry.name);
+        final rows = <TableRow>[];
+        await for (final record in table.withoutRowid
+            ? BtreeReader(pager).scanIndex(table.rootPage)
+            : BtreeReader(pager).scanTable(table.rootPage)) {
+          final values = List<Object?>.filled(table.columns.length, null);
+          final stored = table.storageColumns;
+          for (var i = 0; i < stored.length; i++) {
+            values[table.columns.indexOf(stored[i])] = i < record.values.length
+                ? record.values[i]
+                : stored[i].defaultValue;
+          }
+          rows.add(
+              TableRow(record.rowId ?? BigInt.from(rows.length + 1), values));
+        }
+        result._tables[asciiLower(table.name)] =
+            _Table(table, entry.sql!, rows);
+      }
+      for (final entry
+          in catalog.entries.where((entry) => entry.type == 'index')) {
+        if (entry.sql != null) {
+          result._indexes.add(result._parseIndex(entry.sql!));
+        } else {
+          final table = result._tables[asciiLower(entry.tableName)]!;
+          final definitions = result._implicitKeys(table.schema);
+          final suffix = int.tryParse(entry.name.split('_').last);
+          if (suffix == null || suffix < 1 || suffix > definitions.length) {
+            throw const SqlException('Unsupported automatic index definition');
+          }
+          final cols = definitions[suffix - 1];
+          result._indexes.add(_Index(
+              entry.name,
+              entry.tableName,
+              cols,
+              [
+                for (final col in cols)
+                  result._column(table.schema, col).primaryDescending
+              ],
+              [
+                for (final col in cols)
+                  result._column(table.schema, col).collation
+              ],
+              true,
+              null));
+        }
+      }
+      for (final entry in catalog.entries
+          .where((entry) => !['table', 'index'].contains(entry.type))) {
+        result.other.add(
+            ImageObject(entry.type, entry.name, entry.tableName, entry.sql));
+      }
+      final sequence = result._tables['sqlite_sequence'];
+      if (sequence != null) {
+        for (final row in sequence.rows) {
+          final values = result._row(sequence, row);
+          if (values['name'] is String && values['seq'] is BigInt) {
+            result._sequences[asciiLower(values['name'] as String)] =
+                values['seq'] as BigInt;
+          }
+        }
+      }
+      return result;
+    } finally {
+      await pager.close();
+    }
+  }
+
+  CatalogColumn _column(CatalogTable table, String name) {
+    final column = table.columns
+        .where((c) => asciiLower(c.name) == asciiLower(name))
+        .firstOrNull;
+    if (column == null) throw SqlException('No such column: $name');
+    return column;
+  }
+
+  List<List<String>> _implicitKeys(CatalogTable table) => table.autoIndexKeys;
+  _Index _parseIndex(String sql) {
+    final p = SqlParser(sql);
+    p.require('CREATE');
+    final unique = p.take('UNIQUE');
+    p.require('INDEX');
+    if (p.take('IF')) {
+      p.require('NOT');
+      p.require('EXISTS');
+    }
+    final name = p.identifier();
+    p.require('ON');
+    final tableName = p.identifier();
+    final table = _tables[asciiLower(tableName)];
+    if (table == null) throw SqlException('No such table: $tableName');
+    p.require('(');
+    final cols = <String>[];
+    final desc = <bool>[];
+    final coll = <String>[];
+    do {
+      final column = _column(table.schema, p.identifier());
+      cols.add(column.name);
+      coll.add(
+          p.take('COLLATE') ? asciiLower(p.identifier()) : column.collation);
+      if (!['binary', 'nocase', 'rtrim'].contains(coll.last)) {
+        throw const SqlException('Unknown index collation');
+      }
+      final d = p.take('DESC');
+      if (!d) p.take('ASC');
+      desc.add(d);
+    } while (p.take(','));
+    p.require(')');
+    p.finish();
+    return _Index(name, tableName, cols, desc, coll, unique, sql);
+  }
+
+  RowValues _row(_Table table, TableRow row) {
+    final result = <String, Object?>{
+      for (var i = 0; i < table.schema.columns.length; i++)
+        asciiLower(table.schema.columns[i].name):
+            table.schema.columns[i].name == table.schema.rowidAlias
+                ? row.rowId
+                : row.values[i]
+    };
+    if (!table.schema.withoutRowid) {
+      for (final name in ['rowid', '_rowid_', 'oid']) {
+        result.putIfAbsent(name, () => row.rowId);
+      }
+    }
+    return result;
+  }
+
+  EvalContext _context(_Table table, TableRow row, List<Object?> params) =>
+      EvalContext(
+          _row(table, row),
+          {
+            for (final col in table.schema.columns)
+              asciiLower(col.name): col.affinity
+          },
+          params,
+          encoding)
+        ..collations = {
+          for (final column in table.schema.columns)
+            asciiLower(column.name): column.collation
+        };
+  Object? _stored(Object? value, CatalogColumn column) {
+    value = applyAffinity(value, column.affinity);
+    if (column.affinity == 'numeric' &&
+        value is double &&
+        value.isFinite &&
+        value == value.truncateToDouble() &&
+        value >= -(BigInt.one << 63).toDouble() &&
+        value < (BigInt.one << 63).toDouble()) {
+      value = BigInt.from(value);
+    }
+    return sqlValue(value);
+  }
+
+  TableRow _physical(_Table table, Map<String, Object?> values, BigInt id) =>
+      TableRow(id, [
+        for (final col in table.schema.columns)
+          col.name == table.schema.rowidAlias
+              ? null
+              : _stored(values[asciiLower(col.name)], col)
+      ]);
+  int _compare(_Index index, List<Object?> a, List<Object?> b) {
+    for (var i = 0; i < a.length && i < b.length; i++) {
+      final c = compareValues(a[i], b[i], encoding,
+          i < index.collations.length ? index.collations[i] : null);
+      if (c != 0) {
+        return i < index.descending.length && index.descending[i] ? -c : c;
+      }
+    }
+    return a.length.compareTo(b.length);
+  }
+
+  List<Object?> _key(_Table table, TableRow row, List<String> columns) =>
+      [for (final name in columns) _row(table, row)[asciiLower(name)]];
+  void _referentialActions(
+      _Table parent, TableRow before, TableRow? after, int depth) {
+    if (depth > 1000) {
+      throw const SqlException('Foreign key action depth exceeded');
+    }
+    for (final child in _tables.values) {
+      for (final fk in child.schema.foreignKeys.where(
+          (fk) => asciiLower(fk.table) == asciiLower(parent.schema.name))) {
+        final pk = parent.schema.columns
+            .where((c) => c.primaryKey != 0)
+            .toList()
+          ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+        final target = fk.targetColumns.isEmpty
+            ? pk.map((c) => c.name).toList()
+            : fk.targetColumns;
+        if (target.length != fk.columns.length) {
+          throw const SqlException('Foreign key mismatch');
+        }
+        final oldKey = _key(parent, before, target);
+        final newKey = after == null ? null : _key(parent, after, target);
+        if (newKey != null &&
+            List.generate(
+                oldKey.length,
+                (i) =>
+                    compareValues(oldKey[i], newKey[i], encoding,
+                        _column(parent.schema, target[i]).collation) ==
+                    0).every((v) => v)) {
+          continue;
+        }
+        final action = after == null ? fk.onDelete : fk.onUpdate;
+        final matches = child.rows.where((row) {
+          final values = _key(child, row, fk.columns);
+          if (values.any((v) => v == null)) return false;
+          return List.generate(
+              values.length,
+              (i) =>
+                  compareValues(
+                      applyAffinity(values[i],
+                          _column(parent.schema, target[i]).affinity),
+                      oldKey[i],
+                      encoding,
+                      _column(parent.schema, target[i]).collation) ==
+                  0).every((v) => v);
+        }).toList();
+        if (matches.isEmpty) continue;
+        if (action == 'RESTRICT') {
+          throw const SqlException('FOREIGN KEY constraint failed');
+        }
+        if (action == 'NO ACTION') continue;
+        for (final row in matches) {
+          if (!child.rows.contains(row)) continue;
+          if (action == 'CASCADE' && after == null) {
+            child.rows.remove(row);
+            _referentialActions(child, row, null, depth + 1);
+          } else {
+            final values = _row(child, row);
+            for (var i = 0; i < fk.columns.length; i++) {
+              values[asciiLower(fk.columns[i])] = action == 'SET NULL'
+                  ? null
+                  : action == 'SET DEFAULT'
+                      ? _column(child.schema, fk.columns[i]).defaultValue
+                      : newKey![i];
+            }
+            var id = row.rowId;
+            if (child.schema.rowidAlias != null &&
+                fk.columns.any((c) =>
+                    asciiLower(c) == asciiLower(child.schema.rowidAlias!))) {
+              final value = values[asciiLower(child.schema.rowidAlias!)];
+              if (value is! BigInt) {
+                throw const SqlException('Rowid datatype mismatch');
+              }
+              id = value;
+            }
+            final changed = _physical(child, values, id);
+            child.rows[child.rows.indexOf(row)] = changed;
+            _referentialActions(child, row, changed, depth + 1);
+          }
+        }
+      }
+    }
+  }
+
+  void _validate({bool foreignKeys = false, bool includeDeferred = false}) {
+    for (final table in _tables.values) {
+      void validateType(CatalogColumn column, Object? value) {
+        if (!column.strict || value == null) return;
+        final type = column.declaredType.toUpperCase();
+        final valid = type == 'ANY' ||
+            ['INT', 'INTEGER'].contains(type) && value is BigInt ||
+            type == 'REAL' && (value is BigInt || value is double) ||
+            type == 'TEXT' && value is String ||
+            type == 'BLOB' && value is Uint8List;
+        if (!valid) {
+          throw const SqlException('STRICT datatype constraint failed');
+        }
+      }
+
+      final seen = <BigInt>{};
+      for (final row in table.rows) {
+        if (!seen.add(row.rowId)) {
+          throw const SqlException('UNIQUE constraint failed: rowid');
+        }
+        final values = _row(table, row);
+        final ctx = _context(table, row, const []);
+        for (final col in table.schema.columns) {
+          validateType(col, values[asciiLower(col.name)]);
+          if ((col.notNull ||
+                  (table.schema.withoutRowid ||
+                          col.strict && col.name != table.schema.rowidAlias) &&
+                      col.primaryKey != 0) &&
+              values[asciiLower(col.name)] == null) {
+            throw SqlException(
+                'NOT NULL constraint failed: ${table.schema.name}.${col.name}');
+          }
+        }
+        for (final check in [
+          ...table.schema.checks,
+          ...table.schema.columns.expand((c) => c.checks)
+        ]) {
+          if (truth(check.evaluate(ctx), encoding) == false) {
+            throw const SqlException('CHECK constraint failed');
+          }
+        }
+      }
+      final unique = [
+        ..._indexes.where((i) =>
+            i.unique && asciiLower(i.table) == asciiLower(table.schema.name))
+      ];
+      if (table.schema.withoutRowid) {
+        final pk = table.schema.columns.where((c) => c.primaryKey != 0).toList()
+          ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+        unique.add(_Index(
+            '@pk',
+            table.schema.name,
+            pk.map((c) => c.name).toList(),
+            List.filled(pk.length, false),
+            pk.map((c) => c.collation).toList(),
+            true,
+            null));
+      }
+      for (final index in unique) {
+        final keys = [
+          for (final row in table.rows) _key(table, row, index.columns)
+        ]..sort((a, b) => _compare(index, a, b));
+        for (var i = 1; i < keys.length; i++) {
+          if (keys[i].every((v) => v != null) &&
+              _compare(index, keys[i - 1], keys[i]) == 0) {
+            throw SqlException('UNIQUE constraint failed: ${index.name}');
+          }
+        }
+      }
+      if (foreignKeys) {
+        for (final fk in table.schema.foreignKeys) {
+          if (fk.deferred && !includeDeferred) continue;
+          final parent = _tables[asciiLower(fk.table)];
+          for (final row in table.rows) {
+            final key = _key(table, row, fk.columns);
+            if (key.any((v) => v == null)) continue;
+            if (parent == null) {
+              throw SqlException('No such referenced table: ${fk.table}');
+            }
+            final target = fk.targetColumns.isEmpty
+                ? (parent.schema.columns
+                        .where((c) => c.primaryKey != 0)
+                        .toList()
+                      ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey)))
+                    .map((c) => c.name)
+                    .toList()
+                : fk.targetColumns;
+            if (target.length != key.length) {
+              throw const SqlException('Foreign key mismatch');
+            }
+            final normalized = target.map(asciiLower).toSet();
+            final pk = parent.schema.columns
+                .where((c) => c.primaryKey != 0)
+                .map((c) => asciiLower(c.name))
+                .toSet();
+            final validPrimary = (parent.schema.withoutRowid ||
+                    parent.schema.rowidAlias != null) &&
+                pk.length == target.length &&
+                pk.containsAll(normalized);
+            final validUnique = _indexes.any((index) =>
+                index.unique &&
+                asciiLower(index.table) == asciiLower(parent.schema.name) &&
+                index.columns.length == target.length &&
+                index.columns.map(asciiLower).toSet().containsAll(normalized) &&
+                List.generate(
+                        index.columns.length,
+                        (i) =>
+                            index.collations[i] ==
+                            _column(parent.schema, index.columns[i]).collation)
+                    .every((v) => v));
+            if (!validPrimary && !validUnique) {
+              throw const SqlException(
+                  'Foreign key mismatch: parent is not unique');
+            }
+            final exists = parent.rows.any((r) {
+              final pkey = _key(parent, r, target);
+              for (var i = 0; i < key.length; i++) {
+                final col = _column(parent.schema, target[i]);
+                if (compareValues(applyAffinity(key[i], col.affinity), pkey[i],
+                        encoding, col.collation) !=
+                    0) {
+                  return false;
+                }
+              }
+              return true;
+            });
+            if (!exists) {
+              throw const SqlException('FOREIGN KEY constraint failed');
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void validateForeignKeys() =>
+      _validate(foreignKeys: true, includeDeferred: true);
+  Uint8List serialize(
+      {bool foreignKeys = false, bool includeDeferred = false}) {
+    _validate(foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+    final sequence = _tables['sqlite_sequence'];
+    if (sequence != null) {
+      sequence.rows
+        ..clear()
+        ..addAll([
+          for (var i = 0; i < _sequences.length; i++)
+            TableRow(BigInt.from(i + 1), [
+              _tables[_sequences.keys.elementAt(i)]?.schema.name ??
+                  _sequences.keys.elementAt(i),
+              _sequences.values.elementAt(i)
+            ])
+        ]);
+    }
+    final objects = <ImageObject>[];
+    for (final table in _tables.values) {
+      final pk = table.schema.columns.where((c) => c.primaryKey != 0).toList()
+        ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+      final ordered = table.rows.toList();
+      if (table.schema.withoutRowid) {
+        ordered.sort((a, b) => _compare(
+            _Index(
+                '@pk',
+                table.schema.name,
+                pk.map((c) => c.name).toList(),
+                pk.map((c) => c.primaryDescending).toList(),
+                pk.map((c) => c.collation).toList(),
+                true,
+                null),
+            _key(table, a, pk.map((c) => c.name).toList()),
+            _key(table, b, pk.map((c) => c.name).toList())));
+      }
+      objects.add(ImageObject(
+          'table', table.schema.name, table.schema.name, table.sql,
+          tableRows: ordered,
+          indexTable: table.schema.withoutRowid,
+          indexRows: [
+            for (final row in ordered)
+              [
+                for (final col in table.schema.storageColumns)
+                  _row(table, row)[asciiLower(col.name)]
+              ]
+          ]));
+    }
+    for (final index in _indexes) {
+      final table = _tables[asciiLower(index.table)]!;
+      final pk = table.schema.columns.where((c) => c.primaryKey != 0).toList()
+        ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+      final rows = [
+        for (final row in table.rows)
+          [
+            ..._key(table, row, index.columns),
+            if (!table.schema.withoutRowid) row.rowId,
+            if (table.schema.withoutRowid)
+              for (final col in pk)
+                if (!index.columns
+                    .any((name) => asciiLower(name) == asciiLower(col.name)))
+                  _row(table, row)[asciiLower(col.name)]
+          ]
+      ];
+      final auxiliary = table.schema.withoutRowid
+          ? pk
+              .where((c) => !index.columns
+                  .any((name) => asciiLower(name) == asciiLower(c.name)))
+              .toList()
+          : <CatalogColumn>[];
+      final sorting = _Index(
+          index.name,
+          index.table,
+          index.columns,
+          [...index.descending, ...auxiliary.map((c) => c.primaryDescending)],
+          [...index.collations, ...auxiliary.map((c) => c.collation)],
+          index.unique,
+          index.sql);
+      rows.sort((a, b) => _compare(sorting, a, b));
+      objects.add(ImageObject('index', index.name, index.table, index.sql,
+          indexRows: rows));
+    }
+    objects.addAll(other);
+    return DatabaseImageBuilder.build(original, objects,
+        schemaChanged: schemaChanged);
+  }
+
+  final Set<String> _activeTriggers = {};
+
+  String _literal(Object? value) {
+    if (value == null) return 'NULL';
+    if (value is String) return "'${value.replaceAll("'", "''")}'";
+    if (value is Uint8List) {
+      return "X'${value.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}'";
+    }
+    return value.toString();
+  }
+
+  Future<bool> _fire(String timing, String event, _Table table, TableRow? old,
+      TableRow? next, Set<String> columns,
+      {required bool foreignKeys, required bool inTransaction}) async {
+    final definitions = other
+        .where((o) =>
+            o.type == 'trigger' &&
+            asciiLower(o.tableName) == asciiLower(table.schema.name))
+        .toList()
+        .reversed;
+    for (final object in definitions) {
+      final trigger = TriggerDefinition.parse(object.sql!);
+      final key = asciiLower(trigger.name);
+      if (trigger.timing != timing ||
+          trigger.event != event ||
+          _activeTriggers.contains(key) ||
+          trigger.columns.isNotEmpty &&
+              !trigger.columns.any(columns.contains)) {
+        continue;
+      }
+      if (_activeTriggers.length >= 64) {
+        throw const SqlException('Trigger recursion limit');
+      }
+      final values = <String, Object?>{
+        if (old != null)
+          for (final entry in _row(table, old).entries)
+            'old.${entry.key}': entry.value,
+        if (next != null)
+          for (final entry in _row(table, next).entries)
+            'new.${entry.key}': entry.value,
+      };
+      final context = (EvalContext(values, {}, [], encoding)..inTrigger = true);
+      if (trigger.when != null) {
+        trigger.when!.validate(values.keys.toSet());
+        if (truth(trigger.when!.evaluate(context), encoding) != true) continue;
+      }
+      _activeTriggers.add(key);
+      try {
+        for (final statement in trigger.statements) {
+          final parser = SqlParser(statement);
+          if (parser.take('SELECT')) {
+            // RAISE is evaluated in the trigger's row context.
+            final select = SqlParser(statement).select();
+            if (select.sources.isNotEmpty || select.table != null) {
+              throw const SqlException('Trigger SELECT sources unsupported');
+            }
+            if (select.groupBy.isNotEmpty ||
+                select.having != null ||
+                select.compounds.isNotEmpty ||
+                select.ctes.isNotEmpty ||
+                select.limit != null ||
+                select.offset != null) {
+              throw const SqlException('Trigger SELECT shape unsupported');
+            }
+            select.where?.validate(values.keys.toSet());
+            if (select.where != null &&
+                truth(select.where!.evaluate(context), encoding) != true) {
+              continue;
+            }
+            for (final projection in select.items) {
+              final expr = projection.expression;
+              if (expr == null) {
+                throw const SqlException('Trigger wildcard unsupported');
+              }
+              expr.validate(values.keys.toSet());
+              expr.evaluate(context);
+            }
+          } else {
+            final tokens = parser.tokens;
+            var rewritten = '';
+            var start = 0;
+            for (var i = 0; i + 2 < tokens.length; i++) {
+              final prefix = asciiLower(tokens[i].text);
+              if ((prefix == 'new' || prefix == 'old') &&
+                  tokens[i + 1].text == '.') {
+                final name = '$prefix.${asciiLower(tokens[i + 2].text)}';
+                if (!values.containsKey(name)) {
+                  throw SqlException('No such column: $name');
+                }
+                rewritten += statement.substring(start, tokens[i].offset) +
+                    _literal(values[name]);
+                start = tokens[i + 2].offset + tokens[i + 2].text.length;
+                // Quoted column names have delimiters beyond token.text.
+                if (statement[tokens[i + 2].offset] == '"' ||
+                    statement[tokens[i + 2].offset] == '`' ||
+                    statement[tokens[i + 2].offset] == '[') {
+                  start = i + 3 < tokens.length
+                      ? tokens[i + 3].offset
+                      : statement.length;
+                }
+                i += 2;
+              }
+            }
+            rewritten += statement.substring(start);
+            await execute(rewritten, [],
+                foreignKeys: foreignKeys, inTransaction: inTransaction);
+          }
+        }
+      } on TriggerIgnore {
+        return false;
+      } finally {
+        _activeTriggers.remove(key);
+      }
+    }
+    return true;
+  }
+
+  Future<MutationImage> execute(String sql, List<Object?> parameters,
+      {bool foreignKeys = false, bool inTransaction = false}) async {
+    final p = SqlParser(sql);
+    if (p.take('CREATE')) {
+      final unique = p.take('UNIQUE');
+      if (p.take('TRIGGER')) {
+        if (unique || parameters.isNotEmpty) {
+          throw const SqlException('Invalid trigger definition');
+        }
+        final trigger = TriggerDefinition.parse(sql);
+        final exists = other.any((o) =>
+            o.type == 'trigger' &&
+            asciiLower(o.name) == asciiLower(trigger.name));
+        if (exists) {
+          if (p.take('IF')) return MutationImage(original, 0, null);
+          throw const SqlException('Trigger exists');
+        }
+        final table = _tables[asciiLower(trigger.table)];
+        if (table == null ||
+            trigger.timing == 'INSTEAD OF' ||
+            asciiLower(trigger.name).startsWith('sqlite_')) {
+          throw const SqlException('Trigger target unsupported');
+        }
+        other.add(ImageObject('trigger', trigger.name, table.schema.name, sql));
+        schemaChanged = true;
+        return MutationImage(serialize(), 0, null);
+      }
+      if (p.take('VIEW')) {
+        if (unique) throw const SqlException('Invalid UNIQUE VIEW');
+        var ifNotExists = false;
+        if (p.take('IF')) {
+          p.require('NOT');
+          p.require('EXISTS');
+          ifNotExists = true;
+        }
+        final name = p.identifier();
+        final key = asciiLower(name);
+        if (_tables.containsKey(key) ||
+            _indexes.any((i) => asciiLower(i.name) == key) ||
+            other.any((o) => o.type == 'view' && asciiLower(o.name) == key)) {
+          if (ifNotExists) return MutationImage(original, 0, null);
+          throw const SqlException('Object exists');
+        }
+        if (p.take('(')) {
+          do {
+            p.identifier();
+          } while (p.take(','));
+          p.require(')');
+        }
+        p.require('AS');
+        final definition = SqlParser(sql.substring(p.current.offset)).select();
+        if (definition.parameterCount != 0 || parameters.isNotEmpty) {
+          throw const SqlException('Parameters prohibited in view');
+        }
+        other.add(ImageObject('view', name, name, sql));
+        schemaChanged = true;
+        return MutationImage(serialize(), 0, null);
+      }
+      if (p.take('TABLE')) {
+        if (unique) throw const SqlException('Unexpected UNIQUE TABLE');
+        var ifNotExists = false;
+        if (p.take('IF')) {
+          p.require('NOT');
+          p.require('EXISTS');
+          ifNotExists = true;
+        }
+        final name = p.identifier();
+        final key = asciiLower(name);
+        if (_tables.containsKey(key) ||
+            _indexes.any((i) => asciiLower(i.name) == key)) {
+          if (ifNotExists) return MutationImage(original, 0, null);
+          throw const SqlException('Object already exists');
+        }
+        if (key.startsWith('sqlite_')) {
+          throw const SqlException('Reserved object name');
+        }
+        final table = DatabaseCatalog.parseTable(sql, 0);
+        _tables[key] = _Table(table, sql, []);
+        if (table.columns.any((col) => col.autoIncrement) &&
+            !_tables.containsKey('sqlite_sequence')) {
+          const source = 'CREATE TABLE sqlite_sequence(name,seq)';
+          _tables['sqlite_sequence'] =
+              _Table(DatabaseCatalog.parseTable(source, 0), source, []);
+        }
+        final keys = _implicitKeys(table);
+        for (var i = 0; i < keys.length; i++) {
+          if (table.withoutRowid &&
+              keys[i].every((name) => _column(table, name).primaryKey != 0) &&
+              keys[i].length ==
+                  table.columns.where((c) => c.primaryKey != 0).length) {
+            continue;
+          }
+          _indexes.add(_Index(
+              'sqlite_autoindex_${table.name}_${i + 1}',
+              table.name,
+              keys[i],
+              [
+                for (final name in keys[i])
+                  _column(table, name).primaryDescending
+              ],
+              [for (final col in keys[i]) _column(table, col).collation],
+              true,
+              null));
+        }
+      } else if (p.take('INDEX')) {
+        var ifNotExists = false;
+        if (p.take('IF')) {
+          p.require('NOT');
+          p.require('EXISTS');
+          ifNotExists = true;
+        }
+        final name = p.identifier();
+        if (_indexes.any((i) => asciiLower(i.name) == asciiLower(name))) {
+          if (ifNotExists) return MutationImage(original, 0, null);
+          throw const SqlException('Index exists');
+        }
+        if (_tables.containsKey(asciiLower(name)) ||
+            asciiLower(name).startsWith('sqlite_')) {
+          throw const SqlException('Invalid index name');
+        }
+        _indexes.add(_parseIndex(sql));
+      } else {
+        throw const SqlException('Unsupported CREATE statement');
+      }
+      if (parameters.isNotEmpty) {
+        throw const SqlException(
+            'Bindings are not allowed in schema statements');
+      }
+      schemaChanged = true;
+      return MutationImage(
+          serialize(foreignKeys: foreignKeys, includeDeferred: !inTransaction),
+          0,
+          null);
+    }
+    if (p.take('ALTER')) {
+      p.require('TABLE');
+      final name = p.identifier();
+      final key = asciiLower(name);
+      final table = _tables[key];
+      if (table == null) throw const SqlException('No such table');
+      p.require('ADD');
+      p.take('COLUMN');
+      final declaration = sql
+          .substring(p.current.offset)
+          .trim()
+          .replaceFirst(RegExp(r';\s*$'), '');
+      final end = table.sql.lastIndexOf(')');
+      final changed =
+          '${table.sql.substring(0, end)}, $declaration${table.sql.substring(end)}';
+      final definition = DatabaseCatalog.parseTable(changed, 0);
+      if (definition.columns.length != table.schema.columns.length + 1) {
+        throw const SqlException('Invalid added column');
+      }
+      final column = definition.columns.last;
+      if (column.primaryKey != 0 || column.unique) {
+        throw const SqlException('Cannot add a PRIMARY KEY or UNIQUE column');
+      }
+      if (column.defaultSql != null) {
+        final value = SqlParser(column.defaultSql!).expression();
+        if (value is! Literal && value is! UnaryExpr) {
+          throw const SqlException('ALTER default must be constant');
+        }
+      }
+      if (foreignKeys &&
+          definition.foreignKeys.length > table.schema.foreignKeys.length &&
+          column.defaultValue != null) {
+        throw const SqlException(
+            'Foreign key added column requires NULL default');
+      }
+      _tables[key] = _Table(definition, changed, [
+        for (final row in table.rows)
+          TableRow(
+              row.rowId, [...row.values, _stored(column.defaultValue, column)])
+      ]);
+      schemaChanged = true;
+      if (parameters.isNotEmpty) {
+        throw const SqlException('Schema bindings unsupported');
+      }
+      return MutationImage(
+          serialize(foreignKeys: foreignKeys, includeDeferred: !inTransaction),
+          0,
+          null);
+    }
+    if (p.take('DROP')) {
+      final table = p.take('TABLE');
+      final view = !table && p.take('VIEW');
+      final trigger = !table && !view && p.take('TRIGGER');
+      if (!table && !view && !trigger) p.require('INDEX');
+      var ifExists = false;
+      if (p.take('IF')) {
+        p.require('EXISTS');
+        ifExists = true;
+      }
+      final name = p.identifier();
+      p.finish();
+      if (parameters.isNotEmpty) {
+        throw const SqlException('Schema bindings unsupported');
+      }
+      if (view || trigger) {
+        final matching = other
+            .where((o) =>
+                o.type == (trigger ? 'trigger' : 'view') &&
+                asciiLower(o.name) == asciiLower(name))
+            .toList();
+        if (matching.isEmpty) {
+          if (ifExists) return MutationImage(original, 0, null);
+          throw const SqlException('No such view');
+        }
+        other.removeWhere(matching.contains);
+        schemaChanged = true;
+        return MutationImage(serialize(), 0, null);
+      }
+      if (table) {
+        if (!_tables.containsKey(asciiLower(name))) {
+          if (ifExists) return MutationImage(original, 0, null);
+          throw const SqlException('No such table');
+        }
+        final dropping = _tables[asciiLower(name)]!;
+        if (foreignKeys) {
+          for (final row in dropping.rows.toList()) {
+            dropping.rows.remove(row);
+            _referentialActions(dropping, row, null, 0);
+          }
+        }
+        _tables.remove(asciiLower(name));
+        _sequences.remove(asciiLower(name));
+        _indexes.removeWhere((i) => asciiLower(i.table) == asciiLower(name));
+        other.removeWhere((o) => asciiLower(o.tableName) == asciiLower(name));
+      } else {
+        final index = _indexes
+            .where((i) => asciiLower(i.name) == asciiLower(name))
+            .firstOrNull;
+        if (index == null) {
+          if (ifExists) return MutationImage(original, 0, null);
+          throw const SqlException('No such index');
+        }
+        if (index.sql == null) {
+          throw const SqlException('Cannot drop constraint index');
+        }
+        _indexes.remove(index);
+      }
+      schemaChanged = true;
+      return MutationImage(
+          serialize(foreignKeys: foreignKeys, includeDeferred: !inTransaction),
+          0,
+          null);
+    }
+    final insert = p.take('INSERT');
+    final update = !insert && p.take('UPDATE');
+    if (!insert && !update) p.require('DELETE');
+    var policy = 'ABORT';
+    if ((insert || update) && p.take('OR')) {
+      policy = p.identifier().toUpperCase();
+      if (!['ABORT', 'IGNORE', 'REPLACE'].contains(policy)) {
+        throw const SqlException('Unsupported conflict policy');
+      }
+    }
+    if (insert) p.require('INTO');
+    if (!insert && !update) p.require('FROM');
+    final name = p.identifier();
+    final table = _tables[asciiLower(name)];
+    if (table == null) throw SqlException('No such table: $name');
+    final schema = table.schema;
+    final columnNames = schema.columns.map((c) => asciiLower(c.name)).toList();
+    final valid = {
+      ...columnNames,
+      if (!schema.withoutRowid) ...['rowid', '_rowid_', 'oid']
+    };
+    final input = <String>[];
+    final inserts = <List<Expr>>[];
+    final assignments = <String, Expr>{};
+    Expr? where;
+    if (insert) {
+      if (p.take('(')) {
+        do {
+          input.add(asciiLower(p.identifier()));
+        } while (p.take(','));
+        p.require(')');
+      } else {
+        input.addAll(columnNames);
+      }
+      if (input.toSet().length != input.length ||
+          input.any((c) => !valid.contains(c))) {
+        throw const SqlException('Invalid INSERT columns');
+      }
+      if (p.take('DEFAULT')) {
+        p.require('VALUES');
+        input.clear();
+        inserts.add([]);
+      } else if (['SELECT', 'WITH'].contains(p.current.keyword)) {
+        final query = sql.substring(p.current.offset);
+        final statement = SqlParser(query).select();
+        final storage = MemoryStorageBackend();
+        await storage.write(0, serialize());
+        final db = await SqliteDatabase.openReadOnly(storage);
+        try {
+          final result = await db.query(query, parameters);
+          if (result.columns.length != input.length) {
+            throw const SqlException('INSERT SELECT width mismatch');
+          }
+          inserts
+              .addAll(result.rows.map((row) => row.map(Literal.new).toList()));
+        } finally {
+          await db.close();
+        }
+        p.position = p.tokens.length - 1;
+        p.parameterCount = statement.parameterCount;
+      } else {
+        p.require('VALUES');
+        do {
+          p.require('(');
+          final row = <Expr>[];
+          do {
+            final expr = p.expression();
+            expr.validate({});
+            if (expr.containsAggregate || expr.containsWindow) {
+              throw const SqlException('Aggregate in INSERT');
+            }
+            row.add(expr);
+          } while (p.take(','));
+          p.require(')');
+          if (row.length != input.length) {
+            throw const SqlException('INSERT width mismatch');
+          }
+          inserts.add(row);
+        } while (p.take(','));
+      }
+    } else {
+      if (update) {
+        p.require('SET');
+        do {
+          final name = asciiLower(p.identifier());
+          if (!valid.contains(name)) throw const SqlException('Unknown column');
+          p.require('=');
+          final expr = p.expression();
+          expr.validate(valid);
+          if (expr.containsAggregate || expr.containsWindow) {
+            throw const SqlException('Aggregate in UPDATE');
+          }
+          assignments[name] = expr;
+        } while (p.take(','));
+      }
+      if (p.take('WHERE')) {
+        where = p.expression();
+        where.validate(valid);
+        if (where.containsAggregate || where.containsWindow) {
+          throw const SqlException('Aggregate in WHERE');
+        }
+      }
+    }
+    p.finish();
+    if (parameters.length != p.parameterCount) {
+      throw const SqlException('Incorrect parameter count');
+    }
+    final bound = parameters.map(sqlValue).toList();
+    BigInt id(Object? value) {
+      value = value is String ? numeric(value) : value;
+      if (value is double &&
+          value.isFinite &&
+          value == value.truncateToDouble()) {
+        value = BigInt.from(value);
+      }
+      if (value is! BigInt ||
+          value < -(BigInt.one << 63) ||
+          value >= BigInt.one << 63) {
+        throw const SqlException('Rowid datatype mismatch');
+      }
+      return value;
+    }
+
+    var changes = 0;
+    BigInt? last;
+    final originalRows = table.rows.toList();
+    String canonical(Object? value, String collation) {
+      if (value is BigInt) return 'n:$value';
+      if (value is double) {
+        return value.isFinite && value == value.truncateToDouble()
+            ? 'n:${BigInt.from(value)}'
+            : 'r:$value';
+      }
+      if (value is Uint8List) return 'b:${base64Encode(value)}';
+      var text = value as String;
+      if (collation == 'nocase') text = asciiLower(text);
+      if (collation == 'rtrim') text = text.replaceFirst(RegExp(r' +$'), '');
+      return 't:$text';
+    }
+
+    final uniqueIndexes = _indexes
+        .where((i) => i.unique && asciiLower(i.table) == asciiLower(name))
+        .toList();
+    if (schema.withoutRowid) {
+      final pk = schema.columns.where((c) => c.primaryKey != 0).toList()
+        ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+      uniqueIndexes.add(_Index('@pk', name, pk.map((c) => c.name).toList(), [],
+          pk.map((c) => c.collation).toList(), true, null));
+    }
+    String? keyFor(_Index index, TableRow row) {
+      final key = _key(table, row, index.columns);
+      if (key.any((v) => v == null)) return null;
+      return jsonEncode([
+        for (var i = 0; i < key.length; i++)
+          canonical(key[i], index.collations[i])
+      ]);
+    }
+
+    final rowids = table.rows.map((r) => r.rowId).toSet();
+    final uniqueSets = {
+      for (final index in uniqueIndexes)
+        index: {
+          for (final row in table.rows)
+            if (keyFor(index, row) != null) keyFor(index, row)!
+        }
+    };
+
+    void accept(TableRow next, {TableRow? replacing}) {
+      if (insert &&
+          policy == 'ABORT' &&
+          !other.any((o) =>
+              o.type == 'trigger' &&
+              asciiLower(o.tableName) == asciiLower(name))) {
+        if (!rowids.add(next.rowId)) {
+          throw const SqlException('UNIQUE constraint failed: rowid');
+        }
+        final values = _row(table, next);
+        final context = _context(table, next, bound);
+        for (final column in schema.columns) {
+          if ((column.notNull ||
+                  schema.withoutRowid && column.primaryKey != 0) &&
+              values[asciiLower(column.name)] == null) {
+            throw const SqlException('NOT NULL constraint failed');
+          }
+        }
+        for (final check in [
+          ...schema.checks,
+          ...schema.columns.expand((c) => c.checks)
+        ]) {
+          if (truth(check.evaluate(context), encoding) == false) {
+            throw const SqlException('CHECK constraint failed');
+          }
+        }
+        for (final index in uniqueIndexes) {
+          final key = keyFor(index, next);
+          if (key != null && !uniqueSets[index]!.add(key)) {
+            throw const SqlException('UNIQUE constraint failed');
+          }
+        }
+        table.rows.add(next);
+        changes++;
+        last = next.rowId;
+        return;
+      }
+      final old = table.rows.toList();
+      if (replacing != null) table.rows.remove(replacing);
+      // REPLACE removes all rows conflicting with any unique key, not just rowid.
+      if (policy == 'REPLACE') {
+        table.rows.removeWhere((row) {
+          if (row.rowId == next.rowId) return true;
+          for (final index in _indexes.where(
+              (i) => i.unique && asciiLower(i.table) == asciiLower(name))) {
+            final key = _key(table, next, index.columns);
+            if (key.every((v) => v != null) &&
+                _compare(index, key, _key(table, row, index.columns)) == 0) {
+              return true;
+            }
+          }
+          return false;
+        });
+      }
+      if (foreignKeys && policy == 'REPLACE') {
+        for (final removed in old
+            .where((row) => row != replacing && !table.rows.contains(row))) {
+          _referentialActions(table, removed, null, 0);
+        }
+      }
+      table.rows.add(next);
+      try {
+        _validate();
+      } on SqlException {
+        table.rows
+          ..clear()
+          ..addAll(old);
+        if (policy == 'IGNORE') return;
+        rethrow;
+      }
+      changes++;
+      last = next.rowId;
+    }
+
+    var insertMax = table.rows.isEmpty
+        ? BigInt.zero
+        : table.rows.map((r) => r.rowId).reduce((a, b) => a > b ? a : b);
+    var sequenceChanged = false;
+    if (insert) {
+      for (final expressions in inserts) {
+        final data = <String, Object?>{
+          for (final c in schema.columns) asciiLower(c.name): c.defaultValue
+        };
+        final context = EvalContext({}, {}, bound, encoding);
+        for (var i = 0; i < input.length; i++) {
+          data[input[i]] = expressions[i].evaluate(context);
+        }
+        Object? requested = schema.rowidAlias == null
+            ? null
+            : data[asciiLower(schema.rowidAlias!)];
+        if (!schema.withoutRowid) {
+          for (final alias in ['rowid', '_rowid_', 'oid']) {
+            if (!columnNames.contains(alias) && input.contains(alias)) {
+              requested = data[alias];
+            }
+          }
+        }
+        final max = insertMax;
+        final auto = schema.columns.any((col) => col.autoIncrement);
+        final high = auto && (_sequences[asciiLower(name)] ?? BigInt.zero) > max
+            ? _sequences[asciiLower(name)]!
+            : max;
+        final rowid = requested == null ? high + BigInt.one : id(requested);
+        if (rowid >= BigInt.one << 63) {
+          throw const SqlException('Automatic rowid exhausted');
+        }
+        final previousChanges = changes;
+        final next = _physical(table, data, rowid);
+        if (!await _fire('BEFORE', 'INSERT', table, null, next, {},
+            foreignKeys: foreignKeys, inTransaction: inTransaction)) {
+          continue;
+        }
+        accept(next);
+        if (changes > previousChanges) {
+          await _fire('AFTER', 'INSERT', table, null, next, {},
+              foreignKeys: foreignKeys, inTransaction: inTransaction);
+        }
+        if (changes > previousChanges && rowid > insertMax) insertMax = rowid;
+        if (auto && rowid > (_sequences[asciiLower(name)] ?? BigInt.zero)) {
+          _sequences[asciiLower(name)] = rowid;
+          sequenceChanged = true;
+        }
+      }
+    } else {
+      for (final row in originalRows) {
+        final context = _context(table, row, bound);
+        if (where != null && truth(where.evaluate(context), encoding) != true) {
+          continue;
+        }
+        if (!table.rows.contains(row)) continue;
+        if (!update) {
+          if (!await _fire('BEFORE', 'DELETE', table, row, null, {},
+              foreignKeys: foreignKeys, inTransaction: inTransaction)) {
+            continue;
+          }
+          table.rows.remove(row);
+          if (foreignKeys) _referentialActions(table, row, null, 0);
+          changes++;
+          await _fire('AFTER', 'DELETE', table, row, null, {},
+              foreignKeys: foreignKeys, inTransaction: inTransaction);
+          continue;
+        }
+        final data = _row(table, row);
+        for (final assignment in assignments.entries) {
+          data[assignment.key] = assignment.value.evaluate(context);
+        }
+        var rowid = row.rowId;
+        if (schema.rowidAlias != null &&
+            assignments.containsKey(asciiLower(schema.rowidAlias!))) {
+          rowid = id(data[asciiLower(schema.rowidAlias!)]);
+        }
+        if (!schema.withoutRowid) {
+          for (final alias in ['rowid', '_rowid_', 'oid']) {
+            if (!columnNames.contains(alias) &&
+                assignments.containsKey(alias)) {
+              rowid = id(data[alias]);
+            }
+          }
+        }
+        final changed = _physical(table, data, rowid);
+        if (!await _fire(
+            'BEFORE', 'UPDATE', table, row, changed, assignments.keys.toSet(),
+            foreignKeys: foreignKeys, inTransaction: inTransaction)) {
+          continue;
+        }
+        final previousChanges = changes;
+        accept(changed, replacing: row);
+        if (changes > previousChanges) {
+          await _fire(
+              'AFTER', 'UPDATE', table, row, changed, assignments.keys.toSet(),
+              foreignKeys: foreignKeys, inTransaction: inTransaction);
+        }
+        if (foreignKeys && table.rows.contains(changed)) {
+          _referentialActions(table, row, changed, 0);
+        }
+      }
+    }
+    if (changes == 0 &&
+        !sequenceChanged &&
+        !other.any((o) => o.type == 'trigger')) {
+      return MutationImage(original, 0, null);
+    }
+    return MutationImage(
+        serialize(foreignKeys: foreignKeys, includeDeferred: !inTransaction),
+        changes,
+        insert ? last : null);
+  }
+}

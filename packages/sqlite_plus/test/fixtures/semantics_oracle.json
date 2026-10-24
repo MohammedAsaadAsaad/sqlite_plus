@@ -839,6 +839,1383 @@
   },
   {
     "file": "sqlite-512.db",
+    "sql": "select 1 IN (1,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select NULL IN () as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select NULL NOT IN () as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1 IN (2,NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select NULL IN (NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1 NOT IN (2,NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1 IN (NULL,1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 2 BETWEEN 1 AND 3 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 0 BETWEEN NULL AND -1 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1 NOT BETWEEN 2 AND NULL as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'abc' LIKE 'A%' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'λ😀' LIKE '__' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'A_C' LIKE 'a!_c' ESCAPE '!' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'abc' NOT LIKE 'z%' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'AbC' GLOB '[A-Z]*' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'abc' GLOB '[^A-Z]*' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'abc' GLOB '[a-c][a-c]?' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select ']' GLOB '[]]' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select '-' GLOB '[-a]' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'a' GLOB '[' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'a' LIKE 'a!' ESCAPE '!' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CAST('123e2' AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "123"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CAST('123e2' AS NUMERIC) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "12300"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CAST('abc' AS REAL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        0.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CAST('9223372036854775808' AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CAST('-9223372036854775809' AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CAST(1e999 AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CAST('hello' AS BLOB) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "blob": "68656c6c6f"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CAST(X'3132' AS TEXT) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "12"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CASE WHEN NULL THEN 1 WHEN 0 THEN 2 ELSE 3 END as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CASE 1 WHEN '1' THEN 2 WHEN 1 THEN 3 ELSE 4 END as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select CASE WHEN 1 THEN 7 ELSE abs(-9223372036854775808) END as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'A' = 'a' COLLATE NOCASE as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'a ' COLLATE RTRIM = 'a' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 'λ' = 'Λ' COLLATE NOCASE as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 5 & 3 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 5 | 2 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1 << 63 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select -1 >> 64 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1 << -1 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1 << 65 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1 + 2 << 1 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "6"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select NULL ISNULL as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1 NOTNULL as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH s AS (SELECT id,value FROM sample WHERE id<=3) SELECT * FROM s ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH a AS (SELECT * FROM b), b AS (SELECT id FROM sample WHERE id=2) SELECT * FROM a",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<10) SELECT sum(x),count(*) FROM n",
+    "parameters": [],
+    "columns": [
+      "sum(x)",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "55"
+        },
+        {
+          "integer": "10"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH n(x) AS (SELECT 1 UNION SELECT x FROM n) SELECT x FROM n",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT 10 UNION ALL SELECT x+1 FROM n WHERE x<3) SELECT x FROM n ORDER BY x",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "10"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select s.id,s.value from sample s where s.id<=3 order by s.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select s.rowid,s._rowid_,s.oid from sample as s where s.id=128",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        },
+        {
+          "integer": "128"
+        },
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select a.id,b.id from sample a join sample b on a.id=b.id+1 where a.id<5 order by a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select a.id,b.i from sample a left join types b on a.id=b.rowid where a.id<5 order by a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        null
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        null
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select a.id,b.i from sample a right join types b on a.id=b.rowid order by b.rowid",
+    "parameters": [],
+    "columns": [
+      "id",
+      "i"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "integer": "-9223372036854775808"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "-8388609"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "127"
+        },
+        {
+          "integer": "127"
+        }
+      ],
+      [
+        {
+          "integer": "128"
+        },
+        {
+          "integer": "128"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select a.id,b.i from sample a full join types b on a.id=b.rowid where a.id<=2 or a.id is null order by b.rowid,a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        },
+        null
+      ],
+      [
+        null,
+        {
+          "integer": "-9223372036854775808"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "-8388609"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select a.id,b.id from sample a cross join sample b where a.id<=2 and b.id<=2 order by a.id,b.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select a.id,b.id from sample a, sample b where a.id=b.id and a.id<=3 order by a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select * from sample a join sample b using(id,value) where id<=2 order by id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select a.*,b.value from sample a natural join sample b where id<=2 order by id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ",
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ",
+        "row-0001-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select d.id,d.v from (select id,value as v from sample where id<=3) d order by d.id desc",
+    "parameters": [],
+    "columns": [
+      "id",
+      "v"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id from sample where id in (select rowid from types) order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "127"
+        }
+      ],
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id from sample where id not in (select rowid from types) order by id limit 3",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id,(select count(*) from types where rowid<=s.id) as n from sample s where id<=3 order by id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id from sample s where exists(select 1 from types t where t.rowid=s.id) order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "127"
+        }
+      ],
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select (select id from sample where id=999999) as n",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select (select id from sample order by id desc) as n",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "200"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 2 as n union select 1 order by n",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1 as n union all select 1 union all select 2 order by n desc limit 2",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id from sample where id<=3 intersect select rowid from types order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id from sample where id<=3 except select rowid from types order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select 1,2 union select 3",
+    "parameters": [],
+    "error": "SELECTs to the left and right of UNION do not have the same number of result columns"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select (select id,value from sample limit 1)",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "select id from sample a join sample b on a.id=b.id",
+    "parameters": [],
+    "error": "ambiguous column name: id"
+  },
+  {
+    "file": "sqlite-512.db",
     "sql": "select count(*),count(),count(value),sum(id),total(id),avg(id),min(id),max(id) from sample where id<4",
     "parameters": [],
     "columns": [
@@ -1575,6 +2952,1364 @@
       "pk"
     ],
     "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT min(id),value FROM sample",
+    "parameters": [],
+    "columns": [
+      "min(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT max(id),value FROM sample",
+    "parameters": [],
+    "columns": [
+      "max(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "200"
+        },
+        "row-0199-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT min(id),value FROM sample WHERE 0",
+    "parameters": [],
+    "columns": [
+      "min(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        null,
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id%3 AS bucket,count(*) AS n FROM sample GROUP BY 1 HAVING n>2 ORDER BY bucket",
+    "parameters": [],
+    "columns": [
+      "bucket",
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "66"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "67"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "67"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id%3 AS bucket,count(*) AS n FROM sample GROUP BY bucket HAVING n>2 ORDER BY bucket",
+    "parameters": [],
+    "columns": [
+      "bucket",
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "66"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "67"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "67"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id%3,count(*),min(id),value FROM sample GROUP BY id%3 ORDER BY 1",
+    "parameters": [],
+    "columns": [
+      "id%3",
+      "count(*)",
+      "min(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "66"
+        },
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "67"
+        },
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "67"
+        },
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT count(*) FROM sample GROUP BY 0",
+    "parameters": [],
+    "error": "1st GROUP BY term out of range - should be between 1 and 1"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT count(*) FROM sample GROUP BY 2",
+    "parameters": [],
+    "error": "1st GROUP BY term out of range - should be between 1 and 1"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id FROM sample WHERE value='row-001' ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT rowid FROM types WHERE b=X'00ff' ORDER BY rowid",
+    "parameters": [],
+    "columns": [
+      "rowid"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT rowid FROM types WHERE b=NULL ORDER BY rowid",
+    "parameters": [],
+    "columns": [
+      "rowid"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT rowid FROM boundary WHERE v=X'' ORDER BY rowid",
+    "parameters": [],
+    "columns": [
+      "rowid"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id FROM sample WHERE value=CAST(1 AS NUMERIC) ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id FROM sample WHERE value='ROW-001' COLLATE NOCASE ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA table_xinfo(sample)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk",
+      "hidden"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "id",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "value",
+        "TEXT",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA table_xinfo(keyed)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk",
+      "hidden"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "k",
+        "TEXT",
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "v",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA index_list(sample)",
+    "parameters": [],
+    "columns": [
+      "seq",
+      "name",
+      "unique",
+      "origin",
+      "partial"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "sample_value",
+        {
+          "integer": "0"
+        },
+        "c",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA index_list(keyed)",
+    "parameters": [],
+    "columns": [
+      "seq",
+      "name",
+      "unique",
+      "origin",
+      "partial"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "sqlite_autoindex_keyed_1",
+        {
+          "integer": "1"
+        },
+        "pk",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA index_list(missing)",
+    "parameters": [],
+    "columns": [
+      "seq",
+      "name",
+      "unique",
+      "origin",
+      "partial"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA index_info(sample_value)",
+    "parameters": [],
+    "columns": [
+      "seqno",
+      "cid",
+      "name"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "value"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA index_xinfo(sample_value)",
+    "parameters": [],
+    "columns": [
+      "seqno",
+      "cid",
+      "name",
+      "desc",
+      "coll",
+      "key"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "value",
+        {
+          "integer": "0"
+        },
+        "BINARY",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "-1"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        "BINARY",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA index_info(missing)",
+    "parameters": [],
+    "columns": [
+      "seqno",
+      "cid",
+      "name"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA foreign_key_list(sample)",
+    "parameters": [],
+    "columns": [
+      "id",
+      "seq",
+      "table",
+      "from",
+      "to",
+      "on_update",
+      "on_delete",
+      "match"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "PRAGMA foreign_key_list(missing)",
+    "parameters": [],
+    "columns": [
+      "id",
+      "seq",
+      "table",
+      "from",
+      "to",
+      "on_update",
+      "on_delete",
+      "match"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id,row_number() OVER (ORDER BY id DESC),rank() OVER (ORDER BY id%3),dense_rank() OVER (ORDER BY id%3) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "row_number() OVER (ORDER BY id DESC)",
+      "rank() OVER (ORDER BY id%3)",
+      "dense_rank() OVER (ORDER BY id%3)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id,percent_rank() OVER (ORDER BY id%3),cume_dist() OVER (ORDER BY id%3),ntile(3) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "percent_rank() OVER (ORDER BY id%3)",
+      "cume_dist() OVER (ORDER BY id%3)",
+      "ntile(3) OVER (ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        0.2857142857142857,
+        0.625,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        0.7142857142857143,
+        1.0,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        0.0,
+        0.25,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        0.2857142857142857,
+        0.625,
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        0.7142857142857143,
+        1.0,
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        0.0,
+        0.25,
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        0.2857142857142857,
+        0.625,
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        0.7142857142857143,
+        1.0,
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id,row_number() OVER (PARTITION BY id%2 ORDER BY id DESC),sum(id) OVER (PARTITION BY id%2) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "row_number() OVER (PARTITION BY id%2 ORDER BY id DESC)",
+      "sum(id) OVER (PARTITION BY id%2)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "20"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "20"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "20"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "20"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id,sum(id) OVER (ORDER BY id),count(*) OVER (),avg(id) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "sum(id) OVER (ORDER BY id)",
+      "count(*) OVER ()",
+      "avg(id) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "8"
+        },
+        1.5
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "8"
+        },
+        2.0
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "8"
+        },
+        3.0
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "8"
+        },
+        4.0
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "8"
+        },
+        5.0
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "8"
+        },
+        6.0
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "28"
+        },
+        {
+          "integer": "8"
+        },
+        7.0
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "8"
+        },
+        7.5
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id,sum(id) OVER (ORDER BY id%3),count(*) OVER (ORDER BY id%3 RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "sum(id) OVER (ORDER BY id%3)",
+      "count(*) OVER (ORDER BY id%3 RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "8"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "8"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id,lag(id) OVER (ORDER BY id),lead(id,2,99) OVER (ORDER BY id),lag(id,-1) OVER (ORDER BY id),lag(id,NULL,99) OVER (ORDER BY id),lag(id,1.5,99) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=5 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "lag(id) OVER (ORDER BY id)",
+      "lead(id,2,99) OVER (ORDER BY id)",
+      "lag(id,-1) OVER (ORDER BY id)",
+      "lag(id,NULL,99) OVER (ORDER BY id)",
+      "lag(id,1.5,99) OVER (ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "99"
+        },
+        null,
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id,first_value(id) OVER (ORDER BY id ROWS 1 PRECEDING),last_value(id) OVER (ORDER BY id),nth_value(id,2) OVER (ORDER BY id),ntile(20) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=5 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "first_value(id) OVER (ORDER BY id ROWS 1 PRECEDING)",
+      "last_value(id) OVER (ORDER BY id)",
+      "nth_value(id,2) OVER (ORDER BY id)",
+      "ntile(20) OVER (ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "5"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id,min(id) OVER (ORDER BY id ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING),max(id) OVER (ORDER BY id ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) FROM sample WHERE id>0 AND id<=5 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "min(id) OVER (ORDER BY id ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING)",
+      "max(id) OVER (ORDER BY id ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        null
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        null,
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id FROM sample WHERE row_number() OVER ()=1",
+    "parameters": [],
+    "error": "misuse of window function row_number()"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT sum(DISTINCT id) OVER () FROM sample",
+    "parameters": [],
+    "error": "DISTINCT is not supported for window functions"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT sum(id) OVER (ROWS BETWEEN CURRENT ROW AND 1 PRECEDING) FROM sample",
+    "parameters": [],
+    "error": "unsupported frame specification"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT row_number() FROM sample",
+    "parameters": [],
+    "error": "misuse of window function row_number()"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT ntile(0) OVER () FROM sample",
+    "parameters": [],
+    "error": "argument of ntile must be a positive integer"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT nth_value(id,0) OVER () FROM sample",
+    "parameters": [],
+    "error": "second argument to nth_value must be a positive integer"
   },
   {
     "file": "sqlite-4096.db",
@@ -2416,6 +5151,1383 @@
   },
   {
     "file": "sqlite-4096.db",
+    "sql": "select 1 IN (1,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select NULL IN () as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select NULL NOT IN () as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1 IN (2,NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select NULL IN (NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1 NOT IN (2,NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1 IN (NULL,1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 2 BETWEEN 1 AND 3 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 0 BETWEEN NULL AND -1 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1 NOT BETWEEN 2 AND NULL as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'abc' LIKE 'A%' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'λ😀' LIKE '__' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'A_C' LIKE 'a!_c' ESCAPE '!' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'abc' NOT LIKE 'z%' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'AbC' GLOB '[A-Z]*' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'abc' GLOB '[^A-Z]*' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'abc' GLOB '[a-c][a-c]?' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select ']' GLOB '[]]' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select '-' GLOB '[-a]' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'a' GLOB '[' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'a' LIKE 'a!' ESCAPE '!' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CAST('123e2' AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "123"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CAST('123e2' AS NUMERIC) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "12300"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CAST('abc' AS REAL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        0.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CAST('9223372036854775808' AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CAST('-9223372036854775809' AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CAST(1e999 AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CAST('hello' AS BLOB) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "blob": "680065006c006c006f00"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CAST(X'3132' AS TEXT) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "㈱"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CASE WHEN NULL THEN 1 WHEN 0 THEN 2 ELSE 3 END as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CASE 1 WHEN '1' THEN 2 WHEN 1 THEN 3 ELSE 4 END as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select CASE WHEN 1 THEN 7 ELSE abs(-9223372036854775808) END as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'A' = 'a' COLLATE NOCASE as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'a ' COLLATE RTRIM = 'a' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 'λ' = 'Λ' COLLATE NOCASE as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 5 & 3 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 5 | 2 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1 << 63 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select -1 >> 64 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1 << -1 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1 << 65 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1 + 2 << 1 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "6"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select NULL ISNULL as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1 NOTNULL as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH s AS (SELECT id,value FROM sample WHERE id<=3) SELECT * FROM s ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH a AS (SELECT * FROM b), b AS (SELECT id FROM sample WHERE id=2) SELECT * FROM a",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<10) SELECT sum(x),count(*) FROM n",
+    "parameters": [],
+    "columns": [
+      "sum(x)",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "55"
+        },
+        {
+          "integer": "10"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH n(x) AS (SELECT 1 UNION SELECT x FROM n) SELECT x FROM n",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT 10 UNION ALL SELECT x+1 FROM n WHERE x<3) SELECT x FROM n ORDER BY x",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "10"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select s.id,s.value from sample s where s.id<=3 order by s.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select s.rowid,s._rowid_,s.oid from sample as s where s.id=128",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        },
+        {
+          "integer": "128"
+        },
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select a.id,b.id from sample a join sample b on a.id=b.id+1 where a.id<5 order by a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select a.id,b.i from sample a left join types b on a.id=b.rowid where a.id<5 order by a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        null
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        null
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select a.id,b.i from sample a right join types b on a.id=b.rowid order by b.rowid",
+    "parameters": [],
+    "columns": [
+      "id",
+      "i"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "integer": "-9223372036854775808"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "-8388609"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "127"
+        },
+        {
+          "integer": "127"
+        }
+      ],
+      [
+        {
+          "integer": "128"
+        },
+        {
+          "integer": "128"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select a.id,b.i from sample a full join types b on a.id=b.rowid where a.id<=2 or a.id is null order by b.rowid,a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        },
+        null
+      ],
+      [
+        null,
+        {
+          "integer": "-9223372036854775808"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "-8388609"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select a.id,b.id from sample a cross join sample b where a.id<=2 and b.id<=2 order by a.id,b.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select a.id,b.id from sample a, sample b where a.id=b.id and a.id<=3 order by a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select * from sample a join sample b using(id,value) where id<=2 order by id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select a.*,b.value from sample a natural join sample b where id<=2 order by id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ",
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ",
+        "row-0001-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select d.id,d.v from (select id,value as v from sample where id<=3) d order by d.id desc",
+    "parameters": [],
+    "columns": [
+      "id",
+      "v"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id from sample where id in (select rowid from types) order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "127"
+        }
+      ],
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id from sample where id not in (select rowid from types) order by id limit 3",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id,(select count(*) from types where rowid<=s.id) as n from sample s where id<=3 order by id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id from sample s where exists(select 1 from types t where t.rowid=s.id) order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "127"
+        }
+      ],
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select (select id from sample where id=999999) as n",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select (select id from sample order by id desc) as n",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "200"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 2 as n union select 1 order by n",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1 as n union all select 1 union all select 2 order by n desc limit 2",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id from sample where id<=3 intersect select rowid from types order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id from sample where id<=3 except select rowid from types order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select 1,2 union select 3",
+    "parameters": [],
+    "error": "SELECTs to the left and right of UNION do not have the same number of result columns"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select (select id,value from sample limit 1)",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "select id from sample a join sample b on a.id=b.id",
+    "parameters": [],
+    "error": "ambiguous column name: id"
+  },
+  {
+    "file": "sqlite-4096.db",
     "sql": "select count(*),count(),count(value),sum(id),total(id),avg(id),min(id),max(id) from sample where id<4",
     "parameters": [],
     "columns": [
@@ -3152,6 +7264,1364 @@
       "pk"
     ],
     "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT min(id),value FROM sample",
+    "parameters": [],
+    "columns": [
+      "min(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT max(id),value FROM sample",
+    "parameters": [],
+    "columns": [
+      "max(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "200"
+        },
+        "row-0199-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT min(id),value FROM sample WHERE 0",
+    "parameters": [],
+    "columns": [
+      "min(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        null,
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id%3 AS bucket,count(*) AS n FROM sample GROUP BY 1 HAVING n>2 ORDER BY bucket",
+    "parameters": [],
+    "columns": [
+      "bucket",
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "66"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "67"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "67"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id%3 AS bucket,count(*) AS n FROM sample GROUP BY bucket HAVING n>2 ORDER BY bucket",
+    "parameters": [],
+    "columns": [
+      "bucket",
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "66"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "67"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "67"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id%3,count(*),min(id),value FROM sample GROUP BY id%3 ORDER BY 1",
+    "parameters": [],
+    "columns": [
+      "id%3",
+      "count(*)",
+      "min(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "66"
+        },
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "67"
+        },
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "67"
+        },
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT count(*) FROM sample GROUP BY 0",
+    "parameters": [],
+    "error": "1st GROUP BY term out of range - should be between 1 and 1"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT count(*) FROM sample GROUP BY 2",
+    "parameters": [],
+    "error": "1st GROUP BY term out of range - should be between 1 and 1"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id FROM sample WHERE value='row-001' ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT rowid FROM types WHERE b=X'00ff' ORDER BY rowid",
+    "parameters": [],
+    "columns": [
+      "rowid"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT rowid FROM types WHERE b=NULL ORDER BY rowid",
+    "parameters": [],
+    "columns": [
+      "rowid"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT rowid FROM boundary WHERE v=X'' ORDER BY rowid",
+    "parameters": [],
+    "columns": [
+      "rowid"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id FROM sample WHERE value=CAST(1 AS NUMERIC) ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id FROM sample WHERE value='ROW-001' COLLATE NOCASE ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA table_xinfo(sample)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk",
+      "hidden"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "id",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "value",
+        "TEXT",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA table_xinfo(keyed)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk",
+      "hidden"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "k",
+        "TEXT",
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "v",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA index_list(sample)",
+    "parameters": [],
+    "columns": [
+      "seq",
+      "name",
+      "unique",
+      "origin",
+      "partial"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "sample_value",
+        {
+          "integer": "0"
+        },
+        "c",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA index_list(keyed)",
+    "parameters": [],
+    "columns": [
+      "seq",
+      "name",
+      "unique",
+      "origin",
+      "partial"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "sqlite_autoindex_keyed_1",
+        {
+          "integer": "1"
+        },
+        "pk",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA index_list(missing)",
+    "parameters": [],
+    "columns": [
+      "seq",
+      "name",
+      "unique",
+      "origin",
+      "partial"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA index_info(sample_value)",
+    "parameters": [],
+    "columns": [
+      "seqno",
+      "cid",
+      "name"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "value"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA index_xinfo(sample_value)",
+    "parameters": [],
+    "columns": [
+      "seqno",
+      "cid",
+      "name",
+      "desc",
+      "coll",
+      "key"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "value",
+        {
+          "integer": "0"
+        },
+        "BINARY",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "-1"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        "BINARY",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA index_info(missing)",
+    "parameters": [],
+    "columns": [
+      "seqno",
+      "cid",
+      "name"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA foreign_key_list(sample)",
+    "parameters": [],
+    "columns": [
+      "id",
+      "seq",
+      "table",
+      "from",
+      "to",
+      "on_update",
+      "on_delete",
+      "match"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "PRAGMA foreign_key_list(missing)",
+    "parameters": [],
+    "columns": [
+      "id",
+      "seq",
+      "table",
+      "from",
+      "to",
+      "on_update",
+      "on_delete",
+      "match"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id,row_number() OVER (ORDER BY id DESC),rank() OVER (ORDER BY id%3),dense_rank() OVER (ORDER BY id%3) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "row_number() OVER (ORDER BY id DESC)",
+      "rank() OVER (ORDER BY id%3)",
+      "dense_rank() OVER (ORDER BY id%3)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id,percent_rank() OVER (ORDER BY id%3),cume_dist() OVER (ORDER BY id%3),ntile(3) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "percent_rank() OVER (ORDER BY id%3)",
+      "cume_dist() OVER (ORDER BY id%3)",
+      "ntile(3) OVER (ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        0.2857142857142857,
+        0.625,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        0.7142857142857143,
+        1.0,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        0.0,
+        0.25,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        0.2857142857142857,
+        0.625,
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        0.7142857142857143,
+        1.0,
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        0.0,
+        0.25,
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        0.2857142857142857,
+        0.625,
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        0.7142857142857143,
+        1.0,
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id,row_number() OVER (PARTITION BY id%2 ORDER BY id DESC),sum(id) OVER (PARTITION BY id%2) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "row_number() OVER (PARTITION BY id%2 ORDER BY id DESC)",
+      "sum(id) OVER (PARTITION BY id%2)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "20"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "20"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "20"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "20"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id,sum(id) OVER (ORDER BY id),count(*) OVER (),avg(id) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "sum(id) OVER (ORDER BY id)",
+      "count(*) OVER ()",
+      "avg(id) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "8"
+        },
+        1.5
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "8"
+        },
+        2.0
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "8"
+        },
+        3.0
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "8"
+        },
+        4.0
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "8"
+        },
+        5.0
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "8"
+        },
+        6.0
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "28"
+        },
+        {
+          "integer": "8"
+        },
+        7.0
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "8"
+        },
+        7.5
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id,sum(id) OVER (ORDER BY id%3),count(*) OVER (ORDER BY id%3 RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "sum(id) OVER (ORDER BY id%3)",
+      "count(*) OVER (ORDER BY id%3 RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "8"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "8"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id,lag(id) OVER (ORDER BY id),lead(id,2,99) OVER (ORDER BY id),lag(id,-1) OVER (ORDER BY id),lag(id,NULL,99) OVER (ORDER BY id),lag(id,1.5,99) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=5 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "lag(id) OVER (ORDER BY id)",
+      "lead(id,2,99) OVER (ORDER BY id)",
+      "lag(id,-1) OVER (ORDER BY id)",
+      "lag(id,NULL,99) OVER (ORDER BY id)",
+      "lag(id,1.5,99) OVER (ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "99"
+        },
+        null,
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id,first_value(id) OVER (ORDER BY id ROWS 1 PRECEDING),last_value(id) OVER (ORDER BY id),nth_value(id,2) OVER (ORDER BY id),ntile(20) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=5 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "first_value(id) OVER (ORDER BY id ROWS 1 PRECEDING)",
+      "last_value(id) OVER (ORDER BY id)",
+      "nth_value(id,2) OVER (ORDER BY id)",
+      "ntile(20) OVER (ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "5"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id,min(id) OVER (ORDER BY id ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING),max(id) OVER (ORDER BY id ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) FROM sample WHERE id>0 AND id<=5 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "min(id) OVER (ORDER BY id ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING)",
+      "max(id) OVER (ORDER BY id ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        null
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        null,
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id FROM sample WHERE row_number() OVER ()=1",
+    "parameters": [],
+    "error": "misuse of window function row_number()"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT sum(DISTINCT id) OVER () FROM sample",
+    "parameters": [],
+    "error": "DISTINCT is not supported for window functions"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT sum(id) OVER (ROWS BETWEEN CURRENT ROW AND 1 PRECEDING) FROM sample",
+    "parameters": [],
+    "error": "unsupported frame specification"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT row_number() FROM sample",
+    "parameters": [],
+    "error": "misuse of window function row_number()"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT ntile(0) OVER () FROM sample",
+    "parameters": [],
+    "error": "argument of ntile must be a positive integer"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT nth_value(id,0) OVER () FROM sample",
+    "parameters": [],
+    "error": "second argument to nth_value must be a positive integer"
   },
   {
     "file": "sqlite-65536.db",
@@ -3993,6 +9463,1383 @@
   },
   {
     "file": "sqlite-65536.db",
+    "sql": "select 1 IN (1,2) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select NULL IN () as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select NULL NOT IN () as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1 IN (2,NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select NULL IN (NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1 NOT IN (2,NULL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1 IN (NULL,1) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 2 BETWEEN 1 AND 3 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 0 BETWEEN NULL AND -1 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1 NOT BETWEEN 2 AND NULL as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'abc' LIKE 'A%' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'λ😀' LIKE '__' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'A_C' LIKE 'a!_c' ESCAPE '!' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'abc' NOT LIKE 'z%' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'AbC' GLOB '[A-Z]*' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'abc' GLOB '[^A-Z]*' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'abc' GLOB '[a-c][a-c]?' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select ']' GLOB '[]]' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select '-' GLOB '[-a]' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'a' GLOB '[' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'a' LIKE 'a!' ESCAPE '!' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CAST('123e2' AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "123"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CAST('123e2' AS NUMERIC) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "12300"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CAST('abc' AS REAL) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        0.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CAST('9223372036854775808' AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CAST('-9223372036854775809' AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CAST(1e999 AS INTEGER) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CAST('hello' AS BLOB) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "blob": "00680065006c006c006f"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CAST(X'3132' AS TEXT) as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        "ㄲ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CASE WHEN NULL THEN 1 WHEN 0 THEN 2 ELSE 3 END as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CASE 1 WHEN '1' THEN 2 WHEN 1 THEN 3 ELSE 4 END as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select CASE WHEN 1 THEN 7 ELSE abs(-9223372036854775808) END as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'A' = 'a' COLLATE NOCASE as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'a ' COLLATE RTRIM = 'a' as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 'λ' = 'Λ' COLLATE NOCASE as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 5 & 3 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 5 | 2 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1 << 63 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select -1 >> 64 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1 << -1 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1 << 65 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1 + 2 << 1 as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "6"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select NULL ISNULL as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1 NOTNULL as result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH s AS (SELECT id,value FROM sample WHERE id<=3) SELECT * FROM s ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH a AS (SELECT * FROM b), b AS (SELECT id FROM sample WHERE id=2) SELECT * FROM a",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<10) SELECT sum(x),count(*) FROM n",
+    "parameters": [],
+    "columns": [
+      "sum(x)",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "55"
+        },
+        {
+          "integer": "10"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH n(x) AS (SELECT 1 UNION SELECT x FROM n) SELECT x FROM n",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT 10 UNION ALL SELECT x+1 FROM n WHERE x<3) SELECT x FROM n ORDER BY x",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "10"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select s.id,s.value from sample s where s.id<=3 order by s.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select s.rowid,s._rowid_,s.oid from sample as s where s.id=128",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "128"
+        },
+        {
+          "integer": "128"
+        },
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select a.id,b.id from sample a join sample b on a.id=b.id+1 where a.id<5 order by a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select a.id,b.i from sample a left join types b on a.id=b.rowid where a.id<5 order by a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        null
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        null
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select a.id,b.i from sample a right join types b on a.id=b.rowid order by b.rowid",
+    "parameters": [],
+    "columns": [
+      "id",
+      "i"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "integer": "-9223372036854775808"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "-8388609"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "127"
+        },
+        {
+          "integer": "127"
+        }
+      ],
+      [
+        {
+          "integer": "128"
+        },
+        {
+          "integer": "128"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select a.id,b.i from sample a full join types b on a.id=b.rowid where a.id<=2 or a.id is null order by b.rowid,a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "i"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        },
+        null
+      ],
+      [
+        null,
+        {
+          "integer": "-9223372036854775808"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "-8388609"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        null,
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select a.id,b.id from sample a cross join sample b where a.id<=2 and b.id<=2 order by a.id,b.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select a.id,b.id from sample a, sample b where a.id=b.id and a.id<=3 order by a.id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select * from sample a join sample b using(id,value) where id<=2 order by id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select a.*,b.value from sample a natural join sample b where id<=2 order by id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "value",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ",
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ",
+        "row-0001-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select d.id,d.v from (select id,value as v from sample where id<=3) d order by d.id desc",
+    "parameters": [],
+    "columns": [
+      "id",
+      "v"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id from sample where id in (select rowid from types) order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "127"
+        }
+      ],
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id from sample where id not in (select rowid from types) order by id limit 3",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id,(select count(*) from types where rowid<=s.id) as n from sample s where id<=3 order by id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id from sample s where exists(select 1 from types t where t.rowid=s.id) order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "127"
+        }
+      ],
+      [
+        {
+          "integer": "128"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select (select id from sample where id=999999) as n",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select (select id from sample order by id desc) as n",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "200"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 2 as n union select 1 order by n",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1 as n union all select 1 union all select 2 order by n desc limit 2",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id from sample where id<=3 intersect select rowid from types order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id from sample where id<=3 except select rowid from types order by id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select 1,2 union select 3",
+    "parameters": [],
+    "error": "SELECTs to the left and right of UNION do not have the same number of result columns"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select (select id,value from sample limit 1)",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "select id from sample a join sample b on a.id=b.id",
+    "parameters": [],
+    "error": "ambiguous column name: id"
+  },
+  {
+    "file": "sqlite-65536.db",
     "sql": "select count(*),count(),count(value),sum(id),total(id),avg(id),min(id),max(id) from sample where id<4",
     "parameters": [],
     "columns": [
@@ -4729,5 +11576,1363 @@
       "pk"
     ],
     "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT min(id),value FROM sample",
+    "parameters": [],
+    "columns": [
+      "min(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT max(id),value FROM sample",
+    "parameters": [],
+    "columns": [
+      "max(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "200"
+        },
+        "row-0199-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT min(id),value FROM sample WHERE 0",
+    "parameters": [],
+    "columns": [
+      "min(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        null,
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id%3 AS bucket,count(*) AS n FROM sample GROUP BY 1 HAVING n>2 ORDER BY bucket",
+    "parameters": [],
+    "columns": [
+      "bucket",
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "66"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "67"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "67"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id%3 AS bucket,count(*) AS n FROM sample GROUP BY bucket HAVING n>2 ORDER BY bucket",
+    "parameters": [],
+    "columns": [
+      "bucket",
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "66"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "67"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "67"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id%3,count(*),min(id),value FROM sample GROUP BY id%3 ORDER BY 1",
+    "parameters": [],
+    "columns": [
+      "id%3",
+      "count(*)",
+      "min(id)",
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "66"
+        },
+        {
+          "integer": "3"
+        },
+        "row-0002-λ"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "67"
+        },
+        {
+          "integer": "1"
+        },
+        "row-0000-λ"
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "67"
+        },
+        {
+          "integer": "2"
+        },
+        "row-0001-λ"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT count(*) FROM sample GROUP BY 0",
+    "parameters": [],
+    "error": "1st GROUP BY term out of range - should be between 1 and 1"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT count(*) FROM sample GROUP BY 2",
+    "parameters": [],
+    "error": "1st GROUP BY term out of range - should be between 1 and 1"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id FROM sample WHERE value='row-001' ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT rowid FROM types WHERE b=X'00ff' ORDER BY rowid",
+    "parameters": [],
+    "columns": [
+      "rowid"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT rowid FROM types WHERE b=NULL ORDER BY rowid",
+    "parameters": [],
+    "columns": [
+      "rowid"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT rowid FROM boundary WHERE v=X'' ORDER BY rowid",
+    "parameters": [],
+    "columns": [
+      "rowid"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id FROM sample WHERE value=CAST(1 AS NUMERIC) ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id FROM sample WHERE value='ROW-001' COLLATE NOCASE ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA table_xinfo(sample)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk",
+      "hidden"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "id",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "value",
+        "TEXT",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA table_xinfo(keyed)",
+    "parameters": [],
+    "columns": [
+      "cid",
+      "name",
+      "type",
+      "notnull",
+      "dflt_value",
+      "pk",
+      "hidden"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "k",
+        "TEXT",
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "v",
+        "INTEGER",
+        {
+          "integer": "0"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA index_list(sample)",
+    "parameters": [],
+    "columns": [
+      "seq",
+      "name",
+      "unique",
+      "origin",
+      "partial"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "sample_value",
+        {
+          "integer": "0"
+        },
+        "c",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA index_list(keyed)",
+    "parameters": [],
+    "columns": [
+      "seq",
+      "name",
+      "unique",
+      "origin",
+      "partial"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "sqlite_autoindex_keyed_1",
+        {
+          "integer": "1"
+        },
+        "pk",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA index_list(missing)",
+    "parameters": [],
+    "columns": [
+      "seq",
+      "name",
+      "unique",
+      "origin",
+      "partial"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA index_info(sample_value)",
+    "parameters": [],
+    "columns": [
+      "seqno",
+      "cid",
+      "name"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "value"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA index_xinfo(sample_value)",
+    "parameters": [],
+    "columns": [
+      "seqno",
+      "cid",
+      "name",
+      "desc",
+      "coll",
+      "key"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "value",
+        {
+          "integer": "0"
+        },
+        "BINARY",
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "-1"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        "BINARY",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA index_info(missing)",
+    "parameters": [],
+    "columns": [
+      "seqno",
+      "cid",
+      "name"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA foreign_key_list(sample)",
+    "parameters": [],
+    "columns": [
+      "id",
+      "seq",
+      "table",
+      "from",
+      "to",
+      "on_update",
+      "on_delete",
+      "match"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "PRAGMA foreign_key_list(missing)",
+    "parameters": [],
+    "columns": [
+      "id",
+      "seq",
+      "table",
+      "from",
+      "to",
+      "on_update",
+      "on_delete",
+      "match"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id,row_number() OVER (ORDER BY id DESC),rank() OVER (ORDER BY id%3),dense_rank() OVER (ORDER BY id%3) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "row_number() OVER (ORDER BY id DESC)",
+      "rank() OVER (ORDER BY id%3)",
+      "dense_rank() OVER (ORDER BY id%3)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id,percent_rank() OVER (ORDER BY id%3),cume_dist() OVER (ORDER BY id%3),ntile(3) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "percent_rank() OVER (ORDER BY id%3)",
+      "cume_dist() OVER (ORDER BY id%3)",
+      "ntile(3) OVER (ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        0.2857142857142857,
+        0.625,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        0.7142857142857143,
+        1.0,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        0.0,
+        0.25,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        0.2857142857142857,
+        0.625,
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        0.7142857142857143,
+        1.0,
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        0.0,
+        0.25,
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        0.2857142857142857,
+        0.625,
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        0.7142857142857143,
+        1.0,
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id,row_number() OVER (PARTITION BY id%2 ORDER BY id DESC),sum(id) OVER (PARTITION BY id%2) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "row_number() OVER (PARTITION BY id%2 ORDER BY id DESC)",
+      "sum(id) OVER (PARTITION BY id%2)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "20"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "20"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "20"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "16"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "20"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id,sum(id) OVER (ORDER BY id),count(*) OVER (),avg(id) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "sum(id) OVER (ORDER BY id)",
+      "count(*) OVER ()",
+      "avg(id) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "8"
+        },
+        1.5
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "8"
+        },
+        2.0
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "8"
+        },
+        3.0
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "8"
+        },
+        4.0
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "8"
+        },
+        5.0
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "8"
+        },
+        6.0
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "28"
+        },
+        {
+          "integer": "8"
+        },
+        7.0
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "8"
+        },
+        7.5
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id,sum(id) OVER (ORDER BY id%3),count(*) OVER (ORDER BY id%3 RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) FROM sample WHERE id>0 AND id<=8 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "sum(id) OVER (ORDER BY id%3)",
+      "count(*) OVER (ORDER BY id%3 RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "8"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "8"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "21"
+        },
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "36"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id,lag(id) OVER (ORDER BY id),lead(id,2,99) OVER (ORDER BY id),lag(id,-1) OVER (ORDER BY id),lag(id,NULL,99) OVER (ORDER BY id),lag(id,1.5,99) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=5 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "lag(id) OVER (ORDER BY id)",
+      "lead(id,2,99) OVER (ORDER BY id)",
+      "lag(id,-1) OVER (ORDER BY id)",
+      "lag(id,NULL,99) OVER (ORDER BY id)",
+      "lag(id,1.5,99) OVER (ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "99"
+        },
+        null,
+        {
+          "integer": "99"
+        },
+        {
+          "integer": "99"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id,first_value(id) OVER (ORDER BY id ROWS 1 PRECEDING),last_value(id) OVER (ORDER BY id),nth_value(id,2) OVER (ORDER BY id),ntile(20) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=5 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "first_value(id) OVER (ORDER BY id ROWS 1 PRECEDING)",
+      "last_value(id) OVER (ORDER BY id)",
+      "nth_value(id,2) OVER (ORDER BY id)",
+      "ntile(20) OVER (ORDER BY id)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "5"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id,min(id) OVER (ORDER BY id ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING),max(id) OVER (ORDER BY id ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) FROM sample WHERE id>0 AND id<=5 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "min(id) OVER (ORDER BY id ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING)",
+      "max(id) OVER (ORDER BY id ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        null
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        null,
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id FROM sample WHERE row_number() OVER ()=1",
+    "parameters": [],
+    "error": "misuse of window function row_number()"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT sum(DISTINCT id) OVER () FROM sample",
+    "parameters": [],
+    "error": "DISTINCT is not supported for window functions"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT sum(id) OVER (ROWS BETWEEN CURRENT ROW AND 1 PRECEDING) FROM sample",
+    "parameters": [],
+    "error": "unsupported frame specification"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT row_number() FROM sample",
+    "parameters": [],
+    "error": "misuse of window function row_number()"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT ntile(0) OVER () FROM sample",
+    "parameters": [],
+    "error": "argument of ntile must be a positive integer"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT nth_value(id,0) OVER () FROM sample",
+    "parameters": [],
+    "error": "second argument to nth_value must be a positive integer"
   }
 ]

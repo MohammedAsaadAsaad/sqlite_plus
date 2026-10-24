@@ -64,6 +64,43 @@ void main() {
       }
     });
   }
+  test('secondary index prefix descent prunes pages and retains duplicate keys',
+      () async {
+    final mutable = await MutableSqliteDatabase.create(pageSize: 512);
+    await mutable.execute(
+        'CREATE TABLE indexed(id INTEGER PRIMARY KEY,k INT,payload TEXT)');
+    await mutable.execute(
+        "INSERT INTO indexed WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<1000) SELECT x,x%100,'payload-'||x FROM n");
+    await mutable.execute('CREATE INDEX indexed_k ON indexed(k DESC,id)');
+    final storage = CountedStorage(MemoryStorageBackend());
+    await storage.write(0, mutable.exportImage());
+    await mutable.close();
+    final db = await SqliteDatabase.openReadOnly(storage);
+    addTearDown(db.close);
+    expect(db.explain('SELECT id FROM indexed WHERE k=7').access,
+        'secondary-index-lookup');
+    storage.reads = 0;
+    final result =
+        await db.query('SELECT id FROM indexed WHERE k=7 ORDER BY id');
+    final reads = storage.reads;
+    storage.reads = 0;
+    final scan =
+        await db.query('SELECT id FROM indexed WHERE +k=7 ORDER BY id');
+    expect(result.rows, scan.rows);
+    expect(result.rows.length, 10);
+    expect(reads, lessThan(storage.reads));
+    for (final key in [-1, 0, 99, 100]) {
+      expect(
+          (await db
+                  .query('SELECT id FROM indexed WHERE k=? ORDER BY id', [key]))
+              .rows,
+          (await db.query(
+                  'SELECT id FROM indexed WHERE +k=? ORDER BY id', [key]))
+              .rows);
+    }
+    expect(
+        (await db.query('SELECT id FROM indexed WHERE k=NULL')).rows, isEmpty);
+  });
   test('rowid point lookup reads fewer pages and explains chosen access',
       () async {
     final storage = CountedStorage(
@@ -91,7 +128,7 @@ void main() {
       'SELECT sum(count(*)) FROM sample',
       'SELECT id FROM sample WHERE count(*)>1',
       'SELECT count(*) FROM sample GROUP BY sum(id)',
-      'SELECT min(id),value FROM sample',
+      'SELECT count(*) FROM sample GROUP BY 0',
       'SELECT unknown_fn(1)',
       'SELECT abs()',
       'SELECT count(DISTINCT *) FROM sample',

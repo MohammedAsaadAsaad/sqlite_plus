@@ -2,8 +2,8 @@
 
 Pure Dart SQLite-compatible engine and convention-based ORM under development.
 The engine provides byte storage, SQLite format decoding, table/index traversal,
-limited mutations and exclusive-owner WAL/rollback transactions. M6 adds a
-verified subset of SQL functions, grouping, metadata and point lookup planning.
+schema/index mutations and exclusive-owner WAL/rollback transactions. M6 adds
+relational queries, constraints, functions, window frames and index planning.
 Full SQLite SQL semantics and ORM behavior remain unfinished. Production runtime
 code uses Pure Dart, without native SQLite, FFI or WASM.
 
@@ -130,7 +130,7 @@ try {
 }
 ```
 
-The existing stable-file requirements still apply. `query` supports a single
+The existing stable-file requirements still apply. The original M3 subset supports a
 catalog table (including sqlite_schema, sqlite_master and WITHOUT ROWID), `*`,
 column/literal/expression projection, explicit `AS` aliases, `WHERE`, `DISTINCT`,
 `ORDER BY` expressions/aliases/ordinals, and `LIMIT`/`OFFSET` (including comma
@@ -143,10 +143,8 @@ bits. Parameter data is never parsed as SQL. Errors use `SqlException`.
 Column values apply rowid aliases and physical WITHOUT ROWID column mapping.
 SELECT results are materialized and lists are unmodifiable (blob buffers remain
 independent mutable values). The parser limits input to 1 MiB and expression
-nesting to 128. The M6 functions/grouping subset is described below. Joins,
-subqueries, IN/LIKE, compound SELECTs, non-BINARY collations and DDL remain
-unsupported. DML and transactions use the limited mutable API. Catalog
-constraints outside the supported metadata grammar fail explicitly.
+nesting to 128. M6 expands this grammar as described below. DML and transactions use the mutable
+API. Unsupported syntax fails explicitly; full SQLite conformance remains unclaimed.
 
 `python3 tool/generate_sql_oracle.py` regenerates the 726 SELECT oracle cases
 using the pinned SQLite source/build, across all three database encodings.
@@ -155,13 +153,17 @@ The Dart tests use only the committed JSON and never execute native SQLite.
 
 ## M4 writes (limited subset)
 
-`MutableSqliteDatabase.fromImage(bytes)` creates an independent mutable image.
-`execute(sql, parameters)` supports INSERT VALUES (including multiple rows),
-UPDATE SET/WHERE and DELETE WHERE on simple rowid tables without indexes,
-triggers, non-PK constraints, auto-vacuum or reserved space. Unsupported targets
-fail explicitly. `exportImage()` returns a copy that SQLite can open. Statements
-are atomic in memory; this alone is not durable storage. Rebuilding appends new
-pages and puts old descendants/overflow pages on the freelist.
+`MutableSqliteDatabase.create(pageSize: 4096, encoding: 1)` creates an empty
+SQLite image. `fromImage(bytes)` opens an independent existing image. M6 adds
+CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, ADD COLUMN, indexed rowid and WITHOUT ROWID
+mutations, constraints and row triggers. `execute(sql, parameters)` returns the
+direct change count and last inserted rowid. `exportImage()` copies the current
+image. Statements are atomic in memory; durability requires an ImagePager.
+
+The current writer validates page ownership/freelists before rebuilding compact
+B-trees, secondary indexes and overflow pages. It supports complete images up to
+64 MiB without auto-vacuum or reserved page bytes. It favors correctness and
+simple atomic images over in-place updates; large write workloads are not tuned.
 
 For durable commits, supply `RollbackJournalPager.open(database, journal)` to
 `MutableSqliteDatabase.fromJournalPager`. Both backends must implement the
@@ -176,7 +178,7 @@ guarantee directory-entry persistence. The journal retains its existing entry
 and invalidates its header after database sync (PERSIST-style commit).
 
 Any commit I/O failure poisons the writer; reopen the pager to recover before
-accessing data again. Concurrent writers, general cross-isolate locking and live WAL writing are not supplied.
+accessing data again. Use the M5 owner protocol for cross-isolate access and WAL writes.
 Transaction/savepoint control and offline WAL snapshots are described below. The image limit defaults to 64 MiB. The
 reference verifies eight cross-open mutation snapshots and recovers a Dart hot
 journal byte-for-byte. These are algorithm/interoperability checks, not physical
@@ -236,7 +238,7 @@ alone still has the documented POSIX process-lock limitations.
 This design excludes external native SQLite connections until owner close. It
 does not implement shared external readers or a shared-memory wal-index. Raw
 WalPager callers must supply equivalent exclusive ownership and no wal-index.
-The same unindexed/simple-table DML limits still apply.
+The SQL and image limits documented below apply to both journal modes.
 
 WalPager appends checksum-chained full-image transactions and acknowledges only
 after WAL sync. Checkpoint syncs WAL, copies committed pages, syncs main, then
@@ -259,48 +261,63 @@ cover every commit/checkpoint storage operation, torn writes, retained/lost
 unsynced data, growth and shrinkage. WAL fixture regeneration uses SQLite salts,
 so regenerated bytes may differ; committed fixture hashes are stable.
 
-## M6 verified subset (milestone still open)
+## M6 SQL support (milestone still open)
 
-SELECT expressions now include ABS, LENGTH, LOWER/UPPER (ASCII case conversion),
-TYPEOF, COALESCE, IFNULL, NULLIF, three-argument IIF, HEX, QUOTE, UNICODE, CHAR,
-SUBSTR/SUBSTRING, REPLACE, TRIM/LTRIM/RTRIM and ZEROBLOB. Aggregate queries support
-COUNT, SUM, TOTAL, AVG, MIN/MAX and GROUP_CONCAT, DISTINCT aggregates, column
-GROUP BY, and HAVING with explicit aggregate expressions. Aggregate evaluation
-preserves errors even inside an unused scalar branch; LIMIT 0 avoids execution.
-Integer overflow errors, empty inputs and large-integer average precision are
-differentially checked. Expanding function outputs are bounded to 16 Mi units.
+The engine now supports:
 
-Read-only PRAGMAs: page_size, page_count, freelist_count, schema_version,
-user_version, application_id, encoding, and table_info(table). Setting PRAGMAs
-and unknown PRAGMAs fail explicitly. Table metadata retains NOT NULL/default SQL,
-declared dimensions and WITHOUT ROWID primary-key nullability.
+- INNER/LEFT/RIGHT/FULL/CROSS/NATURAL joins, ON/USING, qualified names,
+  derived tables, scalar/correlated subqueries, EXISTS and IN subqueries.
+- UNION/UNION ALL/INTERSECT/EXCEPT; ordinary/forward CTEs and bounded recursive
+  CTEs (100,000 emitted rows; recursive ORDER BY/LIMIT unsupported).
+- IN lists, BETWEEN, CASE, CAST, LIKE/ESCAPE, GLOB, bitwise operations,
+  BINARY/NOCASE/RTRIM collations, expression/ordinal/alias GROUP BY, HAVING
+  aliases, and bare-column MIN/MAX selection in the verified cases.
+- Core scalar functions and COUNT/SUM/TOTAL/AVG/MIN/MAX/GROUP_CONCAT aggregates.
+  Function outputs are bounded; user functions and date/time functions remain open.
+- ROW_NUMBER/RANK/DENSE_RANK/PERCENT_RANK/CUME_DIST/NTILE, LAG/LEAD,
+  FIRST_VALUE/LAST_VALUE/NTH_VALUE and aggregate windows. PARTITION/ORDER,
+  ROWS frames and default/peer RANGE frames are covered. Windows are limited
+  to 10,000 input rows. Named windows, GROUPS, numeric RANGE offsets, EXCLUDE,
+  FILTER and windows over grouped aggregates remain unsupported.
+- CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, safe ALTER TABLE ADD COLUMN, defaults,
+  NOT NULL/UNIQUE/CHECK, STRICT types, AUTOINCREMENT, INSERT VALUES/DEFAULT
+  VALUES/SELECT, UPDATE/DELETE, OR IGNORE/REPLACE, and WITHOUT ROWID writes.
+- `PRAGMA foreign_keys=1` enables FK checks/actions. Deferred keys validate at
+  outer commit. Foreign keys default off. BEFORE/AFTER row triggers support
+  OLD/NEW, UPDATE OF, WHEN, DML bodies and scalar SELECT/RAISE(ABORT/IGNORE).
+  Recursive self-trigger invocation and INSTEAD OF view triggers are unsupported.
 
-Eligible rowid/INTEGER PRIMARY KEY equality predicates descend a B-tree path;
-other predicates retain a table scan. `database.explain(sql, parameters)` returns
-a QueryPlan with access/rootPage/rowid, not SQLite bytecode or estimated costs.
-The full WHERE predicate still runs after lookup. Corrupt keys, cell bounds,
-freeblocks and overflow pages fail validation.
+Read-only PRAGMAs include page_size/page_count/freelist_count/schema_version,
+user_version/application_id/encoding/table_info/table_xinfo/index_list/
+index_info/index_xinfo/foreign_key_list. Foreign-key state and user_version/
+application_id can be set through the mutable API. Index metadata is limited to
+column indexes; unsupported shapes fail explicitly.
 
-M6 is incomplete: joins, subqueries, compounds, CASE/CAST/IN/LIKE, secondary-index
-maintenance, constraints, DDL, non-BINARY collations and complete SQL semantics
-remain work. GROUP BY ordinals/expression projections, HAVING aliases and bare
-columns with aggregates are explicitly restricted. Arity and resource bounds
-are deliberate supported-subset limits. M7–M9 have not started.
+Eligible rowid and leading-column secondary-index equalities descend B-tree
+paths. `database.explain(sql, parameters)` reports the access/rootPage/rowid;
+it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
+All results are materialized. Numeric precision, resource limits and other
+unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle has 291 differential cases, including expected errors:
+The pinned M6 oracle currently contains 624 differential queries across the
+three encodings. Development-only schema verification cross-opens Dart images
+with SQLite after every mutation and runs integrity_check:
 
 ```sh
 python3 tool/generate_semantics_oracle.py --verify
+python3 tool/verify_schema_oracle.py
 ```
 
-A reproducible AOT microbenchmark compares a planned lookup and equivalent scan
-over the same 2000-row memory-backed fixture. Five raw samples, SDK, fixture hash
-and whole-process peak RSS are saved in
-`benchmark_results/point_lookup_linux_x64.json`. It includes parsing and result
-materialization; it is not M9's scale/platform/native-engine benchmark suite.
-Reproduce from repository root:
+M6 remains open for broader SQL/PRAGMA/function coverage, UPSERT/RETURNING,
+additional ALTER operations, trigger/foreign-key edge cases, and planner work.
+M7–M9 remain pending under the sequential milestone plan.
+
+Real AOT benchmark samples are saved under `benchmark_results`. The index
+benchmark builds a 10,000-row memory image and measures five batches of 100
+queries. These small Linux workloads do not satisfy M9's full scale/platform
+matrix. Reproduce with:
 
 ```sh
-(cd packages/sqlite_plus && dart compile exe benchmark/point_lookup.dart -o /tmp/sqlite-plus-point-benchmark)
-(cd packages/sqlite_plus && /tmp/sqlite-plus-point-benchmark)
+(cd packages/sqlite_plus && dart compile exe benchmark/index_lookup.dart -o /tmp/sqlite-plus-index-benchmark)
+(cd packages/sqlite_plus && /tmp/sqlite-plus-index-benchmark)
 ```

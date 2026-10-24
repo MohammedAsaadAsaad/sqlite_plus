@@ -3,20 +3,32 @@ import '../pager/read_only_pager.dart';
 import 'parser.dart';
 import 'tokenizer.dart';
 import 'values.dart';
+import 'expressions.dart';
 
 final class CatalogColumn {
   CatalogColumn(this.name, this.declaredType,
       {this.primaryKey = 0,
       this.defaultValue,
       this.notNull = false,
-      this.defaultSql});
+      this.defaultSql,
+      this.unique = false,
+      this.collation = 'binary',
+      this.autoIncrement = false,
+      this.checks = const [],
+      this.primaryDescending = false});
   final String name;
   final String declaredType;
   int primaryKey;
   final Object? defaultValue;
   final bool notNull;
   final String? defaultSql;
-  String get affinity => affinityFor(declaredType);
+  final bool unique, autoIncrement, primaryDescending;
+  bool strict = false;
+  final String collation;
+  final List<Expr> checks;
+  String get affinity => strict && declaredType.toUpperCase() == 'ANY'
+      ? 'none'
+      : affinityFor(declaredType);
 }
 
 final class CatalogTable {
@@ -28,12 +40,27 @@ final class CatalogTable {
   final List<CatalogColumn> columns;
   final bool withoutRowid;
   final String? rowidAlias;
+  final List<List<String>> uniqueKeys = [];
+  final List<List<String>> autoIndexKeys = [];
+  final List<Expr> checks = [];
+  final List<ForeignKey> foreignKeys = [];
   List<CatalogColumn> get storageColumns {
     if (!withoutRowid) return columns;
     final keys = columns.where((c) => c.primaryKey != 0).toList()
       ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
     return [...keys, ...columns.where((c) => c.primaryKey == 0)];
   }
+}
+
+final class ForeignKey {
+  ForeignKey(this.columns, this.table, this.targetColumns,
+      {this.onDelete = 'NO ACTION',
+      this.onUpdate = 'NO ACTION',
+      this.deferred = false});
+  final List<String> columns, targetColumns;
+  final String table;
+  final String onDelete, onUpdate;
+  final bool deferred;
 }
 
 final class CatalogEntry {
@@ -66,7 +93,9 @@ final class DatabaseCatalog {
         throw const FormatException('Invalid catalog root page');
       }
       final name = v[1] as String;
-      if (entries.any((entry) => asciiLower(entry.name) == asciiLower(name))) {
+      if (entries.any((entry) =>
+          asciiLower(entry.name) == asciiLower(name) &&
+          (entry.type == 'trigger') == (v[0] == 'trigger'))) {
         throw const FormatException('Duplicate catalog object');
       }
       entries.add(CatalogEntry(
@@ -85,8 +114,8 @@ final class DatabaseCatalog {
         CatalogColumn('sql', 'TEXT'),
       ]);
     }
-    final matches =
-        entries.where((e) => asciiLower(e.name) == asciiLower(name));
+    final matches = entries.where(
+        (e) => e.type != 'trigger' && asciiLower(e.name) == asciiLower(name));
     if (matches.isEmpty) throw SqlException('No such table: $name');
     final entry = matches.single;
     if (entry.type != 'table' || entry.sql == null || entry.rootPage == 0) {
@@ -109,18 +138,116 @@ final class DatabaseCatalog {
     final primary = <String>[];
     String? alias;
     var tablePrimary = false;
+    final uniqueKeys = <List<String>>[];
+    final autoKeys = <(bool, List<String>)>[];
+    final tableChecks = <Expr>[];
+    final foreignKeys = <ForeignKey>[];
+    List<String> keyColumns() {
+      parser.require('(');
+      final names = <String>[];
+      do {
+        names.add(parser.identifier());
+        if (parser.take('COLLATE')) parser.identifier();
+        if (!parser.take('ASC')) {
+          if (parser.take('DESC')) {
+            throw const SqlException(
+                'Descending constraint keys require explicit index support');
+          }
+        }
+      } while (parser.take(','));
+      parser.require(')');
+      return names;
+    }
+
+    void conflict() {
+      if (parser.take('ON')) {
+        parser.require('CONFLICT');
+        if (!parser.take('ABORT')) {
+          throw const SqlException(
+              'Only ABORT constraint policy is currently supported');
+        }
+      }
+    }
+
+    ForeignKey references(List<String> names) {
+      final target = parser.identifier();
+      final targetColumns =
+          parser.current.text == '(' ? keyColumns() : <String>[];
+      var onDelete = 'NO ACTION';
+      var onUpdate = 'NO ACTION';
+      var deferred = false;
+      while (true) {
+        if (parser.take('ON')) {
+          final delete = parser.take('DELETE');
+          if (!delete) parser.require('UPDATE');
+          String action;
+          if (parser.take('SET')) {
+            if (parser.take('NULL')) {
+              action = 'SET NULL';
+            } else {
+              parser.require('DEFAULT');
+              action = 'SET DEFAULT';
+            }
+          } else if (parser.take('NO')) {
+            parser.require('ACTION');
+            action = 'NO ACTION';
+          } else if (parser.take('CASCADE')) {
+            action = 'CASCADE';
+          } else {
+            parser.require('RESTRICT');
+            action = 'RESTRICT';
+          }
+          if (delete) {
+            onDelete = action;
+          } else {
+            onUpdate = action;
+          }
+        } else if (parser.take('MATCH')) {
+          parser.identifier();
+        } else if (parser.take('DEFERRABLE')) {
+          if (parser.take('INITIALLY')) {
+            deferred = parser.take('DEFERRED');
+            if (!deferred) parser.require('IMMEDIATE');
+          }
+        } else if (parser.current.keyword == 'NOT' &&
+            parser.tokens[parser.position + 1].keyword == 'DEFERRABLE') {
+          parser.position += 2;
+        } else {
+          break;
+        }
+      }
+      if (targetColumns.isNotEmpty && targetColumns.length != names.length) {
+        throw const SqlException('Foreign key width mismatch');
+      }
+      return ForeignKey(names, target, targetColumns,
+          onDelete: onDelete, onUpdate: onUpdate, deferred: deferred);
+    }
+
     do {
-      if (parser.take('PRIMARY')) {
+      if (parser.take('CONSTRAINT')) parser.identifier();
+      if (parser.take('UNIQUE')) {
+        final key = keyColumns();
+        uniqueKeys.add(key);
+        autoKeys.add((false, key));
+        conflict();
+      } else if (parser.take('CHECK')) {
+        parser.require('(');
+        tableChecks.add(parser.expression());
+        parser.require(')');
+      } else if (parser.take('FOREIGN')) {
+        parser.require('KEY');
+        final names = keyColumns();
+        parser.require('REFERENCES');
+        foreignKeys.add(references(names));
+      } else if (parser.take('PRIMARY')) {
         if (tablePrimary || primary.isNotEmpty) {
           throw const SqlException('Multiple primary keys');
         }
         tablePrimary = true;
         parser.require('KEY');
-        parser.require('(');
-        do {
-          primary.add(parser.identifier());
-        } while (parser.take(','));
-        parser.require(')');
+        primary.addAll(keyColumns());
+        autoKeys.add((true, List.of(primary)));
+        conflict();
       } else {
         final columnName = parser.identifier();
         if (['CONSTRAINT', 'FOREIGN', 'UNIQUE', 'CHECK']
@@ -176,22 +303,42 @@ final class DatabaseCatalog {
           declaredType = declaredType.toUpperCase();
         }
         var columnPrimary = false;
+        var unique = false;
+        var autoIncrement = false;
+        var collation = 'binary';
+        final columnChecks = <Expr>[];
         var notNull = false;
         String? defaultSql;
         var descending = false;
         Object? defaultValue;
         while (parser.current.text != ',' && parser.current.text != ')') {
+          if (parser.take('CONSTRAINT')) {
+            parser.identifier();
+            continue;
+          }
           if (parser.take('PRIMARY')) {
             parser.require('KEY');
             columnPrimary = true;
+            autoKeys.add((true, [columnName]));
             descending = parser.take('DESC');
             if (!descending) parser.take('ASC');
-            parser.take('AUTOINCREMENT');
+            conflict();
+            autoIncrement = parser.take('AUTOINCREMENT');
           } else if (parser.take('NOT')) {
             parser.require('NULL');
             notNull = true;
-          } else if (parser.take('NULL') || parser.take('UNIQUE')) {
-            /* metadata only */
+            conflict();
+          } else if (parser.take('UNIQUE')) {
+            unique = true;
+            autoKeys.add((false, [columnName]));
+            conflict();
+          } else if (parser.take('CHECK')) {
+            parser.require('(');
+            columnChecks.add(parser.expression());
+            parser.require(')');
+          } else if (parser.take('REFERENCES')) {
+            foreignKeys.add(references([columnName]));
+          } else if (parser.take('NULL')) {
           } else if (parser.take('DEFAULT')) {
             final start = parser.current.offset;
             final expr = parser.expression();
@@ -207,8 +354,9 @@ final class DatabaseCatalog {
             expr.validate({});
             defaultValue = expr.evaluate(EvalContext({}, {}, []));
           } else if (parser.take('COLLATE')) {
-            if (asciiLower(parser.identifier()) != 'binary') {
-              throw const SqlException('Unsupported collation');
+            collation = asciiLower(parser.identifier());
+            if (!['binary', 'nocase', 'rtrim'].contains(collation)) {
+              throw const SqlException('Unknown collation');
             }
           } else {
             throw SqlException(
@@ -227,7 +375,12 @@ final class DatabaseCatalog {
         columns.add(CatalogColumn(columnName, declaredType,
             defaultValue: defaultValue,
             notNull: notNull,
-            defaultSql: defaultSql));
+            defaultSql: defaultSql,
+            unique: unique,
+            collation: collation,
+            autoIncrement: autoIncrement,
+            checks: columnChecks,
+            primaryDescending: descending));
       }
     } while (parser.take(','));
     parser.require(')');
@@ -236,7 +389,19 @@ final class DatabaseCatalog {
       parser.require('ROWID');
       withoutRowid = true;
     }
-    parser.take('STRICT');
+    final strict = parser.take('STRICT');
+    for (final column in columns) {
+      column.strict = strict;
+      if (strict &&
+          !['INT', 'INTEGER', 'REAL', 'TEXT', 'BLOB', 'ANY']
+              .contains(column.declaredType.toUpperCase())) {
+        throw const SqlException('Invalid STRICT column type');
+      }
+    }
+    if (columns
+        .any((c) => c.autoIncrement && (withoutRowid || c.name != alias))) {
+      throw const SqlException('Invalid AUTOINCREMENT column');
+    }
     parser.finish();
     for (var i = 0; i < primary.length; i++) {
       final matches =
@@ -253,7 +418,39 @@ final class DatabaseCatalog {
       final column = columns.firstWhere((c) => c.primaryKey == 1);
       if (column.declaredType.toUpperCase() == 'INTEGER') alias = column.name;
     }
-    return CatalogTable(name, rootPage, columns,
-        withoutRowid: withoutRowid, rowidAlias: withoutRowid ? null : alias);
+    final result = CatalogTable(name, rootPage, columns,
+        withoutRowid: withoutRowid, rowidAlias: withoutRowid ? null : alias)
+      ..uniqueKeys.addAll(uniqueKeys)
+      ..checks.addAll(tableChecks)
+      ..foreignKeys.addAll(foreignKeys);
+    final seenKeys = <String>{};
+    for (final key in autoKeys) {
+      if (key.$1 && alias != null && !withoutRowid) continue;
+      if (seenKeys.add(key.$2.map(asciiLower).join('\u0000'))) {
+        result.autoIndexKeys.add(key.$2);
+      }
+    }
+    final declaredNames = columns.map((c) => asciiLower(c.name)).toSet();
+    for (final fk in foreignKeys) {
+      if (fk.columns.any((c) => !declaredNames.contains(asciiLower(c)))) {
+        throw const SqlException('Unknown local foreign key column');
+      }
+    }
+    bool invalidCheck(Expr expr) =>
+        expr is SubqueryExpr ||
+        expr is InSelectExpr ||
+        expr.containsAggregate ||
+        expr.children.any(invalidCheck);
+    for (final check in [
+      ...tableChecks,
+      ...columns.expand((column) => column.checks)
+    ]) {
+      if (invalidCheck(check)) {
+        throw const SqlException(
+            'Subqueries/aggregates are prohibited in CHECK');
+      }
+      check.validate(columns.map((c) => asciiLower(c.name)).toSet());
+    }
+    return result;
   }
 }

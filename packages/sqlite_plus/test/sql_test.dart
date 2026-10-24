@@ -59,10 +59,10 @@ void main() {
       'select ?32767',
       'select ?99999999999999999999999999999',
       'select 1; select 2',
-      'select id from sample join types',
+      'select id from sample join types on',
       'select unsupported_function(*) from sample',
       'select id from sample window w as ()',
-      'select id from sample union select 1',
+      'select id from sample union select 1,2',
       'delete from sample',
       'select x\'q\'',
       "select 'unclosed",
@@ -71,7 +71,7 @@ void main() {
       'select 0x',
       'select 0xfffffffffffffffff',
       'select :name',
-      'select id from sample where id in (1,2)',
+      'select id from sample where id MATCH 1',
     ]) {
       test('rejects $sql', () async {
         await expectLater(database.query(sql), throwsA(isA<SqlException>()));
@@ -117,7 +117,7 @@ void main() {
           isNull);
       expect(
           () => DatabaseCatalog.parseTable(
-              'CREATE TABLE t(x TEXT COLLATE nocase)', 2),
+              'CREATE TABLE t(x TEXT COLLATE unknown_collation)', 2),
           throwsA(isA<SqlException>()));
     });
   });

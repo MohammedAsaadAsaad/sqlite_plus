@@ -77,7 +77,7 @@ String sqlRealText(double value, [int precision = 15]) {
   return '${trim(parts[0])}e${exponent < 0 ? '-' : '+'}${exponent.abs().toString().padLeft(2, '0')}';
 }
 
-int compareValues(Object? a, Object? b, [int encoding = 1]) {
+int compareValues(Object? a, Object? b, [int encoding = 1, String? collation]) {
   if (a == null) return b == null ? 0 : -1;
   if (b == null) return 1;
   int rank(Object value) => value is BigInt || value is double
@@ -103,6 +103,16 @@ int compareValues(Object? a, Object? b, [int encoding = 1]) {
   if (a is BigInt && b is double) return mixed(a, b);
   if (a is double && b is BigInt) return -mixed(b, a);
   if (a is double && b is double) return a == b ? 0 : a.compareTo(b);
+  if (a is String && b is String) {
+    if (collation == 'nocase') {
+      a = asciiLower(a).split('\u0000').first;
+      b = asciiLower(b).split('\u0000').first;
+    }
+    if (collation == 'rtrim') {
+      a = a.replaceFirst(RegExp(r' +$'), '');
+      b = b.replaceFirst(RegExp(r' +$'), '');
+    }
+  }
   final List<int> aa =
       a is String ? encodeSqlText(a, encoding) : a as Uint8List;
   final List<int> bb =

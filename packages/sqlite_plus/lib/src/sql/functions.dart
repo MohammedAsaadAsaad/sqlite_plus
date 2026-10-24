@@ -42,7 +42,31 @@ final class FunctionExpr extends Expr {
     }
   }
 
+  static const windowNames = {
+    'row_number',
+    'rank',
+    'dense_rank',
+    'percent_rank',
+    'cume_dist',
+    'ntile',
+    'lag',
+    'lead',
+    'first_value',
+    'last_value',
+    'nth_value'
+  };
   static const _arities = <String, (int, int)>{
+    'row_number': (0, 0),
+    'rank': (0, 0),
+    'dense_rank': (0, 0),
+    'percent_rank': (0, 0),
+    'cume_dist': (0, 0),
+    'ntile': (1, 1),
+    'lag': (1, 3),
+    'lead': (1, 3),
+    'first_value': (1, 1),
+    'last_value': (1, 1),
+    'nth_value': (2, 2),
     'abs': (1, 1),
     'length': (1, 1),
     'lower': (1, 1),
@@ -80,6 +104,9 @@ final class FunctionExpr extends Expr {
 
   @override
   Object? evaluate(EvalContext context) {
+    if (windowNames.contains(key)) {
+      throw const SqlException('Window function requires OVER');
+    }
     if (isAggregate) {
       return context.aggregateValues.containsKey(this)
           ? context.aggregateValues[this]
@@ -99,6 +126,10 @@ final class FunctionExpr extends Expr {
                   : 2]
           .evaluate(context);
     }
+    final collation = arguments
+        .map((arg) => arg.collation(context))
+        .whereType<String>()
+        .firstOrNull;
     final args = arguments.map((arg) => arg.evaluate(context)).toList();
     if (key == 'typeof') {
       return args[0] == null
@@ -112,7 +143,7 @@ final class FunctionExpr extends Expr {
                       : 'blob';
     }
     if (key == 'nullif') {
-      return compareValues(args[0], args[1], context.encoding) == 0
+      return compareValues(args[0], args[1], context.encoding, collation) == 0
           ? null
           : args[0];
     }
@@ -273,8 +304,8 @@ final class FunctionExpr extends Expr {
     if (key == 'min' || key == 'max') {
       var result = value;
       for (final item in args.skip(1)) {
-        final cmp = compareValues(item, result, context.encoding);
-        if (key == 'min' ? cmp < 0 : cmp > 0) result = item!;
+        final cmp = compareValues(item, result, context.encoding, collation);
+        if (key == 'min' ? cmp <= 0 : cmp > 0) result = item!;
       }
       return result;
     }
@@ -290,13 +321,18 @@ final class FunctionExpr extends Expr {
     final contexts = <EvalContext>[];
     for (final row in group) {
       final ctx = EvalContext(
-          row, context.affinities, context.parameters, context.encoding);
+          row, context.affinities, context.parameters, context.encoding)
+        ..subquery = context.subquery
+        ..collations = context.collations;
       final value = star || arguments.isEmpty
           ? BigInt.one
           : arguments.first.evaluate(ctx);
       if (value == null) continue;
       if (distinct &&
-          values.any((v) => compareValues(v, value, context.encoding) == 0)) {
+          values.any((v) =>
+              compareValues(v, value, context.encoding,
+                  arguments.first.collation(context)) ==
+              0)) {
         continue;
       }
       values.add(value);
@@ -307,7 +343,8 @@ final class FunctionExpr extends Expr {
       if (values.isEmpty) return null;
       var result = values.first;
       for (final value in values.skip(1)) {
-        final cmp = compareValues(value, result, context.encoding);
+        final cmp = compareValues(value, result, context.encoding,
+            arguments.first.collation(context));
         if (key == 'min' ? cmp < 0 : cmp > 0) result = value;
       }
       return result;

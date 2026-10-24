@@ -66,7 +66,9 @@ void main() {
       [BigInt.from(2002)]
     ]);
     final header = DatabaseHeader.decode(db.exportImage());
-    expect(header.freelistPages, greaterThan(0));
+    expect(header.validateFileLength(db.exportImage().length),
+        header.databaseSize);
+    expect(db.exportImage().length, lessThan(fixture().length));
     expect((await db.execute('DELETE FROM notes')).changes, 3);
     expect((await db.query('SELECT * FROM notes')).rows, isEmpty);
     final insert = await db
@@ -96,13 +98,26 @@ void main() {
     expect((await db.execute('DELETE FROM notes WHERE 0')).changes, 0);
     expect(db.exportImage(), before);
   });
-  test('unsupported indexed targets fail without mutation', () async {
+  test('indexed targets update both table and index images', () async {
     final input = File('test/fixtures/sqlite-512.db').readAsBytesSync();
     final db = await MutableSqliteDatabase.fromImage(input);
     addTearDown(db.close);
-    await expectLater(db.execute("INSERT INTO sample(value) VALUES('x')"),
-        throwsUnsupportedError);
-    expect(db.exportImage(), input);
+    final result =
+        await db.execute("INSERT INTO sample(value) VALUES('new-indexed')");
+    expect(result.changes, 1);
+    expect((await db.query("SELECT value FROM sample WHERE id=201")).rows, [
+      ['new-indexed']
+    ]);
+    final storage = MemoryStorageBackend();
+    await storage.write(0, db.exportImage());
+    final pager = await ReadOnlyPager.open(storage);
+    addTearDown(pager.close);
+    final catalog = await DatabaseCatalog.read(pager);
+    final index = catalog.entries.singleWhere((e) => e.name == 'sample_value');
+    expect(
+        (await BtreeReader(pager).scanIndex(index.rootPage).toList())
+            .any((record) => record.values.first == 'new-indexed'),
+        isTrue);
   });
   test('mutation can commit through the explicit durable capability', () async {
     final controller = CrashController();
@@ -150,7 +165,7 @@ void main() {
     final db = await MutableSqliteDatabase.fromImage(fixture());
     addTearDown(db.close);
     await db.execute('DELETE FROM notes');
-    final bytes = db.exportImage();
+    final bytes = await TableImageWriter.replace(fixture(), 'notes', []);
     final header = DatabaseHeader.decode(bytes);
     final data = ByteData.sublistView(bytes);
     final trunk = (header.firstFreelistTrunk - 1) * header.pageSize;

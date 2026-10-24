@@ -28,8 +28,58 @@ def main():
         "trim('λλxλλ','λ')","length(zeroblob(4))","hex(zeroblob(-1))",
         "min('λ','😀')","max('λ','😀')","min(1,3,2)","max(1,'a',X'00')","min(1,NULL,3)",
     ]
+    expressions += [
+        '1 IN (1,2)', 'NULL IN ()', 'NULL NOT IN ()', '1 IN (2,NULL)',
+        'NULL IN (NULL)', '1 NOT IN (2,NULL)', '1 IN (NULL,1)',
+        '2 BETWEEN 1 AND 3', '0 BETWEEN NULL AND -1', '1 NOT BETWEEN 2 AND NULL',
+        "'abc' LIKE 'A%'", "'λ😀' LIKE '__'", "'A_C' LIKE 'a!_c' ESCAPE '!'",
+        "'abc' NOT LIKE 'z%'", "'AbC' GLOB '[A-Z]*'", "'abc' GLOB '[^A-Z]*'",
+        "'abc' GLOB '[a-c][a-c]?'", "']' GLOB '[]]'", "'-' GLOB '[-a]'",
+        "'a' GLOB '['", "'a' LIKE 'a!' ESCAPE '!'",
+        "CAST('123e2' AS INTEGER)", "CAST('123e2' AS NUMERIC)",
+        "CAST('abc' AS REAL)", "CAST('9223372036854775808' AS INTEGER)",
+        "CAST('-9223372036854775809' AS INTEGER)", "CAST(1e999 AS INTEGER)",
+        "CAST('hello' AS BLOB)", "CAST(X'3132' AS TEXT)",
+        "CASE WHEN NULL THEN 1 WHEN 0 THEN 2 ELSE 3 END",
+        "CASE 1 WHEN '1' THEN 2 WHEN 1 THEN 3 ELSE 4 END",
+        'CASE WHEN 1 THEN 7 ELSE abs(-9223372036854775808) END',
+        "'A' = 'a' COLLATE NOCASE", "'a ' COLLATE RTRIM = 'a'", "'λ' = 'Λ' COLLATE NOCASE",
+        '5 & 3', '5 | 2', '1 << 63', '-1 >> 64', '1 << -1', '1 << 65',
+        '1 + 2 << 1', 'NULL ISNULL', '1 NOTNULL',
+    ]
     queries = ['select '+e+' as result' for e in expressions]
     queries += [
+        'WITH s AS (SELECT id,value FROM sample WHERE id<=3) SELECT * FROM s ORDER BY id',
+        'WITH a AS (SELECT * FROM b), b AS (SELECT id FROM sample WHERE id=2) SELECT * FROM a',
+        'WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<10) SELECT sum(x),count(*) FROM n',
+        'WITH n(x) AS (SELECT 1 UNION SELECT x FROM n) SELECT x FROM n',
+        'WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT 10 UNION ALL SELECT x+1 FROM n WHERE x<3) SELECT x FROM n ORDER BY x',
+
+        'select s.id,s.value from sample s where s.id<=3 order by s.id',
+        'select s.rowid,s._rowid_,s.oid from sample as s where s.id=128',
+        'select a.id,b.id from sample a join sample b on a.id=b.id+1 where a.id<5 order by a.id',
+        'select a.id,b.i from sample a left join types b on a.id=b.rowid where a.id<5 order by a.id',
+        'select a.id,b.i from sample a right join types b on a.id=b.rowid order by b.rowid',
+        'select a.id,b.i from sample a full join types b on a.id=b.rowid where a.id<=2 or a.id is null order by b.rowid,a.id',
+        'select a.id,b.id from sample a cross join sample b where a.id<=2 and b.id<=2 order by a.id,b.id',
+        'select a.id,b.id from sample a, sample b where a.id=b.id and a.id<=3 order by a.id',
+        'select * from sample a join sample b using(id,value) where id<=2 order by id',
+        'select a.*,b.value from sample a natural join sample b where id<=2 order by id',
+        'select d.id,d.v from (select id,value as v from sample where id<=3) d order by d.id desc',
+        'select id from sample where id in (select rowid from types) order by id',
+        'select id from sample where id not in (select rowid from types) order by id limit 3',
+        'select id,(select count(*) from types where rowid<=s.id) as n from sample s where id<=3 order by id',
+        'select id from sample s where exists(select 1 from types t where t.rowid=s.id) order by id',
+        'select (select id from sample where id=999999) as n',
+        'select (select id from sample order by id desc) as n',
+        'select 2 as n union select 1 order by n',
+        'select 1 as n union all select 1 union all select 2 order by n desc limit 2',
+        'select id from sample where id<=3 intersect select rowid from types order by id',
+        'select id from sample where id<=3 except select rowid from types order by id',
+        'select 1,2 union select 3',
+        'select (select id,value from sample limit 1)',
+        'select id from sample a join sample b on a.id=b.id',
+
         'select count(*),count(),count(n),sum(n),total(n),avg(n),min(id),max(id) from sample where id<4',
         'select count(*),count(value),sum(id),total(id),avg(id),min(id),max(id) from sample where 0',
         'select count(*),count(n),sum(i),total(i),avg(i),min(i),max(i) from types where rowid>=0 and rowid<128',
@@ -60,12 +110,71 @@ def main():
         'PRAGMA table_info(missing)',
     ]
     # sample has no n; aggregate its value column instead.
+    expressions += [
+        '1 IN (1,2)', 'NULL IN ()', 'NULL NOT IN ()', '1 IN (2,NULL)',
+        'NULL IN (NULL)', '1 NOT IN (2,NULL)', '1 IN (NULL,1)',
+        '2 BETWEEN 1 AND 3', '0 BETWEEN NULL AND -1', '1 NOT BETWEEN 2 AND NULL',
+        "'abc' LIKE 'A%'", "'λ😀' LIKE '__'", "'A_C' LIKE 'a!_c' ESCAPE '!'",
+        "'abc' NOT LIKE 'z%'", "'AbC' GLOB '[A-Z]*'", "'abc' GLOB '[^A-Z]*'",
+        "'abc' GLOB '[a-c][a-c]?'", "']' GLOB '[]]'", "'-' GLOB '[-a]'",
+        "'a' GLOB '['", "'a' LIKE 'a!' ESCAPE '!'",
+        "CAST('123e2' AS INTEGER)", "CAST('123e2' AS NUMERIC)",
+        "CAST('abc' AS REAL)", "CAST('9223372036854775808' AS INTEGER)",
+        "CAST('-9223372036854775809' AS INTEGER)", "CAST(1e999 AS INTEGER)",
+        "CAST('hello' AS BLOB)", "CAST(X'3132' AS TEXT)",
+        "CASE WHEN NULL THEN 1 WHEN 0 THEN 2 ELSE 3 END",
+        "CASE 1 WHEN '1' THEN 2 WHEN 1 THEN 3 ELSE 4 END",
+        'CASE WHEN 1 THEN 7 ELSE abs(-9223372036854775808) END',
+        "'A' = 'a' COLLATE NOCASE", "'a ' COLLATE RTRIM = 'a'", "'λ' = 'Λ' COLLATE NOCASE",
+        '5 & 3', '5 | 2', '1 << 63', '-1 >> 64', '1 << -1', '1 << 65',
+        '1 + 2 << 1', 'NULL ISNULL', '1 NOTNULL',
+    ]
     queries = [q.replace('count(n),sum(n),total(n),avg(n)', 'count(value),sum(id),total(id),avg(id)') for q in queries]
+    queries += [
+      'SELECT min(id),value FROM sample',
+      'SELECT max(id),value FROM sample',
+      'SELECT min(id),value FROM sample WHERE 0',
+      'SELECT id%3 AS bucket,count(*) AS n FROM sample GROUP BY 1 HAVING n>2 ORDER BY bucket',
+      'SELECT id%3 AS bucket,count(*) AS n FROM sample GROUP BY bucket HAVING n>2 ORDER BY bucket',
+      'SELECT id%3,count(*),min(id),value FROM sample GROUP BY id%3 ORDER BY 1',
+      'SELECT count(*) FROM sample GROUP BY 0',
+      'SELECT count(*) FROM sample GROUP BY 2',
+    ]
+    queries += [
+      "SELECT id FROM sample WHERE value='row-001' ORDER BY id",
+      "SELECT rowid FROM types WHERE b=X'00ff' ORDER BY rowid",
+      "SELECT rowid FROM types WHERE b=NULL ORDER BY rowid",
+      "SELECT rowid FROM boundary WHERE v=X'' ORDER BY rowid",
+      "SELECT id FROM sample WHERE value=CAST(1 AS NUMERIC) ORDER BY id",
+      "SELECT id FROM sample WHERE value='ROW-001' COLLATE NOCASE ORDER BY id",
+    ]
+    queries += [
+      "PRAGMA table_xinfo(sample)","PRAGMA table_xinfo(keyed)",
+      "PRAGMA index_list(sample)","PRAGMA index_list(keyed)","PRAGMA index_list(missing)",
+      "PRAGMA index_info(sample_value)","PRAGMA index_xinfo(sample_value)","PRAGMA index_info(missing)",
+      "PRAGMA foreign_key_list(sample)","PRAGMA foreign_key_list(missing)",
+    ]
+    queries += [
+      'SELECT id,row_number() OVER (ORDER BY id DESC),rank() OVER (ORDER BY id%3),dense_rank() OVER (ORDER BY id%3) FROM sample WHERE id>0 AND id<=8 ORDER BY id',
+      'SELECT id,percent_rank() OVER (ORDER BY id%3),cume_dist() OVER (ORDER BY id%3),ntile(3) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=8 ORDER BY id',
+      'SELECT id,row_number() OVER (PARTITION BY id%2 ORDER BY id DESC),sum(id) OVER (PARTITION BY id%2) FROM sample WHERE id>0 AND id<=8 ORDER BY id',
+      'SELECT id,sum(id) OVER (ORDER BY id),count(*) OVER (),avg(id) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM sample WHERE id>0 AND id<=8 ORDER BY id',
+      'SELECT id,sum(id) OVER (ORDER BY id%3),count(*) OVER (ORDER BY id%3 RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) FROM sample WHERE id>0 AND id<=8 ORDER BY id',
+      'SELECT id,lag(id) OVER (ORDER BY id),lead(id,2,99) OVER (ORDER BY id),lag(id,-1) OVER (ORDER BY id),lag(id,NULL,99) OVER (ORDER BY id),lag(id,1.5,99) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=5 ORDER BY id',
+      'SELECT id,first_value(id) OVER (ORDER BY id ROWS 1 PRECEDING),last_value(id) OVER (ORDER BY id),nth_value(id,2) OVER (ORDER BY id),ntile(20) OVER (ORDER BY id) FROM sample WHERE id>0 AND id<=5 ORDER BY id',
+      'SELECT id,min(id) OVER (ORDER BY id ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING),max(id) OVER (ORDER BY id ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING) FROM sample WHERE id>0 AND id<=5 ORDER BY id',
+      'SELECT id FROM sample WHERE row_number() OVER ()=1',
+      'SELECT sum(DISTINCT id) OVER () FROM sample',
+      'SELECT sum(id) OVER (ROWS BETWEEN CURRENT ROW AND 1 PRECEDING) FROM sample',
+      'SELECT row_number() FROM sample',
+      'SELECT ntile(0) OVER () FROM sample',
+      'SELECT nth_value(id,0) OVER () FROM sample',
+    ]
     cases = []
     for fixture in manifest['fixtures']:
         with sqlite3.connect(f"file:{ROOT/fixture['file']}?mode=ro",uri=True) as c:
             for sql in queries:
-                parameters = [128] if '?' in sql else []
+                parameters = [128] if sql.endswith('id=?') else []
                 case={'file':fixture['file'],'sql':sql,'parameters':[encode(v) for v in parameters]}
                 try:
                     cursor = c.execute(sql,parameters)

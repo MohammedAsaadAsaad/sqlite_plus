@@ -117,7 +117,15 @@ final class BtreeReader {
   Stream<BtreeRecord> scanTable(int rootPage) => _scan(rootPage, true);
   Stream<BtreeRecord> scanIndex(int rootPage) => _scan(rootPage, false);
 
-  Stream<BtreeRecord> _scan(int root, bool table) async* {
+  /// Visits branches that may contain keys whose sorted-prefix comparison is zero.
+  /// [compare] must compare an index record with one fixed search prefix in the
+  /// index's declared order. Unvisited branches are not corruption-validated.
+  Stream<BtreeRecord> seekIndex(
+          int rootPage, int Function(List<Object?>) compare) =>
+      _scan(rootPage, false, compare);
+
+  Stream<BtreeRecord> _scan(int root, bool table,
+      [int Function(List<Object?>)? compare]) async* {
     final used = <int>{};
     final stack = <Object>[_PageTask(root, table, null, null)];
     BigInt? previous;
@@ -148,6 +156,7 @@ final class BtreeReader {
       final actions = <Object>[];
       final ranges = <(int, int)>[];
       var lower = node.lower;
+      var priorComparison = -1;
       for (final offset in header.cellOffsets) {
         final cell = SqliteByteReader(bytes,
             offset: offset, end: pager.header.usableSize);
@@ -170,15 +179,23 @@ final class BtreeReader {
                 (node.upper != null && rowId > node.upper!))) {
           throw const FormatException('Rowid outside B-tree separator bounds');
         }
-        if (child != null) {
+        final comparison = compare == null ? 0 : compare(values!).sign;
+        if (compare != null && comparison < priorComparison) {
+          throw const FormatException('Index prefix out of order');
+        }
+        if (child != null &&
+            (compare == null || priorComparison <= 0 && comparison >= 0)) {
           actions.add(
               _PageTask(child, node.table, lower, node.table ? rowId : null));
         }
-        if (values != null) actions.add(BtreeRecord._(rowId, values));
+        if (values != null && comparison == 0) {
+          actions.add(BtreeRecord._(rowId, values));
+        }
+        priorComparison = comparison;
         if (node.table) lower = rowId;
       }
       _validateRanges(bytes, header, ranges);
-      if (!header.isLeaf) {
+      if (!header.isLeaf && (compare == null || priorComparison <= 0)) {
         actions.add(
             _PageTask(header.rightmostChild!, node.table, lower, node.upper));
       }
