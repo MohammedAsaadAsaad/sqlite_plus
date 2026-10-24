@@ -446,6 +446,7 @@ final class ImageMutations {
         result.putIfAbsent(name, () => row.rowId);
       }
     }
+    table.schema.evaluateGenerated(result, encoding);
     return result;
   }
 
@@ -496,15 +497,36 @@ final class ImageMutations {
     return sqlValue(value);
   }
 
-  TableRow _physical(_Table table, Map<String, Object?> values, BigInt id) =>
-      TableRow(id, [
-        for (final col in table.schema.columns)
-          col.name == table.schema.rowidAlias
-              ? null
-              : table.view
-                  ? values[asciiLower(col.name)]
-                  : _stored(values[asciiLower(col.name)], col)
-      ]);
+  TableRow _physical(_Table table, Map<String, Object?> values, BigInt id) {
+    final typed = <String, Object?>{
+      for (final col in table.schema.columns)
+        asciiLower(col.name): col.name == table.schema.rowidAlias
+            ? id
+            : table.view
+                ? values[asciiLower(col.name)]
+                : _stored(values[asciiLower(col.name)], col)
+    };
+    if (!table.view) {
+      for (final col in table.schema.columns) {
+        final key = asciiLower(col.name), type = col.declaredType.toUpperCase();
+        if (typed[key] is BigInt &&
+            !type.contains('INT') &&
+            ['REAL', 'FLOA', 'DOUB'].any(type.contains)) {
+          typed[key] = (typed[key] as BigInt).toDouble();
+        }
+      }
+    }
+    table.schema.evaluateGenerated(typed, encoding, recomputeStored: true);
+    return TableRow(id, [
+      for (final col in table.schema.columns)
+        col.name == table.schema.rowidAlias
+            ? null
+            : table.view
+                ? typed[asciiLower(col.name)]
+                : _stored(typed[asciiLower(col.name)], col)
+    ]);
+  }
+
   int _compare(_Index index, List<Object?> a, List<Object?> b) {
     for (var i = 0; i < a.length && i < b.length; i++) {
       final c = compareValues(a[i], b[i], encoding,
@@ -779,17 +801,23 @@ final class ImageMutations {
             _key(table, a, pk.map((c) => c.name).toList()),
             _key(table, b, pk.map((c) => c.name).toList())));
       }
-      objects.add(ImageObject(
-          'table', table.schema.name, table.schema.name, table.sql,
-          tableRows: ordered,
-          indexTable: table.schema.withoutRowid,
-          indexRows: [
-            for (final row in ordered)
-              [
-                for (final col in table.schema.storageColumns)
-                  _row(table, row)[asciiLower(col.name)]
-              ]
-          ]));
+      objects.add(
+          ImageObject('table', table.schema.name, table.schema.name, table.sql,
+              tableRows: [
+                for (final row in ordered)
+                  TableRow(row.rowId, [
+                    for (final col in table.schema.storageColumns)
+                      row.values[table.schema.columns.indexOf(col)]
+                  ])
+              ],
+              indexTable: table.schema.withoutRowid,
+              indexRows: [
+                for (final row in ordered)
+                  [
+                    for (final col in table.schema.storageColumns)
+                      _row(table, row)[asciiLower(col.name)]
+                  ]
+              ]));
     }
     for (final index in _indexes) {
       final table = _tables[asciiLower(index.table)]!;
@@ -1139,6 +1167,7 @@ final class ImageMutations {
       for (var i = first; i < part.$2; i++) {
         final kind = tokens[i].keyword;
         if (kind == 'CHECK' ||
+            kind == 'AS' ||
             constraint && ['PRIMARY', 'UNIQUE', 'FOREIGN'].contains(kind)) {
           var open = i + 1;
           while (open < part.$2 &&
@@ -1475,6 +1504,9 @@ final class ImageMutations {
             throw const SqlException('Cannot drop key/index column');
           }
           for (final check in [
+            ...table.schema.columns
+                .where((c) => c != column && c.generatedExpression != null)
+                .map((c) => c.generatedExpression!),
             ...table.schema.checks,
             ...table.schema.columns
                 .where((c) => c != column)
@@ -1625,6 +1657,9 @@ final class ImageMutations {
         throw const SqlException('Invalid added column');
       }
       final column = definition.columns.last;
+      if (column.generatedStored) {
+        throw const SqlException('Cannot ADD a STORED column');
+      }
       if (column.primaryKey != 0 || column.unique) {
         throw const SqlException('Cannot add a PRIMARY KEY or UNIQUE column');
       }
@@ -1757,12 +1792,15 @@ final class ImageMutations {
     final schema = table.schema;
     final columnNames = schema.columns.map((c) => asciiLower(c.name)).toList();
     final writable = {
-      ...columnNames,
+      ...schema.columns
+          .where((c) => c.generatedExpression == null)
+          .map((c) => asciiLower(c.name)),
       if (!schema.withoutRowid) ...['rowid', '_rowid_', 'oid'],
     };
     final valid = {
-      ...(table.view ? columnNames : writable),
-      for (final col in table.view ? columnNames : writable)
+      ...columnNames,
+      ...(table.view ? <String>{} : writable),
+      for (final col in {...columnNames, if (!table.view) ...writable})
         '${asciiLower(name)}.$col',
       ...?_triggerContexts.lastOrNull?.row.keys
     };
@@ -1777,7 +1815,9 @@ final class ImageMutations {
         } while (p.take(','));
         p.require(')');
       } else {
-        input.addAll(columnNames);
+        input.addAll(schema.columns
+            .where((c) => c.generatedExpression == null)
+            .map((c) => asciiLower(c.name)));
       }
       if (input.toSet().length != input.length ||
           input.any((c) => !writable.contains(c))) {
@@ -1883,7 +1923,7 @@ final class ImageMutations {
           final targetCollations = <String?>[];
           do {
             final expression = p.expression();
-            expression.validate(writable);
+            expression.validate(columnNames.toSet());
             if (expression.containsAggregate || expression.containsWindow) {
               throw const SqlException('Invalid conflict target');
             }
@@ -1894,7 +1934,7 @@ final class ImageMutations {
           } while (p.take(','));
           p.require(')');
           final targetWhere = p.take('WHERE') ? p.expression() : null;
-          targetWhere?.validate(writable);
+          targetWhere?.validate(columnNames.toSet());
           if (targetWhere != null &&
               (targetWhere.containsAggregate || targetWhere.containsWindow)) {
             throw const SqlException('Invalid conflict target WHERE');
@@ -1963,7 +2003,7 @@ final class ImageMutations {
           };
           do {
             final column = asciiLower(p.identifier());
-            if (!valid.contains(column) || column.contains('.')) {
+            if (!writable.contains(column) || column.contains('.')) {
               throw const SqlException('Invalid UPSERT column');
             }
             p.require('=');

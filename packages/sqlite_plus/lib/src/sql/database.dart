@@ -418,6 +418,7 @@ final class SqliteDatabase {
             row.putIfAbsent(name, () => record.rowId);
           }
         }
+        table.evaluateGenerated(row, _pager.header.textEncoding);
         input.add(row);
       }
     }
@@ -1054,20 +1055,28 @@ final class SqliteDatabase {
                   entry.type == 'table');
       if (!exists) return QueryResult(cols, []);
       final table = catalog.table(argument);
+      final visible = table.columns
+          .where((c) => name == 'table_xinfo' || c.generatedExpression == null)
+          .toList();
       return QueryResult(cols, [
-        for (var i = 0; i < table.columns.length; i++)
+        for (var i = 0; i < visible.length; i++)
           [
             BigInt.from(i),
-            table.columns[i].name,
-            table.columns[i].declaredType,
-            boolean(table.columns[i].notNull ||
+            visible[i].name,
+            visible[i].declaredType,
+            boolean(visible[i].notNull ||
                 (table.withoutRowid ||
-                        table.columns[i].strict &&
-                            table.columns[i].name != table.rowidAlias) &&
-                    table.columns[i].primaryKey != 0),
-            table.columns[i].defaultSql,
-            BigInt.from(table.columns[i].primaryKey),
-            if (name == 'table_xinfo') BigInt.zero
+                        visible[i].strict &&
+                            visible[i].name != table.rowidAlias) &&
+                    visible[i].primaryKey != 0),
+            visible[i].defaultSql,
+            BigInt.from(visible[i].primaryKey),
+            if (name == 'table_xinfo')
+              BigInt.from(visible[i].generatedExpression == null
+                  ? 0
+                  : visible[i].generatedStored
+                      ? 3
+                      : 2)
           ]
       ]);
     }

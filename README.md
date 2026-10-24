@@ -394,3 +394,10 @@ matrix. Reproduce with:
 (cd packages/sqlite_plus && dart compile exe benchmark/planner.dart -o /tmp/sqlite-plus-index-benchmark)
 (cd packages/sqlite_plus && /tmp/sqlite-plus-index-benchmark)
 ```
+
+Generated columns support VIRTUAL/STORED expressions, deterministic scalar
+functions, forward dependencies, affinity, constraints and secondary indexes.
+INSERT positional values exclude generated columns; explicit writes to them
+fail. ADD permits virtual columns; dependency-aware rename/drop and metadata
+(table_info/table_xinfo hidden flags) are verified. Three pinned SQLite-created
+fixtures cover stored/virtual values, overflow, WITHOUT ROWID and all encodings.

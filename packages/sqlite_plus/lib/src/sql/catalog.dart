@@ -4,10 +4,13 @@ import 'parser.dart';
 import 'tokenizer.dart';
 import 'values.dart';
 import 'expressions.dart';
+import 'schema_expressions.dart';
 
 final class CatalogColumn {
   CatalogColumn(this.name, this.declaredType,
-      {this.primaryKey = 0,
+      {this.generatedExpression,
+      this.generatedStored = false,
+      this.primaryKey = 0,
       this.defaultValue,
       this.defaultExpression,
       this.notNull = false,
@@ -19,6 +22,8 @@ final class CatalogColumn {
       this.primaryDescending = false});
   final String name;
   final String declaredType;
+  final Expr? generatedExpression;
+  final bool generatedStored;
   int primaryKey;
   final Object? defaultValue;
   final Expr? defaultExpression;
@@ -46,11 +51,44 @@ final class CatalogTable {
   final List<List<String>> autoIndexKeys = [];
   final List<Expr> checks = [];
   final List<ForeignKey> foreignKeys = [];
+  final List<CatalogColumn> generatedOrder = [];
+
+  void evaluateGenerated(RowValues row, int encoding,
+      {bool recomputeStored = false}) {
+    final context = EvalContext(row,
+        {for (final c in columns) asciiLower(c.name): c.affinity}, [], encoding)
+      ..schemaExpression = true
+      ..collations = {for (final c in columns) asciiLower(c.name): c.collation};
+    for (final column in generatedOrder) {
+      if (column.generatedStored && !recomputeStored) continue;
+      var value = applyAffinity(
+          column.generatedExpression!.evaluate(context), column.affinity);
+      if (column.affinity == 'numeric' &&
+          value is double &&
+          value.isFinite &&
+          value == value.truncateToDouble() &&
+          value >= -(BigInt.one << 63).toDouble() &&
+          value < (BigInt.one << 63).toDouble()) {
+        value = BigInt.from(value);
+      }
+      if (value is BigInt &&
+          !column.declaredType.toUpperCase().contains('INT') &&
+          ['REAL', 'FLOA', 'DOUB']
+              .any(column.declaredType.toUpperCase().contains)) {
+        value = value.toDouble();
+      }
+      row[asciiLower(column.name)] = sqlValue(value);
+    }
+  }
+
   List<CatalogColumn> get storageColumns {
-    if (!withoutRowid) return columns;
+    final stored = columns
+        .where((c) => c.generatedExpression == null || c.generatedStored)
+        .toList();
+    if (!withoutRowid) return stored;
     final keys = columns.where((c) => c.primaryKey != 0).toList()
       ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
-    return [...keys, ...columns.where((c) => c.primaryKey == 0)];
+    return [...keys, ...stored.where((c) => c.primaryKey == 0)];
   }
 }
 
@@ -273,6 +311,7 @@ final class DatabaseCatalog {
               'CHECK',
               'REFERENCES',
               'GENERATED',
+              'AS',
               'CONSTRAINT'
             ].contains(parser.current.keyword)) {
           quotedType = quotedType || parser.current.quoted;
@@ -314,6 +353,8 @@ final class DatabaseCatalog {
         var descending = false;
         Object? defaultValue;
         Expr? defaultExpression;
+        Expr? generatedExpression;
+        var generatedStored = false;
         while (parser.current.text != ',' && parser.current.text != ')') {
           if (parser.take('CONSTRAINT')) {
             parser.identifier();
@@ -359,6 +400,18 @@ final class DatabaseCatalog {
             if (expr is Literal || expr is UnaryExpr) {
               defaultValue = expr.evaluate(EvalContext({}, {}, []));
             }
+          } else if (parser.current.keyword == 'GENERATED' ||
+              parser.current.keyword == 'AS') {
+            if (generatedExpression != null) {
+              throw const SqlException('Multiple generated expressions');
+            }
+            if (parser.take('GENERATED')) parser.take('ALWAYS');
+            parser.require('AS');
+            parser.require('(');
+            generatedExpression = parser.expression();
+            parser.require(')');
+            generatedStored = parser.take('STORED');
+            if (!generatedStored) parser.take('VIRTUAL');
           } else if (parser.take('COLLATE')) {
             collation = asciiLower(parser.identifier());
             if (!['binary', 'nocase', 'rtrim'].contains(collation)) {
@@ -379,6 +432,8 @@ final class DatabaseCatalog {
           }
         }
         columns.add(CatalogColumn(columnName, declaredType,
+            generatedExpression: generatedExpression,
+            generatedStored: generatedStored,
             defaultValue: defaultValue,
             defaultExpression: defaultExpression,
             notNull: notNull,
@@ -430,6 +485,39 @@ final class DatabaseCatalog {
       ..uniqueKeys.addAll(uniqueKeys)
       ..checks.addAll(tableChecks)
       ..foreignKeys.addAll(foreignKeys);
+    final generated =
+        columns.where((c) => c.generatedExpression != null).toList();
+    if (generated.length == columns.length) {
+      throw const SqlException('At least one ordinary column required');
+    }
+    final names = columns.map((c) => asciiLower(c.name)).toSet();
+    for (final column in generated) {
+      if (column.primaryKey != 0 || column.defaultSql != null) {
+        throw const SqlException(
+            'Generated columns cannot have defaults or primary keys');
+      }
+      validateSchemaExpression(column.generatedExpression!, names);
+    }
+    final visiting = <String>{}, visited = <String>{};
+    void visit(CatalogColumn column) {
+      final key = asciiLower(column.name);
+      if (visited.contains(key)) return;
+      if (!visiting.add(key)) {
+        throw const SqlException('Generated column dependency cycle');
+      }
+      for (final ref in column.generatedExpression!.unaggregatedColumns) {
+        final dependency =
+            generated.where((c) => asciiLower(c.name) == ref).firstOrNull;
+        if (dependency != null) visit(dependency);
+      }
+      visiting.remove(key);
+      visited.add(key);
+      result.generatedOrder.add(column);
+    }
+
+    for (final column in generated) {
+      visit(column);
+    }
     final seenKeys = <String>{};
     for (final key in autoKeys) {
       if (key.$1 && alias != null && !withoutRowid) continue;

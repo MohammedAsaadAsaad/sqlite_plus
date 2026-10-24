@@ -144,9 +144,48 @@ def main():
       "INSERT OR REPLACE INTO default_type VALUES(NULL) RETURNING *",
       "PRAGMA integrity_check"
     ]
+    statements += [
+      "CREATE TABLE generated_rows(id INTEGER PRIMARY KEY,a INT,b INT GENERATED ALWAYS AS(a*2) STORED,c TEXT AS(b+1) VIRTUAL,d REAL AS(a/2.0),label TEXT AS('λ😀'||a) UNIQUE)",
+      "INSERT INTO generated_rows(a) VALUES(2),(3),(NULL) RETURNING *",
+      "CREATE INDEX generated_index ON generated_rows(c DESC,d) WHERE b>0",
+      "UPDATE generated_rows SET a=a+2 WHERE id<3 RETURNING *",
+      "INSERT INTO generated_rows(id,a,b) VALUES(9,9,18)",
+      "UPDATE generated_rows SET b=1",
+      "INSERT INTO generated_rows VALUES(10,10)",
+      "INSERT INTO generated_rows(a) VALUES(4) ON CONFLICT(label) DO UPDATE SET a=excluded.a+10 RETURNING *",
+      "INSERT INTO generated_rows(a) VALUES(7) ON CONFLICT(label) DO UPDATE SET b=1",
+      "PRAGMA table_info(generated_rows)", "PRAGMA table_xinfo(generated_rows)",
+      "ALTER TABLE generated_rows ADD extra TEXT AS(label||c)",
+      "ALTER TABLE generated_rows ADD invalid INT AS(a+1) STORED",
+      "ALTER TABLE generated_rows RENAME COLUMN a TO source",
+      "UPDATE generated_rows SET source=source+1 WHERE id=2 RETURNING *",
+      "ALTER TABLE generated_rows DROP source", "ALTER TABLE generated_rows DROP extra",
+      "DROP INDEX generated_index", "ALTER TABLE generated_rows DROP d",
+      "CREATE TABLE generated_wr(k TEXT PRIMARY KEY,a INT,b INT AS(a+1) STORED,c TEXT AS(b||k)) WITHOUT ROWID",
+      "INSERT INTO generated_wr VALUES('x',1),('y',2)",
+      "CREATE INDEX generated_wr_key ON generated_wr(c)",
+      "UPDATE generated_wr SET a=a+1 RETURNING *",
+      "CREATE TABLE generated_chain(a INT,b INT AS(c+1),c INT AS(a*2) STORED)",
+      "INSERT INTO generated_chain VALUES(3) RETURNING *",
+      "CREATE TABLE generated_strict(a TEXT,b INT AS(a),c REAL AS(b),kind TEXT AS(typeof(c))) STRICT",
+      "INSERT INTO generated_strict VALUES('3') RETURNING *",
+      "INSERT OR IGNORE INTO generated_strict VALUES('bad')",
+      "CREATE TABLE generated_checks(a INT,b INT AS(a+1) CHECK(b<10) NOT NULL)",
+      "INSERT OR IGNORE INTO generated_checks VALUES(1),(10),(NULL) RETURNING *",
+      "CREATE TABLE invalid_gen_default(a,b AS(a) DEFAULT 1)",
+      "CREATE TABLE invalid_gen_primary(a,b AS(a) PRIMARY KEY)",
+      "CREATE TABLE invalid_gen_loop(a,b AS(c),c AS(b))",
+      "CREATE TABLE invalid_gen_only(a AS(1))",
+      "CREATE TABLE invalid_gen_sub(a,b AS((SELECT 1)))",
+      "CREATE TABLE invalid_gen_param(a,b AS(?))",
+      "CREATE TABLE invalid_gen_rowid(a,b AS(rowid))",
+      "CREATE TABLE invalid_gen_agg(a,b AS(sum(a)))",
+      "CREATE TABLE invalid_gen_clock(a,b AS(CURRENT_TIMESTAMP))",
+      "PRAGMA integrity_check"
+    ]
     for encoding in [1,2,3]:
         with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':[],'query':'=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS'])} for sql in statements]))
+            root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':[],'query':'=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS','TABLE_INFO','TABLE_XINFO'])} for sql in statements]))
             subprocess.run(['dart','--suppress-analytics','run','tool/export_schema.dart',directory,str(encoding)],cwd=ROOT.parents[1],check=True)
             with sqlite3.connect(root/'reference.db',isolation_level=None) as ref:
                 ref.execute('pragma page_size=512')

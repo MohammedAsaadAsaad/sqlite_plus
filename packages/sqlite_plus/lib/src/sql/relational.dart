@@ -141,6 +141,7 @@ extension _RelationalQueries on SqliteDatabase {
                 row.putIfAbsent(id, () => record.rowId);
               }
             }
+            table.evaluateGenerated(row, _pager.header.textEncoding);
             rows.add(row);
           }
           cache[key] = (table, rows);
@@ -253,6 +254,7 @@ extension _RelationalQueries on SqliteDatabase {
                 if (part.$1 == 'UNION' && rows.any((old) => _same(old, row))) {
                   continue;
                 }
+
                 rows.add(row);
               }
             }
@@ -276,6 +278,7 @@ extension _RelationalQueries on SqliteDatabase {
                       rows.any((old) => _same(old, row))) {
                     continue;
                   }
+
                   rows.add(row);
                   queue.add(row);
                 }

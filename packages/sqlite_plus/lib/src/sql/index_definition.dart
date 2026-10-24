@@ -6,7 +6,7 @@ import 'functions.dart';
 import 'parser.dart';
 import 'tokenizer.dart';
 import 'values.dart';
-import 'triggers.dart';
+import 'schema_expressions.dart';
 
 Expr indexOperand(Expr expression) =>
     expression is CollateExpr ? indexOperand(expression.operand) : expression;
@@ -133,33 +133,8 @@ final class IndexDefinition {
       ..collations = {
         for (final c in table.columns) asciiLower(c.name): c.collation
       };
-    void validate(Expr expression) {
-      expression.validate(table.columns.map((c) => asciiLower(c.name)).toSet());
-      void visit(Expr e) {
-        if (e is RaiseExpr ||
-            e is ParameterExpr ||
-            e is SubqueryExpr ||
-            e is InSelectExpr ||
-            e.containsAggregate ||
-            e.containsWindow) {
-          throw const SqlException(
-              'Parameters/subqueries/aggregates/windows prohibited in indexes');
-        }
-        if (e is FunctionExpr) {
-          if (e.registered != null && !e.registered!.deterministic ||
-              e.registered == null &&
-                  ['current_date', 'current_time', 'current_timestamp']
-                      .contains(e.key)) {
-            throw const SqlException('Non-deterministic function in index');
-          }
-        }
-        for (final child in e.children) {
-          visit(child);
-        }
-      }
-
-      visit(expression);
-    }
+    void validate(Expr expression) => validateSchemaExpression(
+        expression, table.columns.map((c) => asciiLower(c.name)).toSet());
 
     p.require('(');
     final terms = <IndexTerm>[];

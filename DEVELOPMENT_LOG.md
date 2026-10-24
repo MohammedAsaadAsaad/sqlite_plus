@@ -405,3 +405,22 @@
   SQLite verifies 418 snapshots per encoding (1,254 total), including policies,
   UPSERT constraints, trigger inheritance and STRICT/default regressions. M6 is
   still open for schema constraint policies and the remaining documented audit.
+
+## 2026-10-24 — M6 generated columns and binary fixtures
+
+- Added VIRTUAL/STORED generated expressions, deterministic schema validation,
+  topological dependencies/cycle errors, ordinary-column/PK/default restrictions,
+  affinity and logical REAL handling. Virtual values are computed on reads;
+  stored values occupy the correct rowid/WITHOUT ROWID physical record positions.
+- Writes recompute generated values and maintain constraints/indexes. Positional
+  INSERT excludes generated fields; explicit INSERT/UPDATE/UPSERT writes reject.
+  Added virtual ADD, expression-aware rename, guarded DROP and table_info/xinfo.
+- Added pinned native binary fixtures in UTF-8/UTF-16le/UTF-16be with overflow,
+  stored/virtual chains and WITHOUT ROWID. SHA-256 verification is included in CI.
+- All 2,149 engine tests, formatting, all-package locked dependency installs and
+  fatal-info analysis pass. Native SQLite cross-opens 458 snapshots per encoding
+  (1,374 total), checking data, RETURNING, metadata and integrity. Generated
+  fixture/read/write tests and all fixture/oracle checksum checks pass.
+- Existing native mutation/transaction checks, byte-exact hot journal recovery
+  and WAL/checkpoint/native continuation/owner-handoff checks also pass. M6 remains
+  open for the documented dependency rewrites, schema policies and broader audit.
