@@ -5,3 +5,6 @@ export 'src/format/btree_page_header.dart';
 export 'src/format/record_codec.dart' show RecordCodec, SqliteByteReader;
 export 'src/pager/read_only_pager.dart';
 export 'src/btree/btree_reader.dart';
+export 'src/sql/tokenizer.dart';
+export 'src/sql/catalog.dart';
+export 'src/sql/database.dart';

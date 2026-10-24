@@ -62,3 +62,25 @@
   concurrent mutation safety, malformed-text parity, full integrity checking,
   and execution on other platforms remain unimplemented/unverified. Remote
   GitHub Actions results are not claimed by local command verification.
+
+## 2026-10-24 — M3 catalog and SELECT subset
+
+- Added a strict bounded tokenizer/parser, sqlite_schema catalog, CREATE TABLE
+  metadata decoding, and a Pure Dart read-only single-table SELECT API.
+- Implemented projections, aliases, rowid aliases, WITHOUT ROWID mapping,
+  WHERE, DISTINCT, ordering, limits/offsets, positional bindings and core
+  arithmetic/comparison/NULL expressions. Unsupported syntax fails explicitly;
+  M6 remains responsible for full semantics, joins, functions and aggregates.
+- Generated 726 deterministic SELECT oracle cases with the pinned SQLite 3.53.1
+  source and compile options. Differential failures exposed column label,
+  UTF-16 binary ordering and blob numeric conversion differences; corrected them
+  and retained the cases. Added integer limits, infinities, signed zero,
+  malformed SQL, schema constraints, binding and parser-depth regressions.
+- All 808 engine tests pass, including the M0–M2 regressions; formatting,
+  fatal-info analysis and oracle checksums pass. CI verifies the SELECT oracle.
+  The oracle is development-only; runtime remains Pure Dart.
+- Investigated M4 filesystem durability prerequisite: Dart's File.open on a
+  directory fails with EISDIR in this environment, so a parent directory cannot
+  be flushed through the available dart:io file API. Durable journal creation
+  and directory-entry persistence need an explicitly supported capability;
+  do not claim crash-safe filesystem writes from ordinary file flush alone.

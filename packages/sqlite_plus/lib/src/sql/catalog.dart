@@ -1,0 +1,227 @@
+import '../btree/btree_reader.dart';
+import '../pager/read_only_pager.dart';
+import 'parser.dart';
+import 'tokenizer.dart';
+import 'values.dart';
+
+final class CatalogColumn {
+  CatalogColumn(this.name, this.declaredType,
+      {this.primaryKey = 0, this.defaultValue});
+  final String name;
+  final String declaredType;
+  int primaryKey;
+  final Object? defaultValue;
+  String get affinity => affinityFor(declaredType);
+}
+
+final class CatalogTable {
+  CatalogTable(this.name, this.rootPage, List<CatalogColumn> columns,
+      {this.withoutRowid = false, this.rowidAlias})
+      : columns = List.unmodifiable(columns);
+  final String name;
+  final int rootPage;
+  final List<CatalogColumn> columns;
+  final bool withoutRowid;
+  final String? rowidAlias;
+  List<CatalogColumn> get storageColumns {
+    if (!withoutRowid) return columns;
+    final keys = columns.where((c) => c.primaryKey != 0).toList()
+      ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+    return [...keys, ...columns.where((c) => c.primaryKey == 0)];
+  }
+}
+
+final class CatalogEntry {
+  CatalogEntry(this.type, this.name, this.tableName, this.rootPage, this.sql);
+  final String type;
+  final String name;
+  final String tableName;
+  final int rootPage;
+  final String? sql;
+}
+
+/// sqlite_schema metadata. CREATE definitions are parsed only when a table is used.
+final class DatabaseCatalog {
+  DatabaseCatalog._(this.entries);
+  final List<CatalogEntry> entries;
+  static Future<DatabaseCatalog> read(ReadOnlyPager pager) async {
+    final entries = <CatalogEntry>[];
+    await for (final record in BtreeReader(pager).scanTable(1)) {
+      final v = record.values;
+      if (v.length != 5 ||
+          v[0] is! String ||
+          v[1] is! String ||
+          v[2] is! String ||
+          v[3] is! BigInt ||
+          v[4] != null && v[4] is! String) {
+        throw const FormatException('Invalid sqlite_schema record');
+      }
+      final root = v[3] as BigInt;
+      if (root < BigInt.zero || root > BigInt.from(pager.pageCount)) {
+        throw const FormatException('Invalid catalog root page');
+      }
+      final name = v[1] as String;
+      if (entries.any((entry) => asciiLower(entry.name) == asciiLower(name))) {
+        throw const FormatException('Duplicate catalog object');
+      }
+      entries.add(CatalogEntry(
+          v[0] as String, name, v[2] as String, root.toInt(), v[4] as String?));
+    }
+    return DatabaseCatalog._(List.unmodifiable(entries));
+  }
+
+  CatalogTable table(String name) {
+    if (['sqlite_schema', 'sqlite_master'].contains(asciiLower(name))) {
+      return CatalogTable('sqlite_schema', 1, [
+        CatalogColumn('type', 'TEXT'),
+        CatalogColumn('name', 'TEXT'),
+        CatalogColumn('tbl_name', 'TEXT'),
+        CatalogColumn('rootpage', 'INT'),
+        CatalogColumn('sql', 'TEXT'),
+      ]);
+    }
+    final matches =
+        entries.where((e) => asciiLower(e.name) == asciiLower(name));
+    if (matches.isEmpty) throw SqlException('No such table: $name');
+    final entry = matches.single;
+    if (entry.type != 'table' || entry.sql == null || entry.rootPage == 0) {
+      throw SqlException('Unsupported table or view: $name');
+    }
+    return parseTable(entry.sql!, entry.rootPage);
+  }
+
+  static CatalogTable parseTable(String sql, int rootPage) {
+    final parser = SqlParser(sql);
+    parser.require('CREATE');
+    parser.require('TABLE');
+    if (parser.take('IF')) {
+      parser.require('NOT');
+      parser.require('EXISTS');
+    }
+    final name = parser.identifier();
+    parser.require('(');
+    final columns = <CatalogColumn>[];
+    final primary = <String>[];
+    String? alias;
+    var tablePrimary = false;
+    do {
+      if (parser.take('PRIMARY')) {
+        if (tablePrimary || primary.isNotEmpty) {
+          throw const SqlException('Multiple primary keys');
+        }
+        tablePrimary = true;
+        parser.require('KEY');
+        parser.require('(');
+        do {
+          primary.add(parser.identifier());
+        } while (parser.take(','));
+        parser.require(')');
+      } else {
+        final columnName = parser.identifier();
+        if (['CONSTRAINT', 'FOREIGN', 'UNIQUE', 'CHECK']
+            .contains(columnName.toUpperCase())) {
+          throw const SqlException('Unsupported table constraint');
+        }
+        if (columns.any((c) => asciiLower(c.name) == asciiLower(columnName))) {
+          throw const SqlException('Duplicate column');
+        }
+        final type = <String>[];
+        while (parser.current.kind == SqlTokenKind.identifier &&
+            ![
+              'PRIMARY',
+              'NOT',
+              'NULL',
+              'DEFAULT',
+              'COLLATE',
+              'UNIQUE',
+              'CHECK',
+              'REFERENCES',
+              'GENERATED',
+              'CONSTRAINT'
+            ].contains(parser.current.keyword)) {
+          type.add(parser.identifier());
+        }
+        if (parser.take('(')) {
+          if (parser.current.kind != SqlTokenKind.number) {
+            throw const SqlException('Invalid type size');
+          }
+          parser.position++;
+          if (parser.take(',')) {
+            if (parser.current.kind != SqlTokenKind.number) {
+              throw const SqlException('Invalid type size');
+            }
+            parser.position++;
+          }
+          parser.require(')');
+        }
+        var columnPrimary = false;
+        var descending = false;
+        Object? defaultValue;
+        while (parser.current.text != ',' && parser.current.text != ')') {
+          if (parser.take('PRIMARY')) {
+            parser.require('KEY');
+            columnPrimary = true;
+            descending = parser.take('DESC');
+            if (!descending) parser.take('ASC');
+            parser.take('AUTOINCREMENT');
+          } else if (parser.take('NOT')) {
+            parser.require('NULL');
+          } else if (parser.take('NULL') || parser.take('UNIQUE')) {
+            /* metadata only */
+          } else if (parser.take('DEFAULT')) {
+            final expr = parser.expression();
+            if (parser.parameterCount != 0) {
+              throw const SqlException(
+                  'Parameters not allowed in schema defaults');
+            }
+            expr.validate({});
+            defaultValue = expr.evaluate(EvalContext({}, {}, []));
+          } else if (parser.take('COLLATE')) {
+            if (asciiLower(parser.identifier()) != 'binary') {
+              throw const SqlException('Unsupported collation');
+            }
+          } else {
+            throw SqlException(
+                'Unsupported column constraint', parser.current.offset);
+          }
+        }
+        if (columnPrimary) {
+          if (tablePrimary || primary.isNotEmpty) {
+            throw const SqlException('Multiple primary keys');
+          }
+          primary.add(columnName);
+          if (type.join(' ').toUpperCase() == 'INTEGER' && !descending) {
+            alias = columnName;
+          }
+        }
+        columns.add(CatalogColumn(columnName, type.join(' '),
+            defaultValue: defaultValue));
+      }
+    } while (parser.take(','));
+    parser.require(')');
+    var withoutRowid = false;
+    if (parser.take('WITHOUT')) {
+      parser.require('ROWID');
+      withoutRowid = true;
+    }
+    parser.take('STRICT');
+    parser.finish();
+    for (var i = 0; i < primary.length; i++) {
+      final matches =
+          columns.where((c) => asciiLower(c.name) == asciiLower(primary[i]));
+      if (matches.isEmpty) {
+        throw const SqlException('Unknown primary key column');
+      }
+      matches.single.primaryKey = i + 1;
+    }
+    if (withoutRowid && primary.isEmpty) {
+      throw const SqlException('Missing WITHOUT ROWID primary key');
+    }
+    if (tablePrimary && primary.length == 1) {
+      final column = columns.firstWhere((c) => c.primaryKey == 1);
+      if (column.declaredType.toUpperCase() == 'INTEGER') alias = column.name;
+    }
+    return CatalogTable(name, rootPage, columns,
+        withoutRowid: withoutRowid, rowidAlias: withoutRowid ? null : alias);
+  }
+}

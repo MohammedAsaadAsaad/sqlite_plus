@@ -1,9 +1,9 @@
 # sqlite_plus
 
 Pure Dart SQLite-compatible engine and convention-based ORM under development.
-M2 provides a read-only pager, table/index B-tree traversal, overflow payload
-reading and record decoding, with an optional Pure Dart file adapter. SQL
-execution, durable writes and ORM behavior are not implemented. Production runtime code uses no native SQLite, FFI or WASM.
+M3 adds catalog lookup and a read-only single-table SELECT API to the pager,
+B-tree traversal and record decoding. Durable writes and ORM behavior are not
+implemented. Full SQLite SQL semantics remain a later milestone. Production runtime code uses no native SQLite, FFI or WASM.
 
 Read `MASTER_SPEC.md`, `AGENTS.md`, `IMPLEMENTATION_PLAN.md` and
 `COMPATIBILITY_MATRIX.md` before developing.
@@ -69,7 +69,7 @@ try {
   rethrow;
 }
 try {
-  // Page 1 is sqlite_schema. M3 will add catalog lookup by table name.
+  // Page 1 is sqlite_schema; the query API below resolves table names.
   await for (final record in BtreeReader(pager).scanTable(1)) {
     print('${record.rowId}: ${record.values}');
   }
@@ -83,7 +83,7 @@ The core library has no dart:io imports. Other adapters can implement
 `scanTable(rootPage)` returns table leaf records ordered by signed rowid.
 `scanIndex(rootPage)` includes both leaf and interior records in physical order;
 it also reads WITHOUT ROWID table trees, whose primary key determines physical
-column order. Root pages must be supplied explicitly; there is no SQL query API.
+column order. This low-level API accepts root pages explicitly; the query API below resolves table names.
 
 `BtreeRecord.values` contains null, BigInt, double, String or copied Uint8List.
 INTEGER PRIMARY KEY aliases are physically stored as null; use the separate
@@ -112,3 +112,41 @@ source ID or compile configuration, runs `integrity_check`, and writes
 the fixture manifest. Regeneration was verified byte-for-byte on the pinned build.
 The oracle is development-only and never called by the Dart runtime or tests.
 See `COMPATIBILITY_MATRIX.md` for verification limits.
+
+## M3 SELECT API
+
+```dart
+final database = await SqliteDatabase.openReadOnly(storage);
+try {
+  final result = await database.query(
+      'SELECT id, value FROM sample WHERE id >= ? ORDER BY id DESC LIMIT ?',
+      [128, 5]);
+  print(result.columns);
+  print(result.rows);
+} finally {
+  await database.close();
+}
+```
+
+The existing stable-file requirements still apply. `query` supports a single
+catalog table (including sqlite_schema, sqlite_master and WITHOUT ROWID), `*`,
+column/literal/expression projection, explicit `AS` aliases, `WHERE`, `DISTINCT`,
+`ORDER BY` expressions/aliases/ordinals, and `LIMIT`/`OFFSET` (including comma
+syntax). It supports positional `?`/`?NNN` parameters with an exact parameter
+count, SQL quoting/comments, NULL/TRUE/FALSE, decimal/hex/blob literals,
+arithmetic, concatenation, comparisons, IS [NOT], NOT/AND/OR and parentheses.
+Bound Dart integers normalize to BigInt; integer bindings must fit signed 64
+bits. Parameter data is never parsed as SQL. Errors use `SqlException`.
+
+Column values apply rowid aliases and physical WITHOUT ROWID column mapping.
+SELECT results are materialized and lists are unmodifiable (blob buffers remain
+independent mutable values). The parser limits input to 1 MiB and expression
+nesting to 128. Unsupported SQL is rejected; joins, aggregates, subqueries,
+IN/LIKE, compound SELECTs, functions, non-BINARY collations, DDL/DML and
+transactions remain future work. Catalog constraints outside the supported
+metadata grammar also fail explicitly.
+
+`python3 tool/generate_sql_oracle.py` regenerates the 726 SELECT oracle cases
+using the pinned SQLite source/build, across all three database encodings.
+`python3 tool/generate_sql_oracle.py --verify` checks its committed SHA-256.
+The Dart tests use only the committed JSON and never execute native SQLite.
