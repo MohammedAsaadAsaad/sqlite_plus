@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import '../btree/btree_reader.dart';
 import '../btree/table_image_writer.dart';
 import '../pager/read_only_pager.dart';
-import '../pager/rollback_journal_pager.dart';
+import '../pager/image_pager.dart';
 import '../storage/memory_storage_backend.dart';
 import 'catalog.dart';
 import 'database.dart';
@@ -19,11 +19,11 @@ final class MutationResult {
 
 /// Experimental M4 image writer for ordinary, unconstrained, unindexed rowid
 /// tables. In-memory by default. An explicitly durable pager can commit images.
-/// No concurrent calls, SQL transaction statements, indexes, triggers or WAL.
+/// No concurrent calls or indexed/triggered writes. Transactions use image snapshots.
 final class MutableSqliteDatabase {
   MutableSqliteDatabase._(this._image, this._journal);
   Uint8List _image;
-  final RollbackJournalPager? _journal;
+  final ImagePager? _journal;
   bool _busy = false;
   bool _closed = false;
   bool _failed = false;
@@ -40,8 +40,10 @@ final class MutableSqliteDatabase {
   }
 
   static Future<MutableSqliteDatabase> fromJournalPager(
-          RollbackJournalPager pager) async =>
+          ImagePager pager) async =>
       MutableSqliteDatabase._(await pager.readImage(), pager);
+  static Future<MutableSqliteDatabase> fromImagePager(ImagePager pager) =>
+      fromJournalPager(pager);
   Uint8List exportImage() {
     if (_closed || _failed || _busy) {
       throw StateError('Database closed or busy');

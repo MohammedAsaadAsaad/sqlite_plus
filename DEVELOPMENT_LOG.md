@@ -134,3 +134,30 @@
 - M5 remains unchecked. M6–M9 are unstarted to preserve the user's requirement
   to finish and verify each milestone before moving on. No claim that all
   remaining milestones are completed, or that production WAL/concurrency works.
+
+## 2026-10-24 — M5 exclusive-owner WAL completion
+
+- Added the ImagePager commit boundary and a full-image WAL writer/checkpointer.
+  Commits acknowledge after WAL sync; checkpoints sync WAL, copy main pages,
+  sync main, then clear/sync WAL. Shared parsing covers both checksum endians.
+- Recovery now supports a main file partially updated by checkpoint, including
+  a new header size before physical growth. Tests cover every commit/checkpoint
+  storage operation with retained/lost unsynced writes, torn frame/page writes,
+  old committed-prefix preservation, database growth and shrinkage.
+- Added DatabaseOwner/DatabaseClient RPC: one isolate owns all handles; clients
+  share SendPorts, requests serialize, and transaction scope belongs to a client.
+  A loopback-port ownership guard rejects duplicate owner isolates before opening
+  a main descriptor; an exclusive SQLite lock-byte lease excludes native readers.
+  Guard ports carry no SQL. Collisions fail closed; canonical-path identity and
+  no direct/aliased handles are required. General shared-reader wal-index mode
+  remains explicitly unsupported rather than claimed as SQLite parity.
+- The pinned SQLite reference verifies three Dart WAL commits, both checksum
+  byte orders, checkpoints, native write continuation and exclusive owner
+  handoff. Native SQLite remains blocked after a rejected duplicate-owner open.
+- All 852 tests pass, all packages pass formatting/fatal-info analysis and locked
+  installation, and fixture/oracle checks pass. Runtime remains Pure Dart.
+- M5 is checked for this exclusive-owner architecture. No shared external WAL
+  readers, automatic mode switching/file provisioning, hard-link coordination,
+  physical power-loss certification or cross-platform claim is made.
+- Next: M6 SQL semantics, planner/index use, functions and PRAGMAs. Full SQL
+  compatibility remains unclaimed and must be supported by differential evidence.

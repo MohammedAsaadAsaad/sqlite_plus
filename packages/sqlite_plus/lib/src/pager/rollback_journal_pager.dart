@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'image_pager.dart';
+
 import '../format/database_header.dart';
 import '../storage/durable_storage_backend.dart';
 
@@ -10,7 +12,7 @@ import '../storage/durable_storage_backend.dart';
 /// PERSIST-style invalidation retains the existing journal directory entry.
 /// Durability depends on [DurableStorageBackend], not merely on this algorithm.
 /// No WAL, locks, concurrent readers or multi-database transactions are provided.
-final class RollbackJournalPager {
+final class RollbackJournalPager implements ImagePager {
   RollbackJournalPager._(
       this._database, this._journal, this.pageSize, this.maxImageBytes);
   final DurableStorageBackend _database;
@@ -56,11 +58,13 @@ final class RollbackJournalPager {
     }
   }
 
+  @override
   Future<Uint8List> readImage() =>
       _exclusive(() => _all(_database, maxImageBytes));
 
   /// A commit is acknowledged only after database sync and journal invalidation
   /// sync. On any I/O failure this instance is poisoned; reopen to recover.
+  @override
   Future<void> commitImage(Uint8List image) => _exclusive(() async {
         final next = Uint8List.fromList(image);
         if (next.length > maxImageBytes) {
@@ -204,6 +208,7 @@ final class RollbackJournalPager {
     return result;
   }
 
+  @override
   Future<void> close() async {
     if (_busy) throw StateError('Pager operation in progress');
     if (_closed) return;

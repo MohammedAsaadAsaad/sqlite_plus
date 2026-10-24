@@ -23,12 +23,13 @@ The pinned Python/SQLite oracle is development-only. M3 SELECT compatibility is 
 | Transactions/savepoints | Implemented for the limited M4 writer | BEGIN/COMMIT/ROLLBACK, nested SAVEPOINT/RELEASE/ROLLBACK TO; 14-step pinned SQLite differential sequence; writes deferred until outer commit |
 | Offline WAL recovery | Implemented for stable copied files | SQLite-generated WAL commits, every truncated final-frame tail, salts/checksums/resource limits; no live writer coordination |
 | Exclusive file lease | Single-owner subset | SQLite lock-byte range blocks a separate SQLite process; same-isolate duplicate lease protection. POSIX cross-isolate/process-wide descriptor-close limitations remain |
-| Live WAL writes/checkpoints | Not implemented | M5 is incomplete; do not use offline snapshots for a live database |
+| WAL writes/checkpoints | Implemented under exclusive ownership | Full-image WAL appends, both checksum endians, checkpoint ordering, growth/shrink, torn-write and every-operation crash recovery; native SQLite cross-open and write continuation |
+| Isolate coordination | Implemented for clients sharing DatabaseOwner | One handle owner, serialized SendPort requests, client-owned transactions, cross-isolate owner exclusion via loopback guard; external SQLite blocked by lock-byte lease |
 | SQLite image mutations | Implemented for simple unindexed rowid tables | INSERT/UPDATE/DELETE, bulk B-tree/overflow rebuilding, freelist reclamation; 8 mutation snapshots cross-open and pass pinned SQLite integrity_check/differential checks |
 | Rollback journal | Implemented under explicit durable storage contract | SQLite-compatible full-page before-images, PERSIST invalidation, every-operation crash injection, recovery fault injection; pinned SQLite recovers Dart journal byte-for-byte |
 | Durable file adapter | Conditional | Existing-file random writes/flush validated; caller must guarantee durable pre-provisioned entries and exclusive access. No power-loss filesystem certification |
 | ORM and code generator | Placeholders | Analyzer passes; no behavior/tests yet |
-| Linux x64 | Development checks verified | Dart 3.13.7; 834 engine tests, formatting and fatal-info analysis pass |
+| Linux x64 | Development checks verified | Dart 3.13.7; 852 engine tests, formatting and fatal-info analysis pass |
 | Windows/macOS/Android/iOS/Web | Not verified | Core has no dart:io imports; optional adapter requires dart:io. Execution on these platforms remains untested |
 
 M2 reads stable, nonempty SQLite 3 database copies with rollback-format headers.
@@ -75,17 +76,28 @@ unrecognized journal headers fail closed. Filesystem power-loss, multi-process
 locking, SQLite journal modes other than this single-header PERSIST subset,
 live WAL writing, checkpoint coordination and cross-isolate ownership remain M5/unverified.
 
-M5 remains incomplete. Transactions/savepoints operate on private image snapshots
-and persist one image through the rollback pager at outer commit. BEGIN modes
-are accepted under the same externally exclusive-owner contract; this does not
-provide SQLite's deferred/shared-reader lock escalation behavior. Closing an
-active transaction discards it, and failed durable commits poison the session.
-WalSnapshot handles stable copied files only; rollbackCopy creates an independent
-rollback-format image without changing/checkpointing the source files.
+M5 uses a single exclusive owner, rather than SQLite's shared-memory concurrency
+protocol. DatabaseOwner owns all file handles in one isolate and exposes
+DatabaseClient SendPorts to other isolates. Transactions belong to their logical
+client; other clients receive a busy error until it commits/rolls back. WAL
+checkpoints are forbidden during active SQL transactions. A deterministic
+loopback port lease excludes duplicate owners across isolates before any main
+file descriptor is opened, avoiding POSIX's process-wide lock-release hazard.
+The port serves no SQL; it is an ownership guard. Port collisions fail closed.
+All clients must use the canonical path; hard-link aliases and direct extra
+handles are unsupported. Shared external SQLite readers/writers are excluded for
+the owner lifetime. Existing -shm files and unresolved rollback journals are
+rejected, never silently removed. Provision files and durable directory entries
+before opening; no automatic directory provisioning is claimed.
 
-The exclusive file lease is optional and requires one owning isolate and no
-other handles to the same file in that process. Dart's documented POSIX locks
-are process-wide, so other isolates can acquire overlapping locks; closing any
-other descriptor can release them. A shared owner/coordinator and complete live
-WAL/checkpoint protocol are still required before claiming general M5 locking.
-M6–M9 have not been started, preserving the required sequential milestone gate.
+WalPager appends complete-image transactions and acknowledges after WAL sync.
+Checkpoint syncs WAL before copying pages, syncs main before clearing WAL, and
+can replay after a crash during the copy, including growth, shrinkage and torn
+page writes. Failed I/O poisons the pager. Invalid WAL headers fail closed; this
+is not a storage-media repair mechanism. Existing WAL-format databases are
+required; automatic journal-mode switching is unsupported. All SQL writes still
+have M4's unindexed/simple-rowid-table limitations. No physical power-loss,
+shared-reader WAL, multi-database transaction or performance claim is made.
+The pinned reference reads Dart WALs, appends native transactions, and verifies
+checkpoint integrity. Linux x64 owner/process behavior is verified; other
+platforms and arbitrary non-cooperating same-process handles remain unverified.

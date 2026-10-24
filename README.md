@@ -188,44 +188,70 @@ python3 tool/verify_mutation_oracle.py
 python3 tool/verify_rollback_oracle.py
 ```
 
-## M5 foundations (milestone still open)
+## M5 transactions and exclusive WAL ownership
 
 The mutable API supports BEGIN [DEFERRED|IMMEDIATE|EXCLUSIVE], COMMIT/END,
 ROLLBACK, SAVEPOINT, RELEASE [SAVEPOINT], and ROLLBACK [TRANSACTION] TO
-[SAVEPOINT]. Nested/duplicate savepoint names follow the nearest matching scope.
-Changes remain private image snapshots until outer COMMIT or release of an
-outermost savepoint; one rollback-journal commit then persists the image. Closing
-an active transaction discards it. Statement failures leave the transaction
-active; a durable commit I/O error poisons the session until recovery/reopen.
-BEGIN modes currently share the same exclusive-owner contract, rather than
-implementing SQLite's shared-reader lock escalation behavior.
+[SAVEPOINT]. Transactions use private images and persist once at outer commit.
+Closing an active transaction discards it; a commit I/O error poisons the session.
+BEGIN modes share the exclusive-owner contract, not shared-reader lock escalation.
 
-`DurableFileStorageBackend.openExclusive` takes an exclusive lease over SQLite's
-lock-byte range. Keep all file access in one owning isolate and use no other
-handles to that file in the process. Dart/POSIX advisory locks are process-wide:
-another isolate can acquire an overlapping lock, and closing any other descriptor
-can release the process's locks. This API is not a general cross-isolate lock
-manager. A development check confirms that a separate native SQLite process is
-blocked under the lease and succeeds after release.
+For file access across isolates, use one DatabaseOwner and share its SendPort:
 
-`WalSnapshot.recover(mainBytes, walBytes)` reads a stable copied WAL through its
-last valid committed frame. `WalSnapshot.rollbackCopy` returns an independent
-rollback-format image suitable for the read-only API. Both validate header/frame
-checksums and salts, ignore invalid/truncated transaction tails, and enforce an
-image-size bound. They do not operate safely on files being changed by a live
-writer, write WAL frames, update wal-index shared memory, or checkpoint live files.
+```dart
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-M5 remains unchecked until live WAL writing/checkpoint coordination and isolate
-ownership are implemented and verified. M6–M9 have not been started. Development
-checks added for this stage:
+final owner = await DatabaseOwner.open('snapshot.db',
+    directoryEntriesDurable: true, wal: true);
+try {
+  final client = owner.client;
+  await client.execute('BEGIN');
+  await client.execute('UPDATE notes SET value=? WHERE id=1', ['updated']);
+  await client.execute('COMMIT');
+  await client.checkpoint();
+  // Other isolates use DatabaseClient.connect(owner.sendPort).
+} finally {
+  await owner.close();
+}
+```
+
+The durability attestation has the same pre-provisioning meaning as M4. WAL mode
+requires an existing WAL-format main file and an existing durable `-wal` file;
+rollback mode requires an existing `-journal`. Automatic mode switching and file
+provisioning are unsupported. Existing `-shm` or unresolved journal state is
+rejected; the owner never deletes it blindly.
+
+All file handles live in one isolate. RPC requests serialize, and explicit
+transactions belong to the client that began them; others receive a busy error.
+An abandoned transaction is rolled back by owner shutdown. The owner takes an
+exclusive SQLite lock-byte lease and a deterministic loopback-port lease to
+exclude duplicate owners in other isolates before opening the main file. No SQL
+is served over TCP. A port collision fails as busy. Use one canonical path and
+no direct extra handles; hard-link aliases are unsupported. The raw file adapter
+alone still has the documented POSIX process-lock limitations.
+
+This design excludes external native SQLite connections until owner close. It
+does not implement shared external readers or a shared-memory wal-index. Raw
+WalPager callers must supply equivalent exclusive ownership and no wal-index.
+The same unindexed/simple-table DML limits still apply.
+
+WalPager appends checksum-chained full-image transactions and acknowledges only
+after WAL sync. Checkpoint syncs WAL, copies committed pages, syncs main, then
+clears/syncs WAL. The WAL can restore an interrupted checkpoint. Payload/image
+limits remain bounded; when the WAL limit is reached, checkpoint before retry.
+Physical power-loss certification and cross-platform execution remain unverified.
+
+WalSnapshot remains available for independent copied files. It does not make
+uncoordinated reads of a changing external database safe. Development checks:
 
 ```sh
 python3 tool/generate_wal_fixture.py --verify
 python3 tool/verify_mutation_oracle.py --transactions
-(cd packages/sqlite_plus && dart run tool/verify_lock.dart test/fixtures/write.db)
+python3 tool/verify_wal_oracle.py
 ```
 
-The WAL capture generator requires the pinned SQLite build, retains the writer
-while copying files, and records hashes. Its salts are generated by SQLite, so
-regenerated WAL bytes can differ; the checked-in fixtures and their checksums
-are stable. No live/concurrent WAL compatibility is claimed.
+The pinned reference verifies little/big-endian WAL appends, cross-open integrity,
+checkpointing, native write continuation and owner lease handoff. Crash tests
+cover every commit/checkpoint storage operation, torn writes, retained/lost
+unsynced data, growth and shrinkage. WAL fixture regeneration uses SQLite salts,
+so regenerated bytes may differ; committed fixture hashes are stable.
