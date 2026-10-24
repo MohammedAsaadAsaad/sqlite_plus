@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import '../btree/btree_reader.dart';
 import '../pager/read_only_pager.dart';
 import '../storage/storage_backend.dart';
@@ -7,6 +8,8 @@ import 'functions.dart';
 import 'tokenizer.dart';
 import 'values.dart';
 import 'expressions.dart';
+import 'function_registry.dart';
+import 'image_mutations.dart';
 
 part 'relational.dart';
 
@@ -27,32 +30,37 @@ final class QueryResult implements SqlRows {
 
 final class QueryPlan {
   const QueryPlan(this.access, this.rootPage, this.rowid) : _index = null;
-  const QueryPlan._indexed(this.rootPage, this._index)
-      : access = 'secondary-index-lookup',
-        rowid = null;
+  const QueryPlan._indexed(this.rootPage, this._index, this.access)
+      : rowid = null;
   final _IndexAccess? _index;
+  String? get indexName => _index?.table == false ? _index?.name : null;
   final String access;
   final int? rootPage;
   final BigInt? rowid;
 }
 
 final class _IndexAccess {
-  _IndexAccess(this.name, this.value, this.collation, this.descending);
-  final String name, collation;
-  final Object? value;
-  final bool descending;
+  _IndexAccess(this.name, this.compare,
+      {this.table = false, this.empty = false});
+  final String name;
+  final int Function(List<Object?>) compare;
+  final bool table, empty;
 }
 
 /// M3 read-only single-table SELECT API. Unsupported SQL fails explicitly.
 final class SqliteDatabase {
-  SqliteDatabase._(this._pager, this.catalog);
+  SqliteDatabase._(this._pager, this.catalog, [SqlFunctionRegistry? registry])
+      : functions = registry ?? SqlFunctionRegistry();
   final ReadOnlyPager _pager;
   final DatabaseCatalog catalog;
+  final SqlFunctionRegistry functions;
   bool _closed = false;
-  static Future<SqliteDatabase> openReadOnly(StorageBackend storage) async {
+  static Future<SqliteDatabase> openReadOnly(StorageBackend storage,
+      {SqlFunctionRegistry? functions}) async {
     final pager = await ReadOnlyPager.open(storage);
     try {
-      return SqliteDatabase._(pager, await DatabaseCatalog.read(pager));
+      return SqliteDatabase._(
+          pager, await DatabaseCatalog.read(pager), functions);
     } catch (_) {
       await pager.close();
       rethrow;
@@ -62,6 +70,25 @@ final class SqliteDatabase {
   Future<void> close() async {
     _closed = true;
     await _pager.close();
+  }
+
+  bool _planningConstant(Expr expression) {
+    if (expression.containsAggregate ||
+        expression.containsWindow ||
+        expression is SubqueryExpr ||
+        expression is InSelectExpr ||
+        expression is FunctionExpr && expression.registered != null) {
+      return false;
+    }
+    if (expression.children.any((child) => !_planningConstant(child))) {
+      return false;
+    }
+    try {
+      expression.validate({});
+      return true;
+    } on SqlException {
+      return false;
+    }
   }
 
   QueryPlan _plan(
@@ -95,7 +122,7 @@ final class SqliteDatabase {
         } on SqlException {
           return null;
         }
-        if (constant.containsAggregate) return null;
+        if (!_planningConstant(constant)) return null;
         var value = applyAffinity(
             constant.evaluate(
                 EvalContext({}, {}, bound, _pager.header.textEncoding)),
@@ -116,98 +143,146 @@ final class SqliteDatabase {
       if (key != null) return QueryPlan('rowid-lookup', table.rootPage, key);
     }
     if (!table.withoutRowid) {
-      final equalities = <BinaryExpr>[];
+      final constraints = <BinaryExpr>[];
       void collect(Expr? expr) {
         if (expr is BinaryExpr && expr.op == 'AND') {
           collect(expr.left);
           collect(expr.right);
-        } else if (expr is BinaryExpr && ['=', '=='].contains(expr.op)) {
-          equalities.add(expr);
+        } else if (expr is BinaryExpr &&
+            ['=', '==', '<', '<=', '>', '>='].contains(expr.op)) {
+          constraints.add(expr);
         }
       }
 
       collect(statement.where);
+      final context = EvalContext({}, {}, bound, _pager.header.textEncoding);
+      List<(String, Object?)> bounds(
+          String name, String affinity, String collation) {
+        final result = <(String, Object?)>[];
+        for (final expr in constraints) {
+          Expr? constant;
+          var op = expr.op;
+          if (expr.left is ColumnExpr &&
+              (expr.left as ColumnExpr).key == asciiLower(name)) {
+            constant = expr.right;
+          } else if (expr.right is ColumnExpr &&
+              (expr.right as ColumnExpr).key == asciiLower(name)) {
+            constant = expr.left;
+            op = const {
+              '<': '>',
+              '<=': '>=',
+              '>': '<',
+              '>=': '<=',
+              '=': '=',
+              '==': '=='
+            }[op]!;
+          }
+          if (constant == null || !_planningConstant(constant)) continue;
+          if (affinity == 'text' && constant.affinity(context) == 'numeric') {
+            continue;
+          }
+          final explicit = constant.explicitCollation(context);
+          if (explicit != null && explicit != collation) continue;
+          result.add((op, applyAffinity(constant.evaluate(context), affinity)));
+        }
+        return result;
+      }
+
+      int comparison(
+          Object? value, List<(String, Object?)> bounds, String collation) {
+        for (final bound in bounds) {
+          final c = compareValues(value, bound.$2, context.encoding, collation);
+          switch (bound.$1) {
+            case '=':
+            case '==':
+              if (c != 0) return c;
+            case '>':
+              if (c <= 0) return -1;
+            case '>=':
+              if (c < 0) return -1;
+            case '<':
+              if (c >= 0) return 1;
+            case '<=':
+              if (c > 0) return 1;
+          }
+        }
+        return 0;
+      }
+
+      final rowidNames = [
+        if (table.rowidAlias != null) table.rowidAlias!,
+        for (final alias in ['rowid', '_rowid_', 'oid'])
+          if (!table.columns.any((c) => asciiLower(c.name) == alias)) alias
+      ];
+      final rowBounds = [
+        for (final name in rowidNames) ...bounds(name, 'numeric', 'binary')
+      ];
+      if (rowBounds.isNotEmpty) {
+        return QueryPlan._indexed(
+            table.rootPage,
+            _IndexAccess('@rowid',
+                (values) => comparison(values.single, rowBounds, 'binary'),
+                table: true, empty: rowBounds.any((b) => b.$2 == null)),
+            'rowid-range');
+      }
+      QueryPlan? best;
+      var bestScore = -1;
       for (final entry in catalog.entries.where((e) =>
           e.type == 'index' &&
           asciiLower(e.tableName) == asciiLower(table.name))) {
         try {
-          String name, collation;
-          bool descending = false;
-          if (entry.sql == null) {
-            final suffix = int.parse(entry.name.split('_').last) - 1;
-            name = table.autoIndexKeys[suffix].first;
-            final column = table.columns
-                .firstWhere((c) => asciiLower(c.name) == asciiLower(name));
-            collation = column.collation;
-            descending = column.primaryDescending;
-          } else {
-            final p = SqlParser(entry.sql!);
-            p.require('CREATE');
-            p.take('UNIQUE');
-            p.require('INDEX');
-            if (p.take('IF')) {
-              p.require('NOT');
-              p.require('EXISTS');
-            }
-            p.identifier();
-            p.require('ON');
-            p.identifier();
-            p.require('(');
-            name = p.identifier();
-            final column = table.columns
-                .firstWhere((c) => asciiLower(c.name) == asciiLower(name));
-            collation = p.take('COLLATE')
-                ? asciiLower(p.identifier())
-                : column.collation;
-            descending = p.take('DESC');
-            // Partial and expression indexes require predicate implication first.
-            if (p.tokens.any((t) => t.keyword == 'WHERE') ||
-                ![',', ')', 'ASC'].contains(p.current.text.toUpperCase())) {
-              continue;
+          if (entry.sql != null &&
+              SqlParser(entry.sql!).tokens.any((t) => t.keyword == 'WHERE')) {
+            continue;
+          }
+          final definition = _indexDefinition(entry);
+          final prefix = <List<(String, Object?)>>[];
+          var range = false;
+          for (var i = 0; i < definition.$1.length; i++) {
+            final column = table.columns.firstWhere(
+                (c) => asciiLower(c.name) == asciiLower(definition.$1[i]));
+            if (column.collation != definition.$3[i]) break;
+            final matches =
+                bounds(column.name, column.affinity, column.collation);
+            if (matches.isEmpty) break;
+            prefix.add(matches);
+            if (!matches.any((b) => b.$1 == '=' || b.$1 == '==')) {
+              range = true;
+              break;
             }
           }
-          final column = table.columns
-              .firstWhere((c) => asciiLower(c.name) == asciiLower(name));
-          if (collation != column.collation) continue;
-          for (final equality in equalities) {
-            Expr? constant;
-            if (equality.left is ColumnExpr &&
-                (equality.left as ColumnExpr).key == asciiLower(name)) {
-              constant = equality.right;
-            } else if (equality.right is ColumnExpr &&
-                (equality.right as ColumnExpr).key == asciiLower(name)) {
-              constant = equality.left;
+          if (prefix.isEmpty) continue;
+          final access = _IndexAccess(entry.name, (values) {
+            if (values.length <= prefix.length) {
+              throw const FormatException('Short secondary index key');
             }
-            if (constant == null || constant.containsAggregate) continue;
-            try {
-              constant.validate({});
-            } on SqlException {
-              continue;
+            for (var i = 0; i < prefix.length; i++) {
+              final c = comparison(values[i], prefix[i], definition.$3[i]);
+              if (c != 0) return definition.$2[i] ? -c : c;
             }
-            if (column.affinity == 'text' &&
-                constant.affinity(EvalContext({}, {}, bound)) == 'numeric') {
-              continue;
-            }
-            final explicit =
-                constant.explicitCollation(EvalContext({}, {}, bound));
-            if (explicit != null && explicit != collation) continue;
-            final value = applyAffinity(
-                constant.evaluate(
-                    EvalContext({}, {}, bound, _pager.header.textEncoding)),
-                column.affinity);
-            return QueryPlan._indexed(entry.rootPage,
-                _IndexAccess(entry.name, value, collation, descending));
+            return 0;
+          },
+              empty:
+                  prefix.any((list) => list.any((bound) => bound.$2 == null)));
+          final score = prefix.length * 10 + (definition.$5 && !range ? 1 : 0);
+          if (score > bestScore) {
+            bestScore = score;
+            best = QueryPlan._indexed(entry.rootPage, access,
+                range ? 'secondary-index-range' : 'secondary-index-lookup');
           }
         } on Exception {
           continue;
         }
       }
+      if (best != null) return best;
     }
     return QueryPlan(table.withoutRowid ? 'index-tree-scan' : 'table-scan',
         table.rootPage, null);
   }
 
-  QueryPlan explain(String sql, [List<Object?> parameters = const []]) {
+  QueryPlan explain(String sql, [List<Object?> parameters = const []]) =>
+      functions.run(() => _explain(sql, parameters));
+  QueryPlan _explain(String sql, List<Object?> parameters) {
     if (_closed) throw StateError('Database is closed');
     final statement = SqlParser(sql).select();
     if (parameters.length != statement.parameterCount) {
@@ -221,10 +296,10 @@ final class SqliteDatabase {
 
   Future<QueryResult> query(String sql,
           [List<Object?> parameters = const []]) =>
-      _query(sql, parameters);
+      functions.run(() => _query(sql, parameters));
   Future<QueryResult> queryWithContext(
           String sql, List<Object?> parameters, EvalContext context) =>
-      _query(sql, parameters, context);
+      functions.run(() => _query(sql, parameters, context));
   Future<QueryResult> _query(String sql, List<Object?> parameters,
       [EvalContext? outer]) async {
     if (_closed) throw StateError('Database is closed');
@@ -261,15 +336,14 @@ final class SqliteDatabase {
 
       Stream<BtreeRecord> indexed() async* {
         final access = plan._index!;
-        if (access.value == null) return;
-        await for (final entry in reader.seekIndex(plan.rootPage!, (values) {
-          if (values.isEmpty) {
-            throw const FormatException('Empty secondary index key');
-          }
-          final comparison = compareValues(values.first, access.value,
-              _pager.header.textEncoding, access.collation);
-          return access.descending ? -comparison : comparison;
-        })) {
+        if (access.empty) return;
+        if (access.table) {
+          yield* reader.seekTable(
+              plan.rootPage!, (rowid) => access.compare([rowid]));
+          return;
+        }
+        await for (final entry
+            in reader.seekIndex(plan.rootPage!, access.compare)) {
           final rowid = entry.values.last;
           if (rowid is! BigInt) {
             throw const FormatException('Secondary index rowid missing');
@@ -394,10 +468,8 @@ final class SqliteDatabase {
       throw const SqlException('HAVING requires aggregate query');
     }
     statement.having?.validate({...names, ...aliasExpressions.keys});
-    final windows = items.any((item) => item.expression!.containsWindow) ||
-        statement.order.any((term) => term.expression.containsWindow);
-    if ((statement.having?.containsWindow ?? false) || aggregate && windows) {
-      throw const SqlException('Grouped window queries unsupported');
+    if (statement.having?.containsWindow ?? false) {
+      throw const SqlException('Window in HAVING');
     }
     final windowCache = <Expr, Object>{};
 
@@ -473,72 +545,97 @@ final class SqliteDatabase {
         }
       }
     }
+    final windowed = items.any((item) => item.expression!.containsWindow) ||
+        statement.order.any((term) => term.expression.containsWindow);
+    final windowGroups = <RowValues, List<RowValues>>{};
+    final windowAggregates = <RowValues, Map<Expr, Object?>>{};
+    Iterable<EvalContext> prepare() sync* {
+      for (final group in groups) {
+        var row = group.$2.isEmpty
+            ? <String, Object?>{for (final name in names) name: null}
+            : group.$2.first;
+        final extrema = items
+            .expand((item) => aggregateFunctions(item.expression!))
+            .where((fn) => ['min', 'max'].contains(fn.key))
+            .toList();
+        if (aggregate && extrema.length == 1 && group.$2.isNotEmpty) {
+          final fn = extrema.single;
+          Object? best;
+          row = group.$2.last;
+          for (final candidate in group.$2) {
+            final context = EvalContext(
+                candidate, affinities, bound, _pager.header.textEncoding)
+              ..subquery = subquery
+              ..collations = collations;
+            if (fn.filter != null &&
+                truth(fn.filter!.evaluate(context), context.encoding) != true) {
+              continue;
+            }
+            final value = fn.arguments.single.evaluate(context);
+            if (value == null) continue;
+            final comparison = best == null
+                ? 0
+                : compareValues(value, best, _pager.header.textEncoding,
+                    fn.arguments.single.collation(context));
+            if (best == null ||
+                (fn.key == 'min' ? comparison < 0 : comparison > 0)) {
+              best = value;
+              row = candidate;
+            }
+          }
+        }
+        row = {...row};
+        final ctx =
+            EvalContext(row, affinities, bound, _pager.header.textEncoding)
+              ..group = aggregate ? group.$2 : null
+              ..windowRows = filtered
+              ..windowRow = group.$2.isEmpty ? null : group.$2.first
+              ..windowCache = windowCache
+              ..subquery = subquery
+              ..collations = collations;
+        if (aggregate) {
+          for (final expr in [
+            ...items.map((item) => item.expression!),
+            if (statement.having != null) statement.having!,
+            ...statement.order.map((term) => term.expression)
+          ]) {
+            for (final function in aggregateFunctions(expr)) {
+              ctx.aggregateValues[function] = function.evaluate(ctx);
+            }
+          }
+        }
+        for (final item in items) {
+          if (!item.expression!.containsWindow &&
+              !names.contains(asciiLower(item.label))) {
+            row[asciiLower(item.label)] = item.expression!.evaluate(ctx);
+          }
+        }
+        if (statement.having != null &&
+            truth(statement.having!.evaluate(ctx),
+                    _pager.header.textEncoding) !=
+                true) {
+          continue;
+        }
+        if (windowed) {
+          if (ctx.group != null) windowGroups[row] = ctx.group!;
+          windowAggregates[row] = ctx.aggregateValues;
+        }
+        yield ctx;
+      }
+    }
+
+    final prepared = windowed ? prepare().toList() : prepare();
+    final windowRows =
+        windowed ? prepared.map((ctx) => ctx.row).toList() : <RowValues>[];
     final output = <(List<Object?>, List<Object?>, int)>[];
-    for (final group in groups) {
-      var row = group.$2.isEmpty
-          ? <String, Object?>{for (final name in names) name: null}
-          : group.$2.first;
-      final extrema = items
-          .expand((item) => aggregateFunctions(item.expression!))
-          .where((fn) => ['min', 'max'].contains(fn.key))
-          .toList();
-      if (aggregate && extrema.length == 1 && group.$2.isNotEmpty) {
-        final fn = extrema.single;
-        Object? best;
-        row = group.$2.last;
-        for (final candidate in group.$2) {
-          final context = EvalContext(
-              candidate, affinities, bound, _pager.header.textEncoding)
-            ..subquery = subquery
-            ..collations = collations;
-          if (fn.filter != null &&
-              truth(fn.filter!.evaluate(context), context.encoding) != true) {
-            continue;
-          }
-          final value = fn.arguments.single.evaluate(context);
-          if (value == null) continue;
-          final comparison = best == null
-              ? 0
-              : compareValues(value, best, _pager.header.textEncoding,
-                  fn.arguments.single.collation(context));
-          if (best == null ||
-              (fn.key == 'min' ? comparison < 0 : comparison > 0)) {
-            best = value;
-            row = candidate;
-          }
-        }
-      }
-      row = {...row};
-      final ctx =
-          EvalContext(row, affinities, bound, _pager.header.textEncoding)
-            ..group = aggregate ? group.$2 : null
-            ..windowRows = filtered
-            ..windowRow = group.$2.isEmpty ? null : group.$2.first
-            ..windowCache = windowCache
-            ..subquery = subquery
-            ..collations = collations;
-      if (aggregate) {
-        for (final expr in [
-          ...items.map((item) => item.expression!),
-          if (statement.having != null) statement.having!,
-          ...statement.order.map((term) => term.expression)
-        ]) {
-          for (final function in aggregateFunctions(expr)) {
-            ctx.aggregateValues[function] = function.evaluate(ctx);
-          }
-        }
-      }
+    for (final ctx in prepared) {
+      final row = ctx.row;
+      ctx.windowRows = windowRows;
+      ctx.windowRow = row;
+      ctx.windowGroups = windowGroups;
+      ctx.windowAggregates = windowAggregates;
       final values =
           items.map((item) => item.expression!.evaluate(ctx)).toList();
-      for (var i = 0; i < items.length; i++) {
-        final name = asciiLower(items[i].label);
-        if (!names.contains(name)) row[name] = values[i];
-      }
-      if (statement.having != null &&
-          truth(statement.having!.evaluate(ctx), _pager.header.textEncoding) !=
-              true) {
-        continue;
-      }
       if (statement.distinct &&
           output.any((entry) => _same(entry.$1, values,
               items.map((item) => item.expression!.collation(ctx)).toList()))) {
@@ -550,12 +647,14 @@ final class SqliteDatabase {
       }
       final orderCtx =
           EvalContext(orderRow, affinities, bound, _pager.header.textEncoding)
-            ..group = aggregate ? group.$2 : null
-            ..windowRows = filtered
-            ..windowRow = group.$2.isEmpty ? null : group.$2.first
+            ..group = ctx.group
+            ..windowRows = windowRows
+            ..windowRow = row
             ..windowCache = windowCache
             ..subquery = subquery
             ..collations = collations;
+      orderCtx.windowGroups = windowGroups;
+      orderCtx.windowAggregates = windowAggregates;
       orderCtx.aggregateValues.addAll(ctx.aggregateValues);
       final keys = <Object?>[];
       for (final term in statement.order) {
@@ -663,11 +762,12 @@ final class SqliteDatabase {
     return (keys, descending, collations, 'c', unique);
   }
 
-  QueryResult _pragma(SqlParser parser) {
+  Future<QueryResult> _pragma(SqlParser parser) async {
     final name = asciiLower(parser.identifier());
     String? argument;
     if (parser.take('(')) {
-      if (parser.current.kind == SqlTokenKind.string) {
+      if ([SqlTokenKind.string, SqlTokenKind.number]
+          .contains(parser.current.kind)) {
         argument = parser.current.text;
         parser.position++;
       } else {
@@ -677,6 +777,34 @@ final class SqliteDatabase {
     }
     parser.finish();
     final header = _pager.header;
+    if (['integrity_check', 'quick_check', 'foreign_key_check']
+        .contains(name)) {
+      if (_pager.pageCount * header.pageSize > 64 * 1024 * 1024) {
+        throw const SqlException('Integrity image limit exceeded');
+      }
+      final image = Uint8List(_pager.pageCount * header.pageSize);
+      for (var page = 1; page <= _pager.pageCount; page++) {
+        image.setRange((page - 1) * header.pageSize, page * header.pageSize,
+            await _pager.readPage(page));
+      }
+      if (name == 'foreign_key_check') {
+        return (await ImageMutations.load(image)).foreignKeyCheck(argument);
+      }
+      if (argument != null &&
+          (int.tryParse(argument) == null || int.parse(argument) <= 0)) {
+        throw const SqlException(
+            'Integrity check requires a positive error limit');
+      }
+      final errors =
+          await ImageMutations.integrity(image, quick: name == 'quick_check');
+      return QueryResult([
+        name
+      ], [
+        for (final error
+            in errors.take(argument == null ? 100 : int.parse(argument)))
+          [error]
+      ]);
+    }
     final values = <String, Object?>{
       'page_size': BigInt.from(header.pageSize),
       'page_count': BigInt.from(_pager.pageCount),

@@ -12,6 +12,7 @@ import 'database.dart';
 import 'parser.dart';
 import 'tokenizer.dart';
 import 'triggers.dart';
+import 'function_registry.dart';
 import 'values.dart';
 
 final class MutationImage {
@@ -184,6 +185,155 @@ final class ImageMutations {
     } finally {
       await pager.close();
     }
+  }
+
+  /// Checks supported physical trees and compares persisted index records with
+  /// records rebuilt from the table contents. The caller's image is unchanged.
+  static Future<List<String>> integrity(Uint8List image,
+      {bool quick = false}) async {
+    final pagers = <ReadOnlyPager>[];
+    try {
+      final state = await load(image);
+      state._validate();
+      if (quick) return ['ok'];
+      final expected = state.serialize();
+      for (final bytes in [image, expected]) {
+        final storage = MemoryStorageBackend();
+        await storage.write(0, bytes);
+        pagers.add(await ReadOnlyPager.open(storage));
+      }
+      final catalogs = [
+        await DatabaseCatalog.read(pagers[0]),
+        await DatabaseCatalog.read(pagers[1])
+      ];
+      for (final entry in catalogs[0].entries.where((e) =>
+          e.type == 'index' ||
+          e.type == 'table' && catalogs[0].table(e.name).withoutRowid)) {
+        final other = catalogs[1].entries.firstWhere((e) =>
+            e.type == entry.type &&
+            asciiLower(e.name) == asciiLower(entry.name));
+        final actual =
+            await BtreeReader(pagers[0]).scanIndex(entry.rootPage).toList();
+        final rebuilt =
+            await BtreeReader(pagers[1]).scanIndex(other.rootPage).toList();
+        if (actual.length != rebuilt.length) {
+          return ['Index entry count mismatch: ${entry.name}'];
+        }
+        for (var i = 0; i < actual.length; i++) {
+          final values = actual[i].values.toList();
+          if (entry.type == 'table') {
+            final columns = catalogs[0].table(entry.name).storageColumns;
+            while (values.length < columns.length) {
+              values.add(columns[values.length].defaultValue);
+            }
+          }
+          if (values.length != rebuilt[i].values.length) {
+            return ['Index record width mismatch: ${entry.name}'];
+          }
+          for (var j = 0; j < values.length; j++) {
+            if (compareValues(
+                    values[j], rebuilt[i].values[j], state.encoding) !=
+                0) {
+              return ['Index content or ordering mismatch: ${entry.name}'];
+            }
+          }
+        }
+      }
+      return ['ok'];
+    } on FormatException catch (error) {
+      return [error.message.toString()];
+    } on SqlException catch (error) {
+      return [error.message];
+    } finally {
+      for (final pager in pagers) {
+        await pager.close();
+      }
+    }
+  }
+
+  QueryResult foreignKeyCheck([String? tableName]) {
+    if (tableName != null && !_tables.containsKey(asciiLower(tableName))) {
+      throw const SqlException('No such table');
+    }
+    final failures = <List<Object?>>[];
+    for (final table in _tables.values.toList().reversed.where((t) =>
+        tableName == null ||
+        asciiLower(t.schema.name) == asciiLower(tableName))) {
+      final keys = table.schema.foreignKeys.reversed.toList();
+      for (final fk in keys) {
+        final parent = _tables[asciiLower(fk.table)];
+        if (parent == null) continue;
+        final pk = parent.schema.columns
+            .where((c) => c.primaryKey != 0)
+            .toList()
+          ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+        final target = fk.targetColumns.isEmpty
+            ? pk.map((c) => c.name).toList()
+            : fk.targetColumns;
+        final names = target.map(asciiLower).toSet();
+        final primary =
+            (parent.schema.withoutRowid || parent.schema.rowidAlias != null) &&
+                target.length == pk.length &&
+                names.containsAll(pk.map((c) => asciiLower(c.name)));
+        final unique = _indexes.any((index) =>
+            index.unique &&
+            asciiLower(index.table) == asciiLower(parent.schema.name) &&
+            index.columns.length == target.length &&
+            index.columns.map(asciiLower).toSet().containsAll(names) &&
+            List.generate(
+                    index.columns.length,
+                    (i) =>
+                        index.collations[i] ==
+                        _column(parent.schema, index.columns[i]).collation)
+                .every((v) => v));
+        if (target.length != fk.columns.length || !primary && !unique) {
+          throw const SqlException('Foreign key mismatch');
+        }
+      }
+
+      final rows = table.rows.toList()
+        ..sort((a, b) => a.rowId.compareTo(b.rowId));
+      for (final row in rows) {
+        for (var i = 0; i < keys.length; i++) {
+          final fk = keys[i];
+          final key = _key(table, row, fk.columns);
+          if (key.any((v) => v == null)) continue;
+          final parent = _tables[asciiLower(fk.table)];
+          final pk =
+              parent?.schema.columns.where((c) => c.primaryKey != 0).toList() ??
+                  <CatalogColumn>[];
+          pk.sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+          final target = fk.targetColumns.isEmpty
+              ? pk.map((c) => c.name).toList()
+              : fk.targetColumns;
+          if (parent != null && target.length != key.length) {
+            throw const SqlException('Foreign key mismatch');
+          }
+          final found = parent != null &&
+              parent.rows.any((p) {
+                final values = _key(parent, p, target);
+                for (var j = 0; j < key.length; j++) {
+                  final col = _column(parent.schema, target[j]);
+                  if (compareValues(applyAffinity(key[j], col.affinity),
+                          values[j], encoding, col.collation) !=
+                      0) {
+                    return false;
+                  }
+                }
+                return true;
+              });
+          if (!found) {
+            failures.add([
+              table.schema.name,
+              table.schema.withoutRowid ? null : row.rowId,
+              fk.table,
+              BigInt.from(i)
+            ]);
+          }
+        }
+      }
+    }
+    return QueryResult(['table', 'rowid', 'parent', 'fkid'], failures);
   }
 
   CatalogColumn _column(CatalogTable table, String name) {
@@ -359,7 +509,10 @@ final class ImageMutations {
               values[asciiLower(fk.columns[i])] = action == 'SET NULL'
                   ? null
                   : action == 'SET DEFAULT'
-                      ? _column(child.schema, fk.columns[i]).defaultValue
+                      ? (_column(child.schema, fk.columns[i])
+                              .defaultExpression
+                              ?.evaluate(EvalContext({}, {}, [], encoding)) ??
+                          _column(child.schema, fk.columns[i]).defaultValue)
                       : newKey![i];
             }
             var id = row.rowId;
@@ -1214,7 +1367,8 @@ final class ImageMutations {
         final statement = SqlParser(query).select();
         final storage = MemoryStorageBackend();
         await storage.write(0, serialize());
-        final db = await SqliteDatabase.openReadOnly(storage);
+        final db = await SqliteDatabase.openReadOnly(storage,
+            functions: SqlFunctionRegistry.current);
         try {
           final result = await db.query(
               query, parameters.take(statement.parameterCount).toList());
@@ -1671,7 +1825,10 @@ final class ImageMutations {
     if (insert) {
       for (final expressions in inserts) {
         final data = <String, Object?>{
-          for (final c in schema.columns) asciiLower(c.name): c.defaultValue
+          for (final c in schema.columns)
+            asciiLower(c.name): c.defaultExpression
+                    ?.evaluate(EvalContext({}, {}, bound, encoding)) ??
+                c.defaultValue
         };
         final context = EvalContext({}, {}, bound, encoding);
         for (var i = 0; i < input.length; i++) {

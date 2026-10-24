@@ -248,3 +248,47 @@
 - M6 remains open for remaining SQL/function/PRAGMA/ALTER/grouped-window breadth
   and hardening. M7 ORM/generator, M8 extensions and M9 platform/release gates
   are not marked complete.
+
+## 2026-10-24 — M6 completion work: grouped windows, functions, range plans and integrity
+
+- Split grouped evaluation, HAVING and window execution into distinct phases.
+  Added grouped/window aggregate contexts and rejected invalid nested aggregates
+  and windows. Non-window scans stream contexts rather than retaining them all.
+- Added connection-local Pure Dart scalar and aggregate registration, overloads,
+  varargs, built-in overrides, callback failure/value conversion and copied blobs.
+  Registries stay isolated across concurrent async connection scopes. Registered
+  aggregates support DISTINCT/FILTER and feed built-in windows after grouping.
+- Added string helpers, math functions, variadic IF/IIF and decimal ROUND through
+  30 places. Added DATE/TIME/DATETIME/JULIANDAY/UNIXEPOCH/STRFTIME/TIMEDIFF,
+  statement-stable CURRENT keywords and dynamic defaults without executing them
+  while reading catalog metadata. Added pinned timezone/calendar/epoch/format
+  boundary cases and unambiguous infinity encoding in development fixtures.
+- Added rowid ranges and secondary multi-column equality prefixes/ranges with
+  descending/inclusive/NULL bounds, residual predicates and a prefix-length
+  heuristic. Callback predicates avoid planning-time execution. Regression tests
+  compare scans and page-read counts; fresh AOT planner measurements are saved.
+- Added bounded integrity_check/quick_check and foreign_key_check. Integrity
+  checks validate tree/freelist coverage, constraints and persisted index contents
+  against reconstructed table data. Tests corrupt an index key and distinguish
+  full from quick checking; FK checks cover violating and WITHOUT ROWID rows,
+  disabled enforcement and mismatched parent definitions.
+- Expanded the pinned M6 oracle to 1,161 cases; the development-only schema
+  verifier now checks 210 snapshots including dynamic defaults and integrity/FK
+  PRAGMA results. Full SQL/native conformance remains unclaimed.
+- Final checks pass: 2,043 engine tests; locked dependency installation,
+  formatting and fatal-info analysis for all three packages; all fixture/oracle
+  checksums; 210 native schema/query snapshots; 8 mutation/14 transaction
+  snapshots; byte-exact rollback recovery and both-endian WAL/checkpoint/native
+  continuation/owner handoff checks.
+- Regression fixes isolate registries even when connections nest async execution
+  scopes; mutable readers explicitly share only their owning registry. CURRENT
+  keywords retain their own SQL function identities when DATE is overridden.
+- Fresh five-sample AOT point/range measurements cover 10,000 memory-backed rows.
+  Raw timings, whole-process RSS, SDK and image size are saved. The earlier
+  concurrent check run showed timing variation, so the committed run is repeated
+  after the complete test suite finishes. No M9/platform benchmark claim.
+- M6 is still open. The completion audit lists remaining column ALTER/dependency
+  rewrites, partial/expression indexes and related UPSERT forms, additional
+  trigger policies/view/recursion/body shapes, generated columns and broader
+  SQL/function/PRAGMA conformance. These missing features are not hidden by
+  checking the milestone or relabeling the verified subset as full SQLite parity.

@@ -17,6 +17,19 @@ typedef RowValues = Map<String, Object?>;
 
 final class EvalContext {
   EvalContext(this.row, this.affinities, this.parameters, [this.encoding = 1]);
+  Map<RowValues, List<RowValues>> windowGroups = {};
+  Map<RowValues, Map<Expr, Object?>> windowAggregates = {};
+  EvalContext forRow(RowValues values) {
+    final result = EvalContext(values, affinities, parameters, encoding)
+      ..subquery = subquery
+      ..collations = collations
+      ..group = windowGroups[values];
+    result.windowGroups = windowGroups;
+    result.windowAggregates = windowAggregates;
+    result.aggregateValues.addAll(windowAggregates[values] ?? {});
+    return result;
+  }
+
   SqlRows Function(SelectStatement, EvalContext)? subquery;
   bool inTrigger = false;
   List<RowValues>? windowRows;
@@ -536,6 +549,7 @@ final class SqlParser {
   }
 
   WindowExpr _window(FunctionExpr function, {bool definition = false}) {
+    function.windowFunction = true;
     if (!take('(')) {
       if (definition) {
         throw const SqlException('Window definition requires parentheses');
@@ -826,6 +840,9 @@ final class SqlParser {
         left = Literal(null);
       } else if (token.keyword == 'TRUE' || token.keyword == 'FALSE') {
         left = Literal(boolean(token.keyword == 'TRUE'));
+      } else if (['CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP']
+          .contains(token.keyword)) {
+        left = FunctionExpr(asciiLower(token.text), []);
       } else if (token.kind == SqlTokenKind.identifier) {
         if (take('(')) {
           if (asciiLower(token.text) == 'raise') {

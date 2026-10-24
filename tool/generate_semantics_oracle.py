@@ -6,6 +6,13 @@ from generate_fixtures import PIN, ROOT
 from generate_sql_oracle import encode
 
 
+class DartSum:
+    def __init__(self):self.total=None
+    def step(self,value):
+        if isinstance(value,int):self.total=(self.total or 0)+value
+    def finalize(self):return self.total
+
+
 def main():
     manifest = json.loads((ROOT/'manifest.json').read_text())
     with sqlite3.connect(':memory:') as c:
@@ -209,9 +216,78 @@ def main():
       'SELECT NULL AS n UNION ALL SELECT 1 UNION ALL SELECT 2 ORDER BY n DESC NULLS FIRST',
       'SELECT id FROM sample ORDER BY id NULLS MIDDLE',
     ]
+    queries += [
+      'SELECT id%3 AS k,count(*) AS n,sum(count(*)) OVER (ORDER BY id%3),rank() OVER (ORDER BY count(*) DESC) FROM sample WHERE id>0 AND id<=8 GROUP BY id%3 ORDER BY k',
+      'SELECT id%3 AS k,count(*) AS n,sum(count(*)) OVER () FROM sample WHERE id>0 AND id<=8 GROUP BY id%3 HAVING count(*)>2 ORDER BY k',
+      'SELECT id%2 AS k,sum(id),lag(sum(id)) OVER (ORDER BY id%2),avg(sum(id)) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) FROM sample WHERE id>0 AND id<=8 GROUP BY id%2 ORDER BY k',
+      'SELECT sum(count(*)) OVER () FROM empty',
+      'SELECT row_number() OVER (ORDER BY count(*)) FROM sample',
+      'SELECT sum(count(*)) FROM sample',
+      'SELECT sum(row_number() OVER ()) FROM sample',
+      'SELECT row_number() OVER (ORDER BY row_number() OVER ()) FROM sample',
+    ]
+    queries += [
+      'SELECT dart_twice(2),dart_twice(NULL)',
+      'SELECT id%2,dart_sum(id),dart_sum(DISTINCT id),dart_sum(id) FILTER (WHERE id>2) FROM sample WHERE id>0 AND id<=6 GROUP BY id%2 ORDER BY 1',
+      'SELECT dart_sum(id) FROM sample WHERE 0',
+      'SELECT id%2,sum(dart_sum(id)) OVER (ORDER BY id%2) FROM sample WHERE id>0 AND id<=6 GROUP BY id%2 ORDER BY 1',
+      'SELECT dart_twice()',
+      'SELECT dart_sum(id) OVER () FROM sample',
+    ]
+    queries += ['SELECT '+e+' AS result' for e in [
+      "instr('λ😀abc','a')","instr('a'||char(0)||'b','b')","instr(X'000102',X'0102')","instr('abc','')","instr(NULL,'a')",
+      "octet_length('λ😀')","octet_length(X'00ff')","octet_length(123)","octet_length(NULL)",
+      "concat(NULL,NULL)","concat('a',NULL,2)","concat_ws('-',NULL,'',2)","concat_ws(NULL,'a','b')",
+      "unhex('00--FF','-')","unhex('0')","unhex('GG')","unhex('12','1')","unhex(NULL)",
+      "sign(-2)","sign('1x')","sign(X'31')","sign('2.5')","sign(NULL)",
+      "iif(0,1)","if(1,2)","iif(0,1,0,2,3)","iif(0,1,1,4,abs(-9223372036854775808))",
+      'sqrt(9)','sqrt(-1)','pow(2,10)','power(0,-1)','mod(-5,2)','mod(5,0)',
+      'ceil(2)','ceil(2.5)',"ceil('2')",'floor(-2.1)','trunc(-2.9)',
+      'log(100)','log(2,8)','ln(1)','log2(8)','log10(-1)',
+      'sin(0)','cos(0)','tan(0)','acos(1)','asin(0)','atan(0)','atan2(0,1)',
+      'sinh(0)','cosh(0)','tanh(0)','asinh(0)','acosh(1)','atanh(0)',
+      'exp(0)','degrees(0)','radians(0)','pi()',"sqrt('x')",'sqrt(NULL)',
+    ]]
+    queries += ['SELECT '+e+' AS result' for e in [
+      "date('2000-02-29')","datetime('2000-01-01 12:34:56.789')","time('12:34:56.789','subsec')",
+      "datetime('2020-01-01 24:00')","datetime('2020-01-01 24:00','+0 days')", "date('2023-02-30')",
+      "datetime('2000-01-01 12:00:00+02:30')","julianday('2000-01-01 12:00')","unixepoch('1970-01-01')",
+      "datetime(0,'unixepoch')","datetime(-0.1,'unixepoch')","unixepoch(-0.1,'unixepoch')","datetime(2451545)",
+      "datetime(1000000000,'auto')","date(2451545,'julianday')","time('2000-01-01 23:59:59.9995','subsec')",
+      "date('2020-02-29','+1 year')","date('2020-02-29','+1 year','floor')","date('2020-01-31','+1 month','floor')",
+      "datetime('2020-01-01','+1.5 days','-2 hours')","date('2020-01-15','start of month')","date('2020-01-15','start of year')",
+      "date('2020-01-01','weekday 0')","date('2020-01-01','weekday 3')", "date('bad')","datetime(NULL)","date('2020-13-01')",
+      "datetime(99999999999999)","date('2020-01-01','bad modifier')","date('2020-01-01','unixepoch')",
+      "strftime('%Y-%m-%d %H:%M:%S %f %j %w %u %W %U %V %G','2021-01-01 03:04:05.678')",
+      "strftime('%F %R %T %I %l %k %p %P %%','2020-01-01 13:02:03')","strftime('%J %s','2000-01-01')","strftime('%Q','2000-01-01')",
+      "unixepoch('2000-01-01 00:00:00.123','subsec')","strftime('%s','2000-01-01 00:00:00.123','subsec')",
+    ]]
+    queries += [
+      'SELECT id FROM sample WHERE id>127 AND id<=130 ORDER BY id',
+      'SELECT id FROM sample WHERE 127<id AND 130>=id ORDER BY id',
+      'SELECT id FROM sample WHERE id>130 AND id<127 ORDER BY id',
+      "SELECT id FROM sample WHERE value>='row-100' AND value<'row-105' ORDER BY id",
+      "SELECT rowid FROM types WHERE b>=X'00' AND b<X'ff' ORDER BY rowid",
+      'SELECT id FROM sample WHERE id>127.5 AND id<130.5 ORDER BY id',
+    ]
+    queries += ['PRAGMA integrity_check','PRAGMA quick_check(1)','PRAGMA foreign_key_check']
+    queries += ['SELECT '+e+' AS result' for e in [
+      "timediff('2024-02-29','2023-02-28')", "timediff('2023-02-28','2024-02-29')", "timediff('2023-03-15','2023-02-15')",
+      "timediff('2023-02-28','2023-01-31')", "timediff('2020-01-01 01:02:03.123','2019-11-30 23:59:59.999')", "timediff(NULL,'2000-01-01')",
+      "datetime('2023-01-31',timediff('2023-02-28','2023-01-31'))", "datetime('2024-02-29',timediff('2023-02-28','2024-02-29'))",
+      "datetime('2000-01-01','+01:02:03.123')", "datetime('2000-01-01','-0001-02-03 04:05:06.789')",
+      "date(0)","date('0000-02-29')","date('9999-12-31','+1 day')","date('2020-01-01','weekday 7')",
+    ]]
+    queries += ['SELECT '+e+' AS result' for e in [
+      'round(2.675,2)','round(1.005,2)','round(4.05,1)','round(-1.25,1)','round(0.49999999999999994)',
+      'round(1.23456789,30)','round(0.000000000000000000000000123456789,30)','round(1e999,2)',
+      "round('12.34x',1)","round(12.34,'bad')",'round(NULL,2)','round(1,-5)','round(-0.1)',
+    ]]
     cases = []
     for fixture in manifest['fixtures']:
         with sqlite3.connect(f"file:{ROOT/fixture['file']}?mode=ro",uri=True) as c:
+            c.create_function('dart_twice',1,lambda value:None if value is None else value*2)
+            c.create_aggregate('dart_sum',1,DartSum)
             for sql in queries:
                 parameters = [128] if sql.endswith('id=?') else []
                 case={'file':fixture['file'],'sql':sql,'parameters':[encode(v) for v in parameters]}
@@ -223,7 +299,7 @@ def main():
                     case['error']=str(error)
                 cases.append(case)
     path = ROOT/'semantics_oracle.json'
-    path.write_text(json.dumps(cases,indent=2,ensure_ascii=False)+'\n')
+    path.write_text(json.dumps(cases,indent=2,ensure_ascii=False,allow_nan=False)+'\n')
     (ROOT/'semantics_oracle.sha256').write_text(hashlib.sha256(path.read_bytes()).hexdigest()+'\n')
     print(f'Wrote {len(cases)} M6 oracle cases')
 

@@ -4,6 +4,71 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('integrity checks detect stale index keys without mutating data',
+      () async {
+    final db = await MutableSqliteDatabase.create(pageSize: 512);
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT)');
+    await db.execute("INSERT INTO t VALUES(1,'a'),(2,'b')");
+    await db.execute('CREATE INDEX t_k ON t(k)');
+    expect((await db.query('PRAGMA integrity_check')).rows, [
+      ['ok']
+    ]);
+    expect((await db.query('PRAGMA quick_check(1)')).rows, [
+      ['ok']
+    ]);
+    final image = db.exportImage();
+    final schemaStorage = MemoryStorageBackend();
+    await schemaStorage.write(0, image);
+    final reader = await SqliteDatabase.openReadOnly(schemaStorage);
+    final root =
+        reader.catalog.entries.firstWhere((e) => e.name == 't_k').rootPage;
+    await reader.close();
+    final header = DatabaseHeader.decode(image);
+    final page = Uint8List.sublistView(image, (root - 1) * 512, root * 512);
+    final framing =
+        BtreePageHeader.decode(page, database: header, pageNumber: root);
+    final cell = SqliteByteReader(page, offset: framing.cellOffsets.first);
+    cell.varint();
+    final payload = cell.offset;
+    final record = SqliteByteReader(page, offset: payload);
+    final body = payload + record.varint().toInt();
+    expect(page[body], 97);
+    page[body] = 99;
+    final corrupt = await MutableSqliteDatabase.fromImage(image);
+    addTearDown(corrupt.close);
+    expect((await corrupt.query('PRAGMA integrity_check')).rows.single.single,
+        contains('Index content'));
+    expect((await corrupt.query('PRAGMA quick_check')).rows, [
+      ['ok']
+    ]);
+    expect(corrupt.exportImage(), image);
+    await expectLater(
+        db.query('PRAGMA integrity_check(0)'), throwsA(isA<SqlException>()));
+  });
+  test(
+      'foreign_key_check reports rowids and WITHOUT ROWID nulls and schema mismatch',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE p(id INTEGER PRIMARY KEY)');
+    await db.execute('INSERT INTO p VALUES(1)');
+    await db.execute('CREATE TABLE c(id INTEGER PRIMARY KEY,pid REFERENCES p)');
+    await db.execute('INSERT INTO c VALUES(1,1),(2,9),(3,NULL)');
+    expect((await db.query('PRAGMA foreign_key_check(c)')).rows, [
+      ['c', BigInt.two, 'p', BigInt.zero]
+    ]);
+    await db.execute(
+        'CREATE TABLE wr(k TEXT PRIMARY KEY,pid REFERENCES p) WITHOUT ROWID');
+    await db.execute("INSERT INTO wr VALUES('x',9)");
+    expect((await db.query('PRAGMA foreign_key_check(wr)')).rows, [
+      ['wr', null, 'p', BigInt.zero]
+    ]);
+    await db.execute('CREATE TABLE nonunique(x)');
+    await db.execute('CREATE TABLE mismatch(x REFERENCES nonunique(x))');
+    await expectLater(db.query('PRAGMA foreign_key_check(mismatch)'),
+        throwsA(isA<SqlException>()));
+  });
   test('OLD/NEW trigger values are bound independently from SQL text',
       () async {
     final db = await MutableSqliteDatabase.create();

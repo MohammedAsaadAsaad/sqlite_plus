@@ -25,10 +25,15 @@ Future<void> main(List<String> args) async {
       int changes = 0;
       QueryResult? returning;
       try {
-        final result = await db.execute(operation['sql'] as String,
-            List<Object?>.from(operation['parameters'] as List));
-        changes = result.changes;
-        returning = result.returning;
+        if (operation['query'] == true) {
+          returning = await db.query(operation['sql'] as String,
+              List<Object?>.from(operation['parameters'] as List));
+        } else {
+          final result = await db.execute(operation['sql'] as String,
+              List<Object?>.from(operation['parameters'] as List));
+          changes = result.changes;
+          returning = result.returning;
+        }
       } on SqlException catch (e) {
         error = e.message;
       }

@@ -3,32 +3,40 @@ import 'dart:typed_data';
 import 'parser.dart';
 import 'tokenizer.dart';
 import 'values.dart';
+import 'function_registry.dart';
+import 'core_functions.dart';
+import 'date_functions.dart';
 
 final class FunctionExpr extends Expr {
   FunctionExpr(this.name, this.arguments,
-      {this.distinct = false, this.star = false}) {
-    final range = _arities[key];
+      {this.distinct = false, this.star = false})
+      : registered = SqlFunctionRegistry.resolve(name, arguments.length) {
+    final range = registered == null
+        ? _arities[key]
+        : (registered!.argumentCount == -1
+            ? (0, 1000)
+            : (registered!.argumentCount, registered!.argumentCount));
     if (range == null) throw SqlException('No such function: $name');
     if (arguments.length < range.$1 ||
         arguments.length > range.$2 ||
-        star && key != 'count' ||
+        star && key != 'count' && registered == null ||
         distinct && !isAggregate ||
         distinct && arguments.length != 1) {
       throw SqlException('Invalid arguments to $name');
     }
-    if (isAggregate && arguments.any((arg) => arg.containsAggregate)) {
-      throw const SqlException('Nested aggregate');
-    }
   }
+  final RegisteredSqlFunction? registered;
   final String name;
   final List<Expr> arguments;
   final bool distinct;
   final bool star;
   Expr? filter;
+  bool windowFunction = false;
   String get key => asciiLower(name);
-  bool get isAggregate =>
-      ['count', 'sum', 'total', 'avg', 'group_concat'].contains(key) ||
-      ['min', 'max'].contains(key) && arguments.length == 1;
+  bool get isAggregate => registered != null
+      ? registered!.aggregate != null
+      : ['count', 'sum', 'total', 'avg', 'group_concat'].contains(key) ||
+          ['min', 'max'].contains(key) && arguments.length == 1;
   @override
   Iterable<Expr> get children => [...arguments, if (filter != null) filter!];
   @override
@@ -76,7 +84,10 @@ final class FunctionExpr extends Expr {
     'coalesce': (2, 127),
     'ifnull': (2, 2),
     'nullif': (2, 2),
-    'iif': (3, 3),
+    'iif': (2, 1000),
+    'if': (2, 1000),
+    ...extraFunctionArities,
+    ...dateFunctionArities,
     'hex': (1, 1),
     'quote': (1, 1),
     'unicode': (1, 1),
@@ -98,9 +109,16 @@ final class FunctionExpr extends Expr {
   };
   @override
   void validate(Set<String> columns) {
+    if (isAggregate &&
+        !windowFunction &&
+        arguments.any((arg) => arg.containsAggregate)) {
+      throw const SqlException('Nested aggregate');
+    }
     filter?.validate(columns);
     if (filter != null &&
-        (!isAggregate || filter!.containsAggregate || filter!.containsWindow)) {
+        (!isAggregate ||
+            !windowFunction && filter!.containsAggregate ||
+            filter!.containsWindow)) {
       throw const SqlException('Invalid aggregate FILTER');
     }
     for (final arg in arguments) {
@@ -110,13 +128,17 @@ final class FunctionExpr extends Expr {
 
   @override
   Object? evaluate(EvalContext context) {
-    if (windowNames.contains(key)) {
+    if (registered == null && windowNames.contains(key)) {
       throw const SqlException('Window function requires OVER');
     }
     if (isAggregate) {
       return context.aggregateValues.containsKey(this)
           ? context.aggregateValues[this]
           : _aggregate(context);
+    }
+    if (registered != null) {
+      return registered!
+          .invoke(arguments.map((arg) => arg.evaluate(context)).toList());
     }
     if (key == 'coalesce' || key == 'ifnull') {
       for (final arg in arguments) {
@@ -125,18 +147,25 @@ final class FunctionExpr extends Expr {
       }
       return null;
     }
-    if (key == 'iif') {
-      return arguments[
-              truth(arguments[0].evaluate(context), context.encoding) == true
-                  ? 1
-                  : 2]
-          .evaluate(context);
+    if (key == 'iif' || key == 'if') {
+      for (var i = 0; i + 1 < arguments.length; i += 2) {
+        if (truth(arguments[i].evaluate(context), context.encoding) == true) {
+          return arguments[i + 1].evaluate(context);
+        }
+      }
+      return arguments.length.isOdd ? arguments.last.evaluate(context) : null;
     }
     final collation = arguments
         .map((arg) => arg.collation(context))
         .whereType<String>()
         .firstOrNull;
     final args = arguments.map((arg) => arg.evaluate(context)).toList();
+    if (dateFunctionArities.containsKey(key)) {
+      return dateFunction(key, args, context.encoding);
+    }
+    if (extraFunctionArities.containsKey(key)) {
+      return extraFunction(key, args, context.encoding);
+    }
     if (key == 'typeof') {
       return args[0] == null
           ? 'null'
@@ -323,13 +352,38 @@ final class FunctionExpr extends Expr {
     if (group == null) {
       throw const SqlException('Aggregate used outside aggregate query');
     }
+    if (registered != null) {
+      try {
+        final state = registered!.aggregate!();
+        final seen = <List<Object?>>[];
+        for (final row in group) {
+          final ctx = context.forRow(row);
+          if (filter != null &&
+              truth(filter!.evaluate(ctx), ctx.encoding) != true) {
+            continue;
+          }
+          final args = arguments.map((arg) => arg.evaluate(ctx)).toList();
+          if (distinct &&
+              seen.any((previous) =>
+                  compareValues(previous.single, args.single, context.encoding,
+                      arguments.single.collation(context)) ==
+                  0)) {
+            continue;
+          }
+          seen.add(args);
+          state.step(List.unmodifiable(args.map(sqlValue)));
+        }
+        return sqlValue(state.finish());
+      } on SqlException {
+        rethrow;
+      } catch (_) {
+        throw SqlException('User aggregate $name failed');
+      }
+    }
     final values = <Object?>[];
     final contexts = <EvalContext>[];
     for (final row in group) {
-      final ctx = EvalContext(
-          row, context.affinities, context.parameters, context.encoding)
-        ..subquery = context.subquery
-        ..collations = context.collations;
+      final ctx = context.forRow(row);
       if (filter != null &&
           truth(filter!.evaluate(ctx), context.encoding) != true) {
         continue;

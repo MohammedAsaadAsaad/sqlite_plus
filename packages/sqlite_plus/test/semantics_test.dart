@@ -7,6 +7,7 @@ import 'package:sqlite_plus/sqlite_plus_io.dart';
 import 'package:test/test.dart';
 
 import 'read_only_test.dart' show expectedValue;
+import 'function_registry_test.dart' show SumValues;
 
 final class CountedStorage implements StorageBackend {
   CountedStorage(this.inner);
@@ -41,6 +42,13 @@ void main() {
         database = await SqliteDatabase.openReadOnly(
             await ReadOnlyFileStorageBackend.open(
                 'test/fixtures/sqlite-$size.db'));
+        database.functions.registerScalar(
+            'dart_twice',
+            1,
+            (args) => args.single == null
+                ? null
+                : (args.single as BigInt) * BigInt.two);
+        database.functions.registerAggregate('dart_sum', 1, SumValues.new);
       });
       tearDownAll(() => database.close());
       for (final entry in cases.where((c) => c['file'] == 'sqlite-$size.db')) {
@@ -72,6 +80,8 @@ void main() {
     await mutable.execute(
         "INSERT INTO indexed WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<1000) SELECT x,x%100,'payload-'||x FROM n");
     await mutable.execute('CREATE INDEX indexed_k ON indexed(k DESC,id)');
+    await mutable
+        .execute('CREATE INDEX indexed_payload ON indexed(k,payload DESC)');
     final storage = CountedStorage(MemoryStorageBackend());
     await storage.write(0, mutable.exportImage());
     await mutable.close();
@@ -100,6 +110,58 @@ void main() {
     }
     expect(
         (await db.query('SELECT id FROM indexed WHERE k=NULL')).rows, isEmpty);
+  });
+  test(
+      'range and multi-column plans match scans across inclusive, empty and reversed bounds',
+      () async {
+    final mutable = await MutableSqliteDatabase.create(pageSize: 512);
+    await mutable
+        .execute('CREATE TABLE t(id INTEGER PRIMARY KEY,a INT,b TEXT)');
+    await mutable.execute(
+        "INSERT INTO t WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n WHERE x<300) SELECT x,x%10,'v'||x FROM n");
+    await mutable.execute('CREATE INDEX first_a ON t(a DESC)');
+    await mutable.execute('CREATE INDEX second_ab ON t(a,b DESC)');
+    final storage = CountedStorage(MemoryStorageBackend());
+    await storage.write(0, mutable.exportImage());
+    await mutable.close();
+    final db = await SqliteDatabase.openReadOnly(storage);
+    addTearDown(db.close);
+    for (final predicate in [
+      'id>10 AND id<=15',
+      '10<id AND 15>=id',
+      'id>1000',
+      'id>=NULL',
+      'id>15 AND id<10',
+      'a>=3 AND a<5',
+      "a=2 AND b>='v100' AND b<'v220'",
+      'a>=3.5 AND a<4.5',
+      'id>=-9223372036854775808 AND id<=9223372036854775807'
+    ]) {
+      final forced = predicate
+          .replaceAll(RegExp(r'\bid\b'), '+id')
+          .replaceAll(RegExp(r'\ba\b'), '+a')
+          .replaceAll(RegExp(r'\bb\b'), '+b');
+      expect(
+          (await db.query('SELECT id FROM t WHERE $predicate ORDER BY id'))
+              .rows,
+          (await db.query('SELECT id FROM t WHERE $forced ORDER BY id')).rows,
+          reason: predicate);
+    }
+    expect(db.explain("SELECT id FROM t WHERE a=2 AND b>='v100'").indexName,
+        'second_ab');
+    expect(db.explain('SELECT id FROM t WHERE id>10 AND id<15').access,
+        'rowid-range');
+    expect(db.explain('SELECT id FROM t WHERE a>=3 AND a<5').access,
+        'secondary-index-range');
+    storage.reads = 0;
+    await db.query('SELECT id FROM t WHERE id>10 AND id<15');
+    final reads = storage.reads;
+    storage.reads = 0;
+    await db.query('SELECT id FROM t WHERE +id>10 AND +id<15');
+    expect(reads, lessThan(storage.reads));
+    db.functions.registerScalar('callback', 0, (args) => 1);
+    expect(db.explain('SELECT id FROM t WHERE id=callback()').access,
+        'table-scan');
   });
   test('rowid point lookup reads fewer pages and explains chosen access',
       () async {

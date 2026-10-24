@@ -79,11 +79,14 @@ final class WindowExpr extends Expr {
       children.expand((c) => c.unaggregatedColumns).toSet();
   @override
   void validate(Set<String> columns) {
+    if (function.registered != null) {
+      throw const SqlException('Registered aggregate is not a window function');
+    }
     if (function.distinct) {
       throw const SqlException('DISTINCT in window function');
     }
-    if (children.any((c) => c.containsWindow || c.containsAggregate)) {
-      throw const SqlException('Nested window or grouped window unsupported');
+    if (children.any((c) => c.containsWindow)) {
+      throw const SqlException('Nested window function');
     }
     function.validate(columns);
     for (final expr in [...partition, ...order.map((o) => o.expression)]) {
@@ -102,10 +105,7 @@ final class WindowExpr extends Expr {
     }
   }
 
-  EvalContext _context(EvalContext source, RowValues row) =>
-      EvalContext(row, source.affinities, source.parameters, source.encoding)
-        ..collations = source.collations
-        ..subquery = source.subquery;
+  EvalContext _context(EvalContext source, RowValues row) => source.forRow(row);
   @override
   Object? evaluate(EvalContext context) {
     final rows = context.windowRows;

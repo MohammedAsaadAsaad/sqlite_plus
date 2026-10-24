@@ -11,6 +11,13 @@ Object? expectedValue(dynamic value) {
   if (value is Map && value.containsKey('integer')) {
     return BigInt.parse(value['integer'] as String);
   }
+  if (value is Map && value.containsKey('real')) {
+    return switch (value['real']) {
+      'inf' => double.infinity,
+      '-inf' => double.negativeInfinity,
+      _ => double.nan
+    };
+  }
   if (value is Map && value.containsKey('blob')) {
     final hex = value['blob'] as String;
     return Uint8List.fromList([

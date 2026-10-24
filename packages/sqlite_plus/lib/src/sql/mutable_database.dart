@@ -8,6 +8,7 @@ import 'database.dart';
 import 'parser.dart';
 import 'tokenizer.dart';
 import 'values.dart';
+import 'function_registry.dart';
 
 final class MutationResult {
   const MutationResult(this.changes, this.lastInsertRowid, [this.returning]);
@@ -27,6 +28,7 @@ final class MutableSqliteDatabase {
   bool _closed = false;
   bool _failed = false;
   bool _foreignKeys = false;
+  final functions = SqlFunctionRegistry();
   Uint8List? _transactionStart;
   bool _explicitTransaction = false;
   final List<(String, Uint8List)> _savepoints = [];
@@ -61,7 +63,7 @@ final class MutableSqliteDatabase {
     }
     _busy = true;
     try {
-      return await operation();
+      return await functions.run(operation);
     } finally {
       _busy = false;
     }
@@ -84,7 +86,8 @@ final class MutableSqliteDatabase {
         }
         final storage = MemoryStorageBackend();
         await storage.write(0, _image);
-        final reader = await SqliteDatabase.openReadOnly(storage);
+        final reader =
+            await SqliteDatabase.openReadOnly(storage, functions: functions);
         try {
           return await reader.query(sql, parameters);
         } finally {

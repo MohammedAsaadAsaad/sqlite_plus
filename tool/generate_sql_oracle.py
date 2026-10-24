@@ -1,12 +1,15 @@
 """Pinned development-only SELECT oracle; runtime/tests never invoke SQLite."""
 import hashlib
 import json
+import math
 import random
 import sqlite3
 from generate_fixtures import PIN, ROOT
 
 
 def encode(v):
+    if isinstance(v,float) and not math.isfinite(v):
+        return {'real':str(v)}
     if isinstance(v, bytes):
         return {'blob': v.hex()}
     if isinstance(v, int):

@@ -273,12 +273,16 @@ The engine now supports:
   BINARY/NOCASE/RTRIM collations, expression/ordinal/alias GROUP BY, HAVING
   aliases, and bare-column MIN/MAX selection in the verified cases.
 - Core scalar functions and COUNT/SUM/TOTAL/AVG/MIN/MAX/GROUP_CONCAT aggregates.
-  Function outputs are bounded; user functions and date/time functions remain open.
+  String helpers include INSTR/OCTET_LENGTH/CONCAT/CONCAT_WS/UNHEX/SIGN,
+  variadic IF/IIF, decimal ROUND and compiled-reference math functions.
+  Function outputs are bounded. Connection-local Dart scalar/aggregate callbacks
+  support overloads, varargs, DISTINCT/FILTER and safe SQL-value conversion.
 - ROW_NUMBER/RANK/DENSE_RANK/PERCENT_RANK/CUME_DIST/NTILE, LAG/LEAD,
   FIRST_VALUE/LAST_VALUE/NTH_VALUE and aggregate windows. PARTITION/ORDER,
   ROWS/GROUPS/RANGE frames, numeric offsets, EXCLUDE, named/inherited windows,
   aggregate FILTER and explicit NULLS FIRST/LAST are covered. Windows are limited
-  to 10,000 input rows; windows over grouped aggregates remain unsupported.
+  to 10,000 input rows. Group aggregation and HAVING run before windows, including
+  `SUM(COUNT(*)) OVER (...)` and windows over registered aggregate results.
 - CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, safe ALTER TABLE ADD COLUMN/table rename, defaults,
   NOT NULL/UNIQUE/CHECK, STRICT types, AUTOINCREMENT, INSERT VALUES/DEFAULT
   VALUES/SELECT, UPDATE/DELETE, OR IGNORE/REPLACE, and WITHOUT ROWID writes.
@@ -303,17 +307,18 @@ Column renaming/dropping and dependent view/trigger rewrites remain open.
 
 Read-only PRAGMAs include page_size/page_count/freelist_count/schema_version,
 user_version/application_id/encoding/table_info/table_xinfo/index_list/
-index_info/index_xinfo/foreign_key_list. Foreign-key state and user_version/
+index_info/index_xinfo/foreign_key_list/integrity_check/quick_check/foreign_key_check. Foreign-key state and user_version/
 application_id can be set through the mutable API. Index metadata is limited to
 column indexes; unsupported shapes fail explicitly.
 
-Eligible rowid and leading-column secondary-index equalities descend B-tree
-paths. `database.explain(sql, parameters)` reports the access/rootPage/rowid;
+Eligible rowid equalities/ranges and secondary-index equality prefixes/ranges
+descend B-tree paths. Multi-column prefixes are preferred when more constraints
+can be used; callback predicates retain a scan. `database.explain(sql, parameters)` reports the access/rootPage/rowid;
 it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 717 differential queries across the
+The pinned M6 oracle currently contains 1,161 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 
@@ -321,6 +326,32 @@ with SQLite after every mutation and runs integrity_check:
 python3 tool/generate_semantics_oracle.py --verify
 python3 tool/verify_schema_oracle.py
 ```
+
+Connection-local callbacks are synchronous and receive copied SQL values:
+
+```dart
+database.functions.registerScalar('twice', 1,
+    (args) => args.single == null ? null : (args.single as BigInt) * BigInt.two);
+final result = await database.query('SELECT twice(?)', [21]);
+```
+
+Use `registerAggregate(name, argumentCount, factory)` with a fresh SqlAggregate
+instance per group; `-1` selects varargs. Registered aggregates are not window
+functions, but their grouped results can feed built-in windows. Closures are
+connection-local and are not transferred through DatabaseClient RPC.
+
+Date/time support includes DATE/TIME/DATETIME/JULIANDAY/UNIXEPOCH/STRFTIME/TIMEDIFF,
+CURRENT_DATE/TIME/TIMESTAMP and dynamic defaults. A statement shares one clock.
+Pinned cases cover time zones, fractional seconds, numeric epochs, calendar/
+clock shifts, start/weekday modifiers, floor/ceiling and ISO week formatting.
+Host local-time behavior, unsupported input/modifier edge cases and extreme
+floating precision are not full native-conformance claims.
+
+Integrity checks are bounded to complete supported images up to 64 MiB without
+auto-vacuum/reserved bytes. They verify tree/freelist ownership, constraints and
+persisted index contents against table data. QUICK_CHECK omits index/table
+content comparison; FOREIGN_KEY_CHECK reports violating rows independently of
+foreign_keys enable state. Error wording is not native SQLite's exact wording.
 
 M6 remains open for broader SQL/PRAGMA/function coverage, remaining UPSERT shapes,
 additional ALTER operations, trigger/foreign-key edge cases, and planner work.
@@ -332,6 +363,6 @@ queries. These small Linux workloads do not satisfy M9's full scale/platform
 matrix. Reproduce with:
 
 ```sh
-(cd packages/sqlite_plus && dart compile exe benchmark/index_lookup.dart -o /tmp/sqlite-plus-index-benchmark)
+(cd packages/sqlite_plus && dart compile exe benchmark/planner.dart -o /tmp/sqlite-plus-index-benchmark)
 (cd packages/sqlite_plus && /tmp/sqlite-plus-index-benchmark)
 ```

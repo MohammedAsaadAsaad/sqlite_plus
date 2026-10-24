@@ -9,6 +9,7 @@ final class CatalogColumn {
   CatalogColumn(this.name, this.declaredType,
       {this.primaryKey = 0,
       this.defaultValue,
+      this.defaultExpression,
       this.notNull = false,
       this.defaultSql,
       this.unique = false,
@@ -20,6 +21,7 @@ final class CatalogColumn {
   final String declaredType;
   int primaryKey;
   final Object? defaultValue;
+  final Expr? defaultExpression;
   final bool notNull;
   final String? defaultSql;
   final bool unique, autoIncrement, primaryDescending;
@@ -311,6 +313,7 @@ final class DatabaseCatalog {
         String? defaultSql;
         var descending = false;
         Object? defaultValue;
+        Expr? defaultExpression;
         while (parser.current.text != ',' && parser.current.text != ')') {
           if (parser.take('CONSTRAINT')) {
             parser.identifier();
@@ -352,7 +355,10 @@ final class DatabaseCatalog {
                   'Parameters not allowed in schema defaults');
             }
             expr.validate({});
-            defaultValue = expr.evaluate(EvalContext({}, {}, []));
+            defaultExpression = expr;
+            if (expr is Literal || expr is UnaryExpr) {
+              defaultValue = expr.evaluate(EvalContext({}, {}, []));
+            }
           } else if (parser.take('COLLATE')) {
             collation = asciiLower(parser.identifier());
             if (!['binary', 'nocase', 'rtrim'].contains(collation)) {
@@ -374,6 +380,7 @@ final class DatabaseCatalog {
         }
         columns.add(CatalogColumn(columnName, declaredType,
             defaultValue: defaultValue,
+            defaultExpression: defaultExpression,
             notNull: notNull,
             defaultSql: defaultSql,
             unique: unique,
@@ -440,6 +447,7 @@ final class DatabaseCatalog {
         expr is SubqueryExpr ||
         expr is InSelectExpr ||
         expr.containsAggregate ||
+        expr.containsWindow ||
         expr.children.any(invalidCheck);
     for (final check in [
       ...tableChecks,

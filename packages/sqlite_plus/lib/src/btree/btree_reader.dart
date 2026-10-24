@@ -124,8 +124,13 @@ final class BtreeReader {
           int rootPage, int Function(List<Object?>) compare) =>
       _scan(rootPage, false, compare);
 
+  Stream<BtreeRecord> seekTable(int rootPage, int Function(BigInt) compare) =>
+      _scan(rootPage, true, null, compare);
+
   Stream<BtreeRecord> _scan(int root, bool table,
-      [int Function(List<Object?>)? compare]) async* {
+      [int Function(List<Object?>)? compare,
+      int Function(BigInt)? compareRowid]) async* {
+    final selective = compare != null || compareRowid != null;
     final used = <int>{};
     final stack = <Object>[_PageTask(root, table, null, null)];
     BigInt? previous;
@@ -179,12 +184,16 @@ final class BtreeReader {
                 (node.upper != null && rowId > node.upper!))) {
           throw const FormatException('Rowid outside B-tree separator bounds');
         }
-        final comparison = compare == null ? 0 : compare(values!).sign;
-        if (compare != null && comparison < priorComparison) {
+        final comparison = compareRowid != null
+            ? compareRowid(rowId!).sign
+            : compare == null
+                ? 0
+                : compare(values!).sign;
+        if (selective && comparison < priorComparison) {
           throw const FormatException('Index prefix out of order');
         }
         if (child != null &&
-            (compare == null || priorComparison <= 0 && comparison >= 0)) {
+            (!selective || priorComparison <= 0 && comparison >= 0)) {
           actions.add(
               _PageTask(child, node.table, lower, node.table ? rowId : null));
         }
@@ -195,7 +204,7 @@ final class BtreeReader {
         if (node.table) lower = rowId;
       }
       _validateRanges(bytes, header, ranges);
-      if (!header.isLeaf && (compare == null || priorComparison <= 0)) {
+      if (!header.isLeaf && (!selective || priorComparison <= 0)) {
         actions.add(
             _PageTask(header.rightmostChild!, node.table, lower, node.upper));
       }
