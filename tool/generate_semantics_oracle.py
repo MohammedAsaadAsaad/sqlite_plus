@@ -338,6 +338,21 @@ def main():
       'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT missing FROM c LIMIT 0) SELECT x FROM c',
       'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT a.x+b.x FROM c a JOIN c b LIMIT 5) SELECT x FROM c'
     ]
+    queries += [
+      'VALUES(1,2)', 'VALUES(1),(2),(3)', "VALUES(NULL,X'00ff'),(1,'λ😀')",
+      'SELECT * FROM (VALUES(3),(1),(2)) ORDER BY column1',
+      'WITH c(a,b) AS(VALUES(1,2),(3,4)) SELECT a,b,a+b FROM c ORDER BY a',
+      'WITH RECURSIVE c(x) AS(VALUES(1),(2) UNION SELECT x+1 FROM c WHERE x<4 LIMIT 3) SELECT x FROM c',
+      'VALUES(1) UNION SELECT 2 ORDER BY 1 DESC LIMIT 1',
+      'SELECT 1 UNION ALL VALUES(2),(3)',
+      'SELECT (VALUES(1),(2))', 'SELECT 2 IN(VALUES(1),(2)),NULL IN(VALUES(1),(NULL))',
+      'VALUES(1),(2,3)', 'VALUES(1) ORDER BY 1', 'VALUES(1) LIMIT 1',
+      'SELECT 1 UNION ALL VALUES(2) ORDER BY 1',
+      'VALUES(sum(1)),(sum(2))', 'VALUES(row_number() OVER()),(row_number() OVER())',
+      'VALUES(dart_counter()),(dart_counter())',
+      'SELECT id,(VALUES(id+1)) FROM sample WHERE id>0 AND id<3 ORDER BY id',
+    ]
+    queries += ['VALUES(sum(1),sum(2))', 'VALUES(sum(1)) UNION SELECT 2', 'SELECT 1 UNION VALUES(sum(2))', 'VALUES(1),(sum(2))']
     cases = []
     for fixture in manifest['fixtures']:
         with sqlite3.connect(f"file:{ROOT/fixture['file']}?mode=ro",uri=True) as c:

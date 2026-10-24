@@ -458,3 +458,16 @@
   schema/DML cross-open verification still passes all 501 snapshots per encoding
   (1,503 total). GitHub Actions passed all five preceding pushed batches.
 - M6 remains open for the documented dependency rewrites and conformance audit.
+
+## 2026-10-24 — M6 VALUES queries
+
+- Added standalone/multirow VALUES, derived/scalar/IN subqueries, compounds and
+  ordinary/recursive CTE anchors, parameters and native column labels. VALUES
+  query bodies now execute in trigger contexts and view definitions.
+- Match terminal VALUES ORDER/LIMIT syntax restrictions, row-width validation,
+  correlated values and native single-row versus multirow aggregate behavior.
+- Verification: all 2,315 engine tests, all-package locked dependencies and
+  fatal-info analysis, formatting and all fixture/oracle checksum checks pass.
+  The pinned M6 oracle has 1,395 cases; native schema/view/trigger cross-open
+  comparisons pass 514 snapshots per encoding (1,542 total). M6 remains open
+  for the documented schema dependency and broader conformance audit work.

@@ -9273,6 +9273,391 @@
     "error": "multiple references to recursive table: c"
   },
   {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(1,2)",
+    "parameters": [],
+    "columns": [
+      "column1",
+      "column2"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(1),(2),(3)",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(NULL,X'00ff'),(1,'λ😀')",
+    "parameters": [],
+    "columns": [
+      "column1",
+      "column2"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "blob": "00ff"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "λ😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT * FROM (VALUES(3),(1),(2)) ORDER BY column1",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH c(a,b) AS(VALUES(1,2),(3,4)) SELECT a,b,a+b FROM c ORDER BY a",
+    "parameters": [],
+    "columns": [
+      "a",
+      "b",
+      "a+b"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(VALUES(1),(2) UNION SELECT x+1 FROM c WHERE x<4 LIMIT 3) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(1) UNION SELECT 2 ORDER BY 1 DESC LIMIT 1",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 UNION ALL VALUES(2),(3)",
+    "parameters": [],
+    "columns": [
+      "1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT (VALUES(1),(2))",
+    "parameters": [],
+    "columns": [
+      "(VALUES(1),(2))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 2 IN(VALUES(1),(2)),NULL IN(VALUES(1),(NULL))",
+    "parameters": [],
+    "columns": [
+      "2 IN(VALUES(1),(2))",
+      "NULL IN(VALUES(1),(NULL))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(1),(2,3)",
+    "parameters": [],
+    "error": "all VALUES must have the same number of terms"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(1) ORDER BY 1",
+    "parameters": [],
+    "error": "near \"ORDER\": syntax error"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(1) LIMIT 1",
+    "parameters": [],
+    "error": "near \"LIMIT\": syntax error"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 UNION ALL VALUES(2) ORDER BY 1",
+    "parameters": [],
+    "error": "near \"ORDER\": syntax error"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(sum(1)),(sum(2))",
+    "parameters": [],
+    "error": "misuse of aggregate: sum()"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(row_number() OVER()),(row_number() OVER())",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(dart_counter()),(dart_counter())",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT id,(VALUES(id+1)) FROM sample WHERE id>0 AND id<3 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "(VALUES(id+1))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(sum(1),sum(2))",
+    "parameters": [],
+    "columns": [
+      "column1",
+      "column2"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(sum(1)) UNION SELECT 2",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 UNION VALUES(sum(2))",
+    "parameters": [],
+    "columns": [
+      "1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "VALUES(1),(sum(2))",
+    "parameters": [],
+    "error": "misuse of aggregate: sum()"
+  },
+  {
     "file": "sqlite-4096.db",
     "sql": "select abs(-7) as result",
     "parameters": [],
@@ -18546,6 +18931,391 @@
     "error": "multiple references to recursive table: c"
   },
   {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(1,2)",
+    "parameters": [],
+    "columns": [
+      "column1",
+      "column2"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(1),(2),(3)",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(NULL,X'00ff'),(1,'λ😀')",
+    "parameters": [],
+    "columns": [
+      "column1",
+      "column2"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "blob": "00ff"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "λ😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT * FROM (VALUES(3),(1),(2)) ORDER BY column1",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH c(a,b) AS(VALUES(1,2),(3,4)) SELECT a,b,a+b FROM c ORDER BY a",
+    "parameters": [],
+    "columns": [
+      "a",
+      "b",
+      "a+b"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(VALUES(1),(2) UNION SELECT x+1 FROM c WHERE x<4 LIMIT 3) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(1) UNION SELECT 2 ORDER BY 1 DESC LIMIT 1",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 UNION ALL VALUES(2),(3)",
+    "parameters": [],
+    "columns": [
+      "1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT (VALUES(1),(2))",
+    "parameters": [],
+    "columns": [
+      "(VALUES(1),(2))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 2 IN(VALUES(1),(2)),NULL IN(VALUES(1),(NULL))",
+    "parameters": [],
+    "columns": [
+      "2 IN(VALUES(1),(2))",
+      "NULL IN(VALUES(1),(NULL))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(1),(2,3)",
+    "parameters": [],
+    "error": "all VALUES must have the same number of terms"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(1) ORDER BY 1",
+    "parameters": [],
+    "error": "near \"ORDER\": syntax error"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(1) LIMIT 1",
+    "parameters": [],
+    "error": "near \"LIMIT\": syntax error"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 UNION ALL VALUES(2) ORDER BY 1",
+    "parameters": [],
+    "error": "near \"ORDER\": syntax error"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(sum(1)),(sum(2))",
+    "parameters": [],
+    "error": "misuse of aggregate: sum()"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(row_number() OVER()),(row_number() OVER())",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(dart_counter()),(dart_counter())",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT id,(VALUES(id+1)) FROM sample WHERE id>0 AND id<3 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "(VALUES(id+1))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(sum(1),sum(2))",
+    "parameters": [],
+    "columns": [
+      "column1",
+      "column2"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(sum(1)) UNION SELECT 2",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 UNION VALUES(sum(2))",
+    "parameters": [],
+    "columns": [
+      "1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "VALUES(1),(sum(2))",
+    "parameters": [],
+    "error": "misuse of aggregate: sum()"
+  },
+  {
     "file": "sqlite-65536.db",
     "sql": "select abs(-7) as result",
     "parameters": [],
@@ -27817,5 +28587,390 @@
     "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT a.x+b.x FROM c a JOIN c b LIMIT 5) SELECT x FROM c",
     "parameters": [],
     "error": "multiple references to recursive table: c"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(1,2)",
+    "parameters": [],
+    "columns": [
+      "column1",
+      "column2"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(1),(2),(3)",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(NULL,X'00ff'),(1,'λ😀')",
+    "parameters": [],
+    "columns": [
+      "column1",
+      "column2"
+    ],
+    "rows": [
+      [
+        null,
+        {
+          "blob": "00ff"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "λ😀"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT * FROM (VALUES(3),(1),(2)) ORDER BY column1",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH c(a,b) AS(VALUES(1,2),(3,4)) SELECT a,b,a+b FROM c ORDER BY a",
+    "parameters": [],
+    "columns": [
+      "a",
+      "b",
+      "a+b"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "7"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(VALUES(1),(2) UNION SELECT x+1 FROM c WHERE x<4 LIMIT 3) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(1) UNION SELECT 2 ORDER BY 1 DESC LIMIT 1",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 UNION ALL VALUES(2),(3)",
+    "parameters": [],
+    "columns": [
+      "1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT (VALUES(1),(2))",
+    "parameters": [],
+    "columns": [
+      "(VALUES(1),(2))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 2 IN(VALUES(1),(2)),NULL IN(VALUES(1),(NULL))",
+    "parameters": [],
+    "columns": [
+      "2 IN(VALUES(1),(2))",
+      "NULL IN(VALUES(1),(NULL))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(1),(2,3)",
+    "parameters": [],
+    "error": "all VALUES must have the same number of terms"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(1) ORDER BY 1",
+    "parameters": [],
+    "error": "near \"ORDER\": syntax error"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(1) LIMIT 1",
+    "parameters": [],
+    "error": "near \"LIMIT\": syntax error"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 UNION ALL VALUES(2) ORDER BY 1",
+    "parameters": [],
+    "error": "near \"ORDER\": syntax error"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(sum(1)),(sum(2))",
+    "parameters": [],
+    "error": "misuse of aggregate: sum()"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(row_number() OVER()),(row_number() OVER())",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(dart_counter()),(dart_counter())",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT id,(VALUES(id+1)) FROM sample WHERE id>0 AND id<3 ORDER BY id",
+    "parameters": [],
+    "columns": [
+      "id",
+      "(VALUES(id+1))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(sum(1),sum(2))",
+    "parameters": [],
+    "columns": [
+      "column1",
+      "column2"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(sum(1)) UNION SELECT 2",
+    "parameters": [],
+    "columns": [
+      "column1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 UNION VALUES(sum(2))",
+    "parameters": [],
+    "columns": [
+      "1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "VALUES(1),(sum(2))",
+    "parameters": [],
+    "error": "misuse of aggregate: sum()"
   }
 ]

@@ -996,7 +996,7 @@ final class ImageMutations {
         }
         for (final statement in trigger.statements) {
           final parser = SqlParser(statement);
-          if (['SELECT', 'WITH'].contains(parser.current.keyword)) {
+          if (['SELECT', 'WITH', 'VALUES'].contains(parser.current.keyword)) {
             await _triggerSelect(statement);
           } else {
             await execute(statement, [],
@@ -1296,7 +1296,7 @@ final class ImageMutations {
           if (body.tokens.any((t) => t.keyword == 'RETURNING')) {
             throw const SqlException('RETURNING prohibited in trigger bodies');
           }
-          if (['SELECT', 'WITH'].contains(body.current.keyword)) {
+          if (['SELECT', 'WITH', 'VALUES'].contains(body.current.keyword)) {
             final select = SqlParser(statement).select();
             if (select.parameterCount != 0) {
               throw const SqlException(

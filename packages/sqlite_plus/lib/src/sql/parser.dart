@@ -345,6 +345,7 @@ final class SelectStatement {
   final Expr? offset;
   final bool distinct;
   final int parameterCount;
+  bool valuesQuery = false;
 }
 
 final class QuerySource {
@@ -441,6 +442,9 @@ final class SqlParser {
         ctes[name] = (columns, query);
       } while (take(','));
     }
+    if (take('VALUES')) {
+      return _values(ctes, nested: nested, component: component);
+    }
     require('SELECT');
     final distinct = take('DISTINCT');
     if (!distinct) take('ALL');
@@ -524,6 +528,11 @@ final class SqlParser {
         compounds.add((op, select(nested: true, component: true)));
       }
     }
+    if (compounds.isNotEmpty &&
+        compounds.last.$2.valuesQuery &&
+        ['ORDER', 'LIMIT'].contains(current.keyword)) {
+      throw const SqlException('VALUES cannot have ORDER BY/LIMIT');
+    }
     final order = <OrderTerm>[];
     if (!component && take('ORDER')) {
       require('BY');
@@ -569,6 +578,83 @@ final class SqlParser {
       ..compounds.addAll(compounds)
       ..groupBy.addAll(groups)
       ..having = having;
+  }
+
+  SelectStatement _values(Map<String, (List<String>, SelectStatement)> ctes,
+      {required bool nested, required bool component}) {
+    final rows = <SelectStatement>[];
+    var width = -1;
+    do {
+      require('(');
+      final items = <SelectItem>[];
+      do {
+        final expr = expression();
+        void resolve(Expr e) {
+          if (e is WindowExpr) e.resolve({}, {});
+          for (final child in e.children) {
+            resolve(child);
+          }
+        }
+
+        resolve(expr);
+        items.add(
+            SelectItem(expr, 'column${items.length + 1}', explicitAlias: true));
+      } while (take(','));
+      require(')');
+      if (width >= 0 && width != items.length) {
+        throw const SqlException('VALUES width mismatch');
+      }
+      width = items.length;
+      rows.add(SelectStatement(
+          items, null, null, [], null, null, false, parameterCount)
+        ..valuesQuery = true);
+    } while (take(','));
+    if (rows.length > 1 &&
+        rows.any((row) =>
+            row.items.any((item) => item.expression!.containsAggregate))) {
+      throw const SqlException('Aggregate in multirow VALUES');
+    }
+    final first = rows.first;
+    final compounds = <(String, SelectStatement)>[
+      for (final row in rows.skip(1)) ('UNION ALL', row)
+    ];
+    if (!component) {
+      while (['UNION', 'INTERSECT', 'EXCEPT'].contains(current.keyword)) {
+        var op = current.keyword;
+        position++;
+        if (op == 'UNION' && take('ALL')) op = 'UNION ALL';
+        compounds.add((op, select(nested: true, component: true)));
+      }
+    }
+    final endsInValues = compounds.isEmpty || compounds.last.$2.valuesQuery;
+    if (endsInValues && ['ORDER', 'LIMIT'].contains(current.keyword)) {
+      throw const SqlException('VALUES cannot have ORDER BY/LIMIT');
+    }
+    final order = <OrderTerm>[];
+    if (!component && take('ORDER')) {
+      require('BY');
+      do {
+        final expr = expression(), desc = take('DESC');
+        if (!desc) take('ASC');
+        order.add(OrderTerm(expr, desc, _nulls()));
+      } while (take(','));
+    }
+    Expr? limit, offset;
+    if (!component && take('LIMIT')) {
+      limit = expression();
+      if (take('OFFSET')) {
+        offset = expression();
+      } else if (take(',')) {
+        offset = limit;
+        limit = expression();
+      }
+    }
+    if (!nested) finish();
+    return SelectStatement(
+        first.items, null, null, order, limit, offset, false, parameterCount)
+      ..valuesQuery = endsInValues
+      ..ctes.addAll(ctes)
+      ..compounds.addAll(compounds);
   }
 
   WindowExpr _window(FunctionExpr function, {bool definition = false}) {
@@ -822,7 +908,7 @@ final class SqlParser {
       left = SubqueryExpr(select(nested: true), exists: true);
       require(')');
     } else if (take('(')) {
-      left = ['SELECT', 'WITH'].contains(current.keyword)
+      left = ['SELECT', 'WITH', 'VALUES'].contains(current.keyword)
           ? SubqueryExpr(select(nested: true))
           : expression();
       require(')');
@@ -961,7 +1047,7 @@ final class SqlParser {
         position++;
         if (op == 'IN') {
           require('(');
-          if (['SELECT', 'WITH'].contains(current.keyword)) {
+          if (['SELECT', 'WITH', 'VALUES'].contains(current.keyword)) {
             left = InSelectExpr(left, select(nested: true), negate: negate);
             require(')');
             continue;

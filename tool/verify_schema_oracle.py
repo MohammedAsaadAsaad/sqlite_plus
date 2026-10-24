@@ -222,6 +222,19 @@ def main():
       "INSERT OR REPLACE INTO replace_ignore VALUES(1),(2)",
       "PRAGMA recursive_triggers=OFF", "PRAGMA integrity_check"
     ]
+    statements += [
+      "CREATE VIEW value_view(a,b) AS VALUES(1,'a'),(2,'λ😀')",
+      "CREATE TABLE value_sink(a INT,b TEXT)",
+      "INSERT INTO value_sink SELECT * FROM value_view RETURNING *",
+      "CREATE TRIGGER value_guard BEFORE INSERT ON value_sink WHEN new.a<0 BEGIN VALUES(RAISE(ABORT,'negative')); END",
+      "INSERT INTO value_sink VALUES(-1,'bad')",
+      "CREATE TRIGGER value_audit AFTER INSERT ON value_sink BEGIN VALUES(new.a,new.b),(old.a,new.b); END",
+      "INSERT INTO value_sink VALUES(3,'bad')", "DROP TRIGGER value_audit",
+      "CREATE TRIGGER value_notify AFTER INSERT ON value_sink BEGIN VALUES(new.a,new.b),(new.a+1,new.b); END",
+      "INSERT INTO value_sink VALUES(3,'ok') RETURNING *",
+      "INSERT INTO value_sink WITH c(a,b) AS(VALUES(4,'four'),(5,'five')) SELECT * FROM c RETURNING *",
+      "DROP VIEW value_view", "PRAGMA integrity_check"
+    ]
     for encoding in [1,2,3]:
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':[],'query':'=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS','TABLE_INFO','TABLE_XINFO'])} for sql in statements]))
