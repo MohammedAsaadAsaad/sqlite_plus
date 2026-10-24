@@ -3,20 +3,29 @@ on:
   push:
   pull_request:
 jobs:
-  engine:
+  packages:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [sqlite_plus, sqlite_plus_orm, sqlite_plus_generator]
+    defaults:
+      run:
+        working-directory: packages/${{ matrix.package }}
     steps:
       - uses: actions/checkout@v4
       - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.7
+      - name: Verify binary fixtures
+        if: matrix.package == 'sqlite_plus'
+        working-directory: .
+        run: python3 tool/generate_fixtures.py --verify
       - name: Install dependencies
-        working-directory: packages/sqlite_plus
-        run: dart pub get
+        run: dart pub get --enforce-lockfile
       - name: Format
-        working-directory: packages/sqlite_plus
         run: dart format --output=none --set-exit-if-changed .
       - name: Analyze
-        working-directory: packages/sqlite_plus
         run: dart analyze --fatal-infos
-      - name: Test
-        working-directory: packages/sqlite_plus
+      - name: Test engine
+        if: matrix.package == 'sqlite_plus'
         run: dart test

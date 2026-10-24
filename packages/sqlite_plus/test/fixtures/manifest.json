@@ -1,0 +1,252 @@
+{
+  "sqlite_version": "3.53.1",
+  "source_id": "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+  "compile_options": [
+    "ATOMIC_INTRINSICS=1",
+    "COMPILER=clang-22.1.3",
+    "DEFAULT_AUTOVACUUM",
+    "DEFAULT_CACHE_SIZE=-2000",
+    "DEFAULT_FILE_FORMAT=4",
+    "DEFAULT_JOURNAL_SIZE_LIMIT=-1",
+    "DEFAULT_MMAP_SIZE=0",
+    "DEFAULT_PAGE_SIZE=4096",
+    "DEFAULT_PCACHE_INITSZ=20",
+    "DEFAULT_RECURSIVE_TRIGGERS",
+    "DEFAULT_SECTOR_SIZE=4096",
+    "DEFAULT_SYNCHRONOUS=2",
+    "DEFAULT_WAL_AUTOCHECKPOINT=1000",
+    "DEFAULT_WAL_SYNCHRONOUS=2",
+    "DEFAULT_WORKER_THREADS=0",
+    "DIRECT_OVERFLOW_READ",
+    "ENABLE_DBSTAT_VTAB",
+    "ENABLE_FTS3",
+    "ENABLE_FTS3_PARENTHESIS",
+    "ENABLE_FTS4",
+    "ENABLE_FTS5",
+    "ENABLE_GEOPOLY",
+    "ENABLE_MATH_FUNCTIONS",
+    "ENABLE_PERCENTILE",
+    "ENABLE_RTREE",
+    "MALLOC_SOFT_LIMIT=1024",
+    "MAX_ATTACHED=10",
+    "MAX_COLUMN=2000",
+    "MAX_COMPOUND_SELECT=500",
+    "MAX_DEFAULT_PAGE_SIZE=8192",
+    "MAX_EXPR_DEPTH=1000",
+    "MAX_FUNCTION_ARG=1000",
+    "MAX_LENGTH=1000000000",
+    "MAX_LIKE_PATTERN_LENGTH=50000",
+    "MAX_MMAP_SIZE=0x7fff0000",
+    "MAX_PAGE_COUNT=0xfffffffe",
+    "MAX_PAGE_SIZE=65536",
+    "MAX_SQL_LENGTH=1000000000",
+    "MAX_TRIGGER_DEPTH=1000",
+    "MAX_VARIABLE_NUMBER=32766",
+    "MAX_VDBE_OP=250000000",
+    "MAX_WORKER_THREADS=8",
+    "MUTEX_PTHREADS",
+    "SYSTEM_MALLOC",
+    "TEMP_STORE=1",
+    "THREADSAFE=1"
+  ],
+  "fixtures": [
+    {
+      "file": "sqlite-512.db",
+      "page_size": 512,
+      "encoding": "UTF-8",
+      "sha256": "f889715efa1845ad8c64453dc84e71eaf3b33aab6d9bbe06bc61f195beedc539",
+      "pages": [
+        {
+          "name": "sqlite_schema",
+          "pageno": 1,
+          "pagetype": "leaf",
+          "ncell": 2
+        },
+        {
+          "name": "sample",
+          "pageno": 2,
+          "pagetype": "internal",
+          "ncell": 7
+        },
+        {
+          "name": "sample_value",
+          "pageno": 3,
+          "pagetype": "internal",
+          "ncell": 7
+        },
+        {
+          "name": "sample_value",
+          "pageno": 4,
+          "pagetype": "leaf",
+          "ncell": 25
+        },
+        {
+          "name": "sample_value",
+          "pageno": 5,
+          "pagetype": "leaf",
+          "ncell": 25
+        },
+        {
+          "name": "sample",
+          "pageno": 6,
+          "pagetype": "leaf",
+          "ncell": 28
+        },
+        {
+          "name": "sample",
+          "pageno": 7,
+          "pagetype": "leaf",
+          "ncell": 28
+        },
+        {
+          "name": "sample",
+          "pageno": 8,
+          "pagetype": "leaf",
+          "ncell": 28
+        },
+        {
+          "name": "sample_value",
+          "pageno": 9,
+          "pagetype": "leaf",
+          "ncell": 25
+        },
+        {
+          "name": "sample",
+          "pageno": 10,
+          "pagetype": "leaf",
+          "ncell": 28
+        },
+        {
+          "name": "sample_value",
+          "pageno": 11,
+          "pagetype": "leaf",
+          "ncell": 25
+        },
+        {
+          "name": "sample_value",
+          "pageno": 12,
+          "pagetype": "leaf",
+          "ncell": 25
+        },
+        {
+          "name": "sample",
+          "pageno": 13,
+          "pagetype": "leaf",
+          "ncell": 27
+        },
+        {
+          "name": "sample_value",
+          "pageno": 14,
+          "pagetype": "leaf",
+          "ncell": 24
+        },
+        {
+          "name": "sample",
+          "pageno": 15,
+          "pagetype": "leaf",
+          "ncell": 26
+        },
+        {
+          "name": "sample_value",
+          "pageno": 16,
+          "pagetype": "leaf",
+          "ncell": 23
+        },
+        {
+          "name": "sample",
+          "pageno": 17,
+          "pagetype": "leaf",
+          "ncell": 26
+        },
+        {
+          "name": "sample_value",
+          "pageno": 18,
+          "pagetype": "leaf",
+          "ncell": 21
+        },
+        {
+          "name": "sample",
+          "pageno": 19,
+          "pagetype": "leaf",
+          "ncell": 9
+        }
+      ]
+    },
+    {
+      "file": "sqlite-4096.db",
+      "page_size": 4096,
+      "encoding": "UTF-16le",
+      "sha256": "61b1f53d92914ef6a3c0afdecd6d7c51259ab1b0338c88be5f6e4c1399a6039c",
+      "pages": [
+        {
+          "name": "sqlite_schema",
+          "pageno": 1,
+          "pagetype": "leaf",
+          "ncell": 2
+        },
+        {
+          "name": "sample",
+          "pageno": 2,
+          "pagetype": "internal",
+          "ncell": 1
+        },
+        {
+          "name": "sample_value",
+          "pageno": 3,
+          "pagetype": "internal",
+          "ncell": 1
+        },
+        {
+          "name": "sample_value",
+          "pageno": 4,
+          "pagetype": "leaf",
+          "ncell": 76
+        },
+        {
+          "name": "sample_value",
+          "pageno": 5,
+          "pagetype": "leaf",
+          "ncell": 123
+        },
+        {
+          "name": "sample",
+          "pageno": 6,
+          "pagetype": "leaf",
+          "ncell": 150
+        },
+        {
+          "name": "sample",
+          "pageno": 7,
+          "pagetype": "leaf",
+          "ncell": 50
+        }
+      ]
+    },
+    {
+      "file": "sqlite-65536.db",
+      "page_size": 65536,
+      "encoding": "UTF-16be",
+      "sha256": "76e627ca7110e5ed32a030701351589b41fbf3bbd98322de91d62408fd412ac5",
+      "pages": [
+        {
+          "name": "sqlite_schema",
+          "pageno": 1,
+          "pagetype": "leaf",
+          "ncell": 2
+        },
+        {
+          "name": "sample",
+          "pageno": 2,
+          "pagetype": "leaf",
+          "ncell": 200
+        },
+        {
+          "name": "sample_value",
+          "pageno": 3,
+          "pagetype": "leaf",
+          "ncell": 200
+        }
+      ]
+    }
+  ]
+}
