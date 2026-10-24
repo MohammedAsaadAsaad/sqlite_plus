@@ -539,7 +539,7 @@ final class SqliteDatabase {
     statement.limit?.validate({});
     statement.offset?.validate({});
     final constantContext =
-        EvalContext({}, {}, bound, _pager.header.textEncoding)
+        EvalContext({}, affinities, bound, _pager.header.textEncoding)
           ..inTrigger = inTrigger
           ..subquery = subquery
           ..collations = collations;
@@ -561,9 +561,31 @@ final class SqliteDatabase {
       return value.toInt();
     }
 
+    QueryResult result(List<List<Object?>> values) => QueryResult(
+        _labels(items, columns, table),
+        values,
+        items
+            .map((item) => item.expression!.affinity(constantContext))
+            .toList(),
+        items.map((item) {
+          final expr = indexOperand(item.expression!);
+          if (expr is CastExpr) return expr.type;
+          return expr is ColumnExpr
+              ? columns
+                      .where((c) => asciiLower(c.name) == expr.key)
+                      .firstOrNull
+                      ?.declaredType ??
+                  ''
+              : '';
+        }).toList(),
+        items
+            .map((item) =>
+                item.expression!.collation(constantContext) ?? 'binary')
+            .toList());
+
     final limit = count(statement.limit);
     final offset = count(statement.offset) ?? 0;
-    if (limit == 0) return QueryResult(_labels(items, columns, table), []);
+    if (limit == 0) return result([]);
     final filtered = input.where((row) {
       final ctx =
           EvalContext(row, affinities, bound, _pager.header.textEncoding)
@@ -749,26 +771,7 @@ final class SqliteDatabase {
     });
     var rows = output.map((entry) => entry.$1).skip(offset < 0 ? 0 : offset);
     if (limit != null && limit >= 0) rows = rows.take(limit);
-    return QueryResult(
-        _labels(items, columns, table),
-        rows.toList(),
-        items
-            .map((item) => item.expression!.affinity(constantContext))
-            .toList(),
-        items.map((item) {
-          final expr = item.expression;
-          return expr is ColumnExpr
-              ? columns
-                      .where((c) => asciiLower(c.name) == expr.key)
-                      .firstOrNull
-                      ?.declaredType ??
-                  ''
-              : '';
-        }).toList(),
-        items
-            .map((item) =>
-                item.expression!.collation(constantContext) ?? 'binary')
-            .toList());
+    return result(rows.toList());
   }
 
   List<String> _labels(List<SelectItem> items, List<CatalogColumn> columns,

@@ -235,6 +235,28 @@ def main():
       "INSERT INTO value_sink WITH c(a,b) AS(VALUES(4,'four'),(5,'five')) SELECT * FROM c RETURNING *",
       "DROP VIEW value_view", "PRAGMA integrity_check"
     ]
+    statements += [
+      "CREATE TABLE ctas_source(id INTEGER PRIMARY KEY,a VARCHAR(20) COLLATE NOCASE NOT NULL DEFAULT 'a',r REAL,n NUMERIC,b BLOB,g INT AS(id+1))",
+      "INSERT INTO ctas_source(id,a,r,n,b) VALUES(1,'λ😀',2,3,X'00ff'),(2,'B',3.5,'4',NULL)",
+      "CREATE TABLE ctas_copy AS SELECT * FROM ctas_source ORDER BY id DESC",
+      "PRAGMA table_info(ctas_copy)",
+      "CREATE TABLE ctas_empty AS SELECT a,r,n,b,id,g FROM ctas_source LIMIT 0",
+      "PRAGMA table_info(ctas_empty)",
+      "CREATE TABLE ctas_cast AS SELECT CAST(1 AS INTEGER) AS i,CAST(1 AS REAL) AS r,CAST(1 AS NUMERIC) AS n,CAST(1 AS TEXT) AS t,CAST(1 AS BLOB) AS b,1+1 AS expr",
+      "PRAGMA table_info(ctas_cast)",
+      "CREATE TABLE ctas_duplicate AS SELECT 1 AS x,2 AS X,3 AS 'x:1',4 AS ''",
+      "PRAGMA table_info(ctas_duplicate)",
+      "CREATE TABLE ctas_values AS VALUES(1,'one'),(2,'two')",
+      "CREATE TABLE ctas_cte AS WITH c(x) AS(VALUES(3),(4)) SELECT x FROM c",
+      "CREATE TABLE ctas_failed AS SELECT abs(-9223372036854775808)",
+      "BEGIN", "CREATE TABLE ctas_rollback AS SELECT * FROM ctas_copy", "ROLLBACK",
+      "CREATE TABLE shorthand(id INTEGER PRIMARY KEY,v INT UNIQUE)",
+      "REPLACE INTO shorthand VALUES(1,1),(2,2) RETURNING *",
+      "REPLACE INTO shorthand VALUES(3,2) RETURNING *",
+      "REPLACE INTO shorthand(id,v) SELECT 1,3 ON CONFLICT(id) DO UPDATE SET v=excluded.v RETURNING *",
+      "CREATE TRIGGER shorthand_trigger AFTER INSERT ON shorthand WHEN new.id=4 BEGIN REPLACE INTO shorthand VALUES(1,new.v+10); END",
+      "REPLACE INTO shorthand VALUES(4,4)", "PRAGMA integrity_check"
+    ]
     for encoding in [1,2,3]:
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'operations.json').write_text(json.dumps([{'sql':sql,'parameters':[],'query':'=' not in sql and any(sql.upper().startswith('PRAGMA '+name) for name in ['FOREIGN_KEY_CHECK','INTEGRITY_CHECK','QUICK_CHECK','INDEX_INFO','INDEX_XINFO','INDEX_LIST','RECURSIVE_TRIGGERS','TABLE_INFO','TABLE_XINFO'])} for sql in statements]))
@@ -253,11 +275,12 @@ def main():
                     if (error is None)!=(metadata['error'] is None):
                         raise RuntimeError(f'Error mismatch at {i}: {sql}; SQLite={error}; Dart={metadata}')
                     if returned!=metadata['returning']:raise RuntimeError(f'RETURNING mismatch at {i}: {sql}; SQLite={returned}; Dart={metadata}')
-                    if error is None and sql.split()[0].upper() in ['INSERT','UPDATE','DELETE'] and cursor.rowcount!=metadata['changes']:raise RuntimeError(f'Change-count mismatch at {i}: {sql}; SQLite={cursor.rowcount}; Dart={metadata}')
+                    if error is None and sql.split()[0].upper() in ['INSERT','REPLACE','UPDATE','DELETE'] and cursor.rowcount!=metadata['changes']:raise RuntimeError(f'Change-count mismatch at {i}: {sql}; SQLite={cursor.rowcount}; Dart={metadata}')
                     with sqlite3.connect(f'file:{root/i.__str__()}.db?mode=ro',uri=True) as actual:
                         for pragma in ['user_version','application_id']:
                             if actual.execute('pragma '+pragma).fetchall()!=ref.execute('pragma '+pragma).fetchall():raise RuntimeError(f'Header {pragma} differs at {i}')
-                        integrity=actual.execute('pragma integrity_check').fetchall()
+                        try: integrity=actual.execute('pragma integrity_check').fetchall()
+                        except sqlite3.Error as exc: raise RuntimeError(f'Integrity error at {i}: {sql}; {exc}') from exc
                         if integrity!=[('ok',)]:raise RuntimeError(f'Integrity failure at {i}: {sql}; {integrity}')
                         names=[r[0] for r in ref.execute("select name from sqlite_schema where type='table' order by name")]
                         if names!=[r[0] for r in actual.execute("select name from sqlite_schema where type='table' order by name")]:raise RuntimeError(f'Schema names differ at {i}')

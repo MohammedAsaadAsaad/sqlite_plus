@@ -1303,7 +1303,7 @@ final class ImageMutations {
                   'Parameters prohibited in trigger SELECT');
             }
           } else {
-            if (!['INSERT', 'UPDATE', 'DELETE']
+            if (!['INSERT', 'REPLACE', 'UPDATE', 'DELETE']
                 .contains(body.current.keyword)) {
               throw const SqlException('Invalid trigger statement');
             }
@@ -1367,6 +1367,70 @@ final class ImageMutations {
         }
         if (key.startsWith('sqlite_')) {
           throw const SqlException('Reserved object name');
+        }
+        if (p.take('AS')) {
+          final query = sql.substring(p.current.offset);
+          final storage = MemoryStorageBackend();
+          await storage.write(0, serialize());
+          final reader = await SqliteDatabase.openReadOnly(storage,
+              functions: SqlFunctionRegistry.current);
+          late QueryResult result;
+          try {
+            result = await reader.query(query, parameters);
+          } finally {
+            await reader.close();
+          }
+          final names = <String>[];
+          final used = <String>{};
+          for (final label in result.columns) {
+            var candidate = label;
+            var suffix = 0;
+            while (used.contains(asciiLower(candidate))) {
+              final base = label.replaceFirst(RegExp(r':\d+$'), '');
+              candidate = '$base:${++suffix}';
+            }
+            used.add(asciiLower(candidate));
+            names.add(candidate);
+          }
+          String quote(String value) => '"${value.replaceAll('"', '""')}"';
+          String type(int i) {
+            final declared = result.columnDeclaredTypes[i].toUpperCase();
+            final affinity = declared.isEmpty
+                ? result.columnAffinities[i]
+                : affinityFor(declared);
+            if (affinity == 'text') return 'TEXT';
+            if (affinity == 'numeric') {
+              if (declared.contains('INT')) return 'INT';
+              if (['REAL', 'FLOA', 'DOUB'].any(declared.contains)) {
+                return 'REAL';
+              }
+              return 'NUM';
+            }
+            return '';
+          }
+
+          final definition = 'CREATE TABLE ${quote(name)}(${[
+            for (var i = 0; i < names.length; i++)
+              '${quote(names[i])} ${type(i)}'.trim()
+          ].join(',')})';
+          final schema = DatabaseCatalog.parseTable(definition, 0);
+          final table = _Table(schema, definition, []);
+          for (var i = 0; i < result.rows.length; i++) {
+            table.rows.add(_physical(
+                table,
+                {
+                  for (var c = 0; c < names.length; c++)
+                    asciiLower(names[c]): result.rows[i][c]
+                },
+                BigInt.from(i + 1)));
+          }
+          _tables[key] = table;
+          schemaChanged = true;
+          return MutationImage(
+              serialize(
+                  foreignKeys: foreignKeys, includeDeferred: !inTransaction),
+              0,
+              null);
         }
         final table = DatabaseCatalog.parseTable(sql, 0);
         _tables[key] = _Table(table, sql, []);
@@ -1765,12 +1829,13 @@ final class ImageMutations {
           0,
           null);
     }
-    final insert = p.take('INSERT');
+    final replace = p.take('REPLACE');
+    final insert = replace || p.take('INSERT');
     final update = !insert && p.take('UPDATE');
     if (!insert && !update) p.require('DELETE');
-    var policy = 'DEFAULT';
-    final explicitPolicy = (insert || update) && p.take('OR');
-    if (explicitPolicy) {
+    var policy = replace ? 'REPLACE' : 'DEFAULT';
+    final explicitPolicy = replace || (insert || update) && p.take('OR');
+    if (explicitPolicy && !replace) {
       policy = p.identifier().toUpperCase();
       if (!['ABORT', 'IGNORE', 'REPLACE', 'FAIL', 'ROLLBACK']
           .contains(policy)) {

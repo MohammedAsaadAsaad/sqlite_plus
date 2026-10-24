@@ -39,6 +39,9 @@ final class BtreePageHeader {
     final headerEnd = start + (leaf ? 8 : 12);
     final freeblock = data.getUint16(start + 1);
     final count = data.getUint16(start + 3);
+    if (!leaf && count == 0 && pageNumber != 1) {
+      throw const FormatException('Empty interior page outside page one');
+    }
     final rawContent = data.getUint16(start + 5);
     final content = rawContent == 0 ? 65536 : rawContent;
     final fragments = page[start + 7];

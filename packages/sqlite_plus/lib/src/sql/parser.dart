@@ -460,7 +460,7 @@ final class SqlParser {
           source?.substring(start.offset, current.offset).trim() ?? start.text;
       final explicitAlias = take('AS') || _implicitAlias();
       final label = explicitAlias
-          ? identifier()
+          ? _alias()
           : expr is ColumnExpr
               ? expr.name
               : display;
@@ -775,8 +775,13 @@ final class SqlParser {
     return false;
   }
 
+  String _alias() => current.kind == SqlTokenKind.string
+      ? tokens[position++].text
+      : identifier();
+
   bool _implicitAlias() =>
-      current.kind == SqlTokenKind.identifier &&
+      (current.kind == SqlTokenKind.identifier ||
+          current.kind == SqlTokenKind.string) &&
       !const {
         'FROM',
         'WHERE',
@@ -817,7 +822,7 @@ final class SqlParser {
     } else {
       table = identifier();
     }
-    final alias = take('AS') || _implicitAlias() ? identifier() : null;
+    final alias = take('AS') || _implicitAlias() ? _alias() : null;
     Expr? on;
     final using = <String>[];
     if (take('ON')) {

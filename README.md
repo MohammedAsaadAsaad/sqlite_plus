@@ -346,7 +346,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 1,395 differential queries across the
+The pinned M6 oracle currently contains 1,419 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 
@@ -406,3 +406,9 @@ Schema-level PRIMARY KEY/UNIQUE/NOT NULL ON CONFLICT policies support ABORT,
 IGNORE, REPLACE, FAIL and ROLLBACK, with explicit statement policies taking
 precedence. REPLACE deletes fire row triggers when recursive_triggers is enabled;
 BEFORE DELETE RAISE(IGNORE) leaves uniqueness enforcement active.
+
+CREATE TABLE AS materializes SELECT/WITH/VALUES results, assigning rowids in
+result order and SQLite-compatible column names and affinity types. It accepts
+query parameters and copies values without source constraints or defaults.
+REPLACE INTO is supported with the same conflict, UPSERT and trigger behavior
+as INSERT OR REPLACE. String-quoted projection/source aliases are supported.

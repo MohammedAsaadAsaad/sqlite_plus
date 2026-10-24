@@ -9658,6 +9658,126 @@
     "error": "misuse of aggregate: sum()"
   },
   {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x)",
+    "parameters": [],
+    "columns": [
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x=1 FROM (SELECT CAST('1' AS TEXT) AS x)",
+    "parameters": [],
+    "columns": [
+      "x=1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH c(x) AS(SELECT CAST(1 AS REAL)) SELECT x='1',typeof(x) FROM c",
+    "parameters": [],
+    "columns": [
+      "x='1'",
+      "typeof(x)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x LIMIT 0)",
+    "parameters": [],
+    "columns": [
+      "x='1'"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 AS 'λ😀'",
+    "parameters": [],
+    "columns": [
+      "λ😀"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 'value'",
+    "parameters": [],
+    "columns": [
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT a.x FROM (SELECT 1 AS x) AS 'a'",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 AS '',2 AS ''",
+    "parameters": [],
+    "columns": [
+      "",
+      ""
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
     "file": "sqlite-4096.db",
     "sql": "select abs(-7) as result",
     "parameters": [],
@@ -19316,6 +19436,126 @@
     "error": "misuse of aggregate: sum()"
   },
   {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x)",
+    "parameters": [],
+    "columns": [
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x=1 FROM (SELECT CAST('1' AS TEXT) AS x)",
+    "parameters": [],
+    "columns": [
+      "x=1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH c(x) AS(SELECT CAST(1 AS REAL)) SELECT x='1',typeof(x) FROM c",
+    "parameters": [],
+    "columns": [
+      "x='1'",
+      "typeof(x)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x LIMIT 0)",
+    "parameters": [],
+    "columns": [
+      "x='1'"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 AS 'λ😀'",
+    "parameters": [],
+    "columns": [
+      "λ😀"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 'value'",
+    "parameters": [],
+    "columns": [
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT a.x FROM (SELECT 1 AS x) AS 'a'",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 AS '',2 AS ''",
+    "parameters": [],
+    "columns": [
+      "",
+      ""
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
     "file": "sqlite-65536.db",
     "sql": "select abs(-7) as result",
     "parameters": [],
@@ -28972,5 +29212,125 @@
     "sql": "VALUES(1),(sum(2))",
     "parameters": [],
     "error": "misuse of aggregate: sum()"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x)",
+    "parameters": [],
+    "columns": [
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x=1 FROM (SELECT CAST('1' AS TEXT) AS x)",
+    "parameters": [],
+    "columns": [
+      "x=1"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH c(x) AS(SELECT CAST(1 AS REAL)) SELECT x='1',typeof(x) FROM c",
+    "parameters": [],
+    "columns": [
+      "x='1'",
+      "typeof(x)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x LIMIT 0)",
+    "parameters": [],
+    "columns": [
+      "x='1'"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 AS 'λ😀'",
+    "parameters": [],
+    "columns": [
+      "λ😀"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 'value'",
+    "parameters": [],
+    "columns": [
+      "value"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT a.x FROM (SELECT 1 AS x) AS 'a'",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 AS '',2 AS ''",
+    "parameters": [],
+    "columns": [
+      "",
+      ""
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
   }
 ]

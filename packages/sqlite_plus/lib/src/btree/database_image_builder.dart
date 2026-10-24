@@ -212,6 +212,9 @@ abstract final class DatabaseImageBuilder {
             used += cost;
             end++;
           }
+          // A non-root interior page needs a key and at least two children.
+          // Redistribute the tail before allocating a singleton child group.
+          if (end == nodes.length - 1 && end - begin > 2) end--;
           final n = allocate();
           write(
               n,

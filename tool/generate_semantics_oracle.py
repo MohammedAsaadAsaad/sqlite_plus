@@ -353,6 +353,13 @@ def main():
       'SELECT id,(VALUES(id+1)) FROM sample WHERE id>0 AND id<3 ORDER BY id',
     ]
     queries += ['VALUES(sum(1),sum(2))', 'VALUES(sum(1)) UNION SELECT 2', 'SELECT 1 UNION VALUES(sum(2))', 'VALUES(1),(sum(2))']
+    queries += [
+      "SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x)",
+      "SELECT x=1 FROM (SELECT CAST('1' AS TEXT) AS x)",
+      "WITH c(x) AS(SELECT CAST(1 AS REAL)) SELECT x='1',typeof(x) FROM c",
+      "SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x LIMIT 0)"
+    ]
+    queries += ["SELECT 1 AS 'λ😀'", "SELECT 1 'value'", "SELECT a.x FROM (SELECT 1 AS x) AS 'a'", "SELECT 1 AS '',2 AS ''"]
     cases = []
     for fixture in manifest['fixtures']:
         with sqlite3.connect(f"file:{ROOT/fixture['file']}?mode=ro",uri=True) as c:

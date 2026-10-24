@@ -14,7 +14,7 @@
   table/column ALTER with dependency guards; generated VIRTUAL/STORED columns;
   schema/statement conflict policies and REPLACE triggers; recursive CTE priority
   queues, LIMIT/OFFSET and duplicate suppression; VALUES queries/CTEs/subqueries/
-  trigger bodies; metadata/integrity PRAGMAs.
+  trigger bodies; CREATE TABLE AS and REPLACE shorthand; metadata/integrity PRAGMAs.
   Open: dependent view/trigger rewrites and broader ALTER, SQL/function/PRAGMA,
   foreign-key/trigger interaction, planner and differential hardening audit.
 - [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.

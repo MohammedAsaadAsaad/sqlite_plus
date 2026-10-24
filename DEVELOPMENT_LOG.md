@@ -471,3 +471,23 @@
   The pinned M6 oracle has 1,395 cases; native schema/view/trigger cross-open
   comparisons pass 514 snapshots per encoding (1,542 total). M6 remains open
   for the documented schema dependency and broader conformance audit work.
+
+## 2026-10-24 — M6 CTAS, REPLACE and interior-page boundary fix
+
+- Added CREATE TABLE AS SELECT/WITH/VALUES, query parameters, result-order rowids,
+  SQLite column-name deduplication and affinity types, with no copied defaults,
+  keys or generated-column constraints. Added REPLACE INTO shorthand through the
+  existing conflict/UPSERT/trigger paths and string-quoted result/source aliases.
+- Preserved query affinity, declared types and collations for LIMIT zero results,
+  including CAST metadata; added differential comparison-affinity regressions.
+- Native cross-open testing found a pre-existing table-tree split bug exposed by
+  the larger UTF-16 schema: a final interior group could have one child/no keys.
+  Redistribute the final child groups and reject empty interiors outside page one.
+  Test 273 schema layouts across encodings and native integrity at the failing
+  accumulated-schema boundary, with positive/negative framing regressions.
+- Verification: all 2,344 engine tests, all-package locked installs/fatal-info
+  analysis, formatting and fixture/oracle checksums pass. The M6 query oracle has
+  1,419 cases. Native SQLite verifies all 537 snapshots per encoding (1,611 total).
+  Mutation/transaction interoperability, byte-exact rollback recovery and WAL/
+  checkpoint/native continuation/owner handoff checks pass after the storage fix.
+- M6 remains open for dependency rewrites and the remaining conformance audit.

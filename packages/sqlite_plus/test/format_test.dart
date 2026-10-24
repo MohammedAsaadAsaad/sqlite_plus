@@ -135,8 +135,13 @@ void main() {
     for (final size in [512, 65536]) {
       final header = DatabaseHeader.decode(fixture(size));
       for (final type in [2, 5, 10, 13]) {
-        final result = BtreePageHeader.decode(emptyPage(type, size: size),
-            database: header, pageNumber: 2);
+        final raw = emptyPage(type, size: size);
+        final interior = type == 2 || type == 5;
+        // Only page one may represent an interior with zero keys.
+        final page =
+            interior ? (Uint8List(size)..setRange(100, 112, raw)) : raw;
+        final result = BtreePageHeader.decode(page,
+            database: header, pageNumber: interior ? 1 : 2);
         expect(result.type, type);
         expect(result.cellContentOffset, size);
         expect(result.cellOffsets, isEmpty);
