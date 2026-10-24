@@ -6,7 +6,16 @@
 - [x] M3: Catalog, tokenizer, parser, single-table SELECT execution and differential tests (M3 subset; full semantics remain M6).
 - [x] M4: Write pager, rowid B-tree mutation, INSERT/UPDATE/DELETE and rollback journal (simple unindexed tables; durability requires pre-provisioned storage contract).
 - [x] M5: Transactions, savepoints, locking, WAL writes/checkpoints and recovery tests under a single exclusive owner isolate. External concurrent SQLite readers/shared wal-index mode and hard-link aliases are unsupported; see compatibility matrix.
-- [ ] M6: Complete SQL semantics, indexes, planner, functions and PRAGMAs. Verified expansion: joins/subqueries/compounds/CTEs, expressions/collations/grouping, bounded windows, schema/index reconstruction, constraints/foreign keys/row triggers, secondary equality planning and metadata/header PRAGMAs. UPSERT/RETURNING and safe table renaming also verified. Broader SQL conformance, Grouped windows, connection-local scalar/aggregate functions, date/time/math/string functions, dynamic defaults, range/multi-column plans and integrity/FK PRAGMAs are also verified. Column rename/drop with key/index/FK/CHECK metadata and dependency guards are verified. Expression/partial index writes/plans/metadata and matching UPSERT targets are verified. SELECT/WITH trigger bodies, recursive triggers, RAISE policies and automatic rowid timing are verified. Generated VIRTUAL/STORED columns, dependency validation, affinity, constraints/indexes and guarded ALTER are verified. Schema constraint conflict policies and recursive REPLACE delete triggers are verified. Remaining view/trigger dependency rewrites, broader SQL/function/PRAGMA conformance remain open.
+- [ ] M6: Complete SQL semantics, indexes, planner, functions and PRAGMAs.
+  Verified: joins/subqueries/compounds/CTEs; grouping and bounded windows;
+  scalar/aggregate callbacks and date/time/math/string functions; indexed image
+  writes, expression/partial indexes and range/equality plans; constraints/FKs;
+  BEFORE/AFTER/INSTEAD OF triggers, recursion and RAISE policies; UPSERT/RETURNING;
+  table/column ALTER with dependency guards; generated VIRTUAL/STORED columns;
+  schema/statement conflict policies and REPLACE triggers; recursive CTE priority
+  queues, LIMIT/OFFSET and duplicate suppression; metadata/integrity PRAGMAs.
+  Open: dependent view/trigger rewrites and broader ALTER, SQL/function/PRAGMA,
+  foreign-key/trigger interaction, planner and differential hardening audit.
 - [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.
 - [ ] M8: Advanced extensions, JSON/JSONB, FTS, R-tree, virtual tables.
 - [ ] M9: Browser adapters, platform matrix, AOT benchmarks, hardening and release gates.

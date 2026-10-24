@@ -13,10 +13,10 @@ development reference tools. Production engine code is Pure Dart.
 | Table/index/overflow record reads | Verified fixture subset | 2,244 physical records, three encodings, 512/4096/65536-byte pages; malformed text rejected |
 | Rowid point planning | Implemented | Separator descent, residual WHERE evaluation, corruption regressions and AOT microbenchmark |
 | Secondary-index/range planning | Verified subset | Multi-column/expression equality prefixes and ranges, proved partial predicates, descending keys, rowid ranges and NULL/inclusive bounds; page-read regressions and AOT measurements |
-| SELECT expressions | Verified subset | 726 original plus 1,236 M6 pinned differential cases; IN/BETWEEN/CASE/CAST/LIKE/ESCAPE/GLOB/bitwise and NULL/affinity behavior |
+| SELECT expressions | Verified subset | 726 original plus 1,329 M6 pinned differential cases; IN/BETWEEN/CASE/CAST/LIKE/ESCAPE/GLOB/bitwise and NULL/affinity behavior |
 | Collations | BINARY/NOCASE/RTRIM | Declared/explicit propagation, ASCII NOCASE, SQL filtering/grouping/distinct/sorting and index constraints |
 | Joins / derived sources | Verified subset | INNER/LEFT/RIGHT/FULL/CROSS/NATURAL, ON/USING, aliases and qualified wildcards |
-| Subqueries / compounds / CTEs | Verified subset | Scalar/correlated/EXISTS/IN, UNION/ALL/INTERSECT/EXCEPT, ordinary/forward/recursive CTEs; recursion max 100,000 rows; recursive ORDER/LIMIT unsupported |
+| Subqueries / compounds / CTEs | Verified subset | Scalar/correlated/EXISTS/IN, UNION/ALL/INTERSECT/EXCEPT, ordinary/forward/recursive CTEs; max 100,000 queued rows; stable priority ORDER BY, LIMIT/OFFSET and UNION duplicate suppression |
 | Scalar / aggregate functions | Verified subset | Core/string/math/ROUND/variadic IF/IIF and aggregates; connection-local scalar/aggregate callbacks; DATE/TIME/DATETIME/JULIANDAY/UNIXEPOCH/STRFTIME/TIMEDIFF and dynamic defaults; broader edge cases remain |
 | GROUP BY / HAVING | Verified subset | Expressions/ordinals/aliases, HAVING aliases, distinct aggregates, empty inputs and bare-column MIN/MAX selection in differential cases |
 | Window functions | Verified bounded subset | Ranking, NTILE, LAG/LEAD, first/last/nth values, aggregate ROWS/GROUPS/RANGE frames/offsets, EXCLUDE, FILTER, named/inherited windows and NULLS FIRST/LAST; max 10,000 rows; grouped aggregates and HAVING feed windows |
@@ -32,7 +32,7 @@ development reference tools. Production engine code is Pure Dart.
 | Isolate ownership / file lease | Single-owner architecture | Serialized SendPort requests, client-owned transactions, loopback duplicate-owner guard, native SQLite lock-byte exclusion and handoff |
 | ORM / generator | Placeholders, M7 pending | No behavior or tests yet |
 | JSON/JSONB / FTS / R-tree / virtual tables | M8 pending | No implementation claim |
-| Linux x64 | Development verified | Dart 3.13.7; 2,152 engine tests, format, fatal-info analysis and locked dependencies pass |
+| Linux x64 | Development verified | Dart 3.13.7; 2,247 engine tests, format, fatal-info analysis and locked dependencies pass |
 | Windows/macOS/Android/iOS/Web | Unverified, M9 pending | Core has no dart:io dependency; optional file/owner adapter does; no execution claim |
 
 ## Query and format limits

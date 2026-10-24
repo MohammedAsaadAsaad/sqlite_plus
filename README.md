@@ -268,7 +268,7 @@ The engine now supports:
 - INNER/LEFT/RIGHT/FULL/CROSS/NATURAL joins, ON/USING, qualified names,
   derived tables, scalar/correlated subqueries, EXISTS and IN subqueries.
 - UNION/UNION ALL/INTERSECT/EXCEPT; ordinary/forward CTEs and bounded recursive
-  CTEs (100,000 emitted rows; recursive ORDER BY/LIMIT unsupported).
+  CTEs (100,000 queued rows; recursive priority ORDER BY, LIMIT and OFFSET).
 - IN lists, BETWEEN, CASE, CAST, LIKE/ESCAPE, GLOB, bitwise operations,
   BINARY/NOCASE/RTRIM collations, expression/ordinal/alias GROUP BY, HAVING
   aliases, and bare-column MIN/MAX selection in the verified cases.
@@ -346,7 +346,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 1,236 differential queries across the
+The pinned M6 oracle currently contains 1,329 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 

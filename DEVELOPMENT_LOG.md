@@ -440,3 +440,21 @@
   validates 501 mutation snapshots per encoding (1,503 total), including schema
   policies, compound keys, rollback, ignored replacement deletes and metadata.
 - M6 remains open for dependency rewrites and remaining SQL/PRAGMA/planner audit.
+
+## 2026-10-24 — M6 recursive CTE queue semantics
+
+- Added stable priority queues for recursive ORDER BY, LIMIT/OFFSET extraction,
+  FIFO ties, UNION deduplication and multiple recursive branches. Offset rows
+  still feed recursion; LIMIT zero avoids anchor evaluation. The 100,000 queued
+  row bound has passing exact-boundary and over-boundary tests.
+- Validate recursive widths/references even with LIMIT zero; reject multiple
+  direct recursive references, aggregates/windows and invalid ordering terms.
+  Fixed ordinary CTEs evaluating their anchor twice, with callback-count tests.
+- Added 93 pinned query cases across encodings (1,329 M6 cases total), including
+  tree traversal, collations, NULL ordering, limits, malformed preparation and
+  callbacks. Parameterized CTE INSERT RETURNING and atomic errors are covered.
+- Verification: all 2,247 engine tests, all-package locked dependencies and
+  fatal-info analysis, formatting and all fixture/oracle checksums pass. Native
+  schema/DML cross-open verification still passes all 501 snapshots per encoding
+  (1,503 total). GitHub Actions passed all five preceding pushed batches.
+- M6 remains open for the documented dependency rewrites and conformance audit.

@@ -309,6 +309,35 @@ def main():
       "SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v) UNION SELECT 'A'",
       "SELECT typeof(v) FROM (SELECT CAST(1 AS REAL) AS v)",
     ]
+    queries += [
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 5) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 5 OFFSET 3) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<5 LIMIT -1 OFFSET 2) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 0) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT dart_counter() UNION ALL SELECT x+1 FROM c LIMIT 0) SELECT dart_counter() FROM (SELECT count(*) FROM c)',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT NULL) SELECT x FROM c',
+      "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT '3') SELECT x FROM c",
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 2.5) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION SELECT (x+1)%4 FROM c LIMIT 10 OFFSET 1) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 UNION ALL SELECT x+2 FROM c WHERE x<3 LIMIT 10) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY 1 DESC) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY missing LIMIT 2) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT sum(x) FROM c LIMIT 2) SELECT x FROM c',
+    ]
+    for order in ['2,1', '2 DESC,1 DESC', '1 DESC', '2 DESC,1', '2,1 DESC']:
+      for tail in ['LIMIT 7', 'LIMIT 4 OFFSET 3']:
+        queries.append('WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY '+order+' '+tail+') SELECT x,depth FROM tree')
+    queries += ['WITH c AS(SELECT dart_counter() AS x) SELECT x FROM c', 'WITH c AS(SELECT dart_counter() AS x UNION ALL SELECT dart_counter()) SELECT x FROM c']
+    queries += [
+      "WITH RECURSIVE c(x) AS(SELECT 'b' AS x UNION ALL SELECT 'A' UNION ALL SELECT x||'z' FROM c WHERE length(x)<2 ORDER BY x COLLATE NOCASE LIMIT 5) SELECT x FROM c",
+      "WITH RECURSIVE c(x) AS(SELECT 'a' COLLATE NOCASE UNION SELECT 'A' FROM c LIMIT 5) SELECT x FROM c",
+      "WITH RECURSIVE c(x) AS(SELECT NULL AS x UNION ALL SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY 1 NULLS LAST LIMIT 5) SELECT x FROM c"
+    ]
+    queries += [
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT 1,2 FROM c LIMIT 0) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT missing FROM c LIMIT 0) SELECT x FROM c',
+      'WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT a.x+b.x FROM c a JOIN c b LIMIT 5) SELECT x FROM c'
+    ]
     cases = []
     for fixture in manifest['fixtures']:
         with sqlite3.connect(f"file:{ROOT/fixture['file']}?mode=ro",uri=True) as c:
@@ -326,7 +355,7 @@ def main():
                     cursor = c.execute(sql,parameters)
                     case.update({'columns':[v[0] for v in cursor.description],
                                  'rows':[[encode(v) for v in row] for row in cursor]})
-                except sqlite3.OperationalError as error:
+                except sqlite3.Error as error:
                     case['error']=str(error)
                 cases.append(case)
     path = ROOT/'semantics_oracle.json'

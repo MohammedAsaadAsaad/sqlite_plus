@@ -8354,6 +8354,925 @@
     ]
   },
   {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 5 OFFSET 3) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<5 LIMIT -1 OFFSET 2) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 0) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT dart_counter() UNION ALL SELECT x+1 FROM c LIMIT 0) SELECT dart_counter() FROM (SELECT count(*) FROM c)",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT NULL) SELECT x FROM c",
+    "parameters": [],
+    "error": "datatype mismatch"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT '3') SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 2.5) SELECT x FROM c",
+    "parameters": [],
+    "error": "datatype mismatch"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION SELECT (x+1)%4 FROM c LIMIT 10 OFFSET 1) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 UNION ALL SELECT x+2 FROM c WHERE x<3 LIMIT 10) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY 1 DESC) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY missing LIMIT 2) SELECT x FROM c",
+    "parameters": [],
+    "error": "1st ORDER BY term does not match any column in the result set"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT sum(x) FROM c LIMIT 2) SELECT x FROM c",
+    "parameters": [],
+    "error": "recursive aggregate queries not supported"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 DESC LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 DESC LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 1 DESC LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 1 DESC LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 DESC LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 DESC LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH c AS(SELECT dart_counter() AS x) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH c AS(SELECT dart_counter() AS x UNION ALL SELECT dart_counter()) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 'b' AS x UNION ALL SELECT 'A' UNION ALL SELECT x||'z' FROM c WHERE length(x)<2 ORDER BY x COLLATE NOCASE LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "A"
+      ],
+      [
+        "Az"
+      ],
+      [
+        "b"
+      ],
+      [
+        "bz"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 'a' COLLATE NOCASE UNION SELECT 'A' FROM c LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT NULL AS x UNION ALL SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY 1 NULLS LAST LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT 1,2 FROM c LIMIT 0) SELECT x FROM c",
+    "parameters": [],
+    "error": "SELECTs to the left and right of UNION ALL do not have the same number of result columns"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT missing FROM c LIMIT 0) SELECT x FROM c",
+    "parameters": [],
+    "error": "no such column: missing"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT a.x+b.x FROM c a JOIN c b LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "error": "multiple references to recursive table: c"
+  },
+  {
     "file": "sqlite-4096.db",
     "sql": "select abs(-7) as result",
     "parameters": [],
@@ -16708,6 +17627,925 @@
     ]
   },
   {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 5 OFFSET 3) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<5 LIMIT -1 OFFSET 2) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 0) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT dart_counter() UNION ALL SELECT x+1 FROM c LIMIT 0) SELECT dart_counter() FROM (SELECT count(*) FROM c)",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT NULL) SELECT x FROM c",
+    "parameters": [],
+    "error": "datatype mismatch"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT '3') SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 2.5) SELECT x FROM c",
+    "parameters": [],
+    "error": "datatype mismatch"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION SELECT (x+1)%4 FROM c LIMIT 10 OFFSET 1) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 UNION ALL SELECT x+2 FROM c WHERE x<3 LIMIT 10) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY 1 DESC) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY missing LIMIT 2) SELECT x FROM c",
+    "parameters": [],
+    "error": "1st ORDER BY term does not match any column in the result set"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT sum(x) FROM c LIMIT 2) SELECT x FROM c",
+    "parameters": [],
+    "error": "recursive aggregate queries not supported"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 DESC LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 DESC LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 1 DESC LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 1 DESC LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 DESC LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 DESC LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH c AS(SELECT dart_counter() AS x) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH c AS(SELECT dart_counter() AS x UNION ALL SELECT dart_counter()) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 'b' AS x UNION ALL SELECT 'A' UNION ALL SELECT x||'z' FROM c WHERE length(x)<2 ORDER BY x COLLATE NOCASE LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "A"
+      ],
+      [
+        "Az"
+      ],
+      [
+        "b"
+      ],
+      [
+        "bz"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 'a' COLLATE NOCASE UNION SELECT 'A' FROM c LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT NULL AS x UNION ALL SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY 1 NULLS LAST LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT 1,2 FROM c LIMIT 0) SELECT x FROM c",
+    "parameters": [],
+    "error": "SELECTs to the left and right of UNION ALL do not have the same number of result columns"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT missing FROM c LIMIT 0) SELECT x FROM c",
+    "parameters": [],
+    "error": "no such column: missing"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT a.x+b.x FROM c a JOIN c b LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "error": "multiple references to recursive table: c"
+  },
+  {
     "file": "sqlite-65536.db",
     "sql": "select abs(-7) as result",
     "parameters": [],
@@ -25060,5 +26898,924 @@
         "real"
       ]
     ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 5 OFFSET 3) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<5 LIMIT -1 OFFSET 2) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 0) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT dart_counter() UNION ALL SELECT x+1 FROM c LIMIT 0) SELECT dart_counter() FROM (SELECT count(*) FROM c)",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT NULL) SELECT x FROM c",
+    "parameters": [],
+    "error": "datatype mismatch"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT '3') SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c LIMIT 2.5) SELECT x FROM c",
+    "parameters": [],
+    "error": "datatype mismatch"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION SELECT (x+1)%4 FROM c LIMIT 10 OFFSET 1) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 UNION ALL SELECT x+2 FROM c WHERE x<3 LIMIT 10) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY 1 DESC) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY missing LIMIT 2) SELECT x FROM c",
+    "parameters": [],
+    "error": "1st ORDER BY term does not match any column in the result set"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT sum(x) FROM c LIMIT 2) SELECT x FROM c",
+    "parameters": [],
+    "error": "recursive aggregate queries not supported"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 DESC LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 DESC LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 1 DESC LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 1 DESC LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "15"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "14"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "13"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2 DESC,1 LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "8"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "9"
+        },
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 DESC LIMIT 7) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE tree(x,depth) AS(SELECT 1,0 UNION ALL SELECT x*2+branch,depth+1 FROM tree CROSS JOIN (SELECT 0 AS branch UNION ALL SELECT 1) WHERE depth<3 ORDER BY 2,1 DESC LIMIT 4 OFFSET 3) SELECT x,depth FROM tree",
+    "parameters": [],
+    "columns": [
+      "x",
+      "depth"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "7"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "6"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH c AS(SELECT dart_counter() AS x) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH c AS(SELECT dart_counter() AS x UNION ALL SELECT dart_counter()) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 'b' AS x UNION ALL SELECT 'A' UNION ALL SELECT x||'z' FROM c WHERE length(x)<2 ORDER BY x COLLATE NOCASE LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "A"
+      ],
+      [
+        "Az"
+      ],
+      [
+        "b"
+      ],
+      [
+        "bz"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 'a' COLLATE NOCASE UNION SELECT 'A' FROM c LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT NULL AS x UNION ALL SELECT 1 UNION ALL SELECT x+1 FROM c WHERE x<3 ORDER BY 1 NULLS LAST LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT 1,2 FROM c LIMIT 0) SELECT x FROM c",
+    "parameters": [],
+    "error": "SELECTs to the left and right of UNION ALL do not have the same number of result columns"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT missing FROM c LIMIT 0) SELECT x FROM c",
+    "parameters": [],
+    "error": "no such column: missing"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH RECURSIVE c(x) AS(SELECT 1 UNION ALL SELECT a.x+b.x FROM c a JOIN c b LIMIT 5) SELECT x FROM c",
+    "parameters": [],
+    "error": "multiple references to recursive table: c"
   }
 ]

@@ -166,13 +166,13 @@ extension _RelationalQueries on SqliteDatabase {
           ? 'TEXT'
           : '';
   SelectStatement _copy(SelectStatement source, List<SelectItem> items,
-          {bool tail = true}) =>
+          {bool tail = true, Expr? limitOverride}) =>
       SelectStatement(
           items,
           source.table,
           source.where,
           tail ? source.order : [],
-          tail ? source.limit : null,
+          tail ? source.limit : limitOverride,
           tail ? source.offset : null,
           source.distinct,
           source.parameterCount)
@@ -205,10 +205,39 @@ extension _RelationalQueries on SqliteDatabase {
             throw const SqlException(
                 'Recursive CTE requires a non-recursive anchor');
           }
-          final anchor = _copy(query, query.items, tail: false)
+          int recursiveCount(Expr? expr, int fallback) {
+            if (expr == null) return fallback;
+            expr.validate({});
+            var value = expr.evaluate(
+                EvalContext({}, {}, bound, _pager.header.textEncoding));
+            if (value is String) value = numeric(value);
+            if (value is double &&
+                value.isFinite &&
+                value == value.truncateToDouble()) {
+              value = BigInt.from(value);
+            }
+            if (value is! BigInt ||
+                value < -(BigInt.one << 63) ||
+                value >= BigInt.one << 63) {
+              throw const SqlException(
+                  'Recursive LIMIT/OFFSET datatype mismatch');
+            }
+            if (value > BigInt.from(0x7fffffff)) return 0x7fffffff;
+            if (value < BigInt.from(-0x7fffffff)) return -0x7fffffff;
+            return value.toInt();
+          }
+
+          final recursiveLimit =
+              references.contains(name) ? recursiveCount(query.limit, -1) : -1;
+          final recursiveOffset =
+              references.contains(name) ? recursiveCount(query.offset, 0) : 0;
+          final anchor = _copy(query, query.items,
+              tail: false,
+              limitOverride: recursiveLimit == 0 ? Literal(BigInt.zero) : null)
             ..sources.addAll(query.sources)
             ..ctes.addAll(query.ctes);
-          final first = _relational(anchor, bound, cache, outer);
+          final first = _relational(
+              references.contains(name) ? anchor : query, bound, cache, outer);
           final columns = entry.$1.isEmpty ? first.columns : entry.$1;
           if (columns.length != first.columns.length) {
             throw const SqlException('CTE column width mismatch');
@@ -238,56 +267,137 @@ extension _RelationalQueries on SqliteDatabase {
                 ]
               );
           if (references.contains(name)) {
-            if (query.order.isNotEmpty || query.limit != null) {
-              throw const SqlException(
-                  'Recursive CTE queue ordering is unsupported');
-            }
-            final rows = first.rows.map((row) => row.toList()).toList();
             final recursive = query.compounds
                 .where((part) => part.$2.sources
                     .any((source) => asciiLower(source.table ?? '') == name))
                 .toList();
-            for (final part
-                in query.compounds.where((part) => !recursive.contains(part))) {
-              final seed = _relational(part.$2, bound, cache, outer);
-              for (final row in seed.rows) {
-                if (part.$1 == 'UNION' && rows.any((old) => _same(old, row))) {
-                  continue;
-                }
-
-                rows.add(row);
+            if (recursive.isEmpty ||
+                recursive
+                    .any((part) => !['UNION', 'UNION ALL'].contains(part.$1)) ||
+                recursive.any((part) => part.$1 != recursive.first.$1)) {
+              throw const SqlException('Invalid recursive compound');
+            }
+            cache[name] = materialize([]);
+            for (final part in query.compounds) {
+              final metadataQuery = _copy(part.$2, part.$2.items,
+                  tail: false, limitOverride: Literal(BigInt.zero))
+                ..sources.addAll(part.$2.sources)
+                ..ctes.addAll(part.$2.ctes);
+              if (_relational(metadataQuery, bound, cache, outer)
+                      .columns
+                      .length !=
+                  columns.length) {
+                throw const SqlException('Recursive CTE width mismatch');
               }
             }
-            final queue = rows.toList();
-            var offset = 0;
-            while (offset < queue.length) {
-              if (rows.length > 100000) {
+            for (final part in recursive) {
+              if (part.$2.sources
+                      .where((source) => asciiLower(source.table ?? '') == name)
+                      .length !=
+                  1) {
+                throw const SqlException('Multiple recursive references');
+              }
+              if (part.$2.groupBy.isNotEmpty ||
+                  part.$2.having != null ||
+                  _expressions(part.$2)
+                      .any((e) => e.containsAggregate || e.containsWindow)) {
+                throw const SqlException('Aggregate/window in recursive query');
+              }
+            }
+            final orderSlots = <int>[];
+            for (final term in query.order) {
+              final operand = indexOperand(term.expression);
+              final ordinal = expressionOrdinal(term.expression);
+              var slot = ordinal == null ? -1 : ordinal.toInt() - 1;
+              if (ordinal == null) {
+                for (final component in [
+                  query,
+                  ...query.compounds.map((p) => p.$2)
+                ]) {
+                  slot = component.items.indexWhere((item) =>
+                      operand is ColumnExpr &&
+                          asciiLower(item.label) == operand.key ||
+                      item.expression != null &&
+                          sameExpression(indexOperand(term.expression),
+                              indexOperand(item.expression!)));
+                  if (slot >= 0) break;
+                }
+              }
+              if (slot < 0 || slot >= columns.length) {
+                throw const SqlException(
+                    'Recursive ORDER BY must name an output column');
+              }
+              orderSlots.add(slot);
+            }
+            int priority(List<Object?> a, List<Object?> b) {
+              for (var i = 0; i < orderSlots.length; i++) {
+                final term = query.order[i], slot = orderSlots[i];
+                final context =
+                    EvalContext({}, {}, bound, _pager.header.textEncoding);
+                final collation = term.expression.explicitCollation(context) ??
+                    first.columnCollations[slot];
+                final order = OrderTerm(
+                    CollateExpr(Literal(null),
+                        collation.isEmpty ? 'binary' : collation),
+                    term.descending,
+                    term.nullsFirst);
+                final comparison = order.compare(a[slot], b[slot], context);
+                if (comparison != 0) return comparison;
+              }
+              return 0;
+            }
+
+            final queue = _CteWorkQueue(priority);
+            final seen = <List<Object?>>[];
+            final rows = <List<Object?>>[];
+            final distinct = recursive.first.$1 == 'UNION';
+            void enqueue(List<Object?> row) {
+              if (distinct &&
+                  seen.any((old) => _same(old, row, first.columnCollations))) {
+                return;
+              }
+              if (seen.length >= 100000) {
                 throw const SqlException('Recursive CTE row limit exceeded');
               }
-              cache[name] = materialize([queue[offset++]]);
-              for (final part in recursive) {
-                if (!['UNION', 'UNION ALL'].contains(part.$1)) {
-                  throw const SqlException('Invalid recursive compound');
+              seen.add(row);
+              queue.add(row);
+            }
+
+            if (recursiveLimit != 0) {
+              for (final row in first.rows) {
+                enqueue(row);
+              }
+              for (final part in query.compounds
+                  .where((part) => !recursive.contains(part))) {
+                final seed = _relational(part.$2, bound, cache, outer);
+                for (final row in seed.rows) {
+                  enqueue(row);
                 }
+              }
+            }
+            var skipped = 0;
+            while (queue.isNotEmpty) {
+              final current = queue.removeFirst();
+              if (skipped < recursiveOffset) {
+                skipped++;
+              } else {
+                rows.add(current);
+                if (recursiveLimit >= 0 && rows.length >= recursiveLimit) break;
+              }
+              cache[name] = materialize([current]);
+              for (final part in recursive) {
                 final result = _relational(part.$2, bound, cache, outer);
                 if (result.columns.length != columns.length) {
                   throw const SqlException('Recursive CTE width mismatch');
                 }
                 for (final row in result.rows) {
-                  if (part.$1 == 'UNION' &&
-                      rows.any((old) => _same(old, row))) {
-                    continue;
-                  }
-
-                  rows.add(row);
-                  queue.add(row);
+                  enqueue(row);
                 }
               }
             }
             cache[name] = materialize(rows);
           } else {
-            final result = _relational(query, bound, cache, outer);
-            cache[name] = materialize(result.rows);
+            cache[name] = materialize(first.rows);
           }
           pending.remove(name);
           progressed = true;
@@ -630,5 +740,49 @@ extension _RelationalQueries on SqliteDatabase {
         result.columnAffinities,
         result.columnDeclaredTypes,
         compoundCollations);
+  }
+}
+
+/// Stable priority queue; equal priorities preserve SQLite's FIFO extraction.
+final class _CteWorkQueue {
+  _CteWorkQueue(this.compare);
+  final int Function(List<Object?>, List<Object?>) compare;
+  final List<(int, List<Object?>)> _heap = [];
+  int _sequence = 0;
+  bool get isNotEmpty => _heap.isNotEmpty;
+  int _compare((int, List<Object?>) a, (int, List<Object?>) b) {
+    final result = compare(a.$2, b.$2);
+    return result == 0 ? a.$1.compareTo(b.$1) : result;
+  }
+
+  void add(List<Object?> row) {
+    final entry = (_sequence++, row);
+    _heap.add(entry);
+    var slot = _heap.length - 1;
+    while (slot > 0) {
+      final parent = (slot - 1) ~/ 2;
+      if (_compare(_heap[parent], entry) <= 0) break;
+      _heap[slot] = _heap[parent];
+      slot = parent;
+    }
+    _heap[slot] = entry;
+  }
+
+  List<Object?> removeFirst() {
+    final result = _heap.first.$2, last = _heap.removeLast();
+    if (_heap.isEmpty) return result;
+    var slot = 0;
+    while (slot * 2 + 1 < _heap.length) {
+      var child = slot * 2 + 1;
+      if (child + 1 < _heap.length &&
+          _compare(_heap[child + 1], _heap[child]) < 0) {
+        child++;
+      }
+      if (_compare(last, _heap[child]) <= 0) break;
+      _heap[slot] = _heap[child];
+      slot = child;
+    }
+    _heap[slot] = last;
+    return result;
   }
 }
