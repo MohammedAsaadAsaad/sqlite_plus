@@ -5,6 +5,26 @@ import 'tokenizer.dart';
 
 String asciiLower(String value) => String.fromCharCodes(
     value.codeUnits.map((c) => c >= 65 && c <= 90 ? c + 32 : c));
+
+/// SQLite's names for columns materialized by a view, CTE, derived table or CTAS.
+List<String> relationColumnNames(List<String> labels) {
+  final result = <String>[], used = <String>{};
+  for (var i = 0; i < labels.length; i++) {
+    final original = labels[i];
+    final label = ['true', 'false'].contains(asciiLower(original))
+        ? 'column${i + 1}'
+        : original;
+    var candidate = label, suffix = 0;
+    while (used.contains(asciiLower(candidate))) {
+      final base = label.replaceFirst(RegExp(r':\d+$'), '');
+      candidate = '$base:${++suffix}';
+    }
+    used.add(asciiLower(candidate));
+    result.add(candidate);
+  }
+  return result;
+}
+
 final _minInt = -(BigInt.one << 63);
 final _maxInt = (BigInt.one << 63) - BigInt.one;
 Object narrowInteger(BigInt value) =>

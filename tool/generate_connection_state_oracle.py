@@ -1,4 +1,4 @@
-"""Development-only connection-counter sequences pinned to official SQLite."""
+"""Development-only connection-state sequences pinned to official SQLite."""
 import hashlib
 import json
 import sqlite3
@@ -13,6 +13,26 @@ STATE = 'SELECT changes(),total_changes(),last_insert_rowid()'
 
 
 def scenarios():
+    for name in ['foreign_keys', 'recursive_triggers', 'user_version', 'application_id']:
+        operations = [
+            'CREATE TABLE state_pragma(x)', 'INSERT INTO state_pragma VALUES(7),(8)',
+            (f'PRAGMA {name}', 'query'), (f'PRAGMA main.{name}', 'query'),
+        ]
+        for i,value in enumerate(['ON', 'OFF', 'YES', 'NO', 'TRUE', 'FALSE', '2', '-1', '+1',
+                '1.5', '1e2', '1e-2', '0x10', '0x80000000', '-0x80000000',
+                '2147483647', '2147483648', '-2147483648', '-2147483649',
+                "'on'", "'unknown'", "'1x'", "'0x10'", "' 1'", "'+1'", "'-1'", "'123abc'",
+                "'"+'0'*100+"1'", "'"+'9'*128+"'", "'0x"+'f'*100+"'"]):
+            target = f'main.{name}' if i % 2 else name
+            operations.extend([f'PRAGMA {target}({value})' if i % 3 == 0 else f'PRAGMA {target}={value}',
+                (f'PRAGMA {name}', 'query'), (f'PRAGMA main.{name}', 'query')])
+        for value in ['NULL', 'abs(1)', '1+2', '(1)', '?']:
+            operations.extend([f'PRAGMA main.{name}={value}', (f'PRAGMA main.{name}', 'query')])
+        operations.extend([f'PRAGMA other.{name}=1', ('PRAGMA other.'+name, 'query'),
+            f'PRAGMA "main"."{name}"=1', (f'PRAGMA "main"."{name}"', 'query'),
+            'BEGIN', f'PRAGMA main.{name}=0', (f'PRAGMA main.{name}', 'query'),
+            'ROLLBACK', (f'PRAGMA {name}', 'query')])
+        yield 'qualified state pragma '+name, operations
     yield 'direct writes and returning', [
         'CREATE TABLE t(id INTEGER PRIMARY KEY,x INT UNIQUE)',
         'INSERT INTO t VALUES(10,1),(20,2)',

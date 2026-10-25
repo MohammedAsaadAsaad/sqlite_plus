@@ -23,7 +23,7 @@ void prepareSubqueryWidths(
     for (final entry in query.ctes.values) {
       visit(entry.$2, ctes);
     }
-    for (final source in query.sources) {
+    for (final source in query.leafSources) {
       if (source.query != null) visit(source.query!, ctes);
     }
     void expression(Expr expr) {
@@ -42,7 +42,7 @@ void prepareSubqueryWidths(
       ...query.order.map((term) => term.expression),
       query.limit,
       query.offset,
-      ...query.sources.map((source) => source.on)
+      ...query.allSources.map((source) => source.on)
     ].whereType<Expr>();
     for (final expr in expressions) {
       expression(expr);
@@ -179,6 +179,12 @@ final class _Columns {
   }
 
   List<String> source(QuerySource source, _Ctes scope) {
+    if (source.group.isNotEmpty) {
+      final query = SelectStatement(
+          [SelectItem(null, '*')], null, null, [], null, null, false, 0)
+        ..sources.addAll(source.group);
+      return _unique(columns(query, scope));
+    }
     if (source.query != null) return _unique(columns(source.query!, scope));
     final key = asciiLower(source.table!);
     return source.schema == null && scope.containsKey(key)
@@ -186,11 +192,71 @@ final class _Columns {
         : relation(key);
   }
 
+  Set<String> groupQualifiedNames(QuerySource group, _Ctes ctes) {
+    var ordinal = 0;
+    ({List<(String, int)> visible, List<(String, int)> physical}) layout(
+        QuerySource source) {
+      if (source.group.isEmpty) {
+        final fields = [
+          for (final name in this.source(source, ctes)) (name, ordinal++)
+        ];
+        return (visible: fields, physical: fields);
+      }
+      final visible = <(String, int)>[], physical = <(String, int)>[];
+      final inner = SelectStatement([], null, null, [], null, null, false, 0)
+        ..sources.addAll(source.group);
+      for (final child in inner.normalizedSources) {
+        final right = layout(child);
+        final keys = child.natural
+            ? right.visible
+                .map((field) => field.$1)
+                .where((name) => visible.any((field) => field.$1 == name))
+                .toSet()
+            : child.using.map(asciiLower).toSet();
+        for (final key in keys) {
+          final left = visible.indexWhere((field) => field.$1 == key);
+          if (left < 0 || !right.visible.any((field) => field.$1 == key)) {
+            throw const SqlException('Unresolved dependent USING column');
+          }
+          visible[left] = (key, ordinal++);
+        }
+        visible
+            .addAll(right.visible.where((field) => !keys.contains(field.$1)));
+        physical.addAll(right.physical);
+      }
+      final assigned = <int, String>{}, used = <String>{};
+      for (final field in [...visible, ...physical]) {
+        if (assigned.containsKey(field.$2)) continue;
+        var name = field.$1, suffix = 0;
+        while (!used.add(name)) {
+          name = '${field.$1.replaceFirst(RegExp(r':\d+$'), '')}:${++suffix}';
+        }
+        assigned[field.$2] = name;
+      }
+      return (
+        visible: [for (final field in visible) (assigned[field.$2]!, field.$2)],
+        physical: [
+          for (final entry in assigned.entries) (entry.value, entry.key)
+        ]
+      );
+    }
+
+    return layout(group).physical.map((field) => field.$1).toSet();
+  }
+
   List<String> columns(SelectStatement query, _Ctes inherited) {
     final scope = ctes(query, inherited);
     final star = <String>[], qualified = <String, List<String>>{};
-    for (final source in query.sources) {
+    for (final source in query.normalizedSources) {
       final names = this.source(source, scope);
+      if (source.group.isNotEmpty) {
+        for (final child in source.leafSources) {
+          if (child.alias != null || child.table != null) {
+            qualified[asciiLower(child.alias ?? child.table!)] =
+                this.source(child, scope);
+          }
+        }
+      }
       final using = source.natural
           ? names.where(star.contains).toSet()
           : source.using.toSet();
@@ -215,6 +281,10 @@ final class _Columns {
           }
           result.addAll(names);
         }
+      } else if (!item.explicitAlias &&
+          item.expression is BoolNameExpr &&
+          !star.contains((item.expression as BoolNameExpr).key)) {
+        result.add(asciiLower(item.label));
       } else if (!item.explicitAlias && item.expression is ColumnExpr) {
         final expr = item.expression as ColumnExpr;
         result.add(asciiLower(expr.qualifier == null
@@ -227,25 +297,16 @@ final class _Columns {
     return result;
   }
 
-  List<String> _unique(List<String> columns) {
-    final result = <String>[], seen = <String>{};
-    for (final name in columns) {
-      var candidate = name, suffix = 0;
-      while (seen.contains(candidate)) {
-        candidate = '${name.replaceFirst(RegExp(r':\d+$'), '')}:${++suffix}';
-      }
-      seen.add(candidate);
-      result.add(candidate);
-    }
-    return result;
-  }
+  List<String> _unique(List<String> columns) => relationColumnNames(columns);
 }
 
 final class _SourceColumns {
   _SourceColumns(this.alias, this.names, this.target,
-      {this.qualifiedOnly = false,
+      {this.qualifiedNames,
+      this.qualifiedOnly = false,
       this.mainQualified = false,
       this.implicit = const {}});
+  final Set<String>? qualifiedNames;
   final bool mainQualified;
   final Set<String> implicit;
   final bool qualifiedOnly;
@@ -282,7 +343,10 @@ final class _ColumnScope {
       throw const SqlException('Ambiguous dependent column');
     }
     if (matches.isNotEmpty) {
-      if (!matches.single.names.contains(key)) {
+      final fields = expr.qualifier == null
+          ? matches.single.names
+          : matches.single.qualifiedNames ?? matches.single.names;
+      if (!fields.contains(key)) {
         throw SqlException('Unknown dependent column: ${expr.name}');
       }
       return matches.single;
@@ -328,6 +392,7 @@ final class _ColumnVisitor {
       }
       final binding = scope.find(expr);
       if (binding == null) {
+        if (expr is BoolNameExpr) return;
         if (expr.qualifier == null && aliases.contains(expr.key)) return;
         throw SqlException('Unknown dependent column: ${expr.name}');
       }
@@ -346,14 +411,23 @@ final class _ColumnVisitor {
     }
   }
 
-  void query(SelectStatement select, _ColumnScope? outer, _Ctes inherited) {
-    final ctes = resolver.ctes(select, inherited);
-    for (final entry in select.ctes.values) {
-      query(entry.$2, outer, ctes);
-    }
+  _ColumnScope sourceBindings(
+      List<QuerySource> querySources, _ColumnScope? outer, _Ctes ctes) {
     final sources = <_SourceColumns>[];
-    for (var i = 0; i < select.sources.length; i++) {
-      final source = select.sources[i];
+    for (var i = 0; i < querySources.length; i++) {
+      final source = querySources[i];
+      if (source.group.isNotEmpty) {
+        final inner = SelectStatement(
+            [SelectItem(null, '*')], null, null, [], null, null, false, 0)
+          ..sources.addAll(source.group);
+        // ALTER resolves a parenthesized joined unit as a materialized source.
+        // Child namespaces remain local despite ordinary SELECT visibility.
+        query(inner, null, ctes);
+        sources.add(_SourceColumns(asciiLower(source.alias ?? '@$i'),
+            resolver.source(source, ctes).toSet(), false,
+            qualifiedNames: resolver.groupQualifiedNames(source, ctes)));
+        continue;
+      }
       if (source.query != null) {
         query(source.query!, outer, ctes);
         sources.add(_SourceColumns(asciiLower(source.alias ?? '@$i'),
@@ -366,10 +440,10 @@ final class _ColumnVisitor {
     final exposed = <String, List<_SourceColumns>>{};
     final previous = <String>{};
     final visible = [
-      for (final source in select.sources) resolver.source(source, ctes).toSet()
+      for (final source in querySources) resolver.source(source, ctes).toSet()
     ];
     for (var i = 0; i < sources.length; i++) {
-      final source = select.sources[i];
+      final source = querySources[i];
       final keys = source.natural
           ? visible[i].where(previous.contains).toSet()
           : source.using.map(asciiLower).toSet();
@@ -399,19 +473,41 @@ final class _ColumnVisitor {
       }
       previous.addAll(visible[i]);
     }
-    final scope = _ColumnScope(sources, outer, exposed);
+    return _ColumnScope(sources, outer, exposed);
+  }
+
+  void query(SelectStatement select, _ColumnScope? outer, _Ctes inherited) {
+    final ctes = resolver.ctes(select, inherited);
+    for (final entry in select.ctes.values) {
+      query(entry.$2, outer, ctes);
+    }
+    final querySources = select.normalizedSources;
+    final scope = sourceBindings(querySources, outer, ctes);
     final onAliases = {
       for (final item in select.items)
         if (item.expression != null) asciiLower(item.label): item.expression!
     };
-    for (var i = 0; i < select.sources.length; i++) {
-      final source = select.sources[i];
+    for (var i = 0; i < querySources.length; i++) {
+      final source = querySources[i];
       if (source.on != null) {
         expression(source.on!, scope, ctes, aliases: onAliases.keys.toSet());
       }
     }
     // Resolve wildcard names as well as explicit expressions without running SQL.
     resolver.columns(select, inherited);
+    for (final item in select.items
+        .where((item) => item.expression == null && item.label != '*')) {
+      final qualifier =
+          asciiLower(item.label.substring(0, item.label.length - 2));
+      if (querySources.any((source) =>
+          source.group.isNotEmpty &&
+          (asciiLower(source.alias ?? '') == qualifier ||
+              source.leafSources.any((child) =>
+                  asciiLower(child.alias ?? child.table ?? '') ==
+                  qualifier)))) {
+        throw const SqlException('Unresolved dependent group wildcard');
+      }
+    }
     for (final item in select.items) {
       if (item.expression != null) expression(item.expression!, scope, ctes);
     }
@@ -567,8 +663,41 @@ final class _ColumnVisitor {
         }
       }
     } else {
-      if (update) assignments(scope);
-      if (p.take('WHERE')) expr(scope);
+      var updateScope = scope;
+      if (update) {
+        p.require('SET');
+        final expressions = <Expr>[];
+        do {
+          field();
+          p.require('=');
+          expressions.add(p.expression());
+        } while (p.take(','));
+        if (p.take('FROM')) {
+          final from = p.joinedSources();
+          final probe = SelectStatement([SelectItem(Literal(BigInt.one), '1')],
+              null, null, [], null, null, false, 0)
+            ..sources.addAll(from);
+          query(probe, pseudo, {});
+          final fromScope = sourceBindings(probe.normalizedSources, pseudo, {});
+          updateScope = _ColumnScope(
+              [target, ...fromScope.sources],
+              pseudo,
+              {
+                for (final key in {
+                  ...target.names,
+                  ...?fromScope.unqualified?.keys
+                })
+                  key: [
+                    if (target.names.contains(key)) target,
+                    ...?fromScope.unqualified?[key]
+                  ]
+              });
+        }
+        for (final value in expressions) {
+          expression(value, updateScope, {});
+        }
+      }
+      if (p.take('WHERE')) expr(updateScope);
     }
     p.finish();
   }

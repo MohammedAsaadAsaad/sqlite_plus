@@ -346,7 +346,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 1,647 differential queries across the
+The pinned M6 oracle currently contains 1,740 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 
@@ -451,9 +451,11 @@ target aliases and UPDATE FROM, including WITHOUT ROWID targets and INSTEAD OF
 view triggers. UPDATE FROM materializes assignments before mutation. Physical
 table targets update once per matched target; view triggers follow the reference
 per joined row. Uncorrelated mutation subqueries cache their first evaluation;
-correlated reads can observe earlier writes. Views are currently materialized
-while loading relations, which can invoke callbacks before a later expression
-uses them; lazy evaluation across views is outside the verified contract.
+correlated reads can observe earlier writes. View descriptors are prepared without
+callbacks; rows load when execution consumes the relation. Untaken scalar branches,
+empty mutation targets and LIMIT zero skip deferred view projections. Execution
+still materializes query relations; complete native callback ordering across
+INSERT SELECT and ordinary/NOT MATERIALIZED CTEs remains open.
 
 Explicit `main` schema qualification bypasses CTE shadows. INDEXED BY validates
 its named index and compatible partial predicate; the single-table planner uses
@@ -470,9 +472,11 @@ leave an orphan in this case, and this engine preserves its constraint invariant
 ANALYZE persists sqlite_stat1 statistics from actual full scans, including partial,
 expression, collated and WITHOUT ROWID keys. REINDEX rebuilds index contents;
 VACUUM compacts the main image outside transactions. The image writer currently
-reconstructs all indexes during a requested REINDEX. Statistics are available to
-SQL clients; the planner still uses its documented constraint heuristic. VACUUM
-INTO and statistics-driven native planner equivalence are not implemented.
+reconstructs all indexes during a requested REINDEX. The single-table planner uses
+valid STAT1 prefix cardinalities to rank eligible indexes, with conservative range
+estimates and a heuristic fallback. Invalid, duplicate or stale statistics do not
+prune results. VACUUM INTO and native planner cost-model equivalence are not
+implemented.
 
 Additional core functions include PRINTF/FORMAT, UNISTR/UNISTR_QUOTE, RANDOM/
 RANDOMBLOB, scalar LIKE/GLOB, and LIKELY/UNLIKELY/LIKELIHOOD. Malformed Unicode
@@ -492,3 +496,37 @@ retain native trigger-local save/restore behavior. Tests cover rollback/FAIL,
 RETURNING, UPSERT, REPLACE, WITHOUT ROWID targets, cascading actions, implicit
 DROP deletes and connection isolation. Page rollback does not roll back these
 SQL-visible counters.
+
+Parenthesized joined sources preserve outer-join boundaries, original qualified
+fields and merged-column metadata. Group aliases and wildcards follow the pinned
+reference, including its hidden-field name allocation. Metadata and ALTER dependency
+checks understand these scopes and UPDATE FROM trigger sources. Renaming a USING
+key that would leave a broken UPDATE FROM trigger rejects atomically; pinned
+SQLite can accept such an invalid trigger.
+
+TRUE/FALSE bind real columns or eligible result aliases before falling back to
+boolean constants. Views, CTEs and derived tables reproduce the reference's
+`columnN` names for materialized TRUE/FALSE labels. Scalar-subquery projections
+preserve declared types and affinity through derived queries and CREATE TABLE AS;
+comparison affinity also applies to values selected from mixed-type compounds.
+
+`IN table` and `IN main.table` use table/CTE rows, with row-width validation and
+NULL semantics. As in pinned SQLite, ALTER TABLE RENAME rejects a dependency
+written with this shorthand; column renames retain its meaning. Main-qualified
+state PRAGMAs share connection state, support native parenthesized arguments and
+numeric-prefix parsing, and retain the reference's preparation-time state effects.
+Explicitly supplied INSERT fields skip their defaults; INTEGER PRIMARY KEY
+allocation ignores a declared default, as the reference does.
+
+The saved [STAT1 AOT sample](benchmark_results/stat1_planner_linux_x64.json)
+compares selective-index ranking over 10,000 in-memory rows on Linux x64. It
+contains all five samples and storage-read counts. This is one planner workload,
+not the M9 scale/platform benchmark matrix.
+
+Reproduce that sample with the pinned SDK:
+
+```sh
+cd packages/sqlite_plus
+dart compile exe benchmark/planner_statistics.dart -o /tmp/sqlite-plus-stat1
+/tmp/sqlite-plus-stat1
+```

@@ -64,9 +64,8 @@ final class _TableRenameVisitor {
   void expression(Expr expr, Map<String, bool> bindings, Set<String> shadows) {
     if (expr is ColumnExpr &&
         expr.qualifier != null &&
-        [oldName, 'main.$oldName'].contains(asciiLower(expr.qualifier!)) &&
         !bindings.containsKey(asciiLower(expr.qualifier!)) &&
-        !(inTrigger && ['old', 'new'].contains(oldName))) {
+        !(inTrigger && ['old', 'new'].contains(asciiLower(expr.qualifier!)))) {
       throw const SqlException('Unresolved dependent table qualifier');
     }
     if (expr is ColumnExpr &&
@@ -85,14 +84,24 @@ final class _TableRenameVisitor {
     }
   }
 
-  void query(
-      SelectStatement select, Map<String, bool> outer, Set<String> shadows) {
-    final visibleCtes = {...shadows, ...select.ctes.keys};
-    for (final cte in select.ctes.values) {
-      query(cte.$2, outer, visibleCtes);
-    }
+  Map<String, bool> sourceBindings(List<QuerySource> sources,
+      Map<String, bool> outer, Set<String> visibleCtes) {
     final local = <String, bool>{};
-    for (final source in select.sources) {
+    for (final source in sources) {
+      if (source.group.isNotEmpty) {
+        final inner = SelectStatement([SelectItem(Literal(BigInt.one), '1')],
+            null, null, [], null, null, false, 0)
+          ..sources.addAll(source.group);
+        query(inner, {}, visibleCtes);
+        if (source.alias != null) {
+          final alias = asciiLower(source.alias!);
+          if (local.containsKey(alias)) {
+            throw const SqlException('Ambiguous dependent source alias');
+          }
+          local[alias] = false;
+        }
+        continue;
+      }
       final name = source.table == null ? null : asciiLower(source.table!);
       final physical = source.table != null &&
           (source.schema != null || !visibleCtes.contains(name));
@@ -108,6 +117,24 @@ final class _TableRenameVisitor {
       }
       if (source.query != null) query(source.query!, outer, visibleCtes);
     }
+    return local;
+  }
+
+  void query(
+      SelectStatement select, Map<String, bool> outer, Set<String> shadows) {
+    final visibleCtes = {...shadows, ...select.ctes.keys};
+    if (select.tableInShorthand &&
+        select.sources.any((source) =>
+            asciiLower(source.table ?? '') == oldName &&
+            (source.schema != null || !visibleCtes.contains(oldName)))) {
+      // The pinned SQLite rejects renaming a table referenced by IN table.
+      throw const SqlException('Cannot rename table used by IN shorthand');
+    }
+    for (final cte in select.ctes.values) {
+      query(cte.$2, outer, visibleCtes);
+    }
+    final sources = select.normalizedSources;
+    final local = sourceBindings(sources, outer, visibleCtes);
     final bindings = {...outer, ...local};
     for (final item in select.items) {
       if (item.expression != null) {
@@ -115,8 +142,12 @@ final class _TableRenameVisitor {
       } else if (item.label.endsWith('.*')) {
         final qualifier =
             asciiLower(item.label.substring(0, item.label.length - 2));
-        if (qualifier == oldName &&
-            !bindings.containsKey(qualifier) &&
+        if (sources.any((source) =>
+            source.group.isNotEmpty &&
+            asciiLower(source.alias ?? '') == qualifier)) {
+          throw const SqlException('Unresolved dependent group wildcard');
+        }
+        if (!bindings.containsKey(qualifier) &&
             !(inTrigger && ['old', 'new'].contains(qualifier))) {
           throw const SqlException('Unresolved dependent wildcard qualifier');
         }
@@ -130,7 +161,7 @@ final class _TableRenameVisitor {
       ...select.order.map((t) => t.expression),
       select.limit,
       select.offset,
-      ...select.sources.map((s) => s.on),
+      ...sources.map((s) => s.on),
       ...select.windowDefinitions.values
     ]) {
       if (expr != null) expression(expr, bindings, visibleCtes);
@@ -213,7 +244,26 @@ final class _TableRenameVisitor {
         }
       }
     } else {
-      if (update) assignments();
+      if (update) {
+        p.require('SET');
+        final expressions = <Expr>[];
+        do {
+          p.identifier();
+          p.require('=');
+          expressions.add(p.expression());
+        } while (p.take(','));
+        if (p.take('FROM')) {
+          final from = p.joinedSources();
+          final probe = SelectStatement([SelectItem(Literal(BigInt.one), '1')],
+              null, null, [], null, null, false, 0)
+            ..sources.addAll(from);
+          query(probe, {}, {});
+          bindings.addAll(sourceBindings(probe.normalizedSources, {}, {}));
+        }
+        for (final value in expressions) {
+          expression(value, bindings, {});
+        }
+      }
       if (p.take('WHERE')) expr();
     }
     p.finish();

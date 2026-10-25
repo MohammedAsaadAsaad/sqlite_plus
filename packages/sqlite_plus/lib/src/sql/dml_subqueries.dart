@@ -18,6 +18,35 @@ extension MutationSubqueries on SqliteDatabase {
     for (final query in queries) {
       await _loadRelations(query, cache, <String>{});
     }
+    final schemas = {
+      for (final entry in cache.entries)
+        for (final name in {
+          entry.key,
+          if (entry.key.startsWith('main.')) entry.key.substring(5)
+        })
+          name: (
+            columns:
+                entry.value.$1.columns.map((column) => column.name).toList(),
+            rowid: !entry.value.$1.withoutRowid
+          )
+    };
+    for (final query in queries) {
+      prepareSubqueryWidths(query, schemas);
+    }
+    // Width-dependent scalar/row validation also applies to the enclosing
+    // mutation expression, even when its target has no rows to evaluate.
+    for (final expression in expressions) {
+      final names = <String>{};
+      void columns(Expr value) {
+        if (value is ColumnExpr) names.add(value.key);
+        for (final child in value.children) {
+          columns(child);
+        }
+      }
+
+      columns(expression);
+      expression.validate(names);
+    }
     final views = <String, SelectStatement>{};
     for (final entry in catalog.entries.where((entry) =>
         entry.type == 'view' &&
@@ -57,55 +86,24 @@ extension MutationSubqueries on SqliteDatabase {
       if (!correlated && once.containsKey(query)) return once[query]!;
       if (relations != null) {
         scope.addAll(relations(scope.keys.toSet()));
-        final refreshed = <String>{};
-        void refresh(String name) {
-          if (!refreshed.add(name)) return;
-          final view = views[name];
-          if (view == null) return;
-          // Views have already been cycle-checked while loading relations.
-          Iterable<String> dependencies(SelectStatement statement,
-              [Set<String> inheritedCtes = const {}]) sync* {
-            final ctes = {...inheritedCtes, ...statement.ctes.keys};
-            for (final source in statement.sources) {
-              if (source.query != null) {
-                yield* dependencies(source.query!, ctes);
-              } else if (source.schema != null ||
-                  !ctes.contains(asciiLower(source.table!))) {
-                yield source.schema == null
-                    ? asciiLower(source.table!)
-                    : 'main.${asciiLower(source.table!)}';
-              }
-            }
-            for (final cte in statement.ctes.values) {
-              yield* dependencies(cte.$2, ctes);
-            }
-            for (final part in statement.compounds) {
-              yield* dependencies(part.$2, ctes);
-            }
-            for (final expression in _expressions(statement)) {
-              for (final nested in _nested(expression)) {
-                yield* dependencies(nested, ctes);
-              }
-            }
-          }
-
-          dependencies(view).forEach(refresh);
-          final schema = scope[name]!.$1;
-          final values = _relational(view, context.parameters, scope, null,
-              mutationSubqueries: run, mutationCtes: materializedCtes);
-          scope[name] = (
+        for (final entry in views.entries) {
+          final schema = scope[entry.key]!.$1;
+          scope[entry.key] = (
             schema,
-            [
-              for (final row in values.rows)
-                {
-                  for (var i = 0; i < schema.columns.length; i++)
-                    asciiLower(schema.columns[i].name): row[i]
-                }
-            ]
+            _DeferredRelationRows(() {
+              final values = _relational(
+                  entry.value, context.parameters, scope, null,
+                  mutationSubqueries: run, mutationCtes: materializedCtes);
+              return [
+                for (final row in values.rows)
+                  {
+                    for (var i = 0; i < schema.columns.length; i++)
+                      asciiLower(schema.columns[i].name): row[i]
+                  }
+              ];
+            })
           );
         }
-
-        views.keys.forEach(refresh);
       }
       final result = _relational(query, context.parameters, scope, context,
           mutationSubqueries: run, mutationCtes: materializedCtes);
@@ -129,7 +127,7 @@ extension MutationSubqueries on SqliteDatabase {
         if (item.expression != null) {
           result.add(asciiLower(item.label));
         } else {
-          for (final source in s.sources) {
+          for (final source in s.leafSources) {
             final alias = asciiLower(source.alias ?? source.table ?? '');
             if (item.label != '*' && asciiLower(item.label) != '$alias.*') {
               continue;
@@ -175,7 +173,7 @@ extension MutationSubqueries on SqliteDatabase {
     visit = (s, inherited, inheritedCtes) {
       final ctes = {...inheritedCtes, ...s.ctes};
       final local = {...inherited};
-      for (final source in s.sources) {
+      for (final source in s.leafSources) {
         Set<String> names;
         if (source.query != null) {
           names = output(source.query!, ctes);
@@ -201,6 +199,18 @@ extension MutationSubqueries on SqliteDatabase {
         local.addAll(names);
         local.addAll(names.map((name) => '$alias.$name'));
       }
+      for (final source in s.normalizedSources) {
+        if (source.group.isEmpty || source.alias == null) continue;
+        final alias = asciiLower(source.alias!);
+        final description = SelectStatement([SelectItem(null, '$alias.*')],
+            null, null, [], null, null, false, s.parameterCount)
+          ..sources.add(source)
+          ..ctes.addAll(ctes);
+        final columns = _pragmaColumnMetadata(description, cache,
+            {for (final name in outer) name: CatalogColumn(name, '')});
+        local.addAll(
+            columns.map((column) => '$alias.${asciiLower(column.name)}'));
+      }
       // SELECT aliases can bind in the clauses accepted by the query engine.
       local.addAll(s.items
           .where((i) => i.explicitAlias)
@@ -213,7 +223,7 @@ extension MutationSubqueries on SqliteDatabase {
       if (s.ctes.values.any((cte) => visit(cte.$2, inherited, ctes))) {
         return true;
       }
-      if (s.sources.any((source) =>
+      if (s.leafSources.any((source) =>
           source.query != null && visit(source.query!, inherited, ctes))) {
         return true;
       }

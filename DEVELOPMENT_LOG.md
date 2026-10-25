@@ -615,3 +615,42 @@
 - M6 remains open for parenthesized joins/metadata, broader dependent-DML shapes,
   lazy view callback preparation, statistics planning and the remaining audit.
   M7–M9 remain pending; this is not an all-milestones completion claim.
+
+## 2026-10-25 — M6 grouped sources, preparation and STAT1 planning
+
+- Implemented parenthesized joined-source frames with qualified/hidden fields,
+  materialized alias names, outer null extension, rowids and wildcard boundaries.
+  Match native RIGHT/FULL merged wildcard values and group namespace errors.
+- Added metadata-only grouped descriptors and scalar-subquery affinity/types,
+  including correlated/nested queries and CTAS. Apply comparison affinity to both
+  selected values; skip nested projections for literal LIMIT zero without calls.
+- Extended table/column dependency visitors for trigger UPDATE FROM, correlated
+  assignments and grouped scopes. Preserve atomic rejection when the pinned engine
+  would accept a USING-key rename with a subsequently broken trigger. Track hidden
+  group name allocation during ALTER and validate unrelated table qualifiers.
+- View rows now defer until consumed. Empty targets and untaken branches prepare
+  subquery widths without callbacks. Explicit INSERT fields skip defaults; rowid
+  allocation ignores INTEGER PRIMARY KEY defaults. Match VALUES/default callback
+  order and target-trigger input materialization in the verified subset.
+- Rank eligible single-table indexes by valid STAT1 prefix estimates, retaining
+  mandatory hints and safe partial proofs. Invalid/stale/duplicate statistics
+  fall back; physical corruption rejects. Save reproducible five-sample Linux AOT
+  data for 30-query/10,000-row workloads, with raw storage calls and process RSS.
+- Bind TRUE/FALSE columns and output aliases before literal fallback. Preserve
+  parenthesized constant labels and native materialized columnN names. Prevent
+  ambiguous input fields from being rebound as WHERE/GROUP/HAVING output aliases.
+  Avoid implicit-rowid metadata alias recursion.
+- Added IN table/main.table with native row-width/NULL behavior and atomic native
+  table-rename rejection. Qualified mutable state PRAGMAs now share actual
+  connection flags, parse parenthesized/native signed-prefix arguments, and match
+  preparation-time flag effects even when trailing SQL subsequently rejects.
+- Remaining M6 work includes proper streaming INSERT SELECT/CTE callback behavior
+  and the documented SQL grammar/PRAGMA/function audit. M7–M9 remain pending.
+- Verification: all 7,346 engine tests, all-package locked installs/formatting and
+  fatal-info analysis pass. Fourteen fixture/oracle checksum tools pass. Pinned
+  verification covers 1,740 general M6 queries, 4,080 grouped-join cases, 1,515
+  boolean-name cases, and 48 connection-state sequences with 1,752 steps. Native
+  tools verify 815 schema snapshots per encoding (2,445 total), 1,224 grouped
+  metadata comparisons, 294 scalar-metadata operations, 504 UPDATE FROM/group
+  dependency snapshots, 165 lazy/default callback operations, 30 STAT1 plans and
+  results, and the existing DML/constraint/maintenance/JOIN/metadata/storage checks.

@@ -231,4 +231,40 @@ void main() {
             .length,
         1);
   });
+
+  test('joined group metadata preserves hidden qualifiers and allocated names',
+      () async {
+    await db.execute('CREATE TABLE a(x INT,y TEXT COLLATE NOCASE)');
+    await db.execute('CREATE TABLE b(x TEXT,y REAL,z BLOB)');
+    await db.execute('CREATE TABLE c(x INT,w TEXT)');
+    await db.execute('CREATE VIEW grouped AS SELECT q.x,q."x:1",q.y,q."y:1" '
+        'FROM (a JOIN b USING(x)) AS q');
+    final grouped = await db.query('PRAGMA table_info(grouped)');
+    expect(grouped.rows.map((row) => row[1]), ['x', 'x:1', 'y', 'y:1']);
+    expect(grouped.rows.map((row) => row[2]), ['INT', 'INT', 'TEXT', 'REAL']);
+    await db.execute('CREATE VIEW right_group AS SELECT * '
+        'FROM a LEFT JOIN (b JOIN c USING(x)) USING(x)');
+    final right = await db.query('PRAGMA table_info(right_group)');
+    expect(right.rows.map((row) => row[1]), ['x', 'y', 'y:1', 'z', 'w']);
+    expect(right.rows.map((row) => row[2]),
+        ['INT', 'TEXT', 'REAL', 'BLOB', 'TEXT']);
+  });
+
+  test('joined group metadata never reads callbacks in any query clause',
+      () async {
+    var calls = 0;
+    db.functions.registerScalar('metadata_probe', 0, (_) {
+      calls++;
+      throw StateError('metadata evaluated a joined group');
+    });
+    await db.execute('CREATE TABLE a(x INT)');
+    await db.execute('CREATE TABLE b(x INT,y TEXT)');
+    await db.execute('CREATE TABLE c(x INT)');
+    await db.execute('CREATE VIEW observed_group AS SELECT * FROM a LEFT JOIN '
+        '(b JOIN c ON metadata_probe()) AS q ON metadata_probe() '
+        'WHERE metadata_probe() LIMIT metadata_probe()');
+    expect(
+        (await db.query('PRAGMA table_info(observed_group)')).rows.length, 4);
+    expect(calls, 0);
+  });
 }

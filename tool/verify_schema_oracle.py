@@ -394,6 +394,14 @@ def main():
       "CREATE VIEW on_alias_invalid AS SELECT sum(value) AS total FROM on_alias_left JOIN on_alias_right ON total=b",
       "ALTER TABLE on_alias_left RENAME value TO renamed", "DROP VIEW on_alias_invalid", "PRAGMA integrity_check"
     ]
+    statements += [
+      "CREATE TABLE in_values(x INT)", "INSERT INTO in_values VALUES(1),(2)",
+      "CREATE VIEW in_view AS SELECT 1 IN main.in_values AS found", "SELECT * FROM in_view",
+      "ALTER TABLE in_values RENAME x TO value", "ALTER TABLE in_values RENAME TO in_renamed",
+      "SELECT * FROM in_view", "DROP VIEW in_view", "ALTER TABLE in_values RENAME TO in_renamed",
+      "CREATE VIEW in_view AS SELECT 1 IN main.in_renamed AS found", "DELETE FROM in_renamed WHERE value IN main.in_renamed",
+      "SELECT * FROM in_view", "PRAGMA integrity_check"
+    ]
     bound_parameters = {
       "INSERT INTO named_rows VALUES(:id,:v) RETURNING :id,id,:v,v": [1,7],
       "UPDATE named_rows SET v=:v WHERE id=:id RETURNING :v,v,:id": [8,1],

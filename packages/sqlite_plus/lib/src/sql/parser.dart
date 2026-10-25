@@ -103,7 +103,7 @@ BigInt? expressionOrdinal(Expr expression) {
       : null;
 }
 
-final class ColumnExpr extends Expr {
+class ColumnExpr extends Expr {
   ColumnExpr(this.name, {this.offset, this.qualifier, this.columnOffset});
   final int? columnOffset;
   final int? offset;
@@ -130,11 +130,14 @@ final class ColumnExpr extends Expr {
       ? context.collations[key]?.isEmpty == true
           ? null
           : context.collations[key]
-      : context.columnAliases[key]?.collation(context);
+      : context.row.containsKey(key) || context.affinities.containsKey(key)
+          ? null
+          : context.columnAliases[key]?.collation(context);
   @override
-  String? explicitCollation(EvalContext context) => context.row.containsKey(key)
-      ? null
-      : context.columnAliases[key]?.explicitCollation(context);
+  String? explicitCollation(EvalContext context) =>
+      context.row.containsKey(key) || context.affinities.containsKey(key)
+          ? null
+          : context.columnAliases[key]?.explicitCollation(context);
   @override
   void validate(Set<String> columns) {
     if (!columns.contains(key)) throw SqlException('No such column: $name');
@@ -150,6 +153,7 @@ final class ParameterExpr extends Expr {
 
 bool isLiteralConstant(Expr expression) =>
     expression is Literal ||
+    expression is BoolNameExpr ||
     expression is UnaryExpr && isLiteralConstant(expression.operand);
 
 final class UnaryExpr extends Expr {
@@ -226,6 +230,17 @@ final class BinaryExpr extends Expr {
             right is SubqueryExpr && !(right as SubqueryExpr).exists)) {
       return compareRowExpressions(op, left, right, context);
     }
+    if (op == 'IS' || op == 'IS NOT') {
+      var booleanName = right;
+      while (booleanName is CollateExpr) {
+        booleanName = booleanName.operand;
+      }
+      if (booleanName is BoolNameExpr && booleanName.literalIn(context)) {
+        final result = truth(left.evaluate(context), context.encoding) ==
+            booleanName.expected;
+        return boolean(op == 'IS NOT' ? !result : result);
+      }
+    }
     var a = left.evaluate(context);
     var b = right.evaluate(context);
     if (op == 'AND' || op == 'OR') {
@@ -248,14 +263,12 @@ final class BinaryExpr extends Expr {
         .contains(op)) {
       final la = left.affinity(context);
       final ra = right.affinity(context);
-      if (la == 'numeric' && ra != 'numeric') {
-        b = applyAffinity(b, 'numeric');
-      } else if (ra == 'numeric' && la != 'numeric') {
+      if (la == 'numeric' || ra == 'numeric') {
         a = applyAffinity(a, 'numeric');
-      } else if (la == 'text' && ra == 'none') {
-        b = applyAffinity(b, 'text');
-      } else if (ra == 'text' && la == 'none') {
+        b = applyAffinity(b, 'numeric');
+      } else if (la == 'text' && ra == 'none' || ra == 'text' && la == 'none') {
         a = applyAffinity(a, 'text');
+        b = applyAffinity(b, 'text');
       }
       if (op == 'IS' || op == 'IS NOT') {
         final equal = a == null || b == null
@@ -370,6 +383,23 @@ final class SelectStatement {
   final Map<String, (List<String>, SelectStatement)> ctes = {};
   final Map<String, bool> cteMaterialization = {};
   final List<QuerySource> sources = [];
+
+  /// Leaf sources retain SQL scopes; groups remain joined units in execution.
+  Iterable<QuerySource> get leafSources => sources.expand((s) => s.leafSources);
+  Iterable<QuerySource> get allSources => sources.expand((s) => s.allSources);
+  List<QuerySource> get normalizedSources {
+    if (sources.isEmpty ||
+        sources.first.group.isEmpty ||
+        sources.first.alias != null) {
+      return sources;
+    }
+    final first = sources.first;
+    final inner =
+        SelectStatement([], null, null, [], null, null, false, parameterCount)
+          ..sources.addAll(first.group);
+    return [...inner.normalizedSources, ...sources.skip(1)];
+  }
+
   final List<(String, SelectStatement)> compounds = [];
   final List<Expr> groupBy = [];
   final Map<String, WindowExpr> windowDefinitions = {};
@@ -386,6 +416,7 @@ final class SelectStatement {
 
   /// Resolved without evaluating expressions during statement preparation.
   int? preparedColumnCount;
+  bool tableInShorthand = false;
 }
 
 final class QuerySource {
@@ -397,6 +428,7 @@ final class QuerySource {
       this.notIndexed = false,
       this.rowIdentity,
       this.query,
+      this.group = const [],
       this.alias,
       this.join = 'CROSS',
       this.on,
@@ -409,6 +441,24 @@ final class QuerySource {
   final String? rowIdentity;
   final int? tableOffset;
   final SelectStatement? query;
+  final List<QuerySource> group;
+  Iterable<QuerySource> get allSources sync* {
+    yield this;
+    for (final child in group) {
+      yield* child.allSources;
+    }
+  }
+
+  Iterable<QuerySource> get leafSources sync* {
+    if (group.isEmpty) {
+      yield this;
+    } else {
+      for (final source in group) {
+        yield* source.leafSources;
+      }
+    }
+  }
+
   final String join;
   final Expr? on;
   final List<String> using;
@@ -553,41 +603,14 @@ final class SqlParser {
       final explicitAlias = take('AS') || _implicitAlias();
       final label = explicitAlias
           ? _alias()
-          : expr is ColumnExpr
+          : expr is ColumnExpr && expr is! BoolNameExpr
               ? expr.name
               : display;
       items.add(expr is ColumnExpr && expr.name.endsWith('.*')
           ? SelectItem(null, expr.name, qualifierOffset: expr.offset)
           : SelectItem(expr, label, explicitAlias: explicitAlias));
     } while (take(','));
-    final sources = <QuerySource>[];
-    if (take('FROM')) {
-      sources.add(_source('CROSS', false));
-      while (true) {
-        if (take(',')) {
-          sources.add(_source('CROSS', false));
-          continue;
-        }
-        final natural = take('NATURAL');
-        String? join;
-        for (final type in ['LEFT', 'RIGHT', 'FULL', 'INNER', 'CROSS']) {
-          if (take(type)) {
-            join = type;
-            break;
-          }
-        }
-        if (join != null) {
-          take('OUTER');
-          require('JOIN');
-        } else if (take('JOIN')) {
-          join = 'INNER';
-        } else {
-          if (natural) throw const SqlException('Expected JOIN');
-          break;
-        }
-        sources.add(_source(join, natural));
-      }
-    }
+    final sources = take('FROM') ? _joinedSources() : <QuerySource>[];
     final table = sources.isEmpty ? null : sources.first.table;
     final where = take('WHERE') ? expression() : null;
     final groups = <Expr>[];
@@ -911,14 +934,60 @@ final class SqlParser {
         'INDEXED',
         'NOT'
       }.contains(current.keyword);
+
+  /// Parse a joined source list at the current token offset.
+  List<QuerySource> joinedSources() => _joinedSources();
+
+  List<QuerySource> _joinedSources() {
+    final sources = [_source('CROSS', false)];
+    while (true) {
+      if (take(',')) {
+        sources.add(_source('CROSS', false));
+        continue;
+      }
+      final natural = take('NATURAL');
+      String? join;
+      for (final type in ['LEFT', 'RIGHT', 'FULL', 'INNER', 'CROSS']) {
+        if (take(type)) {
+          join = type;
+          break;
+        }
+      }
+      if (join != null) {
+        take('OUTER');
+        require('JOIN');
+      } else if (take('JOIN')) {
+        join = 'INNER';
+      } else {
+        if (natural) throw const SqlException('Expected JOIN');
+        break;
+      }
+      sources.add(_source(join, natural));
+    }
+    return sources;
+  }
+
+  int _sourceDepth = 0;
   QuerySource _source(String join, bool natural) {
     String? table, schema, indexedBy;
     var notIndexed = false;
     int? tableOffset;
     SelectStatement? query;
+    var group = <QuerySource>[];
     if (take('(')) {
-      query = select(nested: true);
-      require(')');
+      if (++_sourceDepth > 128) {
+        throw const SqlException('Source nesting limit exceeded');
+      }
+      try {
+        if (['SELECT', 'WITH', 'VALUES'].contains(current.keyword)) {
+          query = select(nested: true);
+        } else {
+          group = _joinedSources();
+        }
+        require(')');
+      } finally {
+        _sourceDepth--;
+      }
     } else {
       tableOffset = current.offset;
       table = identifier();
@@ -930,7 +999,7 @@ final class SqlParser {
       }
     }
     final alias = take('AS') || _implicitAlias() ? _alias() : null;
-    if (query == null) {
+    if (query == null && group.isEmpty) {
       if (take('INDEXED')) {
         require('BY');
         indexedBy = identifier();
@@ -953,6 +1022,22 @@ final class SqlParser {
     if (natural && (on != null || using.isNotEmpty)) {
       throw const SqlException('NATURAL JOIN cannot have ON/USING');
     }
+    if (group.length == 1) {
+      final child = group.single;
+      return QuerySource(
+          table: child.table,
+          tableOffset: child.tableOffset,
+          schema: child.schema,
+          indexedBy: child.indexedBy,
+          notIndexed: child.notIndexed,
+          query: child.query,
+          group: child.group,
+          alias: alias ?? child.alias,
+          join: join,
+          on: on ?? child.on,
+          using: using.isEmpty ? child.using : using,
+          natural: natural || child.natural);
+    }
     return QuerySource(
         table: table,
         tableOffset: tableOffset,
@@ -960,6 +1045,7 @@ final class SqlParser {
         indexedBy: indexedBy,
         notIndexed: notIndexed,
         query: query,
+        group: group,
         alias: alias,
         join: join,
         on: on,
@@ -1084,7 +1170,7 @@ final class SqlParser {
       } else if (token.keyword == 'NULL') {
         left = Literal(null);
       } else if (token.keyword == 'TRUE' || token.keyword == 'FALSE') {
-        left = Literal(boolean(token.keyword == 'TRUE'), token.keyword);
+        left = BoolNameExpr(token.text, offset: token.offset);
       } else if (['CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP']
           .contains(token.keyword)) {
         left = FunctionExpr(asciiLower(token.text), []);
@@ -1212,7 +1298,26 @@ final class SqlParser {
         final op = current.keyword;
         position++;
         if (op == 'IN') {
-          require('(');
+          if (!take('(')) {
+            var tableOffset = current.offset;
+            var name = identifier();
+            String? schema;
+            if (take('.')) {
+              schema = asciiLower(name);
+              if (schema != 'main') {
+                throw SqlException('Unknown database: $name');
+              }
+              tableOffset = current.offset;
+              name = identifier();
+            }
+            final query = SelectStatement([SelectItem(null, '*')], name, null,
+                [], null, null, false, parameterCount)
+              ..tableInShorthand = true
+              ..sources.add(QuerySource(
+                  table: name, schema: schema, tableOffset: tableOffset));
+            left = InSelectExpr(left, query, negate: negate);
+            continue;
+          }
           if (['SELECT', 'WITH', 'VALUES'].contains(current.keyword)) {
             left = InSelectExpr(left, select(nested: true), negate: negate);
             require(')');
@@ -1255,14 +1360,7 @@ final class SqlParser {
         require('FROM');
         op = op == 'IS' ? 'IS NOT' : 'IS';
       }
-      if ((op == 'IS' || op == 'IS NOT') &&
-          (current.keyword == 'TRUE' || current.keyword == 'FALSE')) {
-        final expected = current.keyword == 'TRUE';
-        position++;
-        left = TruthExpr(left, expected, op == 'IS NOT');
-      } else {
-        left = BinaryExpr(op, left, expression(level + 1));
-      }
+      left = BinaryExpr(op, left, expression(level + 1));
     }
     return left;
   }

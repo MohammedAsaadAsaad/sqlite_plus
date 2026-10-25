@@ -10747,6 +10747,421 @@
   },
   {
     "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 1 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 1 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 3 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 3 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT NULL IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT NULL NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT '1' IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT '1' NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 1 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 1 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 3 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 3 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT NULL IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT NULL NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT '1' IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT '1' NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 1 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 1 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 3 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 3 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT NULL IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT NULL NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT '1' IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT '1' NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(a,b) AS(VALUES(1,2),(3,NULL)) SELECT (1,2) IN q,(3,9) NOT IN q",
+    "parameters": [],
+    "columns": [
+      "(1,2) IN q",
+      "(3,9) NOT IN q"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(a,b) AS(VALUES(1,2)) SELECT 1 IN q",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(a) AS(VALUES(1)) SELECT (1,2) IN q",
+    "parameters": [],
+    "error": "sub-select returns 1 columns - expected 2"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)),r(y) AS(VALUES(1),(3)) SELECT y FROM r WHERE y IN q ORDER BY y",
+    "parameters": [],
+    "columns": [
+      "y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT EXISTS(SELECT 1 WHERE 1 IN q)",
+    "parameters": [],
+    "columns": [
+      "EXISTS(SELECT 1 WHERE 1 IN q)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 IN other.q",
+    "parameters": [],
+    "error": "no such table: other.q"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 IN missing_table",
+    "parameters": [],
+    "error": "no such table: missing_table"
+  },
+  {
+    "file": "sqlite-512.db",
     "sql": "SELECT :x,:x,?",
     "parameters": [
       {
@@ -21823,6 +22238,421 @@
   },
   {
     "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 1 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 1 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 3 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 3 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT NULL IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT NULL NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT '1' IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT '1' NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 1 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 1 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 3 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 3 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT NULL IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT NULL NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT '1' IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT '1' NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 1 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 1 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 3 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 3 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT NULL IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT NULL NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT '1' IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT '1' NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(a,b) AS(VALUES(1,2),(3,NULL)) SELECT (1,2) IN q,(3,9) NOT IN q",
+    "parameters": [],
+    "columns": [
+      "(1,2) IN q",
+      "(3,9) NOT IN q"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(a,b) AS(VALUES(1,2)) SELECT 1 IN q",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(a) AS(VALUES(1)) SELECT (1,2) IN q",
+    "parameters": [],
+    "error": "sub-select returns 1 columns - expected 2"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)),r(y) AS(VALUES(1),(3)) SELECT y FROM r WHERE y IN q ORDER BY y",
+    "parameters": [],
+    "columns": [
+      "y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT EXISTS(SELECT 1 WHERE 1 IN q)",
+    "parameters": [],
+    "columns": [
+      "EXISTS(SELECT 1 WHERE 1 IN q)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 IN other.q",
+    "parameters": [],
+    "error": "no such table: other.q"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 IN missing_table",
+    "parameters": [],
+    "error": "no such table: missing_table"
+  },
+  {
+    "file": "sqlite-4096.db",
     "sql": "SELECT :x,:x,?",
     "parameters": [
       {
@@ -32896,6 +33726,421 @@
     "sql": "SELECT (SELECT 1 UNION SELECT 1,2) FROM (SELECT 1 WHERE 0)",
     "parameters": [],
     "error": "SELECTs to the left and right of UNION do not have the same number of result columns"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 1 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 1 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 3 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT 3 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT NULL IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT NULL NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT '1' IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2),(NULL)) SELECT '1' NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 1 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 1 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 3 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT 3 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT NULL IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT NULL NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT '1' IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT '1' NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 1 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 1 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 3 IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT 3 NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT NULL IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT NULL NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT '1' IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(SELECT 1 WHERE 0) SELECT '1' NOT IN q AS result",
+    "parameters": [],
+    "columns": [
+      "result"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(a,b) AS(VALUES(1,2),(3,NULL)) SELECT (1,2) IN q,(3,9) NOT IN q",
+    "parameters": [],
+    "columns": [
+      "(1,2) IN q",
+      "(3,9) NOT IN q"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        null
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(a,b) AS(VALUES(1,2)) SELECT 1 IN q",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(a) AS(VALUES(1)) SELECT (1,2) IN q",
+    "parameters": [],
+    "error": "sub-select returns 1 columns - expected 2"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)),r(y) AS(VALUES(1),(3)) SELECT y FROM r WHERE y IN q ORDER BY y",
+    "parameters": [],
+    "columns": [
+      "y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "WITH q(x) AS(VALUES(1),(2)) SELECT EXISTS(SELECT 1 WHERE 1 IN q)",
+    "parameters": [],
+    "columns": [
+      "EXISTS(SELECT 1 WHERE 1 IN q)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 IN other.q",
+    "parameters": [],
+    "error": "no such table: other.q"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 IN missing_table",
+    "parameters": [],
+    "error": "no such table: missing_table"
   },
   {
     "file": "sqlite-65536.db",

@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:typed_data';
 import '../btree/btree_reader.dart';
 import '../pager/read_only_pager.dart';
@@ -12,9 +13,12 @@ import 'expressions.dart';
 import 'function_registry.dart';
 import 'image_mutations.dart';
 import 'index_definition.dart';
+import 'planner_statistics.dart';
 
 part 'relational.dart';
+part 'join_groups.dart';
 part 'dml_subqueries.dart';
+part 'lazy_views.dart';
 
 final class QueryResult implements SqlRows {
   QueryResult(List<String> columns, List<List<Object?>> rows,
@@ -61,18 +65,21 @@ final class _IndexAccess {
 
 /// M3 read-only single-table SELECT API. Unsupported SQL fails explicitly.
 final class SqliteDatabase {
-  SqliteDatabase._(this._pager, this.catalog, [SqlFunctionRegistry? registry])
+  SqliteDatabase._(this._pager, this.catalog, this._statistics,
+      [SqlFunctionRegistry? registry])
       : functions = registry ?? SqlFunctionRegistry();
   final ReadOnlyPager _pager;
   final DatabaseCatalog catalog;
+  final PlannerStatistics _statistics;
   final SqlFunctionRegistry functions;
   bool _closed = false;
   static Future<SqliteDatabase> openReadOnly(StorageBackend storage,
       {SqlFunctionRegistry? functions}) async {
     final pager = await ReadOnlyPager.open(storage);
     try {
-      return SqliteDatabase._(
-          pager, await DatabaseCatalog.read(pager), functions);
+      final catalog = await DatabaseCatalog.read(pager);
+      return SqliteDatabase._(pager, catalog,
+          await PlannerStatistics.read(pager, catalog), functions);
     } catch (_) {
       await pager.close();
       rethrow;
@@ -85,6 +92,8 @@ final class SqliteDatabase {
   }
 
   bool _planningConstant(Expr expression) {
+    // Fallback boolean names can become real columns in the prepared scope.
+    if (expression is BoolNameExpr) return false;
     if (expression.containsAggregate ||
         expression.containsWindow ||
         expression is SubqueryExpr ||
@@ -291,6 +300,7 @@ final class SqliteDatabase {
       }
       QueryPlan? best;
       var bestScore = -1;
+      double? bestEstimate;
       for (final entry in catalog.entries.where((e) =>
           e.type == 'index' &&
           asciiLower(e.tableName) == asciiLower(table.name) &&
@@ -331,8 +341,29 @@ final class SqliteDatabase {
               empty:
                   prefix.any((list) => list.any((bound) => bound.$2 == null)));
           final score = prefix.length * 10 + (definition.$5 && !range ? 1 : 0);
-          if (score > bestScore) {
+          final rangeTerms = range ? prefix.last : <(String, Object?)>[];
+          final rangeBounds =
+              (rangeTerms.any((bound) => ['>', '>='].contains(bound.$1))
+                      ? 1
+                      : 0) +
+                  (rangeTerms.any((bound) => ['<', '<='].contains(bound.$1))
+                      ? 1
+                      : 0);
+          final estimate = _statistics.estimate(table.name, entry.name,
+              columns: definition.$1.length,
+              equalities: prefix.length - (range ? 1 : 0),
+              rangeBounds: rangeBounds,
+              unique: definition.$5);
+          if (best == null ||
+              estimate != null &&
+                  bestEstimate != null &&
+                  estimate < bestEstimate ||
+              (estimate == bestEstimate ||
+                      estimate == null ||
+                      bestEstimate == null) &&
+                  score > bestScore) {
             bestScore = score;
+            bestEstimate = estimate;
             best = QueryPlan._indexed(entry.rootPage, access,
                 range ? 'secondary-index-range' : 'secondary-index-lookup');
           }
@@ -491,6 +522,17 @@ final class SqliteDatabase {
               rowid: !entry.value.$1.withoutRowid
             )
       });
+      if (statement.limit is Literal &&
+          (statement.limit as Literal).value == BigInt.zero) {
+        return _relational(
+            _pragmaMetadataQuery(statement, canonicalCasts: false),
+            bound,
+            {
+              for (final entry in cache.entries)
+                entry.key: (entry.value.$1, <RowValues>[])
+            },
+            outer);
+      }
       return _relational(statement, bound, cache, outer);
     }
     final table =
@@ -573,15 +615,34 @@ final class SqliteDatabase {
     for (final item in items) {
       item.expression!.validate(names);
     }
-    statement.where?.validate(names);
+    final aliasExpressions = {
+      for (final item in items) asciiLower(item.label): item.expression!
+    };
+    final unambiguousAliases = aliasExpressions.keys
+        .where((name) =>
+            names.contains(name) ||
+            !names.any((field) => field.endsWith('.$name')))
+        .toSet();
+    statement.where?.validate({...names, ...unambiguousAliases});
+    void validateWhereAliases(Expr expression) {
+      if (expression is ColumnExpr && !names.contains(expression.key)) {
+        final alias = aliasExpressions[expression.key];
+        if (alias != null &&
+            (alias.containsAggregate || alias.containsWindow)) {
+          throw const SqlException('Aggregate or window alias in WHERE');
+        }
+      }
+      for (final child in expression.children) {
+        validateWhereAliases(child);
+      }
+    }
+
+    if (statement.where != null) validateWhereAliases(statement.where!);
     if ((statement.where?.containsAggregate ?? false) ||
         (statement.where?.containsWindow ?? false)) {
       throw const SqlException('Aggregate in WHERE');
     }
     final groupBy = <Expr>[];
-    final aliasExpressions = {
-      for (final item in items) asciiLower(item.label): item.expression!
-    };
     for (var expr in statement.groupBy) {
       final ordinal = expressionOrdinal(expr);
       if (ordinal != null) {
@@ -594,7 +655,7 @@ final class SqliteDatabase {
         if (collation != null) expr = CollateExpr(expr, collation);
       } else if (expr is ColumnExpr &&
           !names.contains(expr.key) &&
-          aliasExpressions.containsKey(expr.key)) {
+          unambiguousAliases.contains(expr.key)) {
         expr = aliasExpressions[expr.key]!;
       }
       expr.validate(names);
@@ -610,7 +671,7 @@ final class SqliteDatabase {
     if (statement.having != null && !aggregate) {
       throw const SqlException('HAVING requires aggregate query');
     }
-    statement.having?.validate({...names, ...aliasExpressions.keys});
+    statement.having?.validate({...names, ...unambiguousAliases});
     if (statement.having?.containsWindow ?? false) {
       throw const SqlException('Window in HAVING');
     }
@@ -685,6 +746,9 @@ final class SqliteDatabase {
         items.map((item) {
           final expr = indexOperand(item.expression!);
           if (expr is CastExpr) return expr.type;
+          if (expr is SubqueryExpr && !expr.exists) {
+            return expr.preparedColumnDeclaredTypes?.singleOrNull ?? '';
+          }
           return expr is ColumnExpr
               ? columns
                       .where((c) => asciiLower(c.name) == expr.key)
@@ -705,6 +769,7 @@ final class SqliteDatabase {
           EvalContext(row, affinities, bound, _pager.header.textEncoding)
             ..inTrigger = inTrigger
             ..subquery = subquery
+            ..columnAliases = aliasExpressions
             ..collations = collations;
       return statement.where == null ||
           truth(statement.where!.evaluate(ctx), _pager.header.textEncoding) ==
@@ -976,8 +1041,10 @@ final class SqliteDatabase {
 
   // Metadata preparation must not scan rows, invoke callbacks, or evaluate a
   // view's WHERE, projection, LIMIT, CTEs, or derived sources.
-  SelectStatement _pragmaMetadataQuery(SelectStatement source) {
+  SelectStatement _pragmaMetadataQuery(SelectStatement source,
+      {bool canonicalCasts = true}) {
     Expr projection(Expr expression) {
+      if (!canonicalCasts) return expression;
       if (expression is CollateExpr) {
         return CollateExpr(projection(expression.operand), expression.name);
       }
@@ -995,6 +1062,23 @@ final class SqliteDatabase {
       return CastExpr(expression.operand, canonical);
     }
 
+    QuerySource sourceMetadata(QuerySource s) => QuerySource(
+        table: s.table,
+        tableOffset: s.tableOffset,
+        schema: s.schema,
+        indexedBy: s.indexedBy,
+        notIndexed: s.notIndexed,
+        rowIdentity: s.rowIdentity,
+        query: s.query == null
+            ? null
+            : _pragmaMetadataQuery(s.query!, canonicalCasts: canonicalCasts),
+        group: s.group.map(sourceMetadata).toList(),
+        alias: s.alias,
+        join: s.join,
+        on: s.on,
+        using: s.using,
+        natural: s.natural);
+
     return SelectStatement([
       for (final item in source.items)
         SelectItem(
@@ -1004,32 +1088,52 @@ final class SqliteDatabase {
     ], source.table, source.where, source.order, Literal(BigInt.zero), null,
         source.distinct, source.parameterCount)
       ..valuesQuery = source.valuesQuery
-      ..sources.addAll([
-        for (final s in source.sources)
-          QuerySource(
-              table: s.table,
-              tableOffset: s.tableOffset,
-              schema: s.schema,
-              indexedBy: s.indexedBy,
-              notIndexed: s.notIndexed,
-              query: s.query == null ? null : _pragmaMetadataQuery(s.query!),
-              alias: s.alias,
-              join: s.join,
-              on: s.on,
-              using: s.using,
-              natural: s.natural)
-      ])
+      ..sources.addAll(source.sources.map(sourceMetadata))
+      ..cteMaterialization.addAll(source.cteMaterialization)
       ..ctes.addAll({
         for (final c in source.ctes.entries)
-          c.key: (c.value.$1, _pragmaMetadataQuery(c.value.$2))
+          c.key: (
+            c.value.$1,
+            _pragmaMetadataQuery(c.value.$2, canonicalCasts: canonicalCasts)
+          )
       })
       ..compounds.addAll([
         for (final part in source.compounds)
-          (part.$1, _pragmaMetadataQuery(part.$2))
+          (
+            part.$1,
+            _pragmaMetadataQuery(part.$2, canonicalCasts: canonicalCasts)
+          )
       ])
       ..groupBy.addAll(source.groupBy)
       ..having = source.having
       ..windowDefinitions.addAll(source.windowDefinitions);
+  }
+
+  void _prepareScalarMetadata(
+      SelectStatement query,
+      Map<String, (CatalogTable, List<RowValues>)> metadata,
+      List<CatalogColumn> columns) {
+    final scope = <String, CatalogColumn?>{
+      for (final column in columns) asciiLower(column.name): column
+    };
+    void prepare(Expr expression) {
+      if (expression is SubqueryExpr) {
+        if (expression.preparedColumnAffinities == null) {
+          final output = _pragmaColumnMetadata(
+              expression.statement, metadata, scope, const {}, true);
+          expression.preparedColumnAffinities =
+              output.map((column) => column.affinity).toList();
+          expression.preparedColumnDeclaredTypes =
+              output.map((column) => column.declaredType).toList();
+        }
+        return;
+      }
+      for (final child in expression.children) {
+        prepare(child);
+      }
+    }
+
+    _expressions(query).forEach(prepare);
   }
 
   List<CatalogColumn> _pragmaColumnMetadata(SelectStatement query,
@@ -1084,61 +1188,172 @@ final class SqliteDatabase {
     final star = <CatalogColumn>[];
     final qualified = <String, List<CatalogColumn>>{};
     final implicit = <String, CatalogColumn?>{};
-    for (var i = 0; i < query.sources.length; i++) {
-      final source = query.sources[i];
-      final key = source.schema == null
-          ? asciiLower(source.table ?? '')
-          : 'main.${asciiLower(source.table!)}';
-      final table = metadata[key]?.$1;
-      final columns = source.query != null
-          ? materialize(
-              _pragmaColumnMetadata(source.query!, metadata, outer, ctes))
-          : source.schema == null && ctes.containsKey(key)
-              ? ctes[key]!()
-              : table?.columns;
-      if (columns == null) {
-        throw SqlException('Unknown metadata source: ${source.table}');
-      }
-      final alias = asciiLower(source.alias ?? source.table ?? '@$i');
-      qualified[alias] = columns;
-      final physical = source.table != null &&
-          (source.schema != null || !ctes.containsKey(key));
-      if (physical) qualified['main.$alias'] = columns;
-      final using = source.natural
-          ? columns
-              .map((c) => asciiLower(c.name))
-              .where((name) => star.any((c) => asciiLower(c.name) == name))
-              .toSet()
-          : source.using.map(asciiLower).toSet();
-      for (final column in columns) {
-        final name = asciiLower(column.name);
-        local['$alias.$name'] = column;
-        if (physical) local['main.$alias.$name'] = column;
-        if (using.contains(name)) {
-          final ordinal = star.indexWhere((c) => asciiLower(c.name) == name);
-          if (ordinal < 0 || local[name] == null) {
-            throw const SqlException('USING column missing or ambiguous');
-          }
-          final merged = source.join == 'RIGHT'
-              ? column
-              : source.join == 'FULL'
-                  ? CatalogColumn(star[ordinal].name, '',
-                      affinityOverride: 'none', collation: '')
-                  : star[ordinal];
-          local[name] = merged;
-          star[ordinal] = merged;
-        } else {
-          local[name] = local.containsKey(name) ? null : column;
-          star.add(column);
+    if (query.sources.any((source) => source.group.isNotEmpty)) {
+      // Use the executor's binding frame for joined groups, retaining hidden
+      // child qualifiers as well as visible USING/NATURAL wildcard columns.
+      // Every relation supplied here is empty: preparing metadata cannot run
+      // a projection, ON callback, recursive queue, or a lazy view's rows.
+      final prepared = <String, (CatalogTable, List<RowValues>)>{};
+      final descriptors = <CatalogTable, (CatalogTable, List<RowValues>)>{};
+      for (final entry in metadata.entries) {
+        final original = entry.value.$1;
+        final descriptor = descriptors.putIfAbsent(original, () {
+          final table = original.rootPage == 0
+              ? original
+              : CatalogTable(
+                  original.name,
+                  original.rootPage,
+                  [
+                    for (final column in original.columns)
+                      CatalogColumn(
+                          column.name,
+                          column.declaredType.isEmpty
+                              ? 'BLOB'
+                              : column.declaredType,
+                          affinityOverride: column.affinity,
+                          collation: column.collation)
+                  ],
+                  withoutRowid: original.withoutRowid,
+                  rowidAlias: original.rowidAlias);
+          return (table, <RowValues>[]);
+        });
+        prepared[entry.key] = descriptor;
+        if (!entry.key.startsWith('main.')) {
+          prepared['main.${entry.key}'] = descriptor;
         }
       }
-      if (source.query == null && table != null && !table.withoutRowid) {
-        for (final name in ['rowid', '_rowid_', 'oid']) {
-          if (columns.any((c) => asciiLower(c.name) == name)) continue;
-          final column = CatalogColumn(table.rowidAlias ?? 'rowid', 'INTEGER');
-          implicit['$alias.$name'] = column;
-          if (physical) implicit['main.$alias.$name'] = column;
-          implicit[name] = implicit.containsKey(name) ? null : column;
+      var ordinal = 0;
+      QuerySource describe(QuerySource source) {
+        String? table = source.table;
+        final key = asciiLower(source.table ?? '');
+        final cte = source.schema == null ? ctes[key] : null;
+        if (source.query != null || cte != null) {
+          final columns = source.query != null
+              ? materialize(
+                  _pragmaColumnMetadata(source.query!, metadata, outer, ctes))
+              : cte!();
+          table = '\u0000metadata${ordinal++}';
+          prepared[table] =
+              (CatalogTable(table, 0, columns, withoutRowid: true), []);
+        }
+        return QuerySource(
+            table: table,
+            tableOffset: source.tableOffset,
+            schema: source.schema,
+            indexedBy: source.indexedBy,
+            notIndexed: source.notIndexed,
+            rowIdentity: source.rowIdentity,
+            group: source.group.map(describe).toList(),
+            alias: source.alias ?? (cte != null ? source.table : null),
+            join: source.join,
+            on: source.on,
+            using: source.using,
+            natural: source.natural);
+      }
+
+      final preparedQuery = SelectStatement(query.items, null, null, [],
+          Literal(BigInt.zero), null, false, query.parameterCount)
+        ..sources.addAll(query.sources.map(describe));
+      final outerContext = EvalContext({
+        for (final name in outer.keys) name: null
+      }, {
+        for (final entry in outer.entries)
+          if (entry.value != null) entry.key: entry.value!.affinity
+      }, const [], _pager.header.textEncoding)
+        ..collations = {
+          for (final entry in outer.entries)
+            if (entry.value != null) entry.key: entry.value!.collation
+        };
+      final frame = _JoinedGroup('@metadata');
+      _relational(preparedQuery, const [], prepared, outerContext,
+          sourceGroup: frame);
+      CatalogColumn renamed(CatalogColumn column, String label) =>
+          CatalogColumn(label, column.declaredType,
+              affinityOverride: column.affinity, collation: column.collation);
+      for (final entry in frame.declared.entries) {
+        local[entry.key] =
+            renamed(entry.value, frame.labels[entry.key] ?? entry.value.name);
+      }
+      for (final entry in frame.refs.entries) {
+        local[entry.key] =
+            entry.value.length == 1 ? local[entry.value.single] : null;
+      }
+      for (final slot in frame.star) {
+        star.add(renamed(frame.declared[slot.$2]!, slot.$1));
+      }
+      for (final entry in frame.sourceStars.entries) {
+        qualified[entry.key] = [
+          for (final slot in entry.value)
+            renamed(frame.declared[slot.$2]!, slot.$1)
+        ];
+      }
+    } else {
+      for (var i = 0; i < query.sources.length; i++) {
+        final source = query.sources[i];
+        final key = source.schema == null
+            ? asciiLower(source.table ?? '')
+            : 'main.${asciiLower(source.table!)}';
+        final table = metadata[key]?.$1;
+        var columns = source.query != null
+            ? materialize(
+                _pragmaColumnMetadata(source.query!, metadata, outer, ctes))
+            : source.schema == null && ctes.containsKey(key)
+                ? ctes[key]!()
+                : table?.columns;
+        if (columns == null) {
+          throw SqlException('Unknown metadata source: ${source.table}');
+        }
+        if (source.query == null && table != null && table.rootPage > 0) {
+          columns = [
+            for (final column in columns)
+              CatalogColumn(column.name,
+                  column.declaredType.isEmpty ? 'BLOB' : column.declaredType,
+                  affinityOverride: column.affinity,
+                  collation: column.collation)
+          ];
+        }
+        final alias = asciiLower(source.alias ?? source.table ?? '@$i');
+        qualified[alias] = columns;
+        final physical = source.table != null &&
+            (source.schema != null || !ctes.containsKey(key));
+        if (physical) qualified['main.$alias'] = columns;
+        final using = source.natural
+            ? columns
+                .map((c) => asciiLower(c.name))
+                .where((name) => star.any((c) => asciiLower(c.name) == name))
+                .toSet()
+            : source.using.map(asciiLower).toSet();
+        for (final column in columns) {
+          final name = asciiLower(column.name);
+          local['$alias.$name'] = column;
+          if (physical) local['main.$alias.$name'] = column;
+          if (using.contains(name)) {
+            final ordinal = star.indexWhere((c) => asciiLower(c.name) == name);
+            if (ordinal < 0 || local[name] == null) {
+              throw const SqlException('USING column missing or ambiguous');
+            }
+            final merged = source.join == 'RIGHT'
+                ? column
+                : source.join == 'FULL'
+                    ? CatalogColumn(star[ordinal].name, '',
+                        affinityOverride: 'none', collation: '')
+                    : star[ordinal];
+            local[name] = merged;
+            star[ordinal] = merged;
+          } else {
+            local[name] = local.containsKey(name) ? null : column;
+            star.add(column);
+          }
+        }
+        if (source.query == null && table != null && !table.withoutRowid) {
+          for (final name in ['rowid', '_rowid_', 'oid']) {
+            if (columns.any((c) => asciiLower(c.name) == name)) continue;
+            final column =
+                CatalogColumn(table.rowidAlias ?? 'rowid', 'INTEGER');
+            implicit['$alias.$name'] = column;
+            if (physical) implicit['main.$alias.$name'] = column;
+            implicit[name] = implicit.containsKey(name) ? null : column;
+          }
         }
       }
     }
@@ -1157,6 +1372,9 @@ final class SqliteDatabase {
     CatalogColumn expression(Expr expr) {
       if (expr is ColumnExpr) {
         final column = scope[expr.key];
+        if (expr is BoolNameExpr && !scope.containsKey(expr.key)) {
+          return CatalogColumn(expr.name, '', affinityOverride: 'none');
+        }
         if (column == null) {
           throw SqlException('Unknown or ambiguous column: ${expr.name}');
         }
@@ -1170,7 +1388,13 @@ final class SqliteDatabase {
       if (expr is SubqueryExpr) {
         final columns =
             _pragmaColumnMetadata(expr.statement, metadata, scope, ctes, true);
-        if (expr.exists) return CatalogColumn('', '');
+        expr.preparedColumnAffinities =
+            columns.map((column) => column.affinity).toList();
+        expr.preparedColumnDeclaredTypes =
+            columns.map((column) => column.declaredType).toList();
+        if (expr.exists) {
+          return CatalogColumn('', '', affinityOverride: 'none');
+        }
         if (columns.length != 1) {
           throw const SqlException('Scalar subquery must return one column');
         }
@@ -1272,15 +1496,14 @@ final class SqliteDatabase {
         for (final c in query.ctes.values) {
           prepare(c.$2, scope);
         }
-        for (final source in query.sources) {
+        for (final source in query.leafSources) {
           if (source.query != null) {
             prepare(source.query!, scope);
           } else if (source.schema != null ||
               !scope.contains(asciiLower(source.table!))) {
             final table = _pragmaTable(source.table!, metadata, loading);
-            if (source.schema != null) {
-              metadata!['main.${asciiLower(source.table!)}'] = (table, []);
-            }
+            final value = metadata![asciiLower(source.table!)] ?? (table, []);
+            metadata['main.${asciiLower(source.table!)}'] = value;
           }
         }
         for (final expression in _expressions(query)) {
@@ -1301,15 +1524,7 @@ final class SqliteDatabase {
       if (names.length != result.columns.length) {
         throw const SqlException('View column width mismatch');
       }
-      final seen = <String>{}, unique = <String>[];
-      for (final name in names) {
-        var candidate = name, suffix = 0;
-        while (seen.contains(asciiLower(candidate))) {
-          candidate = '${name.replaceFirst(RegExp(r':\d+$'), '')}:${++suffix}';
-        }
-        seen.add(asciiLower(candidate));
-        unique.add(candidate);
-      }
+      final unique = relationColumnNames(names);
       final table = CatalogTable(
           entry.name,
           0,

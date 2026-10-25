@@ -23,10 +23,12 @@
   triggers; constraint collation/direction metadata; main qualification/index
   hints; core/PRINTF Unicode functions; recursive view metadata/introspection;
   ANALYZE/stat1, REINDEX and VACUUM main; MEDIAN/PERCENTILE aggregate/windows;
-  connection counters and trigger/FK save/restore; metadata/integrity PRAGMAs.
-  Open: parenthesized join groups and their schema metadata, remaining dependent
-  DML rewrites, lazy view callback/preparation behavior, statistics-driven planning
-  and broader SQL/function/PRAGMA/differential hardening.
+  connection counters and trigger/FK save/restore; metadata/integrity PRAGMAs;
+  parenthesized join scopes/metadata, UPDATE FROM dependency rewrites, deferred
+  views and default-evaluation order, scalar-subquery types/affinity, STAT1 index
+  ranking, boolean-name binding, IN table and qualified state PRAGMAs.
+  Open: streaming INSERT SELECT and ordinary/NOT MATERIALIZED CTE evaluation,
+  remaining SQL grammar/PRAGMA/function coverage and differential hardening.
 - [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.
 - [ ] M8: Advanced extensions, JSON/JSONB, FTS, R-tree, virtual tables.
 - [ ] M9: Browser adapters, platform matrix, AOT benchmarks, hardening and release gates.

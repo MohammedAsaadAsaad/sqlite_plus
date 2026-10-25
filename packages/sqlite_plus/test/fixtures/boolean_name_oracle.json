@@ -1,0 +1,9091 @@
+{
+  "source_id": "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+  "setup": [
+    "CREATE TABLE plain(x INT)",
+    "INSERT INTO plain VALUES(0),(2),(NULL)",
+    "CREATE TABLE flags(\"true\" INT,\"false\" TEXT,x INT)",
+    "INSERT INTO flags VALUES(9,'value',3),(0,'0',0),(NULL,NULL,NULL)",
+    "CREATE TABLE one_true(\"true\" TEXT)",
+    "INSERT INTO one_true VALUES('A'),('b'),(NULL)",
+    "CREATE TABLE second(\"true\" INT)",
+    "INSERT INTO second VALUES(1)",
+    "CREATE TABLE empty_flags(\"true\" INT,\"false\" TEXT)"
+  ],
+  "cases": [
+    {
+      "sql": "SELECT true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT false",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT TRUE",
+      "columns": [
+        "TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT FALSE",
+      "columns": [
+        "FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (true)",
+      "columns": [
+        "(true)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (false)",
+      "columns": [
+        "(false)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT typeof(true)",
+      "columns": [
+        "typeof(true)"
+      ],
+      "rows": [
+        [
+          "integer"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT typeof(false)",
+      "columns": [
+        "typeof(false)"
+      ],
+      "rows": [
+        [
+          "integer"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true+false",
+      "columns": [
+        "true+false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NOT true",
+      "columns": [
+        "NOT true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS false",
+      "columns": [
+        "true IS false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS NOT false",
+      "columns": [
+        "true IS NOT false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS NULL",
+      "columns": [
+        "true IS NULL"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT CASE true WHEN 9 THEN 1 ELSE 0 END",
+      "columns": [
+        "CASE true WHEN 9 THEN 1 ELSE 0 END"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (true,false)=(9,'value')",
+      "columns": [
+        "(true,false)=(9,'value')"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true FROM plain",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT false FROM plain",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT TRUE FROM plain",
+      "columns": [
+        "TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT FALSE FROM plain",
+      "columns": [
+        "FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (true) FROM plain",
+      "columns": [
+        "(true)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (false) FROM plain",
+      "columns": [
+        "(false)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT typeof(true) FROM plain",
+      "columns": [
+        "typeof(true)"
+      ],
+      "rows": [
+        [
+          "integer"
+        ],
+        [
+          "integer"
+        ],
+        [
+          "integer"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT typeof(false) FROM plain",
+      "columns": [
+        "typeof(false)"
+      ],
+      "rows": [
+        [
+          "integer"
+        ],
+        [
+          "integer"
+        ],
+        [
+          "integer"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true+false FROM plain",
+      "columns": [
+        "true+false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NOT true FROM plain",
+      "columns": [
+        "NOT true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS false FROM plain",
+      "columns": [
+        "true IS false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS NOT false FROM plain",
+      "columns": [
+        "true IS NOT false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS NULL FROM plain",
+      "columns": [
+        "true IS NULL"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT CASE true WHEN 9 THEN 1 ELSE 0 END FROM plain",
+      "columns": [
+        "CASE true WHEN 9 THEN 1 ELSE 0 END"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (true,false)=(9,'value') FROM plain",
+      "columns": [
+        "(true,false)=(9,'value')"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true FROM flags",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "9"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT false FROM flags",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          "value"
+        ],
+        [
+          "0"
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT TRUE FROM flags",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "9"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT FALSE FROM flags",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          "value"
+        ],
+        [
+          "0"
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (true) FROM flags",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "9"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (false) FROM flags",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          "value"
+        ],
+        [
+          "0"
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT typeof(true) FROM flags",
+      "columns": [
+        "typeof(true)"
+      ],
+      "rows": [
+        [
+          "integer"
+        ],
+        [
+          "integer"
+        ],
+        [
+          "null"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT typeof(false) FROM flags",
+      "columns": [
+        "typeof(false)"
+      ],
+      "rows": [
+        [
+          "text"
+        ],
+        [
+          "text"
+        ],
+        [
+          "null"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true+false FROM flags",
+      "columns": [
+        "true+false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "9"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NOT true FROM flags",
+      "columns": [
+        "NOT true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS false FROM flags",
+      "columns": [
+        "true IS false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS NOT false FROM flags",
+      "columns": [
+        "true IS NOT false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS NULL FROM flags",
+      "columns": [
+        "true IS NULL"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT CASE true WHEN 9 THEN 1 ELSE 0 END FROM flags",
+      "columns": [
+        "CASE true WHEN 9 THEN 1 ELSE 0 END"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (true,false)=(9,'value') FROM flags",
+      "columns": [
+        "(true,false)=(9,'value')"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true FROM one_true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          "A"
+        ],
+        [
+          "b"
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT false FROM one_true",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT TRUE FROM one_true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          "A"
+        ],
+        [
+          "b"
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT FALSE FROM one_true",
+      "columns": [
+        "FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (true) FROM one_true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          "A"
+        ],
+        [
+          "b"
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (false) FROM one_true",
+      "columns": [
+        "(false)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT typeof(true) FROM one_true",
+      "columns": [
+        "typeof(true)"
+      ],
+      "rows": [
+        [
+          "text"
+        ],
+        [
+          "text"
+        ],
+        [
+          "null"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT typeof(false) FROM one_true",
+      "columns": [
+        "typeof(false)"
+      ],
+      "rows": [
+        [
+          "integer"
+        ],
+        [
+          "integer"
+        ],
+        [
+          "integer"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true+false FROM one_true",
+      "columns": [
+        "true+false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NOT true FROM one_true",
+      "columns": [
+        "NOT true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS false FROM one_true",
+      "columns": [
+        "true IS false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS NOT false FROM one_true",
+      "columns": [
+        "true IS NOT false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true IS NULL FROM one_true",
+      "columns": [
+        "true IS NULL"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT CASE true WHEN 9 THEN 1 ELSE 0 END FROM one_true",
+      "columns": [
+        "CASE true WHEN 9 THEN 1 ELSE 0 END"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (true,false)=(9,'value') FROM one_true",
+      "columns": [
+        "(true,false)=(9,'value')"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true FROM empty_flags",
+      "columns": [
+        "true"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT false FROM empty_flags",
+      "columns": [
+        "false"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT TRUE FROM empty_flags",
+      "columns": [
+        "true"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT FALSE FROM empty_flags",
+      "columns": [
+        "false"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT (true) FROM empty_flags",
+      "columns": [
+        "true"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT (false) FROM empty_flags",
+      "columns": [
+        "false"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT typeof(true) FROM empty_flags",
+      "columns": [
+        "typeof(true)"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT typeof(false) FROM empty_flags",
+      "columns": [
+        "typeof(false)"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT true+false FROM empty_flags",
+      "columns": [
+        "true+false"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT NOT true FROM empty_flags",
+      "columns": [
+        "NOT true"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT true IS false FROM empty_flags",
+      "columns": [
+        "true IS false"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT true IS NOT false FROM empty_flags",
+      "columns": [
+        "true IS NOT false"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT true IS NULL FROM empty_flags",
+      "columns": [
+        "true IS NULL"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT CASE true WHEN 9 THEN 1 ELSE 0 END FROM empty_flags",
+      "columns": [
+        "CASE true WHEN 9 THEN 1 ELSE 0 END"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT (true,false)=(9,'value') FROM empty_flags",
+      "columns": [
+        "(true,false)=(9,'value')"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT NULL IS TRUE FROM flags",
+      "columns": [
+        "NULL IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS TRUE",
+      "columns": [
+        "NULL IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT TRUE FROM flags",
+      "columns": [
+        "NULL IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT TRUE",
+      "columns": [
+        "NULL IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "NULL IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM TRUE",
+      "columns": [
+        "NULL IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM TRUE",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS FALSE FROM flags",
+      "columns": [
+        "NULL IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS FALSE",
+      "columns": [
+        "NULL IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT FALSE FROM flags",
+      "columns": [
+        "NULL IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT FALSE",
+      "columns": [
+        "NULL IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "NULL IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM FALSE",
+      "columns": [
+        "NULL IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM FALSE",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS (TRUE) FROM flags",
+      "columns": [
+        "NULL IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS (TRUE)",
+      "columns": [
+        "NULL IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT (TRUE) FROM flags",
+      "columns": [
+        "NULL IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT (TRUE)",
+      "columns": [
+        "NULL IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "NULL IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM (TRUE)",
+      "columns": [
+        "NULL IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM (TRUE)",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS (FALSE) FROM flags",
+      "columns": [
+        "NULL IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS (FALSE)",
+      "columns": [
+        "NULL IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT (FALSE) FROM flags",
+      "columns": [
+        "NULL IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT (FALSE)",
+      "columns": [
+        "NULL IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "NULL IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM (FALSE)",
+      "columns": [
+        "NULL IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM (FALSE)",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS +TRUE FROM flags",
+      "columns": [
+        "NULL IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS +TRUE",
+      "columns": [
+        "NULL IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT +TRUE FROM flags",
+      "columns": [
+        "NULL IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT +TRUE",
+      "columns": [
+        "NULL IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "NULL IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM +TRUE",
+      "columns": [
+        "NULL IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM +TRUE",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS TRUE+0 FROM flags",
+      "columns": [
+        "NULL IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS TRUE+0",
+      "columns": [
+        "NULL IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT TRUE+0 FROM flags",
+      "columns": [
+        "NULL IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT TRUE+0",
+      "columns": [
+        "NULL IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "NULL IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM TRUE+0",
+      "columns": [
+        "NULL IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM TRUE+0",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS FALSE+1 FROM flags",
+      "columns": [
+        "NULL IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS FALSE+1",
+      "columns": [
+        "NULL IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT FALSE+1 FROM flags",
+      "columns": [
+        "NULL IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT FALSE+1",
+      "columns": [
+        "NULL IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "NULL IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM FALSE+1",
+      "columns": [
+        "NULL IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM FALSE+1",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "NULL IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS TRUE COLLATE BINARY",
+      "columns": [
+        "NULL IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "NULL IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT TRUE COLLATE BINARY",
+      "columns": [
+        "NULL IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "NULL IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM TRUE COLLATE BINARY",
+      "columns": [
+        "NULL IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM TRUE COLLATE BINARY",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "NULL IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS (FALSE COLLATE NOCASE)",
+      "columns": [
+        "NULL IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "NULL IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT (FALSE COLLATE NOCASE)",
+      "columns": [
+        "NULL IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "NULL IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS DISTINCT FROM (FALSE COLLATE NOCASE)",
+      "columns": [
+        "NULL IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT NULL IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)",
+      "columns": [
+        "NULL IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS TRUE FROM flags",
+      "columns": [
+        "0 IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS TRUE",
+      "columns": [
+        "0 IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT TRUE FROM flags",
+      "columns": [
+        "0 IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT TRUE",
+      "columns": [
+        "0 IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "0 IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM TRUE",
+      "columns": [
+        "0 IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "0 IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM TRUE",
+      "columns": [
+        "0 IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS FALSE FROM flags",
+      "columns": [
+        "0 IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS FALSE",
+      "columns": [
+        "0 IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT FALSE FROM flags",
+      "columns": [
+        "0 IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT FALSE",
+      "columns": [
+        "0 IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "0 IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM FALSE",
+      "columns": [
+        "0 IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "0 IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM FALSE",
+      "columns": [
+        "0 IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS (TRUE) FROM flags",
+      "columns": [
+        "0 IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS (TRUE)",
+      "columns": [
+        "0 IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT (TRUE) FROM flags",
+      "columns": [
+        "0 IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT (TRUE)",
+      "columns": [
+        "0 IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "0 IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM (TRUE)",
+      "columns": [
+        "0 IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "0 IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM (TRUE)",
+      "columns": [
+        "0 IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS (FALSE) FROM flags",
+      "columns": [
+        "0 IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS (FALSE)",
+      "columns": [
+        "0 IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT (FALSE) FROM flags",
+      "columns": [
+        "0 IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT (FALSE)",
+      "columns": [
+        "0 IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "0 IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM (FALSE)",
+      "columns": [
+        "0 IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "0 IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM (FALSE)",
+      "columns": [
+        "0 IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS +TRUE FROM flags",
+      "columns": [
+        "0 IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS +TRUE",
+      "columns": [
+        "0 IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT +TRUE FROM flags",
+      "columns": [
+        "0 IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT +TRUE",
+      "columns": [
+        "0 IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "0 IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM +TRUE",
+      "columns": [
+        "0 IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "0 IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM +TRUE",
+      "columns": [
+        "0 IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS TRUE+0 FROM flags",
+      "columns": [
+        "0 IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS TRUE+0",
+      "columns": [
+        "0 IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT TRUE+0 FROM flags",
+      "columns": [
+        "0 IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT TRUE+0",
+      "columns": [
+        "0 IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "0 IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM TRUE+0",
+      "columns": [
+        "0 IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "0 IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM TRUE+0",
+      "columns": [
+        "0 IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS FALSE+1 FROM flags",
+      "columns": [
+        "0 IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS FALSE+1",
+      "columns": [
+        "0 IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT FALSE+1 FROM flags",
+      "columns": [
+        "0 IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT FALSE+1",
+      "columns": [
+        "0 IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "0 IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM FALSE+1",
+      "columns": [
+        "0 IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "0 IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM FALSE+1",
+      "columns": [
+        "0 IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "0 IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS TRUE COLLATE BINARY",
+      "columns": [
+        "0 IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "0 IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT TRUE COLLATE BINARY",
+      "columns": [
+        "0 IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "0 IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM TRUE COLLATE BINARY",
+      "columns": [
+        "0 IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "0 IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM TRUE COLLATE BINARY",
+      "columns": [
+        "0 IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "0 IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS (FALSE COLLATE NOCASE)",
+      "columns": [
+        "0 IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "0 IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT (FALSE COLLATE NOCASE)",
+      "columns": [
+        "0 IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "0 IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS DISTINCT FROM (FALSE COLLATE NOCASE)",
+      "columns": [
+        "0 IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "0 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)",
+      "columns": [
+        "0 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS TRUE FROM flags",
+      "columns": [
+        "1 IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS TRUE",
+      "columns": [
+        "1 IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT TRUE FROM flags",
+      "columns": [
+        "1 IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT TRUE",
+      "columns": [
+        "1 IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "1 IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM TRUE",
+      "columns": [
+        "1 IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "1 IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM TRUE",
+      "columns": [
+        "1 IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS FALSE FROM flags",
+      "columns": [
+        "1 IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS FALSE",
+      "columns": [
+        "1 IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT FALSE FROM flags",
+      "columns": [
+        "1 IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT FALSE",
+      "columns": [
+        "1 IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "1 IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM FALSE",
+      "columns": [
+        "1 IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "1 IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM FALSE",
+      "columns": [
+        "1 IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS (TRUE) FROM flags",
+      "columns": [
+        "1 IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS (TRUE)",
+      "columns": [
+        "1 IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT (TRUE) FROM flags",
+      "columns": [
+        "1 IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT (TRUE)",
+      "columns": [
+        "1 IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "1 IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM (TRUE)",
+      "columns": [
+        "1 IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "1 IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM (TRUE)",
+      "columns": [
+        "1 IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS (FALSE) FROM flags",
+      "columns": [
+        "1 IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS (FALSE)",
+      "columns": [
+        "1 IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT (FALSE) FROM flags",
+      "columns": [
+        "1 IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT (FALSE)",
+      "columns": [
+        "1 IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "1 IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM (FALSE)",
+      "columns": [
+        "1 IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "1 IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM (FALSE)",
+      "columns": [
+        "1 IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS +TRUE FROM flags",
+      "columns": [
+        "1 IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS +TRUE",
+      "columns": [
+        "1 IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT +TRUE FROM flags",
+      "columns": [
+        "1 IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT +TRUE",
+      "columns": [
+        "1 IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "1 IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM +TRUE",
+      "columns": [
+        "1 IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "1 IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM +TRUE",
+      "columns": [
+        "1 IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS TRUE+0 FROM flags",
+      "columns": [
+        "1 IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS TRUE+0",
+      "columns": [
+        "1 IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT TRUE+0 FROM flags",
+      "columns": [
+        "1 IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT TRUE+0",
+      "columns": [
+        "1 IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "1 IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM TRUE+0",
+      "columns": [
+        "1 IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "1 IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM TRUE+0",
+      "columns": [
+        "1 IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS FALSE+1 FROM flags",
+      "columns": [
+        "1 IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS FALSE+1",
+      "columns": [
+        "1 IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT FALSE+1 FROM flags",
+      "columns": [
+        "1 IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT FALSE+1",
+      "columns": [
+        "1 IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "1 IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM FALSE+1",
+      "columns": [
+        "1 IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "1 IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM FALSE+1",
+      "columns": [
+        "1 IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "1 IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS TRUE COLLATE BINARY",
+      "columns": [
+        "1 IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "1 IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT TRUE COLLATE BINARY",
+      "columns": [
+        "1 IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "1 IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM TRUE COLLATE BINARY",
+      "columns": [
+        "1 IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "1 IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM TRUE COLLATE BINARY",
+      "columns": [
+        "1 IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "1 IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS (FALSE COLLATE NOCASE)",
+      "columns": [
+        "1 IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "1 IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT (FALSE COLLATE NOCASE)",
+      "columns": [
+        "1 IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "1 IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS DISTINCT FROM (FALSE COLLATE NOCASE)",
+      "columns": [
+        "1 IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "1 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 1 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)",
+      "columns": [
+        "1 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS TRUE FROM flags",
+      "columns": [
+        "2 IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS TRUE",
+      "columns": [
+        "2 IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT TRUE FROM flags",
+      "columns": [
+        "2 IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT TRUE",
+      "columns": [
+        "2 IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "2 IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM TRUE",
+      "columns": [
+        "2 IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "2 IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM TRUE",
+      "columns": [
+        "2 IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS FALSE FROM flags",
+      "columns": [
+        "2 IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS FALSE",
+      "columns": [
+        "2 IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT FALSE FROM flags",
+      "columns": [
+        "2 IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT FALSE",
+      "columns": [
+        "2 IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "2 IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM FALSE",
+      "columns": [
+        "2 IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "2 IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM FALSE",
+      "columns": [
+        "2 IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS (TRUE) FROM flags",
+      "columns": [
+        "2 IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS (TRUE)",
+      "columns": [
+        "2 IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT (TRUE) FROM flags",
+      "columns": [
+        "2 IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT (TRUE)",
+      "columns": [
+        "2 IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "2 IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM (TRUE)",
+      "columns": [
+        "2 IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "2 IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM (TRUE)",
+      "columns": [
+        "2 IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS (FALSE) FROM flags",
+      "columns": [
+        "2 IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS (FALSE)",
+      "columns": [
+        "2 IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT (FALSE) FROM flags",
+      "columns": [
+        "2 IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT (FALSE)",
+      "columns": [
+        "2 IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "2 IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM (FALSE)",
+      "columns": [
+        "2 IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "2 IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM (FALSE)",
+      "columns": [
+        "2 IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS +TRUE FROM flags",
+      "columns": [
+        "2 IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS +TRUE",
+      "columns": [
+        "2 IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT +TRUE FROM flags",
+      "columns": [
+        "2 IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT +TRUE",
+      "columns": [
+        "2 IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "2 IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM +TRUE",
+      "columns": [
+        "2 IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "2 IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM +TRUE",
+      "columns": [
+        "2 IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS TRUE+0 FROM flags",
+      "columns": [
+        "2 IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS TRUE+0",
+      "columns": [
+        "2 IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT TRUE+0 FROM flags",
+      "columns": [
+        "2 IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT TRUE+0",
+      "columns": [
+        "2 IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "2 IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM TRUE+0",
+      "columns": [
+        "2 IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "2 IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM TRUE+0",
+      "columns": [
+        "2 IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS FALSE+1 FROM flags",
+      "columns": [
+        "2 IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS FALSE+1",
+      "columns": [
+        "2 IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT FALSE+1 FROM flags",
+      "columns": [
+        "2 IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT FALSE+1",
+      "columns": [
+        "2 IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "2 IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM FALSE+1",
+      "columns": [
+        "2 IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "2 IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM FALSE+1",
+      "columns": [
+        "2 IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "2 IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS TRUE COLLATE BINARY",
+      "columns": [
+        "2 IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "2 IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT TRUE COLLATE BINARY",
+      "columns": [
+        "2 IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "2 IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM TRUE COLLATE BINARY",
+      "columns": [
+        "2 IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "2 IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM TRUE COLLATE BINARY",
+      "columns": [
+        "2 IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "2 IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS (FALSE COLLATE NOCASE)",
+      "columns": [
+        "2 IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "2 IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT (FALSE COLLATE NOCASE)",
+      "columns": [
+        "2 IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "2 IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS DISTINCT FROM (FALSE COLLATE NOCASE)",
+      "columns": [
+        "2 IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "2 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)",
+      "columns": [
+        "2 IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS TRUE FROM flags",
+      "columns": [
+        "'2' IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS TRUE",
+      "columns": [
+        "'2' IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT TRUE FROM flags",
+      "columns": [
+        "'2' IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT TRUE",
+      "columns": [
+        "'2' IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "'2' IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM TRUE",
+      "columns": [
+        "'2' IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM TRUE",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS FALSE FROM flags",
+      "columns": [
+        "'2' IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS FALSE",
+      "columns": [
+        "'2' IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT FALSE FROM flags",
+      "columns": [
+        "'2' IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT FALSE",
+      "columns": [
+        "'2' IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "'2' IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM FALSE",
+      "columns": [
+        "'2' IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM FALSE",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS (TRUE) FROM flags",
+      "columns": [
+        "'2' IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS (TRUE)",
+      "columns": [
+        "'2' IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT (TRUE) FROM flags",
+      "columns": [
+        "'2' IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT (TRUE)",
+      "columns": [
+        "'2' IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "'2' IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM (TRUE)",
+      "columns": [
+        "'2' IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM (TRUE)",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS (FALSE) FROM flags",
+      "columns": [
+        "'2' IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS (FALSE)",
+      "columns": [
+        "'2' IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT (FALSE) FROM flags",
+      "columns": [
+        "'2' IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT (FALSE)",
+      "columns": [
+        "'2' IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "'2' IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM (FALSE)",
+      "columns": [
+        "'2' IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM (FALSE)",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS +TRUE FROM flags",
+      "columns": [
+        "'2' IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS +TRUE",
+      "columns": [
+        "'2' IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT +TRUE FROM flags",
+      "columns": [
+        "'2' IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT +TRUE",
+      "columns": [
+        "'2' IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "'2' IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM +TRUE",
+      "columns": [
+        "'2' IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM +TRUE",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS TRUE+0 FROM flags",
+      "columns": [
+        "'2' IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS TRUE+0",
+      "columns": [
+        "'2' IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT TRUE+0 FROM flags",
+      "columns": [
+        "'2' IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT TRUE+0",
+      "columns": [
+        "'2' IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "'2' IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM TRUE+0",
+      "columns": [
+        "'2' IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM TRUE+0",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS FALSE+1 FROM flags",
+      "columns": [
+        "'2' IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS FALSE+1",
+      "columns": [
+        "'2' IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT FALSE+1 FROM flags",
+      "columns": [
+        "'2' IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT FALSE+1",
+      "columns": [
+        "'2' IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "'2' IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM FALSE+1",
+      "columns": [
+        "'2' IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM FALSE+1",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "'2' IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS TRUE COLLATE BINARY",
+      "columns": [
+        "'2' IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "'2' IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT TRUE COLLATE BINARY",
+      "columns": [
+        "'2' IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "'2' IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM TRUE COLLATE BINARY",
+      "columns": [
+        "'2' IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM TRUE COLLATE BINARY",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "'2' IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS (FALSE COLLATE NOCASE)",
+      "columns": [
+        "'2' IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "'2' IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT (FALSE COLLATE NOCASE)",
+      "columns": [
+        "'2' IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "'2' IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS DISTINCT FROM (FALSE COLLATE NOCASE)",
+      "columns": [
+        "'2' IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT '2' IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)",
+      "columns": [
+        "'2' IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS TRUE FROM flags",
+      "columns": [
+        "x IS TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT TRUE FROM flags",
+      "columns": [
+        "x IS NOT TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "x IS DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT DISTINCT FROM TRUE FROM flags",
+      "columns": [
+        "x IS NOT DISTINCT FROM TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS FALSE FROM flags",
+      "columns": [
+        "x IS FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT FALSE FROM flags",
+      "columns": [
+        "x IS NOT FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "x IS DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT DISTINCT FROM FALSE FROM flags",
+      "columns": [
+        "x IS NOT DISTINCT FROM FALSE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS (TRUE) FROM flags",
+      "columns": [
+        "x IS (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT (TRUE) FROM flags",
+      "columns": [
+        "x IS NOT (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "x IS DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT DISTINCT FROM (TRUE) FROM flags",
+      "columns": [
+        "x IS NOT DISTINCT FROM (TRUE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS (FALSE) FROM flags",
+      "columns": [
+        "x IS (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT (FALSE) FROM flags",
+      "columns": [
+        "x IS NOT (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "x IS DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT DISTINCT FROM (FALSE) FROM flags",
+      "columns": [
+        "x IS NOT DISTINCT FROM (FALSE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS +TRUE FROM flags",
+      "columns": [
+        "x IS +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT +TRUE FROM flags",
+      "columns": [
+        "x IS NOT +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "x IS DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT DISTINCT FROM +TRUE FROM flags",
+      "columns": [
+        "x IS NOT DISTINCT FROM +TRUE"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS TRUE+0 FROM flags",
+      "columns": [
+        "x IS TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT TRUE+0 FROM flags",
+      "columns": [
+        "x IS NOT TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "x IS DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT DISTINCT FROM TRUE+0 FROM flags",
+      "columns": [
+        "x IS NOT DISTINCT FROM TRUE+0"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS FALSE+1 FROM flags",
+      "columns": [
+        "x IS FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT FALSE+1 FROM flags",
+      "columns": [
+        "x IS NOT FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "x IS DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT DISTINCT FROM FALSE+1 FROM flags",
+      "columns": [
+        "x IS NOT DISTINCT FROM FALSE+1"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "x IS TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "x IS NOT TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "x IS DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT DISTINCT FROM TRUE COLLATE BINARY FROM flags",
+      "columns": [
+        "x IS NOT DISTINCT FROM TRUE COLLATE BINARY"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "x IS (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "x IS NOT (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "x IS DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x IS NOT DISTINCT FROM (FALSE COLLATE NOCASE) FROM flags",
+      "columns": [
+        "x IS NOT DISTINCT FROM (FALSE COLLATE NOCASE)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 5 AS true WHERE true=5",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "5"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 0 AS true WHERE true",
+      "columns": [
+        "true"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT 7 AS false WHERE false=7",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "7"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true AS true WHERE true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT false AS true,true AS false WHERE true",
+      "columns": [
+        "true",
+        "false"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT true AS false,false AS true WHERE false",
+      "columns": [
+        "false",
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x AS true FROM plain WHERE true=2",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x AS false FROM plain WHERE false=2",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x AS true FROM flags WHERE true=9",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "3"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x AS false FROM flags WHERE false='value'",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "3"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x AS true,count(*) FROM plain GROUP BY true ORDER BY true",
+      "columns": [
+        "true",
+        "count(*)"
+      ],
+      "rows": [
+        [
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT count(*) AS true FROM plain HAVING true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "3"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT count(*) AS false FROM plain HAVING false=3",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "3"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT count(*) AS true FROM plain WHERE true",
+      "error": "misuse of aggregate: count()"
+    },
+    {
+      "sql": "SELECT count(*) AS true FROM empty_flags WHERE true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT 2 AS true FROM flags ORDER BY true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true FROM flags,second",
+      "error": "ambiguous column name: true"
+    },
+    {
+      "sql": "SELECT false FROM flags,second",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          "value"
+        ],
+        [
+          "0"
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true FROM empty_flags,second WHERE 0",
+      "error": "ambiguous column name: true"
+    },
+    {
+      "sql": "SELECT flags.true,second.true FROM flags,second",
+      "columns": [
+        "true",
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "9"
+          },
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          null,
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT main.flags.true FROM main.flags",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "9"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT q.true FROM flags AS q",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "9"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (SELECT true) FROM flags",
+      "columns": [
+        "(SELECT true)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "9"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (SELECT true FROM plain LIMIT 1) FROM flags",
+      "columns": [
+        "(SELECT true FROM plain LIMIT 1)"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "9"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT (SELECT true FROM one_true LIMIT 1) FROM flags",
+      "columns": [
+        "(SELECT true FROM one_true LIMIT 1)"
+      ],
+      "rows": [
+        [
+          "A"
+        ],
+        [
+          "A"
+        ],
+        [
+          "A"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true,false FROM (SELECT 9 AS true,8 AS false)",
+      "columns": [
+        "true",
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "WITH c AS (SELECT true AS true,false AS false) SELECT true,false FROM c",
+      "columns": [
+        "true",
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "WITH c(true,false) AS (VALUES(9,8)) SELECT true,false FROM c",
+      "columns": [
+        "true",
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT true FROM flags UNION ALL SELECT true FROM one_true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "9"
+          }
+        ],
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          null
+        ],
+        [
+          "A"
+        ],
+        [
+          "b"
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT x AS true FROM plain JOIN second ON true=second.true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          }
+        ],
+        [
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT tick() AS true WHERE true",
+      "columns": [
+        "true"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ],
+      "calls": 2
+    },
+    {
+      "sql": "SELECT tick() AS false WHERE false>0",
+      "columns": [
+        "false"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ],
+      "calls": 2
+    },
+    {
+      "sql": "SELECT tick() AS true WHERE FALSE",
+      "columns": [
+        "true"
+      ],
+      "rows": [],
+      "calls": 0
+    },
+    {
+      "sql": "SELECT false AS true,tick() AS false WHERE true",
+      "columns": [
+        "true",
+        "false"
+      ],
+      "rows": [],
+      "calls": 0
+    }
+  ]
+}

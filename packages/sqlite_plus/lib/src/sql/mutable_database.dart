@@ -74,10 +74,10 @@ final class MutableSqliteDatabase {
           [List<Object?> parameters = const []]) =>
       _exclusive(() async {
         final pp = SqlParser(sql);
-        if (pp.take('PRAGMA') &&
-            ['FOREIGN_KEYS', 'RECURSIVE_TRIGGERS']
-                .contains(pp.current.keyword)) {
-          final name = asciiLower(pp.identifier());
+        final pragmaName =
+            pp.take('PRAGMA') ? asciiLower(pp.qualifiedIdentifier()) : null;
+        if (['foreign_keys', 'recursive_triggers'].contains(pragmaName)) {
+          final name = pragmaName!;
           pp.finish();
           if (parameters.isNotEmpty) {
             throw const SqlException('PRAGMA bindings unsupported');
@@ -106,7 +106,7 @@ final class MutableSqliteDatabase {
       _exclusive(() async {
         final parser = SqlParser(sql);
         if (parser.take('PRAGMA')) {
-          final name = asciiLower(parser.identifier());
+          final name = asciiLower(parser.qualifiedIdentifier());
           if (![
             'foreign_keys',
             'recursive_triggers',
@@ -115,37 +115,23 @@ final class MutableSqliteDatabase {
           ].contains(name)) {
             throw const SqlException('Unsupported writable PRAGMA');
           }
-          parser.require('=');
-          final word = asciiLower(parser.current.text);
-          final Expr expr;
-          if (['foreign_keys', 'recursive_triggers'].contains(name) &&
-              ['on', 'off', 'yes', 'no'].contains(word)) {
-            expr = Literal(boolean(['on', 'yes'].contains(word)));
-            parser.position++;
-          } else {
-            expr = parser.expression();
-          }
-          parser.finish();
-          expr.validate({});
+          final statePragma =
+              ['foreign_keys', 'recursive_triggers'].contains(name);
+          final value = _pragmaValue(parser,
+              onParsed: statePragma
+                  ? (value) {
+                      if (name == 'recursive_triggers') {
+                        _recursiveTriggers = _pragmaBoolean(value);
+                      } else if (!inTransaction) {
+                        _foreignKeys = _pragmaBoolean(value);
+                      }
+                    }
+                  : null);
           if (parameters.isNotEmpty) {
             throw const SqlException('PRAGMA bindings unsupported');
           }
-          final value = expr.evaluate(EvalContext({}, {}, []));
-          if (name == 'recursive_triggers') {
-            _recursiveTriggers = truth(value) == true;
-          } else if (name == 'foreign_keys') {
-            if (!inTransaction) _foreignKeys = truth(value) == true;
-          } else {
-            var number = numeric(value);
-            final integer = number is BigInt
-                ? number
-                : number is double && number.isFinite
-                    ? BigInt.from(number)
-                    : BigInt.zero;
-            final signed = integer >= BigInt.from(-2147483648) &&
-                    integer <= BigInt.from(2147483647)
-                ? integer.toInt()
-                : 0;
+          if (!statePragma) {
+            final signed = _pragmaInteger(value);
             final image = Uint8List.fromList(_image);
             final fields = ByteData.sublistView(image);
             fields.setInt32(name == 'user_version' ? 60 : 68, signed);
@@ -212,6 +198,56 @@ final class MutableSqliteDatabase {
         return MutationResult(
             result.changes, result.lastRowid, result.returning);
       });
+
+  String _pragmaValue(SqlParser parser, {void Function(String)? onParsed}) {
+    final parenthesized = parser.take('(');
+    if (!parenthesized) parser.require('=');
+    final negative = parser.take('-');
+    final signed = negative || parser.take('+');
+    final token = parser.current;
+    if (![SqlTokenKind.identifier, SqlTokenKind.string, SqlTokenKind.number]
+            .contains(token.kind) ||
+        token.keyword == 'NULL' ||
+        signed && token.kind != SqlTokenKind.number) {
+      throw const SqlException('Invalid PRAGMA value');
+    }
+    parser.position++;
+    if (parenthesized) parser.require(')');
+    final value = negative ? '-${token.text}' : token.text;
+    // SQLite applies connection-state PRAGMAs during preparation, even if
+    // trailing SQL later fails. Header writes wait until preparation succeeds.
+    onParsed?.call(value);
+    parser.finish();
+    return value;
+  }
+
+  int _pragmaInteger(String value) {
+    final match =
+        RegExp(r'^([+-]?)(0[xX][0-9a-fA-F]+|[0-9]+)').firstMatch(value);
+    if (match == null) return 0;
+    final digits = match[2]!;
+    final hexadecimal = digits.startsWith('0x') || digits.startsWith('0X');
+    final significant = (hexadecimal ? digits.substring(2) : digits)
+        .replaceFirst(RegExp(r'^0+'), '');
+    if (significant.isEmpty) return 0;
+    if (significant.length > (hexadecimal ? 8 : 10)) return 0;
+    var number = BigInt.parse(significant, radix: hexadecimal ? 16 : 10);
+    if (hexadecimal && number > BigInt.from(2147483647)) return 0;
+    if (match[1] == '-') number = -number;
+    return number >= BigInt.from(-2147483648) &&
+            number <= BigInt.from(2147483647)
+        ? number.toInt()
+        : 0;
+  }
+
+  bool _pragmaBoolean(String value) {
+    if (value.isNotEmpty &&
+        value.codeUnitAt(0) >= 48 &&
+        value.codeUnitAt(0) <= 57) {
+      return _pragmaInteger(value) != 0;
+    }
+    return ['on', 'yes', 'true'].contains(asciiLower(value));
+  }
 
   Future<MutationResult> _transaction(SqlParser parser) async {
     final op = parser.current.keyword;

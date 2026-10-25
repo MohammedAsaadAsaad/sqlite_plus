@@ -172,6 +172,48 @@ Object? compareRowExpressions(
       : op == '<=' || op == '>=');
 }
 
+/// TRUE/FALSE are fallback names: a visible column or result alias wins.
+/// Preparation remembers the expression's original scope so expanding an alias
+/// cannot recursively capture another alias in the same SELECT list.
+final class BoolNameExpr extends ColumnExpr {
+  BoolNameExpr(super.name, {super.offset})
+      : expected = asciiLower(name) == 'true',
+        super(columnOffset: offset);
+  final bool expected;
+  bool? resolvedLiteral;
+  bool literalIn(EvalContext context) =>
+      resolvedLiteral ??
+      !(context.row.containsKey(key) ||
+          context.affinities.containsKey(key) ||
+          context.columnAliases.containsKey(key));
+  @override
+  void validate(Set<String> columns) {
+    if (columns.contains(key)) {
+      resolvedLiteral = false;
+      return;
+    }
+    if (columns.any((column) => column.endsWith('.$key'))) {
+      throw SqlException('Ambiguous column: $name');
+    }
+    resolvedLiteral = true;
+  }
+
+  @override
+  Set<String> get unaggregatedColumns => resolvedLiteral == true ? {} : {key};
+  @override
+  Object? evaluate(EvalContext context) =>
+      literalIn(context) ? boolean(expected) : super.evaluate(context);
+  @override
+  String affinity(EvalContext context) =>
+      literalIn(context) ? 'none' : super.affinity(context);
+  @override
+  String? collation(EvalContext context) =>
+      literalIn(context) ? null : super.collation(context);
+  @override
+  String? explicitCollation(EvalContext context) =>
+      literalIn(context) ? null : super.explicitCollation(context);
+}
+
 final class CollateExpr extends Expr {
   CollateExpr(this.operand, String name) : name = asciiLower(name) {
     if (!['binary', 'nocase', 'rtrim'].contains(this.name)) {
@@ -457,10 +499,31 @@ final class PatternExpr extends Expr {
   }
 }
 
+final class _PreparedSubqueryRows implements SqlRows {
+  _PreparedSubqueryRows(this.source, this.columnAffinities);
+  final SqlRows source;
+  @override
+  final List<String> columnAffinities;
+  @override
+  List<String> get columns => source.columns;
+  @override
+  List<List<Object?>> get rows => source.rows;
+  @override
+  List<String> get columnCollations => source.columnCollations;
+}
+
 final class SubqueryExpr extends Expr {
   SubqueryExpr(this.statement, {this.exists = false});
   final SelectStatement statement;
   final bool exists;
+  List<String>? preparedColumnAffinities;
+  List<String>? preparedColumnDeclaredTypes;
+
+  @override
+  String affinity(EvalContext context) =>
+      !exists && preparedColumnAffinities?.length == 1
+          ? preparedColumnAffinities!.single
+          : 'none';
   @override
   void validate(Set<String> columns) {
     final width = _rowWidth(this);
@@ -474,7 +537,11 @@ final class SubqueryExpr extends Expr {
     if (callback == null) {
       throw const SqlException('Subquery context unavailable');
     }
-    return callback(statement, context);
+    final result = callback(statement, context);
+    final affinities = preparedColumnAffinities;
+    return affinities != null && affinities.length == result.columns.length
+        ? _PreparedSubqueryRows(result, affinities)
+        : result;
   }
 
   @override

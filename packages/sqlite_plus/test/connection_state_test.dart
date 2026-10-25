@@ -19,6 +19,7 @@ void main() {
       addTearDown(db.close);
       expect((await db.query(_state)).rows.single,
           [BigInt.zero, BigInt.zero, BigInt.zero]);
+      var previousSql = '';
       for (final step in entry['steps'] as List) {
         final sql = step['sql'] as String;
         Future<List<List<Object?>>> execute() async => step['kind'] == 'query'
@@ -33,11 +34,12 @@ void main() {
               (step['rows'] as List)
                   .map((row) => (row as List).map(expectedValue).toList())
                   .toList(),
-              reason: sql);
+              reason: '$sql after $previousSql');
         }
         expect((await db.query(_state)).rows.single,
             (step['state'] as List).map(expectedValue).toList(),
             reason: 'counters after $sql');
+        previousSql = sql;
       }
     });
   }

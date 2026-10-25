@@ -1609,18 +1609,7 @@ final class ImageMutations {
           } finally {
             await reader.close();
           }
-          final names = <String>[];
-          final used = <String>{};
-          for (final label in result.columns) {
-            var candidate = label;
-            var suffix = 0;
-            while (used.contains(asciiLower(candidate))) {
-              final base = label.replaceFirst(RegExp(r':\d+$'), '');
-              candidate = '$base:${++suffix}';
-            }
-            used.add(asciiLower(candidate));
-            names.add(candidate);
-          }
+          final names = relationColumnNames(result.columns);
           String quote(String value) => '"${value.replaceAll('"', '""')}"';
           String type(int i) {
             final declared = result.columnDeclaredTypes[i].toUpperCase();
@@ -2589,7 +2578,7 @@ final class ImageMutations {
     final visitedQueries = <SelectStatement>{};
     void countReferences(SelectStatement query) {
       if (!visitedQueries.add(query)) return;
-      for (final source in query.sources) {
+      for (final source in query.leafSources) {
         if (source.table != null) {
           final key = asciiLower(source.table!);
           cteReferences[key] = (cteReferences[key] ?? 0) + 1;
@@ -2608,7 +2597,7 @@ final class ImageMutations {
         ...query.groupBy,
         query.having,
         ...query.order.map((term) => term.expression),
-        ...query.sources.map((source) => source.on)
+        ...query.leafSources.map((source) => source.on)
       ].whereType<Expr>()) {
         queries(expr).forEach(countReferences);
       }
@@ -2628,7 +2617,7 @@ final class ImageMutations {
     };
 
     bool readsTarget(SelectStatement query) =>
-        query.sources.any((source) =>
+        query.leafSources.any((source) =>
             source.table != null &&
                 asciiLower(source.table!) == asciiLower(name) ||
             source.query != null && readsTarget(source.query!)) ||
@@ -2640,7 +2629,7 @@ final class ImageMutations {
           ...query.groupBy,
           query.having,
           ...query.order.map((term) => term.expression),
-          ...query.sources.map((source) => source.on)
+          ...query.leafSources.map((source) => source.on)
         ].whereType<Expr>().any((expr) => queries(expr).any(readsTarget));
 
     SqlRows Function(SelectStatement, EvalContext)? snapshotSubquery;
@@ -2678,9 +2667,12 @@ final class ImageMutations {
     // Self-reading VALUES are materialized before writes, including callbacks
     // in the other VALUES terms. This also isolates them from row triggers.
     if (insert &&
-        inserts
-            .expand((row) => row)
-            .any((expr) => queries(expr).any(readsTarget))) {
+        (other.any((object) =>
+                object.type == 'trigger' &&
+                asciiLower(object.tableName) == asciiLower(name)) ||
+            inserts
+                .expand((row) => row)
+                .any((expr) => queries(expr).any(readsTarget)))) {
       final context = _constantContext(bound);
       for (var i = 0; i < inserts.length; i++) {
         inserts[i] = inserts[i]
@@ -2794,18 +2786,19 @@ final class ImageMutations {
       final reader = await SqliteDatabase.openReadOnly(storage,
           functions: SqlFunctionRegistry.current);
       try {
-        final run = await reader.prepareSubqueries([SubqueryExpr(query)],
-            relations: (names) => {
-                  for (final key in [
-                    asciiLower(name),
-                    'main.${asciiLower(name)}'
-                  ])
-                    if (names.contains(key))
-                      key: (
-                        schema,
-                        originalRows.map((row) => _row(table, row)).toList()
-                      )
-                });
+        final run =
+            await reader.prepareSubqueries([SubqueryExpr(query, exists: true)],
+                relations: (names) => {
+                      for (final key in [
+                        asciiLower(name),
+                        'main.${asciiLower(name)}'
+                      ])
+                        if (names.contains(key))
+                          key: (
+                            schema,
+                            originalRows.map((row) => _row(table, row)).toList()
+                          )
+                    });
         final values = run(query, _constantContext(bound));
         fromAssignments = {
           for (final row in values.rows)
@@ -3149,15 +3142,23 @@ final class ImageMutations {
           : table.rows.map((r) => r.rowId).reduce((a, b) => a > b ? a : b);
       for (final expressions in inserts) {
         if (triggered) insertMax = largestRowid();
-        final data = <String, Object?>{
-          for (final c in schema.columns)
-            asciiLower(c.name): c.defaultExpression
-                    ?.evaluate(EvalContext({}, {}, bound, encoding)) ??
-                c.defaultValue
-        };
+        final data = <String, Object?>{};
         final context = _constantContext(bound);
         for (var i = 0; i < input.length; i++) {
           data[input[i]] = expressions[i].evaluate(context);
+        }
+        for (final column in schema.columns) {
+          final key = asciiLower(column.name);
+          if (!data.containsKey(key)) {
+            // INTEGER PRIMARY KEY defaults never override automatic rowids.
+            // Defaults for supplied columns must not execute user callbacks.
+            data[key] = column.name == schema.rowidAlias ||
+                    column.generatedExpression != null
+                ? null
+                : column.defaultExpression
+                        ?.evaluate(EvalContext({}, {}, bound, encoding)) ??
+                    column.defaultValue;
+          }
         }
         Object? requested = schema.rowidAlias == null
             ? null

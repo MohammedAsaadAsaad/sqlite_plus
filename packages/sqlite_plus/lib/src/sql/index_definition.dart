@@ -16,6 +16,9 @@ Expr indexOperand(Expr expression) =>
 String? expressionSignature(Expr expression,
     {String Function(ColumnExpr)? columnKey}) {
   Object? shape(Expr e) {
+    if (e is BoolNameExpr && e.resolvedLiteral == true) {
+      return shape(Literal(boolean(e.expected), e.key.toUpperCase()));
+    }
     if (e is ColumnExpr) return ['column', columnKey?.call(e) ?? e.key];
     if (e is Literal) {
       final v = e.value;
@@ -164,7 +167,8 @@ final class IndexDefinition {
       validate(expression);
       final operand = indexOperand(expression);
       String? column;
-      if (operand is ColumnExpr) {
+      if (operand is ColumnExpr &&
+          !(operand is BoolNameExpr && operand.resolvedLiteral == true)) {
         column = table.columns
             .firstWhere((c) => asciiLower(c.name) == operand.key)
             .name;
@@ -223,7 +227,9 @@ bool impliesIndexPredicate(Expr? query, Expr? predicate,
           (sameExpression(term.left, needed.left, columnKey: columnKey) ||
               sameExpression(term.right, needed.left, columnKey: columnKey)));
     }
-    return needed is Literal && truth(needed.value) == true;
+    return needed is BoolNameExpr && needed.resolvedLiteral == true
+        ? needed.expected
+        : needed is Literal && truth(needed.value) == true;
   }
 
   return implies(predicate);

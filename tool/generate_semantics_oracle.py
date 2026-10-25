@@ -431,6 +431,19 @@ def main():
       'SELECT (SELECT * FROM (VALUES(1,2)) WHERE 0) FROM (SELECT 1 WHERE 0)',
       'SELECT (SELECT 1 UNION SELECT 1,2) FROM (SELECT 1 WHERE 0)',
     ]
+    for relation in ["VALUES(1),(2),(NULL)", "VALUES(1),(2)", "SELECT 1 WHERE 0"]:
+      for value in ["1", "3", "NULL", "'1'"]:
+        for operator in ["IN", "NOT IN"]:
+          queries.append(f"WITH q(x) AS({relation}) SELECT {value} {operator} q AS result")
+    queries += [
+      'WITH q(a,b) AS(VALUES(1,2),(3,NULL)) SELECT (1,2) IN q,(3,9) NOT IN q',
+      'WITH q(a,b) AS(VALUES(1,2)) SELECT 1 IN q',
+      'WITH q(a) AS(VALUES(1)) SELECT (1,2) IN q',
+      'WITH q(x) AS(VALUES(1),(2)),r(y) AS(VALUES(1),(3)) SELECT y FROM r WHERE y IN q ORDER BY y',
+      'WITH q(x) AS(VALUES(1),(2)) SELECT EXISTS(SELECT 1 WHERE 1 IN q)',
+      'SELECT 1 IN other.q',
+      'SELECT 1 IN missing_table',
+    ]
     parameter_queries = {
       'SELECT :x,:x,?': [7,8],
       'SELECT :x,@x,$x,:x': [1,2,3],

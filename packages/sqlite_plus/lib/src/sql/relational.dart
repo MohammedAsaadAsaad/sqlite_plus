@@ -11,7 +11,7 @@ extension _RelationalQueries on SqliteDatabase {
     for (final order in s.order) {
       yield order.expression;
     }
-    for (final source in s.sources) {
+    for (final source in s.allSources) {
       if (source.on != null) yield source.on!;
     }
   }
@@ -33,7 +33,10 @@ extension _RelationalQueries on SqliteDatabase {
               entry.type == 'view')) ||
       s.compounds.isNotEmpty ||
       s.sources.length > 1 ||
-      s.sources.any((source) => source.alias != null || source.query != null) ||
+      s.sources.any((source) =>
+          source.alias != null ||
+          source.query != null ||
+          source.group.isNotEmpty) ||
       s.items.any((item) => item.expression == null && item.label != '*') ||
       _expressions(s)
           .any((expr) => _nested(expr).isNotEmpty || _qualified(expr));
@@ -48,7 +51,7 @@ extension _RelationalQueries on SqliteDatabase {
     for (final cte in s.ctes.values) {
       await _loadRelations(cte.$2, cache, loading, cteScope);
     }
-    for (final source in s.sources) {
+    for (final source in s.leafSources) {
       if (source.query != null) {
         await _loadRelations(source.query!, cache, loading, cteScope);
         continue;
@@ -90,10 +93,11 @@ extension _RelationalQueries on SqliteDatabase {
           final query =
               SqlParser(entry.sql!.substring(parser.current.offset)).select();
           await _loadRelations(query, cache, loading, cteScope);
-          final result = _relational(query, const [], cache, null);
-          final names = _relationColumnNames(
-              declared.isEmpty ? result.columns : declared);
-          if (names.length != result.columns.length) {
+          final columns = _pragmaColumnMetadata(query, cache);
+          final names = _relationColumnNames(declared.isEmpty
+              ? columns.map((column) => column.name).toList()
+              : declared);
+          if (names.length != columns.length) {
             throw const SqlException('View column width mismatch');
           }
           cache[key] = (
@@ -102,24 +106,23 @@ extension _RelationalQueries on SqliteDatabase {
                 0,
                 [
                   for (var i = 0; i < names.length; i++)
-                    CatalogColumn(
-                        names[i],
-                        result.columnDeclaredTypes[i].isEmpty
-                            ? _affinityType(result.columnAffinities[i])
-                            : result.columnDeclaredTypes[i],
-                        affinityOverride: result.columnAffinities[i],
-                        collation: result.columnCollations[i].isEmpty
+                    CatalogColumn(names[i], columns[i].declaredType,
+                        affinityOverride: columns[i].affinity,
+                        collation: columns[i].collation.isEmpty
                             ? 'binary'
-                            : result.columnCollations[i])
+                            : columns[i].collation)
                 ],
                 withoutRowid: true),
-            [
-              for (final row in result.rows)
-                {
-                  for (var i = 0; i < names.length; i++)
-                    asciiLower(names[i]): row[i]
-                }
-            ]
+            _DeferredRelationRows(() {
+              final result = _relational(query, const [], cache, null);
+              return [
+                for (final row in result.rows)
+                  {
+                    for (var i = 0; i < names.length; i++)
+                      asciiLower(names[i]): row[i]
+                  }
+              ];
+            })
           );
         } else {
           final table = catalog.table(name);
@@ -180,19 +183,8 @@ extension _RelationalQueries on SqliteDatabase {
           ? 'TEXT'
           : '';
 
-  List<String> _relationColumnNames(List<String> columns) {
-    final names = <String>[], used = <String>{};
-    for (final label in columns) {
-      var candidate = label, suffix = 0;
-      while (used.contains(asciiLower(candidate))) {
-        final base = label.replaceFirst(RegExp(r':\d+$'), '');
-        candidate = '$base:${++suffix}';
-      }
-      used.add(asciiLower(candidate));
-      names.add(candidate);
-    }
-    return names;
-  }
+  List<String> _relationColumnNames(List<String> columns) =>
+      relationColumnNames(columns);
 
   SelectStatement _copy(SelectStatement source, List<SelectItem> items,
           {bool tail = true, Expr? limitOverride}) =>
@@ -214,7 +206,8 @@ extension _RelationalQueries on SqliteDatabase {
       {SqlRows Function(SelectStatement, EvalContext,
               Map<String, (CatalogTable, List<RowValues>)>)?
           mutationSubqueries,
-      Map<SelectStatement, (CatalogTable, List<RowValues>)?>? mutationCtes}) {
+      Map<SelectStatement, (CatalogTable, List<RowValues>)?>? mutationCtes,
+      _JoinedGroup? sourceGroup}) {
     QueryResult evaluate(
             SelectStatement query,
             Map<String, (CatalogTable, List<RowValues>)> scope,
@@ -241,11 +234,11 @@ extension _RelationalQueries on SqliteDatabase {
             continue;
           }
           final references = <String>{
-            for (final source in query.sources)
+            for (final source in query.leafSources)
               if (source.table != null && source.schema == null)
                 asciiLower(source.table!),
             for (final part in query.compounds)
-              for (final source in part.$2.sources)
+              for (final source in part.$2.leafSources)
                 if (source.table != null && source.schema == null)
                   asciiLower(source.table!)
           };
@@ -253,7 +246,7 @@ extension _RelationalQueries on SqliteDatabase {
               .any((ref) => ref != name && pending.containsKey(ref))) {
             continue;
           }
-          if (query.sources.any((source) =>
+          if (query.leafSources.any((source) =>
               source.schema == null &&
               asciiLower(source.table ?? '') == name)) {
             throw const SqlException(
@@ -326,7 +319,7 @@ extension _RelationalQueries on SqliteDatabase {
               );
           if (references.contains(name)) {
             final recursive = query.compounds
-                .where((part) => part.$2.sources.any((source) =>
+                .where((part) => part.$2.leafSources.any((source) =>
                     source.schema == null &&
                     asciiLower(source.table ?? '') == name))
                 .toList();
@@ -348,7 +341,7 @@ extension _RelationalQueries on SqliteDatabase {
               }
             }
             for (final part in recursive) {
-              if (part.$2.sources
+              if (part.$2.leafSources
                       .where((source) =>
                           source.schema == null &&
                           asciiLower(source.table ?? '') == name)
@@ -467,7 +460,20 @@ extension _RelationalQueries on SqliteDatabase {
         if (!progressed) throw const SqlException('Circular CTE definition');
       }
     }
-    final sources = s.sources;
+    final sources = s.normalizedSources;
+    final inaccessibleGroupQualifiers = {
+      for (final source in sources.where((source) => source.group.isNotEmpty))
+        for (final child in source.leafSources)
+          if (child.alias?.contains('.') ?? false) asciiLower(child.alias!)
+    };
+    final canonical = <String, String>{};
+    final nestedImplicit = <String>{};
+    final wildcardOverrides = <String, String>{};
+    final ambiguousMerged = <String>{};
+    final soleAliasedGroup = s.sources.length == 1 &&
+        s.sources.single.group.isNotEmpty &&
+        s.sources.single.alias != null;
+    final fieldOrder = <String>[];
     var joined = <RowValues>[{}];
     final aliases = <String>{};
     final refs = <String, List<String>>{};
@@ -557,7 +563,20 @@ extension _RelationalQueries on SqliteDatabase {
       final source = sources[index];
       CatalogTable table;
       List<RowValues> rows;
-      if (source.query != null) {
+      _JoinedGroup? group;
+      if (source.group.isNotEmpty) {
+        group = _JoinedGroup('${sourceGroup?.prefix ?? ''}.$index');
+        final query = SelectStatement(
+            [], null, null, [], null, null, false, s.parameterCount)
+          ..sources.addAll(source.group);
+        _relational(query, bound, cache, outer,
+            mutationSubqueries: mutationSubqueries,
+            mutationCtes: mutationCtes,
+            sourceGroup: group);
+        group.materialize(source.alias);
+        table = CatalogTable('@group$index', 0, [], withoutRowid: true);
+        rows = group.rows;
+      } else if (source.query != null) {
         final result = evaluate(source.query!, cache, outer);
         final names = _relationColumnNames(result.columns);
         table = CatalogTable(
@@ -593,10 +612,20 @@ extension _RelationalQueries on SqliteDatabase {
         (table, rows) = entry;
       }
       final alias = asciiLower(source.alias ?? source.table ?? '@$index');
-      if (!aliases.add(alias)) {
-        throw const SqlException('Duplicate table alias');
+      if (group == null) {
+        if (!aliases.add(alias)) {
+          throw const SqlException('Duplicate table alias');
+        }
+      } else {
+        for (final name in group.aliases) {
+          if (!aliases.add(name)) {
+            throw const SqlException('Duplicate table alias');
+          }
+        }
       }
-      final rightNames = {for (final c in table.columns) asciiLower(c.name)};
+      final rightNames = group == null
+          ? {for (final c in table.columns) asciiLower(c.name)}
+          : {for (final slot in group.star) asciiLower(slot.$1)};
       final leftNames = star.map((c) => asciiLower(c.$1)).toSet();
       final using = source.natural
           ? leftNames.where(rightNames.contains).toSet()
@@ -614,59 +643,116 @@ extension _RelationalQueries on SqliteDatabase {
         for (final name in using)
           name: joinColumns[leftRefs[name]] ?? declared[leftRefs[name]]!
       };
-      final available = [
-        ...table.columns,
-        if (source.rowIdentity != null)
-          CatalogColumn(source.rowIdentity!, 'INTEGER')
-      ];
-      if (!table.withoutRowid) {
-        for (final name in ['rowid', '_rowid_', 'oid']) {
-          if (!rightNames.contains(name)) {
-            available.add(CatalogColumn(name, 'INTEGER'));
-          }
-        }
-      }
       final rightKeys = <String>{};
       final allStar = <(String, String)>[];
-      for (final column in available) {
-        final name = asciiLower(column.name);
-        final key = '$alias.$name';
-        rightKeys.add(key);
-        declared[key] = column;
-        if (source.table != null &&
-            (table.rootPage > 0 ||
-                identical(
-                    cache[source.schema == null
-                        ? asciiLower(source.table!)
-                        : 'main.${asciiLower(source.table!)}'],
-                    cache['main.${asciiLower(source.table!)}']))) {
-          declared['main.$key'] = column;
-          rightKeys.add('main.$key');
-          labels['main.$key'] = column.name;
+      final rightRefs = <String, String>{};
+      if (group != null) {
+        rightKeys.addAll(group.declared.keys);
+        declared.addAll(group.declared);
+        labels.addAll(group.labels);
+        canonical.addAll(group.canonical);
+        fieldOrder.addAll(group.fieldOrder);
+        implicitRefs.addAll(group.implicit);
+        nestedImplicit
+            .addAll(group.implicit.map((key) => group!.canonical[key] ?? key));
+        nestedImplicit.addAll(group.nestedImplicit);
+        sourceStars.addAll(group.sourceStars);
+        for (final entry in group.refs.entries) {
+          final actual =
+              entry.value.where((key) => !group!.implicit.contains(key));
+          if (actual.isNotEmpty) {
+            refs[entry.key]?.removeWhere(implicitRefs.contains);
+          }
+          final visible = actual.isNotEmpty
+              ? actual
+              : refs[entry.key]?.any((key) => !implicitRefs.contains(key)) ==
+                      true
+                  ? const <String>[]
+                  : entry.value;
+          refs.putIfAbsent(entry.key, () => []).addAll(visible);
         }
-        labels[key] = rightNames.contains(name)
-            ? column.name
-            : table.rowidAlias ?? 'rowid';
-        if (rightNames.contains(name)) {
-          refs[name]?.removeWhere(implicitRefs.contains);
-          refs.putIfAbsent(name, () => []).add(key);
-        } else {
-          implicitRefs.add(key);
-          if (!(refs[name]?.any((k) => !implicitRefs.contains(k)) ?? false)) {
-            refs.putIfAbsent(name, () => []).add(key);
+        for (final slot in group.star) {
+          final name = asciiLower(slot.$1);
+          rightRefs.putIfAbsent(name, () => slot.$2);
+          if (!using.contains(name)) star.add(slot);
+        }
+      } else {
+        final available = [
+          ...table.columns,
+          if (source.rowIdentity != null)
+            CatalogColumn(source.rowIdentity!, 'INTEGER')
+        ];
+        if (!table.withoutRowid) {
+          for (final name in ['rowid', '_rowid_', 'oid']) {
+            if (!rightNames.contains(name)) {
+              available.add(CatalogColumn(name, 'INTEGER'));
+            }
           }
         }
-        if (rightNames.contains(name)) {
-          allStar.add((column.name, key));
-          if (!using.contains(name)) star.add((column.name, key));
+        for (final column in available) {
+          final name = asciiLower(column.name);
+          final key = '$alias.$name';
+          rightKeys.add(key);
+          declared[key] = column;
+          canonical[key] = key;
+          if (source.table != null &&
+              (table.rootPage > 0 ||
+                  identical(
+                      cache[source.schema == null
+                          ? asciiLower(source.table!)
+                          : 'main.${asciiLower(source.table!)}'],
+                      cache['main.${asciiLower(source.table!)}']))) {
+            declared['main.$key'] = column;
+            canonical['main.$key'] = key;
+            rightKeys.add('main.$key');
+            labels['main.$key'] = column.name;
+          }
+          labels[key] = rightNames.contains(name)
+              ? column.name
+              : table.rowidAlias ?? 'rowid';
+          if (rightNames.contains(name)) {
+            refs[name]?.removeWhere(implicitRefs.contains);
+            refs.putIfAbsent(name, () => []).add(key);
+          } else {
+            implicitRefs.add(key);
+            if (!(refs[name]?.any((k) => !implicitRefs.contains(k)) ?? false)) {
+              refs.putIfAbsent(name, () => []).add(key);
+            }
+          }
+          if (rightNames.contains(name)) {
+            allStar.add((column.name, key));
+            if (!using.contains(name)) star.add((column.name, key));
+          }
+        }
+        sourceStars[alias] = allStar;
+        final implicitKeys = implicitRefs.intersection(rightKeys).toList();
+        final rowidKey = implicitKeys.firstOrNull;
+        for (final key in rightKeys) {
+          canonical.putIfAbsent(key, () => key);
+          if (implicitKeys.contains(canonical[key]) && rowidKey != null) {
+            canonical[key] = rowidKey;
+          }
+        }
+        fieldOrder.addAll([
+          ...allStar.map((slot) => slot.$2),
+          if (rowidKey != null) rowidKey,
+        ]);
+        for (final name in rightNames) {
+          rightRefs[name] = '$alias.$name';
         }
       }
-      sourceStars[alias] = allStar;
       final mergedKeys = <String>{};
       for (final name in using) {
-        final rightKey = '$alias.$name';
-        final mergedKey = '\u0000using$index.$name';
+        final rightKey = rightRefs[name]!;
+        final mergedKey =
+            '\u0000using${sourceGroup?.prefix ?? ''}.$index.$name';
         mergedKeys.add(mergedKey);
+        if (ambiguousMerged.contains(leftRefs[name]) ||
+            group != null &&
+                ['RIGHT', 'FULL'].contains(source.join) &&
+                (group.refs[name]?.length ?? 0) > 1) {
+          ambiguousMerged.add(mergedKey);
+        }
         joinColumns[mergedKey] = leftColumns[name]!;
         mergedValues[mergedKey] = (leftRefs[name]!, rightKey, source.join);
         declared[mergedKey] = source.join == 'RIGHT'
@@ -676,9 +762,20 @@ extension _RelationalQueries on SqliteDatabase {
                     affinityOverride: 'none', collation: '')
                 : declared[leftRefs[name]]!;
         labels[mergedKey] = declared[mergedKey]!.name;
+        for (final slot in sourceStars.values.expand((slots) => slots)) {
+          if ((wildcardOverrides[slot.$2] ?? slot.$2) == leftRefs[name]) {
+            wildcardOverrides[slot.$2] = mergedKey;
+          }
+        }
         refs[name] = [
           for (final key in refs[name]!)
-            if (key == leftRefs[name]) mergedKey else if (key != rightKey) key
+            if (key == leftRefs[name])
+              mergedKey
+            else if (key != rightKey &&
+                !(group != null &&
+                    !['RIGHT', 'FULL'].contains(source.join) &&
+                    (group.refs[name]?.contains(key) ?? false)))
+              key
         ];
         for (var i = 0; i < star.length; i++) {
           if (star[i].$2 == leftRefs[name]) {
@@ -699,19 +796,21 @@ extension _RelationalQueries on SqliteDatabase {
         for (final e in refs.entries)
           if (e.value.length == 1) e.key: declared[e.value.first]!.collation
       };
-      final right = [
-        for (var rowIndex = 0; rowIndex < rows.length; rowIndex++)
-          {
-            for (final key in rightKeys)
-              key: source.rowIdentity != null &&
-                      key == '$alias.${source.rowIdentity}'
-                  ? BigInt.from(rowIndex + 1)
-                  : rows[rowIndex][key.substring(
-                      (key.startsWith('main.$alias.') ? 5 : 0) +
-                          alias.length +
-                          1)]
-          }
-      ];
+      final right = group != null
+          ? rows
+          : [
+              for (var rowIndex = 0; rowIndex < rows.length; rowIndex++)
+                {
+                  for (final key in rightKeys)
+                    key: source.rowIdentity != null &&
+                            key == '$alias.${source.rowIdentity}'
+                        ? BigInt.from(rowIndex + 1)
+                        : rows[rowIndex][key.substring(
+                            (key.startsWith('main.$alias.') ? 5 : 0) +
+                                alias.length +
+                                1)]
+                }
+            ];
       for (final key in rightKeys) {
         columnStages[key] = index;
       }
@@ -742,7 +841,7 @@ extension _RelationalQueries on SqliteDatabase {
             final combined = merge({...left, ...right[r]});
             var equal = true;
             for (final name in using) {
-              final rightKey = '$alias.$name';
+              final rightKey = rightRefs[name]!;
               final leftValue = combined[leftRefs[name]];
               final ctx = EvalContext({
                 ...combined,
@@ -787,8 +886,7 @@ extension _RelationalQueries on SqliteDatabase {
             final pending = sources[earlier];
             if (pending.on != null && onStages[pending] == index) {
               final context = onContext(row);
-              if (truth(pending.on!.evaluate(context), context.encoding) !=
-                  true) {
+              if (!matchesOn(onConditions[pending]!, context)) {
                 return false;
               }
             }
@@ -809,6 +907,25 @@ extension _RelationalQueries on SqliteDatabase {
       for (final entry in onRefs.entries)
         if (entry.value.length == 1) entry.key,
     };
+    void checkGroupBinding(Expr expression) {
+      if (expression is ColumnExpr) {
+        final key =
+            expression.qualifier == null && refs[expression.key]?.length == 1
+                ? refs[expression.key]!.single
+                : expression.key;
+        if (inaccessibleGroupQualifiers
+            .any((alias) => key.startsWith('$alias.'))) {
+          throw SqlException('No such grouped column: ${expression.name}');
+        }
+      }
+      for (final child in expression.children) {
+        checkGroupBinding(child);
+      }
+    }
+
+    if (inaccessibleGroupQualifiers.isNotEmpty) {
+      _expressions(s).forEach(checkGroupBinding);
+    }
     onAffinities.addAll({
       ...?outer?.affinities,
       for (final entry in declared.entries)
@@ -926,9 +1043,6 @@ extension _RelationalQueries on SqliteDatabase {
       }
       onStages[source] = ready > index ? ready : index;
     }
-    for (final step in joinSteps) {
-      step();
-    }
     final columns = <CatalogColumn>[
       ...declared.entries.map((e) => CatalogColumn(e.key, e.value.declaredType,
           affinityOverride: e.value.affinity, collation: e.value.collation))
@@ -951,6 +1065,29 @@ extension _RelationalQueries on SqliteDatabase {
         }
       }
     }
+    _prepareScalarMetadata(s, cache, columns);
+    for (final step in joinSteps) {
+      step();
+    }
+    if (sourceGroup != null) {
+      sourceGroup.rows = joined;
+      sourceGroup.aliases.addAll(aliases);
+      sourceGroup.declared.addAll(declared);
+      sourceGroup.refs.addAll(refs);
+      sourceGroup.implicit.addAll(implicitRefs);
+      sourceGroup.nestedImplicit.addAll(nestedImplicit);
+      sourceGroup.labels.addAll(labels);
+      for (final key in implicitRefs) {
+        sourceGroup.labels[key] = '_ROWID_';
+      }
+      sourceGroup.star.addAll(star);
+      sourceGroup.sourceStars.addAll(sourceStars);
+      sourceGroup.canonical.addAll(canonical);
+      sourceGroup.fieldOrder.addAll(fieldOrder);
+      return QueryResult(star.map((slot) => slot.$1).toList(), [
+        for (final row in joined) [for (final slot in star) row[slot.$2]]
+      ]);
+    }
     final items = <SelectItem>[];
     for (final item in s.items) {
       if (item.expression == null) {
@@ -961,8 +1098,17 @@ extension _RelationalQueries on SqliteDatabase {
         if (list == null || sources.isEmpty) {
           throw const SqlException('Unknown table wildcard');
         }
-        items.addAll(list.map(
-            (c) => SelectItem(ColumnExpr(c.$2), c.$1, explicitAlias: true)));
+        for (final slot in list) {
+          final key = soleAliasedGroup
+              ? slot.$1
+              : item.label == '*'
+                  ? slot.$2
+                  : wildcardOverrides[slot.$2] ?? slot.$2;
+          if (ambiguousMerged.contains(key)) {
+            throw const SqlException('Ambiguous joined wildcard column');
+          }
+          items.add(SelectItem(ColumnExpr(key), slot.$1, explicitAlias: true));
+        }
       } else if (item.expression is ColumnExpr && !item.explicitAlias) {
         final expr = item.expression as ColumnExpr;
         final col =
@@ -979,6 +1125,11 @@ extension _RelationalQueries on SqliteDatabase {
             explicitAlias: true));
       } else {
         items.add(item);
+      }
+    }
+    if (inaccessibleGroupQualifiers.isNotEmpty) {
+      for (final item in items) {
+        if (item.expression != null) checkGroupBinding(item.expression!);
       }
     }
     final virtual = CatalogTable('@scope', 0, columns, withoutRowid: true);
