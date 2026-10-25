@@ -8,7 +8,8 @@ import 'schema_expressions.dart';
 
 final class CatalogColumn {
   CatalogColumn(this.name, this.declaredType,
-      {this.generatedExpression,
+      {this.affinityOverride,
+      this.generatedExpression,
       this.generatedStored = false,
       this.notNullPolicy = 'ABORT',
       this.primaryKey = 0,
@@ -23,6 +24,7 @@ final class CatalogColumn {
       this.primaryDescending = false});
   final String name;
   final String declaredType;
+  final String? affinityOverride;
   final Expr? generatedExpression;
   final bool generatedStored;
   int primaryKey;
@@ -35,9 +37,12 @@ final class CatalogColumn {
   bool strict = false;
   final String collation;
   final List<Expr> checks;
-  String get affinity => strict && declaredType.toUpperCase() == 'ANY'
-      ? 'none'
-      : affinityFor(declaredType);
+  String get affinity {
+    if (affinityOverride != null) return affinityOverride!;
+    if (strict && declaredType.toUpperCase() == 'ANY') return 'blob';
+    final value = affinityFor(declaredType);
+    return value == 'none' ? 'blob' : value;
+  }
 }
 
 final class CatalogTable {
@@ -51,11 +56,39 @@ final class CatalogTable {
   final String? rowidAlias;
   final List<List<String>> uniqueKeys = [];
   final List<List<String>> autoIndexKeys = [];
+  final List<List<String>> autoIndexCollations = [];
+  final List<List<bool>> autoIndexDescending = [];
+  final List<bool> autoIndexPrimary = [];
+  final List<String> primaryKeyCollations = [];
+  final List<bool> primaryKeyDescending = [];
   final List<String> autoIndexPolicies = [];
   String primaryPolicy = 'ABORT';
   final List<Expr> checks = [];
   final List<ForeignKey> foreignKeys = [];
   final List<CatalogColumn> generatedOrder = [];
+
+  bool matchesForeignKeyPrimary(List<String> target, {required bool implicit}) {
+    final primary = columns.where((c) => c.primaryKey != 0).toList();
+    if (primary.length != target.length ||
+        !target
+            .map(asciiLower)
+            .toSet()
+            .containsAll(primary.map((c) => asciiLower(c.name)))) {
+      return false;
+    }
+    if (implicit || rowidAlias != null) return true;
+    return withoutRowid &&
+        primary.every((column) =>
+            column.collation == primaryKeyCollations[column.primaryKey - 1]);
+  }
+
+  String foreignKeyCollation(String name, {required bool implicit}) {
+    final column = columns
+        .firstWhere((column) => asciiLower(column.name) == asciiLower(name));
+    return implicit && column.primaryKey != 0
+        ? primaryKeyCollations[column.primaryKey - 1]
+        : column.collation;
+  }
 
   void evaluateGenerated(RowValues row, int encoding,
       {bool recomputeStored = false}) {
@@ -176,29 +209,37 @@ final class DatabaseCatalog {
       parser.require('NOT');
       parser.require('EXISTS');
     }
-    final name = parser.identifier();
+    final name = parser.qualifiedIdentifier();
     parser.require('(');
     final columns = <CatalogColumn>[];
     final primary = <String>[];
     String? alias;
     var tablePrimary = false;
     final uniqueKeys = <List<String>>[];
-    final autoKeys = <(bool, List<String>, String)>[];
+    final autoKeys =
+        <(bool, List<String>, String, List<bool>, List<String?>)>[];
     var primaryPolicy = 'ABORT';
     final tableChecks = <Expr>[];
     final foreignKeys = <ForeignKey>[];
-    List<String> keyColumns() {
+    List<String> keyColumns(
+        {List<bool>? descending,
+        List<String?>? collations,
+        bool modifiers = true}) {
       parser.require('(');
       final names = <String>[];
       do {
         names.add(parser.identifier());
-        if (parser.take('COLLATE')) parser.identifier();
-        if (!parser.take('ASC')) {
-          if (parser.take('DESC')) {
-            throw const SqlException(
-                'Descending constraint keys require explicit index support');
+        String? collation;
+        if (modifiers && parser.take('COLLATE')) {
+          collation = asciiLower(parser.identifier());
+          if (!['binary', 'nocase', 'rtrim'].contains(collation)) {
+            throw const SqlException('Unknown collation');
           }
         }
+        final desc = modifiers && parser.take('DESC');
+        if (modifiers && !desc) parser.take('ASC');
+        descending?.add(desc);
+        collations?.add(collation);
       } while (parser.take(','));
       parser.require(')');
       return names;
@@ -217,8 +258,9 @@ final class DatabaseCatalog {
 
     ForeignKey references(List<String> names) {
       final target = parser.identifier();
-      final targetColumns =
-          parser.current.text == '(' ? keyColumns() : <String>[];
+      final targetColumns = parser.current.text == '('
+          ? keyColumns(modifiers: false)
+          : <String>[];
       var onDelete = 'NO ACTION';
       var onUpdate = 'NO ACTION';
       var deferred = false;
@@ -272,9 +314,10 @@ final class DatabaseCatalog {
     do {
       if (parser.take('CONSTRAINT')) parser.identifier();
       if (parser.take('UNIQUE')) {
-        final key = keyColumns();
+        final descending = <bool>[], collations = <String?>[];
+        final key = keyColumns(descending: descending, collations: collations);
         uniqueKeys.add(key);
-        autoKeys.add((false, key, conflict()));
+        autoKeys.add((false, key, conflict(), descending, collations));
       } else if (parser.take('CHECK')) {
         parser.require('(');
         tableChecks.add(parser.expression());
@@ -282,7 +325,7 @@ final class DatabaseCatalog {
         conflict();
       } else if (parser.take('FOREIGN')) {
         parser.require('KEY');
-        final names = keyColumns();
+        final names = keyColumns(modifiers: false);
         parser.require('REFERENCES');
         foreignKeys.add(references(names));
       } else if (parser.take('PRIMARY')) {
@@ -291,9 +334,12 @@ final class DatabaseCatalog {
         }
         tablePrimary = true;
         parser.require('KEY');
-        primary.addAll(keyColumns());
+        final descending = <bool>[], collations = <String?>[];
+        primary
+            .addAll(keyColumns(descending: descending, collations: collations));
         primaryPolicy = conflict();
-        autoKeys.add((true, List.of(primary), primaryPolicy));
+        autoKeys.add(
+            (true, List.of(primary), primaryPolicy, descending, collations));
       } else {
         final columnName = parser.identifier();
         if (['CONSTRAINT', 'FOREIGN', 'UNIQUE', 'CHECK']
@@ -373,7 +419,8 @@ final class DatabaseCatalog {
             descending = parser.take('DESC');
             if (!descending) parser.take('ASC');
             primaryPolicy = conflict();
-            autoKeys.add((true, [columnName], primaryPolicy));
+            autoKeys
+                .add((true, [columnName], primaryPolicy, [descending], [null]));
             autoIncrement = parser.take('AUTOINCREMENT');
           } else if (parser.take('NOT')) {
             parser.require('NULL');
@@ -381,7 +428,7 @@ final class DatabaseCatalog {
             notNullPolicy = conflict();
           } else if (parser.take('UNIQUE')) {
             unique = true;
-            autoKeys.add((false, [columnName], conflict()));
+            autoKeys.add((false, [columnName], conflict(), [false], [null]));
           } else if (parser.take('CHECK')) {
             parser.require('(');
             columnChecks.add(parser.expression());
@@ -472,6 +519,9 @@ final class DatabaseCatalog {
       throw const SqlException('Invalid AUTOINCREMENT column');
     }
     parser.finish();
+    if (primary.map(asciiLower).toSet().length != primary.length) {
+      throw const SqlException('Repeated primary-key columns are unsupported');
+    }
     for (var i = 0; i < primary.length; i++) {
       final matches =
           columns.where((c) => asciiLower(c.name) == asciiLower(primary[i]));
@@ -529,19 +579,53 @@ final class DatabaseCatalog {
     final seenKeys = <String, int>{};
     for (final key in autoKeys) {
       if (key.$1 && alias != null && !withoutRowid) continue;
-      final identity = key.$2.map(asciiLower).join('\u0000');
+      final collations = <String>[];
+      for (var i = 0; i < key.$2.length; i++) {
+        final column = columns
+            .where((column) => asciiLower(column.name) == asciiLower(key.$2[i]))
+            .firstOrNull;
+        if (column == null) {
+          throw const SqlException('Unknown constraint key column');
+        }
+        collations.add(key.$5[i] ?? column.collation);
+      }
+      // SQLite combines equivalent UNIQUE/PRIMARY KEY declarations even when
+      // their sort directions differ; the first declaration supplies ordering.
+      final identity = List.generate(key.$2.length,
+              (i) => '${asciiLower(key.$2[i])}\u0001${collations[i]}')
+          .join('\u0000');
       final existing = seenKeys[identity];
       if (existing == null) {
         seenKeys[identity] = result.autoIndexKeys.length;
         result.autoIndexKeys.add(key.$2);
+        result.autoIndexCollations.add(collations);
+        result.autoIndexDescending.add(key.$4);
+        result.autoIndexPrimary.add(key.$1);
         result.autoIndexPolicies.add(key.$3);
-      } else if (key.$3 != 'DEFAULT') {
-        final previous = result.autoIndexPolicies[existing];
-        if (previous != 'DEFAULT' && previous != key.$3) {
-          throw const SqlException('Conflicting ON CONFLICT clauses');
+      } else {
+        if (key.$1) result.autoIndexPrimary[existing] = true;
+        if (key.$3 != 'DEFAULT') {
+          final previous = result.autoIndexPolicies[existing];
+          if (previous != 'DEFAULT' && previous != key.$3) {
+            throw const SqlException('Conflicting ON CONFLICT clauses');
+          }
+          result.autoIndexPolicies[existing] = key.$3;
         }
-        result.autoIndexPolicies[existing] = key.$3;
       }
+    }
+    final primaryIndex = result.autoIndexPrimary.indexOf(true);
+    if (primaryIndex >= 0) {
+      result.primaryKeyCollations
+          .addAll(result.autoIndexCollations[primaryIndex]);
+      result.primaryKeyDescending
+          .addAll(result.autoIndexDescending[primaryIndex]);
+    } else {
+      final primaryColumns = columns.where((c) => c.primaryKey != 0).toList()
+        ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+      result.primaryKeyCollations
+          .addAll(primaryColumns.map((c) => c.collation));
+      result.primaryKeyDescending
+          .addAll(primaryColumns.map((c) => c.primaryDescending));
     }
     for (var i = 0; i < result.autoIndexPolicies.length; i++) {
       if (result.autoIndexPolicies[i] == 'DEFAULT') {

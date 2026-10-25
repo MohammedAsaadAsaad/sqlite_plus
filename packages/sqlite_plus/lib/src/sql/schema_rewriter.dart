@@ -16,7 +16,7 @@ Map<int, String> renamedTableReferences(
       p.require('NOT');
       p.require('EXISTS');
     }
-    p.identifier();
+    p.qualifiedIdentifier();
     if (p.take('(')) {
       do {
         p.identifier();
@@ -64,8 +64,8 @@ final class _TableRenameVisitor {
   void expression(Expr expr, Map<String, bool> bindings, Set<String> shadows) {
     if (expr is ColumnExpr &&
         expr.qualifier != null &&
-        asciiLower(expr.qualifier!) == oldName &&
-        !bindings.containsKey(oldName) &&
+        [oldName, 'main.$oldName'].contains(asciiLower(expr.qualifier!)) &&
+        !bindings.containsKey(asciiLower(expr.qualifier!)) &&
         !(inTrigger && ['old', 'new'].contains(oldName))) {
       throw const SqlException('Unresolved dependent table qualifier');
     }
@@ -94,7 +94,9 @@ final class _TableRenameVisitor {
     final local = <String, bool>{};
     for (final source in select.sources) {
       final name = source.table == null ? null : asciiLower(source.table!);
-      final renamed = name == oldName && !visibleCtes.contains(name);
+      final physical = source.table != null &&
+          (source.schema != null || !visibleCtes.contains(name));
+      final renamed = name == oldName && physical;
       if (renamed) put(source.tableOffset);
       final alias = source.alias == null ? name : asciiLower(source.alias!);
       if (alias != null) {
@@ -102,6 +104,7 @@ final class _TableRenameVisitor {
           throw const SqlException('Ambiguous dependent source alias');
         }
         local[alias] = renamed && source.alias == null;
+        if (physical) local['main.$alias'] = renamed && source.alias == null;
       }
       if (source.query != null) query(source.query!, outer, visibleCtes);
     }

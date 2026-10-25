@@ -41,8 +41,12 @@ final class TriggerDefinition {
       } while (p.take(','));
     }
     p.require('ON');
-    final tableOffset = p.current.offset;
-    final table = p.identifier();
+    var tableOffset = p.current.offset;
+    if (p.position + 1 < p.tokens.length &&
+        p.tokens[p.position + 1].text == '.') {
+      tableOffset = p.tokens[p.position + 2].offset;
+    }
+    final table = p.qualifiedIdentifier();
     if (p.take('FOR')) {
       p.require('EACH');
       p.require('ROW');

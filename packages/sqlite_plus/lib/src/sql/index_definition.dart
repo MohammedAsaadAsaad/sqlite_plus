@@ -13,9 +13,10 @@ Expr indexOperand(Expr expression) =>
 
 /// Structural matching intentionally preserves operand order and literal types.
 /// An unsupported expression never matches another unsupported expression.
-String? expressionSignature(Expr expression) {
+String? expressionSignature(Expr expression,
+    {String Function(ColumnExpr)? columnKey}) {
   Object? shape(Expr e) {
-    if (e is ColumnExpr) return ['column', e.key];
+    if (e is ColumnExpr) return ['column', columnKey?.call(e) ?? e.key];
     if (e is Literal) {
       final v = e.value;
       return [
@@ -93,9 +94,25 @@ String? expressionSignature(Expr expression) {
   return supported(expression) ? jsonEncode(shape(expression)) : null;
 }
 
-bool sameExpression(Expr a, Expr b) {
-  final signature = expressionSignature(a);
-  return signature != null && signature == expressionSignature(b);
+bool sameExpression(Expr a, Expr b, {String Function(ColumnExpr)? columnKey}) {
+  final signature = expressionSignature(a, columnKey: columnKey);
+  return signature != null &&
+      signature == expressionSignature(b, columnKey: columnKey);
+}
+
+/// Resolve only this source's qualifiers when proving a required partial index.
+/// Other source qualifiers remain distinct, so a join predicate cannot prove an
+/// unrelated table's index predicate.
+String indexColumnKey(ColumnExpr column, String alias) {
+  final key = column.key;
+  if (column.qualifier == null) return key;
+  for (final prefix in [
+    '${asciiLower(alias)}.',
+    'main.${asciiLower(alias)}.'
+  ]) {
+    if (key.startsWith(prefix)) return key.substring(prefix.length);
+  }
+  return key;
 }
 
 final class IndexTerm {
@@ -170,7 +187,8 @@ final class IndexDefinition {
 
 /// Conservative implication: conjuncts, matching OR terms and null-rejecting
 /// comparisons. An unproved predicate retains the complete-table path.
-bool impliesIndexPredicate(Expr? query, Expr? predicate) {
+bool impliesIndexPredicate(Expr? query, Expr? predicate,
+    {String Function(ColumnExpr)? columnKey}) {
   if (predicate == null) return true;
   if (query == null) return false;
   final conjuncts = <Expr>[];
@@ -185,7 +203,10 @@ bool impliesIndexPredicate(Expr? query, Expr? predicate) {
 
   collect(query);
   bool implies(Expr needed) {
-    if (conjuncts.any((term) => sameExpression(term, needed))) return true;
+    if (conjuncts
+        .any((term) => sameExpression(term, needed, columnKey: columnKey))) {
+      return true;
+    }
     if (needed is BinaryExpr && needed.op == 'AND') {
       return implies(needed.left) && implies(needed.right);
     }
@@ -199,8 +220,8 @@ bool impliesIndexPredicate(Expr? query, Expr? predicate) {
       return conjuncts.any((term) =>
           term is BinaryExpr &&
           ['=', '==', '!=', '<>', '<', '<=', '>', '>='].contains(term.op) &&
-          (sameExpression(term.left, needed.left) ||
-              sameExpression(term.right, needed.left)));
+          (sameExpression(term.left, needed.left, columnKey: columnKey) ||
+              sameExpression(term.right, needed.left, columnKey: columnKey)));
     }
     return needed is Literal && truth(needed.value) == true;
   }

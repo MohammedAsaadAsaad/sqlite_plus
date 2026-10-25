@@ -576,3 +576,42 @@
   1,593 M6 cases; native SQLite verifies 740 schema/DML/query snapshots per encoding
   (2,220 total), including ALTER dependencies, join coercion and atomic errors.
 - M6 remains open for the remaining SQL/schema/function/PRAGMA and trigger/FK audit.
+
+## 2026-10-25 — M6 DML, row values, functions and maintenance
+
+- Added scalar/correlated/EXISTS/IN mutation subqueries, statement WITH/RECURSIVE,
+  target aliases and UPDATE FROM. Preserve self-read snapshots, live correlated
+  reads, materialized assignments and per-target versus per-view joined-row writes.
+- Fire user row triggers for CASCADE/SET NULL/SET DEFAULT in native order. Defer
+  nested FK checks until the outer statement completes; guard the single-row
+  insert fast path so child audit writes do not reject incomplete cascades.
+- Preserve constraint COLLATE/direction and implicit/WITHOUT ROWID index metadata.
+  Reject repeated PK terms and orphan-producing mismatched-PK-collation parent
+  actions explicitly. Native cross-open verifies 279 key snapshots per encoding.
+- Added row-value comparison/IN/BETWEEN/CASE, metadata-only wildcard width checks
+  and compound-width preparation. Plain projections skip LIMIT/OFFSET-excluded
+  expressions. Resolve merged-group ambiguity, deduplicate derived/CTE labels,
+  bind JOIN ON output aliases/forward INNER references, and support main schema
+  qualifiers plus INDEXED BY/NOT INDEXED with single-table planner enforcement.
+- Added core Unicode/likelihood/random functions, native-format PRINTF/FORMAT,
+  MEDIAN/PERCENTILE aggregates/windows and connection-local SQL counters. Match
+  counter trigger restoration, FAIL/rollback, FK actions and incoming-FK DROP
+  implicit deletes. Function introspection uses native percentile kind/flags.
+- Added callback-free recursive view metadata and supported-capability PRAGMAs.
+  Schema ALTER resolves names in invalid aggregate-ON views without executing
+  them, matching native preparation; querying such a view still rejects.
+- Implemented actual sqlite_stat1 ANALYZE data, REINDEX rebuilding and VACUUM main,
+  including index/table statistics cleanup, stale expression-index repair and
+  transactional restrictions. Planner statistics costing remains a later batch.
+- Verification: isolated snapshot passes 5,690 engine tests, all-package locked
+  installs, formatting and fatal-info analysis. Twelve fixture/oracle checksums
+  pass. Pinned corpora include 1,647 general M6 cases, 1,298 row cases, 347 core
+  cases, 11,613 PRINTF cases (tested in each encoding), 69 source/hint cases,
+  1,323 percentile cases and 36 multi-statement counter sequences. Native tools
+  verify 802 schema snapshots per encoding (2,406 total), 483 DML snapshots,
+  837 constraint-key snapshots, 285 maintenance snapshots plus three repairs,
+  4,692 JOIN comparisons and 180 metadata comparisons. Mutation/transaction,
+  byte-exact hot-journal recovery and WAL/native continuation/owner handoff pass.
+- M6 remains open for parenthesized joins/metadata, broader dependent-DML shapes,
+  lazy view callback preparation, statistics planning and the remaining audit.
+  M7–M9 remain pending; this is not an all-milestones completion claim.

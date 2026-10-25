@@ -411,6 +411,26 @@ def main():
       "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x COLLATE BINARY",
       'SELECT 1+1 AS x UNION ALL SELECT 2+2 ORDER BY 1+1 DESC'
     ]
+    queries += [
+      'SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1',
+      'SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1',
+      'SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 2 OFFSET 1',
+      'SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT -1 OFFSET 2',
+      'SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 0 OFFSET 1',
+      'SELECT dart_counter(),row_number() OVER() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1',
+      'SELECT dart_counter(),sum(column1) OVER(ROWS UNBOUNDED PRECEDING) FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1',
+      'SELECT dart_counter(),count(*) FROM (VALUES(1),(2),(3)) GROUP BY column1 LIMIT 1 OFFSET 1',
+      'SELECT DISTINCT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1',
+      'SELECT dart_counter() AS n FROM (VALUES(1),(2),(3)) ORDER BY n DESC LIMIT 1 OFFSET 1',
+      'SELECT (SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)',
+      'SELECT (1,2,3)=(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)',
+      'SELECT (1,2) IN (SELECT * FROM (VALUES(1))) FROM (SELECT 1 WHERE 0)',
+      'SELECT (1,2)=(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)',
+      'SELECT EXISTS(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)',
+      'SELECT (SELECT * FROM (VALUES(1,2))) LIMIT 0',
+      'SELECT (SELECT * FROM (VALUES(1,2)) WHERE 0) FROM (SELECT 1 WHERE 0)',
+      'SELECT (SELECT 1 UNION SELECT 1,2) FROM (SELECT 1 WHERE 0)',
+    ]
     parameter_queries = {
       'SELECT :x,:x,?': [7,8],
       'SELECT :x,@x,$x,:x': [1,2,3],

@@ -4,6 +4,9 @@ import 'values.dart';
 import 'tokenizer.dart';
 
 const extraFunctionArities = <String, (int, int)>{
+  'random': (0, 0),
+  'randomblob': (1, 1),
+  'unistr': (1, 1),
   'round': (1, 2),
   'instr': (2, 2),
   'octet_length': (1, 1),
@@ -42,6 +45,93 @@ const extraFunctionArities = <String, (int, int)>{
   'trunc': (1, 1),
 };
 
+// sqlite3_value_int64() parses text as an integer prefix. Parsing a numeric
+// prefix first would incorrectly turn '2e2' into 200 and '.5' into a real.
+BigInt scalarInt64(Object? value, int encoding) {
+  if (value is BigInt) return value;
+  if (value is double) return toSqlInteger(value);
+  if (value == null) return BigInt.zero;
+  final match = RegExp(r'^[\t\n\v\f\r ]*([+-]?[0-9]+)')
+      .firstMatch(stringify(value, encoding));
+  if (match == null) return BigInt.zero;
+  final minimum = -(BigInt.one << 63);
+  final maximum = (BigInt.one << 63) - BigInt.one;
+  final literal = match[1]!;
+  final negative = literal.startsWith('-');
+  final digits = literal.replaceFirst(RegExp(r'^[+-]?0*'), '');
+  if (digits.isEmpty) return BigInt.zero;
+  if (digits.length > 19) return negative ? minimum : maximum;
+  final magnitude = BigInt.parse(digits);
+  final integer = negative ? -magnitude : magnitude;
+  return integer < minimum
+      ? minimum
+      : integer > maximum
+          ? maximum
+          : integer;
+}
+
+final _random = math.Random.secure();
+
+Uint8List _randomBytes(int count) {
+  final bytes = Uint8List(count);
+  final words = ByteData.sublistView(bytes);
+  var i = 0;
+  for (; i + 4 <= count; i += 4) {
+    words.setUint32(i, _random.nextInt(0x100000000));
+  }
+  for (; i < count; i++) {
+    bytes[i] = _random.nextInt(256);
+  }
+  return bytes;
+}
+
+String _unistr(String input) {
+  final output = StringBuffer();
+  for (var i = 0; i < input.length; i++) {
+    if (output.length > 16 * 1024 * 1024) {
+      throw const SqlException('Function output limit exceeded');
+    }
+    final unit = input.codeUnitAt(i);
+    if (unit != 92) {
+      output.writeCharCode(unit);
+      continue;
+    }
+    if (++i >= input.length) {
+      throw const SqlException('invalid Unicode escape');
+    }
+    final prefix = input.codeUnitAt(i);
+    if (prefix == 92) {
+      output.writeCharCode(92);
+      continue;
+    }
+    final digits = prefix == 85
+        ? 8
+        : prefix == 43
+            ? 6
+            : 4;
+    if ([85, 117, 43].contains(prefix)) i++;
+    if (i + digits > input.length) {
+      throw const SqlException('invalid Unicode escape');
+    }
+    final hex = input.substring(i, i + digits);
+    if (!RegExp(r'^[0-9a-fA-F]+$').hasMatch(hex)) {
+      throw const SqlException('invalid Unicode escape');
+    }
+    final codepoint = int.parse(hex, radix: 16);
+    // Native SQLite can produce malformed UTF-8 here. Like the record decoder,
+    // the Pure Dart engine rejects malformed Unicode rather than retaining it.
+    if (codepoint > 0x10ffff || codepoint >= 0xd800 && codepoint <= 0xdfff) {
+      throw const SqlException('Malformed Unicode escape');
+    }
+    output.writeCharCode(codepoint);
+    i += digits - 1;
+  }
+  if (output.length > 16 * 1024 * 1024) {
+    throw const SqlException('Function output limit exceeded');
+  }
+  return output.toString();
+}
+
 Object? extraFunction(String key, List<Object?> args, int encoding) {
   String text(Object? value) => value == null ? '' : stringify(value, encoding);
   void limit(int length) {
@@ -50,6 +140,24 @@ Object? extraFunction(String key, List<Object?> args, int encoding) {
     }
   }
 
+  if (key == 'random') {
+    final bytes = _randomBytes(8);
+    var value = BigInt.zero;
+    for (final byte in bytes) {
+      value = (value << 8) | BigInt.from(byte);
+    }
+    // SQLite intentionally excludes -9223372036854775808 so ABS(random()) is
+    // always representable. Preserve its sign/magnitude mapping of 64 bits.
+    final magnitude = value & ((BigInt.one << 63) - BigInt.one);
+    return bytes.first >= 128 ? -magnitude : magnitude;
+  }
+  if (key == 'randomblob') {
+    final requested = scalarInt64(args.single, encoding);
+    if (requested > BigInt.from(16 * 1024 * 1024)) {
+      throw const SqlException('randomblob limit exceeded');
+    }
+    return _randomBytes(requested < BigInt.one ? 1 : requested.toInt());
+  }
   if (key == 'concat' || key == 'concat_ws') {
     if (key == 'concat_ws' && args.first == null) return null;
     final separator = key == 'concat_ws' ? text(args.first) : '';
@@ -62,14 +170,13 @@ Object? extraFunction(String key, List<Object?> args, int encoding) {
     return pieces.join(separator);
   }
   if (args.any((v) => v == null)) return null;
+  if (key == 'unistr') return _unistr(text(args.single));
   if (key == 'round') {
     final raw =
         numeric(args.first, prefix: true, encoding: encoding) ?? BigInt.zero;
     final x = raw is BigInt ? raw.toDouble() : raw as double;
-    final count = args.length == 1
-        ? BigInt.zero
-        : toSqlInteger(
-            numeric(args[1], prefix: true, encoding: encoding) ?? BigInt.zero);
+    final count =
+        args.length == 1 ? BigInt.zero : scalarInt64(args[1], encoding);
     final precision = count < BigInt.zero
         ? 0
         : count > BigInt.from(30)

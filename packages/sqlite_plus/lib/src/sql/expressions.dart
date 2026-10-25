@@ -5,16 +5,171 @@ import 'tokenizer.dart';
 import 'values.dart';
 
 final class ValueExpr extends Expr {
-  ValueExpr(this.value, this.valueAffinity, [this.valueCollation]);
+  ValueExpr(this.value, this.valueAffinity,
+      [this.valueCollation, this.valueExplicitCollation]);
   final Object? value;
   final String valueAffinity;
   final String? valueCollation;
+  final String? valueExplicitCollation;
   @override
   Object? evaluate(EvalContext context) => value;
   @override
   String affinity(EvalContext context) => valueAffinity;
   @override
   String? collation(EvalContext context) => valueCollation;
+  @override
+  String? explicitCollation(EvalContext context) => valueExplicitCollation;
+}
+
+/// A row is only valid as an operand of the row comparison operators.
+final class RowExpr extends Expr {
+  RowExpr(this.fields);
+  final List<Expr> fields;
+  @override
+  Iterable<Expr> get children => fields;
+  @override
+  Object? evaluate(EvalContext context) =>
+      throw const SqlException('Row value misused');
+  @override
+  void validate(Set<String> columns) =>
+      throw const SqlException('Row value misused');
+}
+
+bool isComparisonOperator(String op) =>
+    ['=', '==', '!=', '<>', '<', '>', '<=', '>=', 'IS', 'IS NOT'].contains(op);
+
+int? _rowWidth(Expr expression) {
+  if (expression is RowExpr) return expression.fields.length;
+  if (expression is SubqueryExpr && !expression.exists) {
+    if (expression.statement.preparedColumnCount != null) {
+      return expression.statement.preparedColumnCount;
+    }
+    if (expression.statement.items.any((item) => item.expression == null)) {
+      return null;
+    }
+    return expression.statement.items.length;
+  }
+  return 1;
+}
+
+void _validateRowOperand(Expr expression, Set<String> columns) {
+  if (expression is RowExpr) {
+    for (final field in expression.fields) {
+      field.validate(columns);
+    }
+  } else if (expression is! SubqueryExpr || expression.exists) {
+    expression.validate(columns);
+  }
+}
+
+void validateComparisonOperands(Expr left, Expr right, Set<String> columns) {
+  final width = _rowWidth(left), other = _rowWidth(right);
+  if (width != null && other != null && width != other) {
+    throw const SqlException('Row value misused');
+  }
+  _validateRowOperand(left, columns);
+  _validateRowOperand(right, columns);
+}
+
+List<Expr> _rowFields(Expr expression, EvalContext context) {
+  if (expression is RowExpr) return expression.fields;
+  if (expression is SubqueryExpr && !expression.exists) {
+    final result = expression.result(context);
+    return _resultFields(
+        result,
+        result.rows.isEmpty
+            ? List.filled(result.columns.length, null)
+            : result.rows.first,
+        expression.statement,
+        context,
+        scalarSubquery: result.columns.length == 1);
+  }
+  return [expression];
+}
+
+List<Expr> _resultFields(SqlRows result, List<Object?> row,
+        SelectStatement statement, EvalContext context,
+        {bool scalarSubquery = false}) =>
+    [
+      for (var i = 0; i < result.columns.length; i++)
+        ValueExpr(
+            row[i],
+            result.columnAffinities[i],
+            scalarSubquery || result.columnCollations[i].isEmpty
+                ? null
+                : result.columnCollations[i],
+            scalarSubquery || statement.items.length != result.columns.length
+                ? null
+                : statement.items[i].expression?.explicitCollation(context))
+    ];
+
+ValueExpr _snapshotValue(Expr expression, EvalContext context,
+        {bool stripAffinity = false}) =>
+    ValueExpr(
+        expression.evaluate(context),
+        stripAffinity ? 'none' : expression.affinity(context),
+        expression.collation(context),
+        expression.explicitCollation(context));
+
+Expr _snapshotRow(Expr expression, EvalContext context,
+    {bool stripAffinity = false}) {
+  final fields = _rowFields(expression, context)
+      .map((field) =>
+          _snapshotValue(field, context, stripAffinity: stripAffinity))
+      .toList();
+  return fields.length == 1 ? fields.single : RowExpr(fields);
+}
+
+Expr _withoutRowCollations(Expr expression, EvalContext context,
+    {bool explicitOnly = false}) {
+  final fields = _rowFields(expression, context).map((field) {
+    final value = field as ValueExpr;
+    return ValueExpr(value.value, value.valueAffinity,
+        explicitOnly ? value.valueCollation : null);
+  }).toList();
+  return fields.length == 1 ? fields.single : RowExpr(fields);
+}
+
+Object? _inRowEquality(Expr left, Expr right, EvalContext context) {
+  final equal = BinaryExpr('=', left, right).evaluate(context);
+  if (equal == BigInt.one || left is! RowExpr) return equal;
+  // SQLite's lookup and subsequent unknown-result scan can use different
+  // collations when only the RHS carries an explicit COLLATE clause.
+  final fallback = BinaryExpr(
+          '=', left, _withoutRowCollations(right, context, explicitOnly: true))
+      .evaluate(context);
+  return fallback == BigInt.zero ? BigInt.zero : null;
+}
+
+Object? compareRowExpressions(
+    String op, Expr left, Expr right, EvalContext context) {
+  final a = _rowFields(left, context), b = _rowFields(right, context);
+  if (a.length != b.length) {
+    throw const SqlException('Row value misused');
+  }
+  final equality = ['=', '==', '!=', '<>', 'IS', 'IS NOT'].contains(op);
+  final identity = op == 'IS' || op == 'IS NOT';
+  var unknown = false;
+  for (var i = 0; i < a.length; i++) {
+    final lhs = _snapshotValue(a[i], context);
+    final rhs = _snapshotValue(b[i], context);
+    final equal = BinaryExpr(identity ? 'IS' : '=', lhs, rhs).evaluate(context);
+    if (equality) {
+      if (equal == BigInt.zero) {
+        return boolean(['!=', '<>', 'IS NOT'].contains(op));
+      }
+      if (equal == null) unknown = true;
+    } else {
+      if (equal == null) return null;
+      if (equal == BigInt.zero) {
+        return BinaryExpr(op, lhs, rhs).evaluate(context);
+      }
+    }
+  }
+  if (unknown) return null;
+  return boolean(equality
+      ? !['!=', '<>', 'IS NOT'].contains(op)
+      : op == '<=' || op == '>=');
 }
 
 final class CollateExpr extends Expr {
@@ -45,23 +200,42 @@ final class InExpr extends Expr {
   final List<Expr> values;
   final bool negate;
   @override
-  Iterable<Expr> get children => [operand, ...values];
+  Iterable<Expr> get children =>
+      values.isEmpty ? const [] : [operand, ...values];
   @override
   void validate(Set<String> columns) {
-    for (final expr in children) {
-      expr.validate(columns);
+    if (values.isEmpty) return;
+    _validateRowOperand(operand, columns);
+    for (final expr in values) {
+      validateComparisonOperands(operand, expr, columns);
+      if (values.length > 1 && expr is SubqueryExpr && _rowWidth(expr) != 1) {
+        throw const SqlException('IN list row width mismatch');
+      }
     }
   }
 
   @override
   Object? evaluate(EvalContext context) {
     if (values.isEmpty) return boolean(negate);
-    final left = ValueExpr(operand.evaluate(context), operand.affinity(context),
-        operand.collation(context));
+    // SQLite materializes a row-valued list before searching it.
+    final rowOperand = _rowWidth(operand) != 1;
+    var candidates = rowOperand
+        ? values
+            .map((expr) =>
+                _snapshotRow(expr, context, stripAffinity: values.length > 1))
+            .toList()
+        : values;
+    if (rowOperand && values.length > 1) {
+      candidates = candidates
+          .map((expr) => _withoutRowCollations(expr, context))
+          .toList();
+    }
+    final left = _snapshotRow(operand, context);
     var unknown = false;
-    for (final expr in values) {
-      final equal =
-          BinaryExpr('=', left, UnaryExpr('+', expr)).evaluate(context);
+    for (final expr in candidates) {
+      final equal = left is RowExpr
+          ? _inRowEquality(left, expr, context)
+          : BinaryExpr('=', left, UnaryExpr('+', expr)).evaluate(context);
       if (equal == BigInt.one) return boolean(!negate);
       if (equal == null) unknown = true;
     }
@@ -77,15 +251,13 @@ final class BetweenExpr extends Expr {
   Iterable<Expr> get children => [operand, low, high];
   @override
   void validate(Set<String> columns) {
-    for (final expr in children) {
-      expr.validate(columns);
-    }
+    validateComparisonOperands(operand, low, columns);
+    validateComparisonOperands(operand, high, columns);
   }
 
   @override
   Object? evaluate(EvalContext context) {
-    final value = ValueExpr(operand.evaluate(context),
-        operand.affinity(context), operand.collation(context));
+    final value = _snapshotRow(operand, context);
     final result = BinaryExpr(
             'AND', BinaryExpr('>=', value, low), BinaryExpr('<=', value, high))
         .evaluate(context);
@@ -107,17 +279,21 @@ final class CaseExpr extends Expr {
       ];
   @override
   void validate(Set<String> columns) {
-    for (final expr in children) {
-      expr.validate(columns);
+    if (base != null) _validateRowOperand(base!, columns);
+    for (final branch in branches) {
+      if (base == null) {
+        branch.$1.validate(columns);
+      } else {
+        validateComparisonOperands(base!, branch.$1, columns);
+      }
+      branch.$2.validate(columns);
     }
+    otherwise?.validate(columns);
   }
 
   @override
   Object? evaluate(EvalContext context) {
-    final left = base == null
-        ? null
-        : ValueExpr(base!.evaluate(context), base!.affinity(context),
-            base!.collation(context));
+    final left = base == null ? null : _snapshotRow(base!, context);
     for (final branch in branches) {
       final condition = left == null
           ? branch.$1.evaluate(context)
@@ -141,7 +317,8 @@ final class CastExpr extends Expr {
   @override
   void validate(Set<String> columns) => operand.validate(columns);
   @override
-  String affinity(EvalContext context) => affinityFor(type);
+  String affinity(EvalContext context) =>
+      affinityFor(type) == 'none' ? 'blob' : affinityFor(type);
   @override
   Object? evaluate(EvalContext context) {
     final value = operand.evaluate(context);
@@ -285,12 +462,24 @@ final class SubqueryExpr extends Expr {
   final SelectStatement statement;
   final bool exists;
   @override
-  Object? evaluate(EvalContext context) {
+  void validate(Set<String> columns) {
+    final width = _rowWidth(this);
+    if (!exists && width != null && width != 1) {
+      throw const SqlException('Scalar subquery must return one column');
+    }
+  }
+
+  SqlRows result(EvalContext context) {
     final callback = context.subquery;
     if (callback == null) {
       throw const SqlException('Subquery context unavailable');
     }
-    final result = callback(statement, context);
+    return callback(statement, context);
+  }
+
+  @override
+  Object? evaluate(EvalContext context) {
+    final result = this.result(context);
     if (exists) return boolean(result.rows.isNotEmpty);
     if (result.columns.length != 1) {
       throw const SqlException('Scalar subquery must return one column');
@@ -307,21 +496,21 @@ final class InSelectExpr extends Expr {
   @override
   Iterable<Expr> get children => [operand];
   @override
-  void validate(Set<String> columns) => operand.validate(columns);
+  void validate(Set<String> columns) =>
+      validateComparisonOperands(operand, SubqueryExpr(statement), columns);
   @override
   Object? evaluate(EvalContext context) {
     final result = context.subquery!(statement, context);
-    if (result.columns.length != 1) {
-      throw const SqlException('IN subquery must return one column');
+    final left = _snapshotRow(operand, context);
+    if ((_rowWidth(left) ?? 1) != result.columns.length) {
+      throw const SqlException('IN subquery row width mismatch');
     }
-    final affinity = result.columnAffinities.first;
     if (result.rows.isEmpty) return boolean(negate);
-    final left = ValueExpr(operand.evaluate(context), operand.affinity(context),
-        operand.collation(context));
     var unknown = false;
     for (final row in result.rows) {
-      final equal = BinaryExpr('=', left, ValueExpr(row.single, affinity))
-          .evaluate(context);
+      final fields = _resultFields(result, row, statement, context);
+      final right = fields.length == 1 ? fields.single : RowExpr(fields);
+      final equal = _inRowEquality(left, right, context);
       if (equal == BigInt.one) return boolean(!negate);
       if (equal == null) unknown = true;
     }

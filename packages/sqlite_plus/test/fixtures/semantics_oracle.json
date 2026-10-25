@@ -10532,6 +10532,221 @@
   },
   {
     "file": "sqlite-512.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 2 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT -1 OFFSET 2",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 0 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT dart_counter(),row_number() OVER() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()",
+      "row_number() OVER()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT dart_counter(),sum(column1) OVER(ROWS UNBOUNDED PRECEDING) FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()",
+      "sum(column1) OVER(ROWS UNBOUNDED PRECEDING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT dart_counter(),count(*) FROM (VALUES(1),(2),(3)) GROUP BY column1 LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT DISTINCT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT dart_counter() AS n FROM (VALUES(1),(2),(3)) ORDER BY n DESC LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT (SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT (1,2,3)=(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "row value misused"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT (1,2) IN (SELECT * FROM (VALUES(1))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "sub-select returns 1 columns - expected 2"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT (1,2)=(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "columns": [
+      "(1,2)=(SELECT * FROM (VALUES(1,2)))"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT EXISTS(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "columns": [
+      "EXISTS(SELECT * FROM (VALUES(1,2)))"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT (SELECT * FROM (VALUES(1,2))) LIMIT 0",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT (SELECT * FROM (VALUES(1,2)) WHERE 0) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT (SELECT 1 UNION SELECT 1,2) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "SELECTs to the left and right of UNION do not have the same number of result columns"
+  },
+  {
+    "file": "sqlite-512.db",
     "sql": "SELECT :x,:x,?",
     "parameters": [
       {
@@ -21393,6 +21608,221 @@
   },
   {
     "file": "sqlite-4096.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 2 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT -1 OFFSET 2",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 0 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT dart_counter(),row_number() OVER() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()",
+      "row_number() OVER()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT dart_counter(),sum(column1) OVER(ROWS UNBOUNDED PRECEDING) FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()",
+      "sum(column1) OVER(ROWS UNBOUNDED PRECEDING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT dart_counter(),count(*) FROM (VALUES(1),(2),(3)) GROUP BY column1 LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT DISTINCT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT dart_counter() AS n FROM (VALUES(1),(2),(3)) ORDER BY n DESC LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT (SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT (1,2,3)=(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "row value misused"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT (1,2) IN (SELECT * FROM (VALUES(1))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "sub-select returns 1 columns - expected 2"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT (1,2)=(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "columns": [
+      "(1,2)=(SELECT * FROM (VALUES(1,2)))"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT EXISTS(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "columns": [
+      "EXISTS(SELECT * FROM (VALUES(1,2)))"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT (SELECT * FROM (VALUES(1,2))) LIMIT 0",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT (SELECT * FROM (VALUES(1,2)) WHERE 0) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT (SELECT 1 UNION SELECT 1,2) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "SELECTs to the left and right of UNION do not have the same number of result columns"
+  },
+  {
+    "file": "sqlite-4096.db",
     "sql": "SELECT :x,:x,?",
     "parameters": [
       {
@@ -32251,6 +32681,221 @@
         }
       ]
     ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 2 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT -1 OFFSET 2",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 0 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT dart_counter(),row_number() OVER() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()",
+      "row_number() OVER()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT dart_counter(),sum(column1) OVER(ROWS UNBOUNDED PRECEDING) FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()",
+      "sum(column1) OVER(ROWS UNBOUNDED PRECEDING)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT dart_counter(),count(*) FROM (VALUES(1),(2),(3)) GROUP BY column1 LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()",
+      "count(*)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT DISTINCT dart_counter() FROM (VALUES(1),(2),(3)) LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "dart_counter()"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT dart_counter() AS n FROM (VALUES(1),(2),(3)) ORDER BY n DESC LIMIT 1 OFFSET 1",
+    "parameters": [],
+    "columns": [
+      "n"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT (SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT (1,2,3)=(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "row value misused"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT (1,2) IN (SELECT * FROM (VALUES(1))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "sub-select returns 1 columns - expected 2"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT (1,2)=(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "columns": [
+      "(1,2)=(SELECT * FROM (VALUES(1,2)))"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT EXISTS(SELECT * FROM (VALUES(1,2))) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "columns": [
+      "EXISTS(SELECT * FROM (VALUES(1,2)))"
+    ],
+    "rows": []
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT (SELECT * FROM (VALUES(1,2))) LIMIT 0",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT (SELECT * FROM (VALUES(1,2)) WHERE 0) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "sub-select returns 2 columns - expected 1"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT (SELECT 1 UNION SELECT 1,2) FROM (SELECT 1 WHERE 0)",
+    "parameters": [],
+    "error": "SELECTs to the left and right of UNION do not have the same number of result columns"
   },
   {
     "file": "sqlite-65536.db",

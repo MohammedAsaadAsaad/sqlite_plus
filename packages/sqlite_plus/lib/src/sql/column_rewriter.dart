@@ -12,6 +12,64 @@ typedef DependentSchema = ({
   String sql
 });
 
+/// Resolve subquery output widths before row evaluation, including wildcards.
+/// This uses names only and never invokes user functions or scans data.
+void prepareSubqueryWidths(
+    SelectStatement statement, Map<String, SchemaColumns> tables) {
+  final resolver = _Columns(tables, {});
+  void visit(SelectStatement query, _Ctes inherited) {
+    final ctes = resolver.ctes(query, inherited);
+    query.preparedColumnCount = resolver.columns(query, inherited).length;
+    for (final entry in query.ctes.values) {
+      visit(entry.$2, ctes);
+    }
+    for (final source in query.sources) {
+      if (source.query != null) visit(source.query!, ctes);
+    }
+    void expression(Expr expr) {
+      if (expr is SubqueryExpr) visit(expr.statement, ctes);
+      if (expr is InSelectExpr) visit(expr.statement, ctes);
+      for (final child in expr.children) {
+        expression(child);
+      }
+    }
+
+    final expressions = [
+      ...query.items.map((item) => item.expression),
+      query.where,
+      ...query.groupBy,
+      query.having,
+      ...query.order.map((term) => term.expression),
+      query.limit,
+      query.offset,
+      ...query.sources.map((source) => source.on)
+    ].whereType<Expr>();
+    for (final expr in expressions) {
+      expression(expr);
+      final names = <String>{};
+      void columns(Expr value) {
+        if (value is ColumnExpr) names.add(value.key);
+        for (final child in value.children) {
+          columns(child);
+        }
+      }
+
+      columns(expr);
+      // Binding is validated by the executor. Here every name is allowed so
+      // structural row misuse also rejects when an enclosing input is empty.
+      expr.validate(names);
+    }
+    for (final part in query.compounds) {
+      visit(part.$2, ctes);
+      if (part.$2.preparedColumnCount != query.preparedColumnCount) {
+        throw const SqlException('Compound SELECT width mismatch');
+      }
+    }
+  }
+
+  visit(statement, {});
+}
+
 Map<int, String> renamedColumnReferences(
     String sql,
     String type,
@@ -47,7 +105,7 @@ void validateColumnDependencies(
     p.require('NOT');
     p.require('EXISTS');
   }
-  p.identifier();
+  p.qualifiedIdentifier();
   final names = <String>[];
   if (p.take('(')) {
     do {
@@ -104,14 +162,14 @@ final class _Columns {
     for (final entry in query.ctes.entries) {
       result[entry.key] = () {
         if (entry.value.$1.isNotEmpty) {
-          return entry.value.$1.map(asciiLower).toList();
+          return _unique(entry.value.$1.map(asciiLower).toList());
         }
         if (cached.containsKey(entry.key)) return cached[entry.key]!;
         if (!active.add(entry.key)) {
           throw const SqlException('Circular CTE metadata');
         }
         try {
-          return cached[entry.key] = columns(entry.value.$2, result);
+          return cached[entry.key] = _unique(columns(entry.value.$2, result));
         } finally {
           active.remove(entry.key);
         }
@@ -123,7 +181,9 @@ final class _Columns {
   List<String> source(QuerySource source, _Ctes scope) {
     if (source.query != null) return _unique(columns(source.query!, scope));
     final key = asciiLower(source.table!);
-    return scope.containsKey(key) ? scope[key]!() : relation(key);
+    return source.schema == null && scope.containsKey(key)
+        ? scope[key]!()
+        : relation(key);
   }
 
   List<String> columns(SelectStatement query, _Ctes inherited) {
@@ -183,7 +243,10 @@ final class _Columns {
 
 final class _SourceColumns {
   _SourceColumns(this.alias, this.names, this.target,
-      {this.qualifiedOnly = false, this.implicit = const {}});
+      {this.qualifiedOnly = false,
+      this.mainQualified = false,
+      this.implicit = const {}});
+  final bool mainQualified;
   final Set<String> implicit;
   final bool qualifiedOnly;
   final String alias;
@@ -192,10 +255,8 @@ final class _SourceColumns {
 }
 
 final class _ColumnScope {
-  _ColumnScope(this.sources,
-      [this.outer, this.merged = const {}, this.origins = const {}]);
-  final Map<String, _SourceColumns> origins;
-  final Set<String> merged;
+  _ColumnScope(this.sources, [this.outer, this.unqualified]);
+  final Map<String, List<_SourceColumns>>? unqualified;
   final List<_SourceColumns> sources;
   final _ColumnScope? outer;
   _SourceColumns? find(ColumnExpr expr) {
@@ -203,16 +264,19 @@ final class _ColumnScope {
         ? expr.key
         : asciiLower(expr.name.substring(expr.qualifier!.length + 1));
     var matches = expr.qualifier == null
-        ? sources
-            .where((s) => !s.qualifiedOnly && s.names.contains(key))
-            .toList()
-        : sources.where((s) => s.alias == asciiLower(expr.qualifier!)).toList();
+        ? (unqualified?[key]?.toList() ??
+            sources
+                .where((s) => !s.qualifiedOnly && s.names.contains(key))
+                .toList())
+        : sources
+            .where((s) =>
+                s.alias == asciiLower(expr.qualifier!) ||
+                s.mainQualified &&
+                    'main.${s.alias}' == asciiLower(expr.qualifier!))
+            .toList();
     if (expr.qualifier == null &&
         matches.any((s) => !s.implicit.contains(key))) {
       matches = matches.where((s) => !s.implicit.contains(key)).toList();
-    }
-    if (matches.length > 1 && expr.qualifier == null && merged.contains(key)) {
-      return origins[key] ?? matches.first;
     }
     if (matches.length > 1) {
       throw const SqlException('Ambiguous dependent column');
@@ -241,19 +305,19 @@ final class _ColumnVisitor {
     edits[base + offset] = newColumn;
   }
 
-  _SourceColumns relation(String name, String alias, _Ctes ctes) {
+  _SourceColumns relation(String name, String alias, _Ctes ctes,
+      {bool schemaQualified = false}) {
     final key = asciiLower(name);
-    final names =
-        (ctes.containsKey(key) ? ctes[key]!() : resolver.relation(key)).toSet();
+    final isCte = !schemaQualified && ctes.containsKey(key);
+    final names = (isCte ? ctes[key]!() : resolver.relation(key)).toSet();
     final implicit = <String>{};
-    if (!ctes.containsKey(key) && resolver.tables[key]?.rowid == true) {
+    if (!isCte && resolver.tables[key]?.rowid == true) {
       implicit.addAll(
           ['rowid', '_rowid_', 'oid'].where((name) => !names.contains(name)));
       names.addAll(implicit);
     }
-    return _SourceColumns(
-        asciiLower(alias), names, !ctes.containsKey(key) && key == table,
-        implicit: implicit);
+    return _SourceColumns(asciiLower(alias), names, !isCte && key == table,
+        mainQualified: !isCte, implicit: implicit);
   }
 
   void expression(Expr expr, _ColumnScope scope, _Ctes ctes,
@@ -295,12 +359,11 @@ final class _ColumnVisitor {
         sources.add(_SourceColumns(asciiLower(source.alias ?? '@$i'),
             resolver.source(source, ctes).toSet(), false));
       } else {
-        sources
-            .add(relation(source.table!, source.alias ?? source.table!, ctes));
+        sources.add(relation(source.table!, source.alias ?? source.table!, ctes,
+            schemaQualified: source.schema != null));
       }
     }
-    final merged = <String>{};
-    final origins = <String, _SourceColumns>{};
+    final exposed = <String, List<_SourceColumns>>{};
     final previous = <String>{};
     final visible = [
       for (final source in select.sources) resolver.source(source, ctes).toSet()
@@ -310,31 +373,42 @@ final class _ColumnVisitor {
       final keys = source.natural
           ? visible[i].where(previous.contains).toSet()
           : source.using.map(asciiLower).toSet();
-      merged.addAll(keys);
       for (final key in keys) {
-        if (!visible[i].contains(key) ||
-            !visible.take(i).any((names) => names.contains(key))) {
+        final left = (exposed[key] ?? [])
+            .where((binding) => !binding.implicit.contains(key))
+            .toList();
+        if (!visible[i].contains(key) || left.isEmpty) {
           throw const SqlException('Unresolved dependent USING column');
         }
-        if (source.join == 'RIGHT') {
-          origins[key] = sources[i];
-        } else if (source.join == 'FULL') {
-          origins[key] = _SourceColumns('@merged', {key}, false);
-        } else {
-          origins.putIfAbsent(
-              key,
-              () => sources[visible
-                  .take(i)
-                  .toList()
-                  .indexWhere((names) => names.contains(key))]);
+        if (left.length > 1 &&
+            (source.join == 'RIGHT' || source.join == 'FULL')) {
+          throw const SqlException('Ambiguous dependent USING column');
         }
+        final origin = switch (source.join) {
+          'RIGHT' => sources[i],
+          'FULL' => _SourceColumns('@merged$i', {key}, false),
+          _ => left.first,
+        };
+        // USING combines the first exposed left field with this right field.
+        // Other independent fields with the same name remain ambiguous.
+        final group = exposed[key]!;
+        group[group.indexOf(left.first)] = origin;
+      }
+      for (final key in sources[i].names.where((key) => !keys.contains(key))) {
+        (exposed[key] ??= []).add(sources[i]);
       }
       previous.addAll(visible[i]);
     }
-    final scope = _ColumnScope(sources, outer, merged, origins);
+    final scope = _ColumnScope(sources, outer, exposed);
+    final onAliases = {
+      for (final item in select.items)
+        if (item.expression != null) asciiLower(item.label): item.expression!
+    };
     for (var i = 0; i < select.sources.length; i++) {
       final source = select.sources[i];
-      if (source.on != null) expression(source.on!, scope, ctes);
+      if (source.on != null) {
+        expression(source.on!, scope, ctes, aliases: onAliases.keys.toSet());
+      }
     }
     // Resolve wildcard names as well as explicit expressions without running SQL.
     resolver.columns(select, inherited);

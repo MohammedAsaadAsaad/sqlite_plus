@@ -54,13 +54,22 @@ extension _RelationalQueries on SqliteDatabase {
         continue;
       }
       final name = source.table!;
-      final key = asciiLower(name);
-      if (cteScope.contains(key)) continue;
+      final key =
+          source.schema == null ? asciiLower(name) : 'main.${asciiLower(name)}';
+      if (source.schema == null && cteScope.contains(key)) {
+        _hintIndex(source, s.where, physical: false);
+        continue;
+      }
+      _hintIndex(source, s.where,
+          physical: catalog.entries.any((entry) =>
+              entry.type == 'table' &&
+              asciiLower(entry.name) == asciiLower(name)));
       if (cache.containsKey(key)) continue;
       if (!loading.add(key)) throw const SqlException('Circular view');
       try {
-        final entry =
-            catalog.entries.where((e) => asciiLower(e.name) == key).firstOrNull;
+        final entry = catalog.entries
+            .where((e) => asciiLower(e.name) == asciiLower(name))
+            .firstOrNull;
         if (entry?.type == 'view') {
           final parser = SqlParser(entry!.sql!);
           parser.require('CREATE');
@@ -82,7 +91,8 @@ extension _RelationalQueries on SqliteDatabase {
               SqlParser(entry.sql!.substring(parser.current.offset)).select();
           await _loadRelations(query, cache, loading, cteScope);
           final result = _relational(query, const [], cache, null);
-          final names = declared.isEmpty ? result.columns : declared;
+          final names = _relationColumnNames(
+              declared.isEmpty ? result.columns : declared);
           if (names.length != result.columns.length) {
             throw const SqlException('View column width mismatch');
           }
@@ -97,6 +107,7 @@ extension _RelationalQueries on SqliteDatabase {
                         result.columnDeclaredTypes[i].isEmpty
                             ? _affinityType(result.columnAffinities[i])
                             : result.columnDeclaredTypes[i],
+                        affinityOverride: result.columnAffinities[i],
                         collation: result.columnCollations[i].isEmpty
                             ? 'binary'
                             : result.columnCollations[i])
@@ -148,6 +159,7 @@ extension _RelationalQueries on SqliteDatabase {
           }
           cache[key] = (table, rows);
         }
+        cache['main.${asciiLower(name)}'] = cache[key]!;
       } finally {
         loading.remove(key);
       }
@@ -167,6 +179,21 @@ extension _RelationalQueries on SqliteDatabase {
       : affinity == 'text'
           ? 'TEXT'
           : '';
+
+  List<String> _relationColumnNames(List<String> columns) {
+    final names = <String>[], used = <String>{};
+    for (final label in columns) {
+      var candidate = label, suffix = 0;
+      while (used.contains(asciiLower(candidate))) {
+        final base = label.replaceFirst(RegExp(r':\d+$'), '');
+        candidate = '$base:${++suffix}';
+      }
+      used.add(asciiLower(candidate));
+      names.add(candidate);
+    }
+    return names;
+  }
+
   SelectStatement _copy(SelectStatement source, List<SelectItem> items,
           {bool tail = true, Expr? limitOverride}) =>
       SelectStatement(
@@ -179,10 +206,25 @@ extension _RelationalQueries on SqliteDatabase {
           source.distinct,
           source.parameterCount)
         ..groupBy.addAll(source.groupBy)
+        ..cteMaterialization.addAll(source.cteMaterialization)
         ..having = source.having;
 
   QueryResult _relational(SelectStatement s, List<Object?> bound,
-      Map<String, (CatalogTable, List<RowValues>)> cache, EvalContext? outer) {
+      Map<String, (CatalogTable, List<RowValues>)> cache, EvalContext? outer,
+      {SqlRows Function(SelectStatement, EvalContext,
+              Map<String, (CatalogTable, List<RowValues>)>)?
+          mutationSubqueries,
+      Map<SelectStatement, (CatalogTable, List<RowValues>)?>? mutationCtes}) {
+    QueryResult evaluate(
+            SelectStatement query,
+            Map<String, (CatalogTable, List<RowValues>)> scope,
+            EvalContext? context) =>
+        _relational(query, bound, scope, context,
+            mutationSubqueries: mutationSubqueries, mutationCtes: mutationCtes);
+    SqlRows subquery(SelectStatement query, EvalContext context) =>
+        mutationSubqueries != null
+            ? mutationSubqueries(query, context, cache)
+            : evaluate(query, cache, context);
     if (s.ctes.isNotEmpty) {
       cache = Map.of(cache);
       final pending = Map.of(s.ctes);
@@ -191,19 +233,29 @@ extension _RelationalQueries on SqliteDatabase {
         for (final name in pending.keys.toList()) {
           final entry = pending[name]!;
           final query = entry.$2;
+          final saved = mutationCtes?[query];
+          if (saved != null) {
+            cache[name] = saved;
+            pending.remove(name);
+            progressed = true;
+            continue;
+          }
           final references = <String>{
             for (final source in query.sources)
-              if (source.table != null) asciiLower(source.table!),
+              if (source.table != null && source.schema == null)
+                asciiLower(source.table!),
             for (final part in query.compounds)
               for (final source in part.$2.sources)
-                if (source.table != null) asciiLower(source.table!)
+                if (source.table != null && source.schema == null)
+                  asciiLower(source.table!)
           };
           if (references
               .any((ref) => ref != name && pending.containsKey(ref))) {
             continue;
           }
-          if (query.sources
-              .any((source) => asciiLower(source.table ?? '') == name)) {
+          if (query.sources.any((source) =>
+              source.schema == null &&
+              asciiLower(source.table ?? '') == name)) {
             throw const SqlException(
                 'Recursive CTE requires a non-recursive anchor');
           }
@@ -238,9 +290,10 @@ extension _RelationalQueries on SqliteDatabase {
               limitOverride: recursiveLimit == 0 ? Literal(BigInt.zero) : null)
             ..sources.addAll(query.sources)
             ..ctes.addAll(query.ctes);
-          final first = _relational(
-              references.contains(name) ? anchor : query, bound, cache, outer);
-          final columns = entry.$1.isEmpty ? first.columns : entry.$1;
+          final first = evaluate(
+              references.contains(name) ? anchor : query, cache, outer);
+          final columns =
+              _relationColumnNames(entry.$1.isEmpty ? first.columns : entry.$1);
           if (columns.length != first.columns.length) {
             throw const SqlException('CTE column width mismatch');
           }
@@ -257,6 +310,7 @@ extension _RelationalQueries on SqliteDatabase {
                             first.columnDeclaredTypes[i].isEmpty
                                 ? _affinityType(first.columnAffinities[i])
                                 : first.columnDeclaredTypes[i],
+                            affinityOverride: first.columnAffinities[i],
                             collation: first.columnCollations[i].isEmpty
                                 ? 'binary'
                                 : first.columnCollations[i])
@@ -272,8 +326,9 @@ extension _RelationalQueries on SqliteDatabase {
               );
           if (references.contains(name)) {
             final recursive = query.compounds
-                .where((part) => part.$2.sources
-                    .any((source) => asciiLower(source.table ?? '') == name))
+                .where((part) => part.$2.sources.any((source) =>
+                    source.schema == null &&
+                    asciiLower(source.table ?? '') == name))
                 .toList();
             if (recursive.isEmpty ||
                 recursive
@@ -287,16 +342,16 @@ extension _RelationalQueries on SqliteDatabase {
                   tail: false, limitOverride: Literal(BigInt.zero))
                 ..sources.addAll(part.$2.sources)
                 ..ctes.addAll(part.$2.ctes);
-              if (_relational(metadataQuery, bound, cache, outer)
-                      .columns
-                      .length !=
+              if (evaluate(metadataQuery, cache, outer).columns.length !=
                   columns.length) {
                 throw const SqlException('Recursive CTE width mismatch');
               }
             }
             for (final part in recursive) {
               if (part.$2.sources
-                      .where((source) => asciiLower(source.table ?? '') == name)
+                      .where((source) =>
+                          source.schema == null &&
+                          asciiLower(source.table ?? '') == name)
                       .length !=
                   1) {
                 throw const SqlException('Multiple recursive references');
@@ -373,7 +428,7 @@ extension _RelationalQueries on SqliteDatabase {
               }
               for (final part in query.compounds
                   .where((part) => !recursive.contains(part))) {
-                final seed = _relational(part.$2, bound, cache, outer);
+                final seed = evaluate(part.$2, cache, outer);
                 for (final row in seed.rows) {
                   enqueue(row);
                 }
@@ -390,7 +445,7 @@ extension _RelationalQueries on SqliteDatabase {
               }
               cache[name] = materialize([current]);
               for (final part in recursive) {
-                final result = _relational(part.$2, bound, cache, outer);
+                final result = evaluate(part.$2, cache, outer);
                 if (result.columns.length != columns.length) {
                   throw const SqlException('Recursive CTE width mismatch');
                 }
@@ -403,6 +458,9 @@ extension _RelationalQueries on SqliteDatabase {
           } else {
             cache[name] = materialize(first.rows);
           }
+          if (mutationCtes?.containsKey(query) ?? false) {
+            mutationCtes![query] = cache[name]!;
+          }
           pending.remove(name);
           progressed = true;
         }
@@ -413,30 +471,86 @@ extension _RelationalQueries on SqliteDatabase {
     var joined = <RowValues>[{}];
     final aliases = <String>{};
     final refs = <String, List<String>>{};
-    final merged = <String>{};
     final implicitRefs = <String>{};
-    final mergedValues = <String, List<String>>{};
-    final mergedColumns = <String, CatalogColumn>{};
+    final mergedValues = <String, (String, String, String)>{};
     final joinColumns = <String, CatalogColumn>{};
     final declared = <String, CatalogColumn>{};
     final labels = <String, String>{};
     final star = <(String, String)>[];
     final sourceStars = <String, List<(String, String)>>{};
     Set<String> keysBefore = {};
+    final joinSteps = <void Function()>[];
+    final columnStages = <String, int>{};
+    final onStages = <QuerySource, int>{};
+    final onConditions = <QuerySource, Expr>{};
+    final onAliases = <String, Expr>{};
+    final onRefs = <String, List<String>>{};
+    final identityAliases = {
+      for (final source in sources)
+        if (source.rowIdentity != null)
+          asciiLower(source.alias ?? source.table!),
+    };
+    bool identityKey(String key) => identityAliases.any(
+        (alias) => key.startsWith('$alias.') || key.startsWith('main.$alias.'));
+    final onAffinities = <String, String>{};
+    final onCollations = <String, String>{};
     Map<String, Object?> scope(RowValues row) {
       final result = <String, Object?>{...?outer?.row, ...row};
       for (final entry in refs.entries) {
         result.remove(entry.key);
         if (entry.value.length == 1) {
           result[entry.key] = row[entry.value.single];
-        } else if (merged.contains(entry.key)) {
-          result[entry.key] = (mergedValues[entry.key] ?? entry.value)
-              .map((key) => row[key])
-              .where((v) => v != null)
-              .firstOrNull;
         }
       }
       return result;
+    }
+
+    EvalContext onContext(RowValues row) {
+      final values = Map<String, Object?>.of(row);
+      for (final entry in mergedValues.entries) {
+        if (values.containsKey(entry.key)) continue;
+        final (left, right, join) = entry.value;
+        if (join == 'RIGHT' && values.containsKey(right)) {
+          values[entry.key] = values[right];
+        } else if (join == 'FULL' &&
+            values.containsKey(left) &&
+            values.containsKey(right)) {
+          values[entry.key] = values[left] ?? values[right];
+        } else if (join != 'RIGHT' &&
+            join != 'FULL' &&
+            values.containsKey(left)) {
+          values[entry.key] = values[left];
+        }
+      }
+      final visible = <String, Object?>{
+        ...?outer?.row,
+        for (final entry in values.entries)
+          if (!identityKey(entry.key)) entry.key: entry.value,
+      };
+      for (final name in refs.keys) {
+        visible.remove(name);
+        if (onRefs[name]?.length == 1) {
+          visible[name] = values[onRefs[name]!.single];
+        }
+      }
+      return EvalContext(
+          visible, onAffinities, bound, _pager.header.textEncoding)
+        ..inTrigger = outer?.inTrigger ?? false
+        ..collations = onCollations
+        ..columnAliases = onAliases
+        ..subquery = subquery;
+    }
+
+    bool matchesOn(Expr expression, EvalContext context) {
+      if (expression is BinaryExpr && expression.op == 'AND') {
+        return matchesOn(expression.left, context) &&
+            matchesOn(expression.right, context);
+      }
+      if (expression is BinaryExpr && expression.op == 'OR') {
+        return matchesOn(expression.left, context) ||
+            matchesOn(expression.right, context);
+      }
+      return truth(expression.evaluate(context), context.encoding) == true;
     }
 
     for (var index = 0; index < sources.length; index++) {
@@ -444,17 +558,19 @@ extension _RelationalQueries on SqliteDatabase {
       CatalogTable table;
       List<RowValues> rows;
       if (source.query != null) {
-        final result = _relational(source.query!, bound, cache, outer);
+        final result = evaluate(source.query!, cache, outer);
+        final names = _relationColumnNames(result.columns);
         table = CatalogTable(
             '@$index',
             0,
             [
               for (var i = 0; i < result.columns.length; i++)
                 CatalogColumn(
-                    result.columns[i],
+                    names[i],
                     result.columnDeclaredTypes[i].isEmpty
                         ? _affinityType(result.columnAffinities[i])
                         : result.columnDeclaredTypes[i],
+                    affinityOverride: result.columnAffinities[i],
                     collation: result.columnCollations[i].isEmpty
                         ? 'binary'
                         : result.columnCollations[i])
@@ -464,11 +580,13 @@ extension _RelationalQueries on SqliteDatabase {
           for (final row in result.rows)
             {
               for (var i = 0; i < result.columns.length; i++)
-                asciiLower(result.columns[i]): row[i]
+                asciiLower(names[i]): row[i]
             }
         ];
       } else {
-        final entry = cache[asciiLower(source.table!)];
+        final entry = cache[source.schema == null
+            ? asciiLower(source.table!)
+            : 'main.${asciiLower(source.table!)}'];
         if (entry == null) {
           throw SqlException('Unknown or circular source: ${source.table}');
         }
@@ -487,22 +605,20 @@ extension _RelationalQueries on SqliteDatabase {
         if (!leftNames.contains(name) || !rightNames.contains(name)) {
           throw SqlException('USING column missing: $name');
         }
-      }
-      final leftRefs = {
-        for (final name in using)
-          name: List<String>.of(mergedValues[name] ?? refs[name]!)
-      };
-      final leftColumns = {
-        for (final name in using)
-          name: joinColumns[name] ?? declared[leftRefs[name]!.first]!
-      };
-      merged.addAll(using);
-      for (var i = 0; i < star.length; i++) {
-        if (using.contains(asciiLower(star[i].$1))) {
-          star[i] = (star[i].$1, asciiLower(star[i].$1));
+        if (['RIGHT', 'FULL'].contains(source.join) && refs[name]!.length > 1) {
+          throw SqlException('Ambiguous USING column: $name');
         }
       }
-      final available = [...table.columns];
+      final leftRefs = {for (final name in using) name: refs[name]!.first};
+      final leftColumns = {
+        for (final name in using)
+          name: joinColumns[leftRefs[name]] ?? declared[leftRefs[name]]!
+      };
+      final available = [
+        ...table.columns,
+        if (source.rowIdentity != null)
+          CatalogColumn(source.rowIdentity!, 'INTEGER')
+      ];
       if (!table.withoutRowid) {
         for (final name in ['rowid', '_rowid_', 'oid']) {
           if (!rightNames.contains(name)) {
@@ -517,6 +633,17 @@ extension _RelationalQueries on SqliteDatabase {
         final key = '$alias.$name';
         rightKeys.add(key);
         declared[key] = column;
+        if (source.table != null &&
+            (table.rootPage > 0 ||
+                identical(
+                    cache[source.schema == null
+                        ? asciiLower(source.table!)
+                        : 'main.${asciiLower(source.table!)}'],
+                    cache['main.${asciiLower(source.table!)}']))) {
+          declared['main.$key'] = column;
+          rightKeys.add('main.$key');
+          labels['main.$key'] = column.name;
+        }
         labels[key] = rightNames.contains(name)
             ? column.name
             : table.rowidAlias ?? 'rowid';
@@ -535,116 +662,282 @@ extension _RelationalQueries on SqliteDatabase {
         }
       }
       sourceStars[alias] = allStar;
+      final mergedKeys = <String>{};
       for (final name in using) {
         final rightKey = '$alias.$name';
-        joinColumns[name] = leftColumns[name]!;
-        mergedValues[name] = source.join == 'RIGHT'
-            ? [rightKey, ...leftRefs[name]!]
-            : [...leftRefs[name]!, rightKey];
-        mergedColumns[name] = source.join == 'RIGHT'
+        final mergedKey = '\u0000using$index.$name';
+        mergedKeys.add(mergedKey);
+        joinColumns[mergedKey] = leftColumns[name]!;
+        mergedValues[mergedKey] = (leftRefs[name]!, rightKey, source.join);
+        declared[mergedKey] = source.join == 'RIGHT'
             ? declared[rightKey]!
             : source.join == 'FULL'
-                ? CatalogColumn(name, '', collation: '')
-                : leftColumns[name]!;
-        labels[name] = mergedColumns[name]!.name;
-      }
-      final known = <String>{
-        ...declared.keys,
-        ...?outer?.row.keys,
-        for (final e in refs.entries)
-          if (e.value.length == 1 || merged.contains(e.key)) e.key
-      };
-      source.on?.validate(known);
-      if (source.on?.containsAggregate ?? false) {
-        throw const SqlException('Aggregate in JOIN ON');
+                ? CatalogColumn(name, '',
+                    affinityOverride: 'none', collation: '')
+                : declared[leftRefs[name]]!;
+        labels[mergedKey] = declared[mergedKey]!.name;
+        refs[name] = [
+          for (final key in refs[name]!)
+            if (key == leftRefs[name]) mergedKey else if (key != rightKey) key
+        ];
+        for (var i = 0; i < star.length; i++) {
+          if (star[i].$2 == leftRefs[name]) {
+            star[i] = (star[i].$1, mergedKey);
+            break;
+          }
+        }
       }
       final af = <String, String>{
         ...?outer?.affinities,
         for (final e in declared.entries) e.key: e.value.affinity,
         for (final e in refs.entries)
-          if (e.value.length == 1 || merged.contains(e.key))
-            e.key: (mergedColumns[e.key] ?? declared[e.value.first]!).affinity
+          if (e.value.length == 1) e.key: declared[e.value.first]!.affinity
       };
       final cs = <String, String>{
         ...?outer?.collations,
         for (final e in declared.entries) e.key: e.value.collation,
         for (final e in refs.entries)
-          if (e.value.length == 1 || merged.contains(e.key))
-            e.key: (mergedColumns[e.key] ?? declared[e.value.first]!).collation
+          if (e.value.length == 1) e.key: declared[e.value.first]!.collation
       };
       final right = [
-        for (final row in rows)
+        for (var rowIndex = 0; rowIndex < rows.length; rowIndex++)
           {
             for (final key in rightKeys)
-              key: row[key.substring(alias.length + 1)]
+              key: source.rowIdentity != null &&
+                      key == '$alias.${source.rowIdentity}'
+                  ? BigInt.from(rowIndex + 1)
+                  : rows[rowIndex][key.substring(
+                      (key.startsWith('main.$alias.') ? 5 : 0) +
+                          alias.length +
+                          1)]
           }
       ];
-      final next = <RowValues>[];
-      final matched = List<bool>.filled(right.length, false);
-      for (final left in joined) {
-        var found = false;
-        for (var r = 0; r < right.length; r++) {
-          final combined = <String, Object?>{...left, ...right[r]};
-          var equal = true;
-          for (final name in using) {
-            final rightKey = '$alias.$name';
-            final leftValue = leftRefs[name]!
-                .map((key) => combined[key])
-                .where((v) => v != null)
-                .firstOrNull;
-            final ctx = EvalContext({
-              ...combined,
-              '@left': applyAffinity(leftValue, leftColumns[name]!.affinity)
-            }, {
-              ...af,
-              '@left': leftColumns[name]!.affinity
-            }, bound, _pager.header.textEncoding)
-              ..collations = {...cs, '@left': leftColumns[name]!.collation};
-            if (BinaryExpr('=', ColumnExpr('@left'), ColumnExpr(rightKey))
-                    .evaluate(ctx) !=
-                BigInt.one) {
-              equal = false;
-              break;
+      for (final key in rightKeys) {
+        columnStages[key] = index;
+      }
+      for (final key in mergedKeys) {
+        final (left, right, join) = mergedValues[key]!;
+        columnStages[key] =
+            join == 'RIGHT' || join == 'FULL' ? index : columnStages[left]!;
+      }
+      final leftKeys = Set<String>.of(keysBefore);
+      joinSteps.add(() {
+        final next = <RowValues>[];
+        RowValues merge(RowValues row) {
+          for (final key in mergedKeys) {
+            final (left, right, join) = mergedValues[key]!;
+            row[key] = join == 'RIGHT'
+                ? row[right]
+                : join == 'FULL'
+                    ? row[left] ?? row[right]
+                    : row[left];
+          }
+          return row;
+        }
+
+        final matched = List<bool>.filled(right.length, false);
+        for (final left in joined) {
+          var found = false;
+          for (var r = 0; r < right.length; r++) {
+            final combined = merge({...left, ...right[r]});
+            var equal = true;
+            for (final name in using) {
+              final rightKey = '$alias.$name';
+              final leftValue = combined[leftRefs[name]];
+              final ctx = EvalContext({
+                ...combined,
+                '@left': applyAffinity(leftValue, leftColumns[name]!.affinity)
+              }, {
+                ...af,
+                '@left': leftColumns[name]!.affinity
+              }, bound, _pager.header.textEncoding)
+                ..collations = {...cs, '@left': leftColumns[name]!.collation};
+              if (BinaryExpr('=', ColumnExpr('@left'), ColumnExpr(rightKey))
+                      .evaluate(ctx) !=
+                  BigInt.one) {
+                equal = false;
+                break;
+              }
+            }
+            if (!equal) continue;
+            final ctx = onContext(combined);
+            if (source.on != null &&
+                onStages[source]! <= index &&
+                !matchesOn(onConditions[source]!, ctx)) {
+              continue;
+            }
+            found = true;
+            matched[r] = true;
+            next.add(combined);
+          }
+          if (!found && ['LEFT', 'FULL'].contains(source.join)) {
+            next.add(merge({...left, for (final key in rightKeys) key: null}));
+          }
+        }
+        if (['RIGHT', 'FULL'].contains(source.join)) {
+          for (var r = 0; r < right.length; r++) {
+            if (!matched[r]) {
+              next.add(
+                  merge({for (final key in leftKeys) key: null, ...right[r]}));
             }
           }
-          if (!equal) continue;
-          final ctx = EvalContext(
-              scope(combined), af, bound, _pager.header.textEncoding)
-            ..inTrigger = outer?.inTrigger ?? false
-            ..collations = cs
-            ..subquery =
-                (query, context) => _relational(query, bound, cache, context);
-          if (source.on != null &&
-              truth(source.on!.evaluate(ctx), ctx.encoding) != true) {
-            continue;
-          }
-          found = true;
-          matched[r] = true;
-          next.add(combined);
         }
-        if (!found && ['LEFT', 'FULL'].contains(source.join)) {
-          next.add({...left, for (final key in rightKeys) key: null});
+        joined = next.where((row) {
+          for (var earlier = 0; earlier < index; earlier++) {
+            final pending = sources[earlier];
+            if (pending.on != null && onStages[pending] == index) {
+              final context = onContext(row);
+              if (truth(pending.on!.evaluate(context), context.encoding) !=
+                  true) {
+                return false;
+              }
+            }
+          }
+          return true;
+        }).toList();
+      });
+      keysBefore = {...keysBefore, ...rightKeys, ...mergedKeys};
+    }
+    for (final entry in refs.entries) {
+      final visible = entry.value.where((key) => !identityKey(key)).toList();
+      if (visible.isNotEmpty) onRefs[entry.key] = visible;
+    }
+    final known = <String>{
+      for (final key in declared.keys)
+        if (!identityKey(key)) key,
+      ...?outer?.row.keys,
+      for (final entry in onRefs.entries)
+        if (entry.value.length == 1) entry.key,
+    };
+    onAffinities.addAll({
+      ...?outer?.affinities,
+      for (final entry in declared.entries)
+        if (!identityKey(entry.key)) entry.key: entry.value.affinity,
+      for (final entry in onRefs.entries)
+        if (entry.value.length == 1)
+          entry.key: declared[entry.value.single]!.affinity,
+    });
+    onCollations.addAll({
+      ...?outer?.collations,
+      for (final entry in declared.entries)
+        if (!identityKey(entry.key)) entry.key: entry.value.collation,
+      for (final entry in onRefs.entries)
+        if (entry.value.length == 1)
+          entry.key: declared[entry.value.single]!.collation,
+    });
+    for (final item in s.items) {
+      final name = asciiLower(item.label);
+      if (item.expression != null &&
+          !known.contains(name) &&
+          !onRefs.containsKey(name)) {
+        onAliases.putIfAbsent(name, () => item.expression!);
+      }
+    }
+    Iterable<String> references(Expr expr,
+        [Set<String> local = const {}]) sync* {
+      if (expr is ColumnExpr && !local.contains(expr.key)) yield expr.key;
+      for (final nested in [
+        if (expr is SubqueryExpr) expr.statement,
+        if (expr is InSelectExpr) expr.statement,
+      ]) {
+        final shadow = {...local};
+        for (final source in nested.sources) {
+          final alias = asciiLower(source.alias ?? source.table ?? '');
+          final table = source.table == null
+              ? null
+              : cache[source.schema == null
+                      ? asciiLower(source.table!)
+                      : 'main.${asciiLower(source.table!)}']
+                  ?.$1;
+          final names = table != null
+              ? table.columns.map((column) => asciiLower(column.name))
+              : source.query?.items.map((item) => asciiLower(item.label)) ??
+                  nested.ctes[asciiLower(source.table ?? '')]?.$1
+                      .map(asciiLower) ??
+                  const <String>[];
+          for (final name in names) {
+            shadow.add(name);
+            shadow.add('$alias.$name');
+            if (table != null) shadow.add('main.$alias.$name');
+          }
+        }
+        for (final expression in _expressions(nested)) {
+          yield* references(expression, shadow);
         }
       }
-      if (['RIGHT', 'FULL'].contains(source.join)) {
-        for (var r = 0; r < right.length; r++) {
-          if (!matched[r]) {
-            next.add({for (final key in keysBefore) key: null, ...right[r]});
+      for (final child in expr.children) {
+        yield* references(child, local);
+      }
+    }
+
+    int stage(Expr expression) {
+      var result = -1;
+      for (final name in references(expression)) {
+        final alias = known.contains(name) ? null : onAliases[name];
+        if (alias != null) {
+          alias.validate(known);
+          if (alias.containsAggregate || alias.containsWindow) {
+            throw const SqlException('Aggregate or window alias in JOIN ON');
           }
+          final value = stage(alias);
+          if (value > result) result = value;
+        } else {
+          final key = onRefs[name]?.length == 1 ? onRefs[name]!.single : name;
+          final value = columnStages[key] ?? -1;
+          if (value > result) result = value;
         }
       }
-      joined = next;
-      keysBefore = {...keysBefore, ...rightKeys};
+      return result;
+    }
+
+    Expr preparedOn(Expr expression) {
+      if (expression is! BinaryExpr || !['AND', 'OR'].contains(expression.op)) {
+        return expression;
+      }
+      final left = preparedOn(expression.left),
+          right = preparedOn(expression.right);
+      bool zero(Expr operand) =>
+          operand is Literal &&
+          operand.spelling == null &&
+          operand.value == BigInt.zero;
+      if (expression.op == 'AND' && (zero(left) || zero(right))) {
+        return Literal(BigInt.zero);
+      }
+      return BinaryExpr(expression.op, left, right);
+    }
+
+    for (var index = 0; index < sources.length; index++) {
+      final source = sources[index], condition = source.on;
+      if (condition == null) continue;
+      if (condition.containsAggregate || condition.containsWindow) {
+        throw const SqlException('Aggregate or window in JOIN ON');
+      }
+      final prepared = preparedOn(condition);
+      prepared.validate({...known, ...onAliases.keys});
+      onConditions[source] = prepared;
+      final ready = stage(prepared);
+      if (ready > index &&
+          (['LEFT', 'RIGHT', 'FULL'].contains(source.join) ||
+              sources
+                  .skip(index + 1)
+                  .take(ready - index)
+                  .any((later) => ['RIGHT', 'FULL'].contains(later.join)))) {
+        throw const SqlException('ON clause references tables to its right');
+      }
+      onStages[source] = ready > index ? ready : index;
+    }
+    for (final step in joinSteps) {
+      step();
     }
     final columns = <CatalogColumn>[
       ...declared.entries.map((e) => CatalogColumn(e.key, e.value.declaredType,
-          collation: e.value.collation))
+          affinityOverride: e.value.affinity, collation: e.value.collation))
     ];
     for (final entry in refs.entries) {
-      if (entry.value.length == 1 || merged.contains(entry.key)) {
-        final original =
-            mergedColumns[entry.key] ?? declared[entry.value.first]!;
+      if (entry.value.length == 1) {
+        final original = declared[entry.value.first]!;
         columns.add(CatalogColumn(original.name, original.declaredType,
+            affinityOverride: original.affinity,
             collation: original.collation));
       }
     }
@@ -653,6 +946,7 @@ extension _RelationalQueries on SqliteDatabase {
         if (!columns.any((c) => asciiLower(c.name) == name)) {
           columns.add(CatalogColumn(
               name, _affinityType(outer.affinities[name] ?? 'none'),
+              affinityOverride: outer.affinities[name] ?? 'none',
               collation: outer.collations[name] ?? 'binary'));
         }
       }
@@ -691,9 +985,7 @@ extension _RelationalQueries on SqliteDatabase {
     final component = _copy(s, items, tail: s.compounds.isEmpty);
     var result = _evaluate(
         component, bound, virtual, joined.map(scope).toList(),
-        inTrigger: outer?.inTrigger ?? false,
-        subquery: (query, context) =>
-            _relational(query, bound, cache, context));
+        inTrigger: outer?.inTrigger ?? false, subquery: subquery);
     if (s.compounds.isEmpty) return result;
     var values = result.rows.map((row) => row.toList()).toList();
     final compoundCollations = result.columnCollations.toList();
@@ -709,7 +1001,7 @@ extension _RelationalQueries on SqliteDatabase {
     }
 
     for (final part in s.compounds) {
-      final rhs = _relational(part.$2, bound, cache, outer);
+      final rhs = evaluate(part.$2, cache, outer);
       if (rhs.columns.length != result.columns.length) {
         throw const SqlException('Compound SELECT width mismatch');
       }
@@ -763,8 +1055,11 @@ extension _RelationalQueries on SqliteDatabase {
         if (ordinal == null && index < 0) {
           for (final component in [s, ...s.compounds.map((part) => part.$2)]) {
             index = component.items.indexWhere((item) =>
+                expr is ColumnExpr &&
+                    item.explicitAlias &&
+                    asciiLower(item.label) == expr.key ||
                 item.expression != null &&
-                sameExpression(expr, indexOperand(item.expression!)));
+                    sameExpression(expr, indexOperand(item.expression!)));
             if (index >= 0) break;
           }
         }

@@ -19,8 +19,16 @@ void validateSchemaExpression(Expr expression, Set<String> columns) {
     if (e is FunctionExpr) {
       if (e.registered != null && !e.registered!.deterministic ||
           e.registered == null &&
-              ['current_date', 'current_time', 'current_timestamp']
-                  .contains(e.key)) {
+              [
+                'current_date',
+                'current_time',
+                'current_timestamp',
+                'random',
+                'randomblob',
+                'changes',
+                'total_changes',
+                'last_insert_rowid'
+              ].contains(e.key)) {
         throw const SqlException(
             'Non-deterministic function in schema expression');
       }

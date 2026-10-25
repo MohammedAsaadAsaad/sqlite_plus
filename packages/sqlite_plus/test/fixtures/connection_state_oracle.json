@@ -1,0 +1,9050 @@
+[
+  {
+    "name": "direct writes and returning",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x INT UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE t SET x=x WHERE 0",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM t WHERE 0",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE t SET x=x RETURNING id,changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "20"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "20"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(30,3) RETURNING changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "4"
+            },
+            {
+              "integer": "30"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR IGNORE INTO t VALUES(40,3),(50,5)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "6"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "REPLACE INTO t VALUES(60,3)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "60"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(70,7) ON CONFLICT(x) DO NOTHING",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "8"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(80,7) ON CONFLICT(x) DO UPDATE SET x=x",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "9"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM t WHERE id>30 RETURNING id,changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "50"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "9"
+            },
+            {
+              "integer": "70"
+            }
+          ],
+          [
+            {
+              "integer": "60"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "9"
+            },
+            {
+              "integer": "70"
+            }
+          ],
+          [
+            {
+              "integer": "70"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "9"
+            },
+            {
+              "integer": "70"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "12"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "12"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "statement errors preserve the correct counters",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x INT UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(30,3),(40,2)",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR FAIL INTO t VALUES(30,3),(40,2)",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR IGNORE INTO t VALUES(40,2),(50,5)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t(missing) VALUES(1)",
+        "kind": "execute",
+        "error": "table t has no column named missing",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(1)",
+        "kind": "execute",
+        "error": "table t has 2 columns but 1 values were supplied",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE t SET x=1",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE OR FAIL t SET x=1",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            {
+              "integer": "30"
+            },
+            {
+              "integer": "3"
+            }
+          ],
+          [
+            {
+              "integer": "50"
+            },
+            {
+              "integer": "5"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT changes(1)",
+        "kind": "query",
+        "error": "wrong number of arguments to function changes()",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT total_changes(1)",
+        "kind": "query",
+        "error": "wrong number of arguments to function total_changes()",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT last_insert_rowid(1)",
+        "kind": "query",
+        "error": "wrong number of arguments to function last_insert_rowid()",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "transactions savepoints and ddl do not restore counters",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(30,3),(40,4)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "SAVEPOINT inner_save",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(50,5)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK TO inner_save",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "RELEASE inner_save",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(-10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "COMMIT",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE copied AS SELECT * FROM t",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE INDEX idx ON t(x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "DROP INDEX idx",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "ALTER TABLE t ADD COLUMN other",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "DROP TABLE copied",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "-10"
+            },
+            {
+              "integer": "1"
+            },
+            null
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger local counters and nested inserts",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE aux(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,id,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO aux VALUES(100,0),(200,0)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER aux_change AFTER UPDATE ON aux BEGIN INSERT INTO log VALUES('nested',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER before_t BEFORE INSERT ON t BEGIN INSERT INTO log VALUES('before',NEW.id,changes(),total_changes(),last_insert_rowid()); UPDATE aux SET x=x+1; INSERT INTO log VALUES('before_done',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER after_t AFTER INSERT ON t BEGIN INSERT INTO log VALUES('after',NEW.id,changes(),total_changes(),last_insert_rowid()); INSERT OR IGNORE INTO aux VALUES(NEW.id,0); INSERT INTO log VALUES('after_done',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "24"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "200"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "4"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "before_done",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "7"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "after",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "8"
+            },
+            {
+              "integer": "10"
+            }
+          ],
+          [
+            "after_done",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "10"
+            }
+          ],
+          [
+            "before",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "11"
+            },
+            {
+              "integer": "10"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "12"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "13"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "14"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "before_done",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "18"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "after",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "19"
+            },
+            {
+              "integer": "20"
+            }
+          ],
+          [
+            "after_done",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "21"
+            },
+            {
+              "integer": "20"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "24"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM log",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "13"
+          },
+          {
+            "integer": "37"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR IGNORE INTO t VALUES(20,9)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "47"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "13"
+            },
+            {
+              "integer": "37"
+            },
+            {
+              "integer": "20"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "38"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "39"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "40"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "41"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "before_done",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "4"
+            },
+            {
+              "integer": "46"
+            },
+            {
+              "integer": "1"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "47"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise abort",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(ABORT,'stop'); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "error": "stop",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise fail",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(FAIL,'stop'); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "error": "stop",
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            {
+              "integer": "30"
+            },
+            {
+              "integer": "3"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before_raise",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "30"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise rollback",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(ROLLBACK,'stop'); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "error": "stop",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "error": "cannot rollback - no transaction is active",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise ignore",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(IGNORE); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            {
+              "integer": "30"
+            },
+            {
+              "integer": "3"
+            }
+          ],
+          [
+            {
+              "integer": "40"
+            },
+            {
+              "integer": "4"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before_raise",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "30"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "view instead of triggers and without rowid",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE VIEW v AS SELECT * FROM t",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER write_v INSTEAD OF INSERT ON v BEGIN INSERT INTO t VALUES(NEW.id,NEW.x); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO v VALUES(50,5),(60,6) RETURNING id,changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "50"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "0"
+            }
+          ],
+          [
+            {
+              "integer": "60"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "0"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE wr(id INT PRIMARY KEY,x) WITHOUT ROWID",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO wr VALUES(100,1),(200,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE wr SET x=x+1",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "6"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE copied AS SELECT * FROM wr",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "6"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(-99,9)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "-99"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO wr VALUES(300,3)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "8"
+          },
+          {
+            "integer": "-99"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "foreign key cascades and replace victims",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "PRAGMA foreign_keys=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "PRAGMA recursive_triggers=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE parent(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE child(id INTEGER PRIMARY KEY,p REFERENCES parent(id) ON DELETE CASCADE ON UPDATE CASCADE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,id,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER child_update AFTER UPDATE ON child BEGIN INSERT INTO log VALUES('cu',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER child_delete AFTER DELETE ON child BEGIN INSERT INTO log VALUES('cd',OLD.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER parent_delete AFTER DELETE ON parent BEGIN INSERT INTO log VALUES('pd',OLD.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO parent VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO child VALUES(100,10),(200,10),(300,20)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "300"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE parent SET id=11 WHERE id=10",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "300"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "cu",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cu",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "6"
+            },
+            {
+              "integer": "300"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "300"
+          }
+        ]
+      },
+      {
+        "sql": "REPLACE INTO parent VALUES(21,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "14"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "cu",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cu",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "6"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "300"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "pd",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "12"
+            },
+            {
+              "integer": "300"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "14"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM parent WHERE id=11",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "20"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "cu",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cu",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "6"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "300"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "pd",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "12"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "14"
+            },
+            {
+              "integer": "21"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "15"
+            },
+            {
+              "integer": "21"
+            }
+          ],
+          [
+            "pd",
+            {
+              "integer": "11"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "18"
+            },
+            {
+              "integer": "21"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "20"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "foreign key failure and drop table",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "PRAGMA foreign_keys=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE parent(id INTEGER PRIMARY KEY)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE child(id INTEGER PRIMARY KEY,p REFERENCES parent ON DELETE CASCADE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER child_delete AFTER DELETE ON child BEGIN INSERT INTO log VALUES(OLD.id); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO parent VALUES(10),(20)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO child VALUES(100,10),(200,10)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO child VALUES(300,999)",
+        "kind": "execute",
+        "error": "FOREIGN KEY constraint failed",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "DROP TABLE parent",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "100"
+            }
+          ],
+          [
+            {
+              "integer": "200"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "recursive trigger rowid restoration",
+    "encoding": 1,
+    "steps": [
+      {
+        "sql": "PRAGMA recursive_triggers=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,id,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER recursive_t AFTER INSERT ON t WHEN NEW.id<3 BEGIN INSERT INTO log VALUES('enter',NEW.id,changes(),total_changes(),last_insert_rowid()); INSERT INTO t VALUES(NEW.id+1); INSERT INTO log VALUES('exit',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "1"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "enter",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "enter",
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            "exit",
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "3"
+            }
+          ],
+          [
+            "exit",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "2"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "1"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "direct writes and returning",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x INT UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE t SET x=x WHERE 0",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM t WHERE 0",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE t SET x=x RETURNING id,changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "20"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "20"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(30,3) RETURNING changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "4"
+            },
+            {
+              "integer": "30"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR IGNORE INTO t VALUES(40,3),(50,5)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "6"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "REPLACE INTO t VALUES(60,3)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "60"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(70,7) ON CONFLICT(x) DO NOTHING",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "8"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(80,7) ON CONFLICT(x) DO UPDATE SET x=x",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "9"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM t WHERE id>30 RETURNING id,changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "50"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "9"
+            },
+            {
+              "integer": "70"
+            }
+          ],
+          [
+            {
+              "integer": "60"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "9"
+            },
+            {
+              "integer": "70"
+            }
+          ],
+          [
+            {
+              "integer": "70"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "9"
+            },
+            {
+              "integer": "70"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "12"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "12"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "statement errors preserve the correct counters",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x INT UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(30,3),(40,2)",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR FAIL INTO t VALUES(30,3),(40,2)",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR IGNORE INTO t VALUES(40,2),(50,5)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t(missing) VALUES(1)",
+        "kind": "execute",
+        "error": "table t has no column named missing",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(1)",
+        "kind": "execute",
+        "error": "table t has 2 columns but 1 values were supplied",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE t SET x=1",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE OR FAIL t SET x=1",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            {
+              "integer": "30"
+            },
+            {
+              "integer": "3"
+            }
+          ],
+          [
+            {
+              "integer": "50"
+            },
+            {
+              "integer": "5"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT changes(1)",
+        "kind": "query",
+        "error": "wrong number of arguments to function changes()",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT total_changes(1)",
+        "kind": "query",
+        "error": "wrong number of arguments to function total_changes()",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT last_insert_rowid(1)",
+        "kind": "query",
+        "error": "wrong number of arguments to function last_insert_rowid()",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "transactions savepoints and ddl do not restore counters",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(30,3),(40,4)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "SAVEPOINT inner_save",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(50,5)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK TO inner_save",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "RELEASE inner_save",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(-10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "COMMIT",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE copied AS SELECT * FROM t",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE INDEX idx ON t(x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "DROP INDEX idx",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "ALTER TABLE t ADD COLUMN other",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "DROP TABLE copied",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "-10"
+            },
+            {
+              "integer": "1"
+            },
+            null
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger local counters and nested inserts",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE aux(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,id,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO aux VALUES(100,0),(200,0)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER aux_change AFTER UPDATE ON aux BEGIN INSERT INTO log VALUES('nested',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER before_t BEFORE INSERT ON t BEGIN INSERT INTO log VALUES('before',NEW.id,changes(),total_changes(),last_insert_rowid()); UPDATE aux SET x=x+1; INSERT INTO log VALUES('before_done',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER after_t AFTER INSERT ON t BEGIN INSERT INTO log VALUES('after',NEW.id,changes(),total_changes(),last_insert_rowid()); INSERT OR IGNORE INTO aux VALUES(NEW.id,0); INSERT INTO log VALUES('after_done',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "24"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "200"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "4"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "before_done",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "7"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "after",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "8"
+            },
+            {
+              "integer": "10"
+            }
+          ],
+          [
+            "after_done",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "10"
+            }
+          ],
+          [
+            "before",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "11"
+            },
+            {
+              "integer": "10"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "12"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "13"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "14"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "before_done",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "18"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "after",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "19"
+            },
+            {
+              "integer": "20"
+            }
+          ],
+          [
+            "after_done",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "21"
+            },
+            {
+              "integer": "20"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "24"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM log",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "13"
+          },
+          {
+            "integer": "37"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR IGNORE INTO t VALUES(20,9)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "47"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "13"
+            },
+            {
+              "integer": "37"
+            },
+            {
+              "integer": "20"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "38"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "39"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "40"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "41"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "before_done",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "4"
+            },
+            {
+              "integer": "46"
+            },
+            {
+              "integer": "1"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "47"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise abort",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(ABORT,'stop'); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "error": "stop",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise fail",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(FAIL,'stop'); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "error": "stop",
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            {
+              "integer": "30"
+            },
+            {
+              "integer": "3"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before_raise",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "30"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise rollback",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(ROLLBACK,'stop'); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "error": "stop",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "error": "cannot rollback - no transaction is active",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise ignore",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(IGNORE); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            {
+              "integer": "30"
+            },
+            {
+              "integer": "3"
+            }
+          ],
+          [
+            {
+              "integer": "40"
+            },
+            {
+              "integer": "4"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before_raise",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "30"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "view instead of triggers and without rowid",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE VIEW v AS SELECT * FROM t",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER write_v INSTEAD OF INSERT ON v BEGIN INSERT INTO t VALUES(NEW.id,NEW.x); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO v VALUES(50,5),(60,6) RETURNING id,changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "50"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "0"
+            }
+          ],
+          [
+            {
+              "integer": "60"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "0"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE wr(id INT PRIMARY KEY,x) WITHOUT ROWID",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO wr VALUES(100,1),(200,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE wr SET x=x+1",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "6"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE copied AS SELECT * FROM wr",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "6"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(-99,9)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "-99"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO wr VALUES(300,3)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "8"
+          },
+          {
+            "integer": "-99"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "foreign key cascades and replace victims",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "PRAGMA foreign_keys=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "PRAGMA recursive_triggers=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE parent(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE child(id INTEGER PRIMARY KEY,p REFERENCES parent(id) ON DELETE CASCADE ON UPDATE CASCADE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,id,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER child_update AFTER UPDATE ON child BEGIN INSERT INTO log VALUES('cu',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER child_delete AFTER DELETE ON child BEGIN INSERT INTO log VALUES('cd',OLD.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER parent_delete AFTER DELETE ON parent BEGIN INSERT INTO log VALUES('pd',OLD.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO parent VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO child VALUES(100,10),(200,10),(300,20)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "300"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE parent SET id=11 WHERE id=10",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "300"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "cu",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cu",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "6"
+            },
+            {
+              "integer": "300"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "300"
+          }
+        ]
+      },
+      {
+        "sql": "REPLACE INTO parent VALUES(21,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "14"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "cu",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cu",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "6"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "300"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "pd",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "12"
+            },
+            {
+              "integer": "300"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "14"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM parent WHERE id=11",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "20"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "cu",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cu",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "6"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "300"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "pd",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "12"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "14"
+            },
+            {
+              "integer": "21"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "15"
+            },
+            {
+              "integer": "21"
+            }
+          ],
+          [
+            "pd",
+            {
+              "integer": "11"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "18"
+            },
+            {
+              "integer": "21"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "20"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "foreign key failure and drop table",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "PRAGMA foreign_keys=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE parent(id INTEGER PRIMARY KEY)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE child(id INTEGER PRIMARY KEY,p REFERENCES parent ON DELETE CASCADE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER child_delete AFTER DELETE ON child BEGIN INSERT INTO log VALUES(OLD.id); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO parent VALUES(10),(20)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO child VALUES(100,10),(200,10)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO child VALUES(300,999)",
+        "kind": "execute",
+        "error": "FOREIGN KEY constraint failed",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "DROP TABLE parent",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "100"
+            }
+          ],
+          [
+            {
+              "integer": "200"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "recursive trigger rowid restoration",
+    "encoding": 2,
+    "steps": [
+      {
+        "sql": "PRAGMA recursive_triggers=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,id,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER recursive_t AFTER INSERT ON t WHEN NEW.id<3 BEGIN INSERT INTO log VALUES('enter',NEW.id,changes(),total_changes(),last_insert_rowid()); INSERT INTO t VALUES(NEW.id+1); INSERT INTO log VALUES('exit',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "1"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "enter",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "enter",
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            "exit",
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "3"
+            }
+          ],
+          [
+            "exit",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "2"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "1"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "direct writes and returning",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x INT UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE t SET x=x WHERE 0",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM t WHERE 0",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE t SET x=x RETURNING id,changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "20"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "20"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(30,3) RETURNING changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "4"
+            },
+            {
+              "integer": "30"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR IGNORE INTO t VALUES(40,3),(50,5)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "6"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "REPLACE INTO t VALUES(60,3)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "60"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(70,7) ON CONFLICT(x) DO NOTHING",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "8"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(80,7) ON CONFLICT(x) DO UPDATE SET x=x",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "9"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM t WHERE id>30 RETURNING id,changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "50"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "9"
+            },
+            {
+              "integer": "70"
+            }
+          ],
+          [
+            {
+              "integer": "60"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "9"
+            },
+            {
+              "integer": "70"
+            }
+          ],
+          [
+            {
+              "integer": "70"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "9"
+            },
+            {
+              "integer": "70"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "12"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "12"
+          },
+          {
+            "integer": "70"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "statement errors preserve the correct counters",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x INT UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(30,3),(40,2)",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR FAIL INTO t VALUES(30,3),(40,2)",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR IGNORE INTO t VALUES(40,2),(50,5)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t(missing) VALUES(1)",
+        "kind": "execute",
+        "error": "table t has no column named missing",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(1)",
+        "kind": "execute",
+        "error": "table t has 2 columns but 1 values were supplied",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE t SET x=1",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE OR FAIL t SET x=1",
+        "kind": "execute",
+        "error": "UNIQUE constraint failed: t.x",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            {
+              "integer": "30"
+            },
+            {
+              "integer": "3"
+            }
+          ],
+          [
+            {
+              "integer": "50"
+            },
+            {
+              "integer": "5"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT changes(1)",
+        "kind": "query",
+        "error": "wrong number of arguments to function changes()",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT total_changes(1)",
+        "kind": "query",
+        "error": "wrong number of arguments to function total_changes()",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT last_insert_rowid(1)",
+        "kind": "query",
+        "error": "wrong number of arguments to function last_insert_rowid()",
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "transactions savepoints and ddl do not restore counters",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(30,3),(40,4)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "SAVEPOINT inner_save",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(50,5)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK TO inner_save",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "RELEASE inner_save",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "50"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(-10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "COMMIT",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE copied AS SELECT * FROM t",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE INDEX idx ON t(x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "DROP INDEX idx",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "ALTER TABLE t ADD COLUMN other",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "DROP TABLE copied",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "-10"
+            },
+            {
+              "integer": "1"
+            },
+            null
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "-10"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger local counters and nested inserts",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE aux(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,id,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO aux VALUES(100,0),(200,0)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER aux_change AFTER UPDATE ON aux BEGIN INSERT INTO log VALUES('nested',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER before_t BEFORE INSERT ON t BEGIN INSERT INTO log VALUES('before',NEW.id,changes(),total_changes(),last_insert_rowid()); UPDATE aux SET x=x+1; INSERT INTO log VALUES('before_done',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER after_t AFTER INSERT ON t BEGIN INSERT INTO log VALUES('after',NEW.id,changes(),total_changes(),last_insert_rowid()); INSERT OR IGNORE INTO aux VALUES(NEW.id,0); INSERT INTO log VALUES('after_done',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "24"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "200"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "4"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "before_done",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "7"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "after",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "8"
+            },
+            {
+              "integer": "10"
+            }
+          ],
+          [
+            "after_done",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "10"
+            }
+          ],
+          [
+            "before",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "11"
+            },
+            {
+              "integer": "10"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "12"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "13"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "14"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "before_done",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "18"
+            },
+            {
+              "integer": "7"
+            }
+          ],
+          [
+            "after",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "19"
+            },
+            {
+              "integer": "20"
+            }
+          ],
+          [
+            "after_done",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "21"
+            },
+            {
+              "integer": "20"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "24"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM log",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "13"
+          },
+          {
+            "integer": "37"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT OR IGNORE INTO t VALUES(20,9)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "47"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "13"
+            },
+            {
+              "integer": "37"
+            },
+            {
+              "integer": "20"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "38"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "39"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "40"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "nested",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "41"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "before_done",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "4"
+            },
+            {
+              "integer": "46"
+            },
+            {
+              "integer": "1"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "47"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise abort",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(ABORT,'stop'); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "error": "stop",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise fail",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(FAIL,'stop'); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "error": "stop",
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            {
+              "integer": "30"
+            },
+            {
+              "integer": "3"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before_raise",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "30"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise rollback",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(ROLLBACK,'stop'); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "error": "stop",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "error": "cannot rollback - no transaction is active",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "30"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "trigger raise ignore",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(10,1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "BEGIN",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER fail_t AFTER INSERT ON t WHEN NEW.id=30 BEGIN INSERT INTO log VALUES('before_raise',changes(),total_changes(),last_insert_rowid()); SELECT RAISE(IGNORE); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(20,2),(30,3),(40,4)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM t ORDER BY id",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            {
+              "integer": "30"
+            },
+            {
+              "integer": "3"
+            }
+          ],
+          [
+            {
+              "integer": "40"
+            },
+            {
+              "integer": "4"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "before_raise",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "30"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      },
+      {
+        "sql": "ROLLBACK",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "40"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "view instead of triggers and without rowid",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE VIEW v AS SELECT * FROM t",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER write_v INSTEAD OF INSERT ON v BEGIN INSERT INTO t VALUES(NEW.id,NEW.x); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO v VALUES(50,5),(60,6) RETURNING id,changes(),total_changes(),last_insert_rowid()",
+        "kind": "execute",
+        "rows": [
+          [
+            {
+              "integer": "50"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "0"
+            }
+          ],
+          [
+            {
+              "integer": "60"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "0"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE wr(id INT PRIMARY KEY,x) WITHOUT ROWID",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO wr VALUES(100,1),(200,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE wr SET x=x+1",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "6"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE copied AS SELECT * FROM wr",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "6"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(-99,9)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "-99"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO wr VALUES(300,3)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "8"
+          },
+          {
+            "integer": "-99"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "foreign key cascades and replace victims",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "PRAGMA foreign_keys=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "PRAGMA recursive_triggers=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE parent(id INTEGER PRIMARY KEY,x UNIQUE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE child(id INTEGER PRIMARY KEY,p REFERENCES parent(id) ON DELETE CASCADE ON UPDATE CASCADE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,id,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER child_update AFTER UPDATE ON child BEGIN INSERT INTO log VALUES('cu',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER child_delete AFTER DELETE ON child BEGIN INSERT INTO log VALUES('cd',OLD.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER parent_delete AFTER DELETE ON parent BEGIN INSERT INTO log VALUES('pd',OLD.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO parent VALUES(10,1),(20,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO child VALUES(100,10),(200,10),(300,20)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "5"
+          },
+          {
+            "integer": "300"
+          }
+        ]
+      },
+      {
+        "sql": "UPDATE parent SET id=11 WHERE id=10",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "300"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "cu",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cu",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "6"
+            },
+            {
+              "integer": "300"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "300"
+          }
+        ]
+      },
+      {
+        "sql": "REPLACE INTO parent VALUES(21,2)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "14"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "cu",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cu",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "6"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "300"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "pd",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "12"
+            },
+            {
+              "integer": "300"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "14"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      },
+      {
+        "sql": "DELETE FROM parent WHERE id=11",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "20"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "cu",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cu",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "6"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "300"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "10"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "pd",
+            {
+              "integer": "20"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "12"
+            },
+            {
+              "integer": "300"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "100"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "14"
+            },
+            {
+              "integer": "21"
+            }
+          ],
+          [
+            "cd",
+            {
+              "integer": "200"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "15"
+            },
+            {
+              "integer": "21"
+            }
+          ],
+          [
+            "pd",
+            {
+              "integer": "11"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "18"
+            },
+            {
+              "integer": "21"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "20"
+          },
+          {
+            "integer": "21"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "foreign key failure and drop table",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "PRAGMA foreign_keys=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE parent(id INTEGER PRIMARY KEY)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE child(id INTEGER PRIMARY KEY,p REFERENCES parent ON DELETE CASCADE)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(x)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER child_delete AFTER DELETE ON child BEGIN INSERT INTO log VALUES(OLD.id); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO parent VALUES(10),(20)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "20"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO child VALUES(100,10),(200,10)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO child VALUES(300,999)",
+        "kind": "execute",
+        "error": "FOREIGN KEY constraint failed",
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "DROP TABLE parent",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            {
+              "integer": "100"
+            }
+          ],
+          [
+            {
+              "integer": "200"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "10"
+          },
+          {
+            "integer": "200"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "recursive trigger rowid restoration",
+    "encoding": 3,
+    "steps": [
+      {
+        "sql": "PRAGMA recursive_triggers=ON",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TABLE log(stage,id,c,tc,lr)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "CREATE TRIGGER recursive_t AFTER INSERT ON t WHEN NEW.id<3 BEGIN INSERT INTO log VALUES('enter',NEW.id,changes(),total_changes(),last_insert_rowid()); INSERT INTO t VALUES(NEW.id+1); INSERT INTO log VALUES('exit',NEW.id,changes(),total_changes(),last_insert_rowid()); END",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      },
+      {
+        "sql": "INSERT INTO t VALUES(1)",
+        "kind": "execute",
+        "rows": [],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "1"
+          }
+        ]
+      },
+      {
+        "sql": "SELECT * FROM log ORDER BY rowid",
+        "kind": "query",
+        "rows": [
+          [
+            "enter",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "0"
+            },
+            {
+              "integer": "1"
+            }
+          ],
+          [
+            "enter",
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "2"
+            }
+          ],
+          [
+            "exit",
+            {
+              "integer": "2"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "3"
+            },
+            {
+              "integer": "3"
+            }
+          ],
+          [
+            "exit",
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "1"
+            },
+            {
+              "integer": "5"
+            },
+            {
+              "integer": "2"
+            }
+          ]
+        ],
+        "state": [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "7"
+          },
+          {
+            "integer": "1"
+          }
+        ]
+      }
+    ]
+  }
+]

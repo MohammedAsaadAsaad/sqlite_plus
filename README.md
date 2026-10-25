@@ -346,7 +346,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 1,593 differential queries across the
+The pinned M6 oracle currently contains 1,647 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 
@@ -440,3 +440,55 @@ parsing. NATURAL join rewrites follow the merged column origin for LEFT/RIGHT/FU
 joins; renaming USING keys rejects when the resulting join becomes invalid, as
 in the reference. Real columns take precedence over implicit rowid aliases. More
 complex schema/DQS fallback behavior is outside the verified subset.
+
+M6 additionally supports row-value comparisons, IN/subqueries, BETWEEN and simple
+CASE with per-field affinity/collation. SELECT preparation checks wildcard subquery
+widths even for empty input. Plain projections without ORDER BY or DISTINCT
+honor LIMIT/OFFSET before evaluating skipped or excess projection expressions.
+
+DML supports scalar/correlated/EXISTS/IN subqueries, WITH/RECURSIVE statements,
+target aliases and UPDATE FROM, including WITHOUT ROWID targets and INSTEAD OF
+view triggers. UPDATE FROM materializes assignments before mutation. Physical
+table targets update once per matched target; view triggers follow the reference
+per joined row. Uncorrelated mutation subqueries cache their first evaluation;
+correlated reads can observe earlier writes. Views are currently materialized
+while loading relations, which can invoke callbacks before a later expression
+uses them; lazy evaluation across views is outside the verified contract.
+
+Explicit `main` schema qualification bypasses CTE shadows. INDEXED BY validates
+its named index and compatible partial predicate; the single-table planner uses
+that index. NOT INDEXED suppresses secondary-index plans while preserving rowid
+lookup. Relational joins still materialize complete input relations after hint
+validation. Attached databases and TEMP schema behavior are not implemented.
+
+Table PRIMARY KEY/UNIQUE constraints retain COLLATE and ASC/DESC ordering,
+including implicit-index metadata and WITHOUT ROWID storage. Repeated primary-key
+columns reject explicitly. Parent actions with a primary-key collation different
+from the parent column's declared collation reject atomically: pinned SQLite can
+leave an orphan in this case, and this engine preserves its constraint invariant.
+
+ANALYZE persists sqlite_stat1 statistics from actual full scans, including partial,
+expression, collated and WITHOUT ROWID keys. REINDEX rebuilds index contents;
+VACUUM compacts the main image outside transactions. The image writer currently
+reconstructs all indexes during a requested REINDEX. Statistics are available to
+SQL clients; the planner still uses its documented constraint heuristic. VACUUM
+INTO and statistics-driven native planner equivalence are not implemented.
+
+Additional core functions include PRINTF/FORMAT, UNISTR/UNISTR_QUOTE, RANDOM/
+RANDOMBLOB, scalar LIKE/GLOB, and LIKELY/UNLIKELY/LIKELIHOOD. Malformed Unicode
+escapes and UTF-8 byte precision that splits a character reject explicitly.
+Metadata PRAGMAs include table_list, collation_list, function_list, pragma_list,
+and database_list. View metadata resolves recursive scalar subqueries, correlated
+fields and CAST types without running callbacks. Introspection reports supported
+engine capabilities; the unnamed image backend has no filesystem identity.
+
+MEDIAN/PERCENTILE/PERCENTILE_CONT/PERCENTILE_DISC support aggregate and window
+execution with pinned fraction validation, numeric input checks, FILTER/DISTINCT,
+ordered aggregation and exclusion behavior. The development oracle contains
+1,323 percentile comparisons in the three encodings.
+
+CHANGES(), TOTAL_CHANGES() and LAST_INSERT_ROWID() belong to the connection and
+retain native trigger-local save/restore behavior. Tests cover rollback/FAIL,
+RETURNING, UPSERT, REPLACE, WITHOUT ROWID targets, cascading actions, implicit
+DROP deletes and connection isolation. Page rollback does not roll back these
+SQL-visible counters.

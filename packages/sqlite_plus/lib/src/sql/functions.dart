@@ -7,6 +7,9 @@ import 'function_registry.dart';
 import 'core_functions.dart';
 import 'date_functions.dart';
 import 'index_definition.dart' show sameExpression;
+import 'expressions.dart';
+import 'printf_functions.dart';
+import 'percentile_functions.dart';
 
 final class FunctionExpr extends Expr {
   FunctionExpr(this.name, this.arguments,
@@ -20,10 +23,19 @@ final class FunctionExpr extends Expr {
     if (range == null) throw SqlException('No such function: $name');
     if (arguments.length < range.$1 ||
         arguments.length > range.$2 ||
-        star && key != 'count' && registered == null ||
-        distinct && !isAggregate ||
-        distinct && arguments.length != 1) {
+        distinct && star ||
+        distinct && isAggregate && arguments.length != 1) {
       throw SqlException('Invalid arguments to $name');
+    }
+    if (registered == null && key == 'likelihood') {
+      final probability = arguments[1];
+      if (probability is! Literal ||
+          probability.value is! double ||
+          (probability.value as double) < 0 ||
+          (probability.value as double) > 1) {
+        throw const SqlException(
+            'second argument to likelihood() must be a constant between 0.0 and 1.0');
+      }
     }
   }
   final RegisteredSqlFunction? registered;
@@ -37,8 +49,15 @@ final class FunctionExpr extends Expr {
   String get key => asciiLower(name);
   bool get isAggregate => registered != null
       ? registered!.aggregate != null
-      : ['count', 'sum', 'total', 'avg', 'group_concat', 'string_agg']
-              .contains(key) ||
+      : [
+            'count',
+            'sum',
+            'total',
+            'avg',
+            'group_concat',
+            'string_agg',
+            ...percentileFunctionNames
+          ].contains(key) ||
           ['min', 'max'].contains(key) && arguments.length == 1;
   @override
   Iterable<Expr> get children => [
@@ -72,6 +91,16 @@ final class FunctionExpr extends Expr {
     'nth_value'
   };
   static const _arities = <String, (int, int)>{
+    'changes': (0, 0),
+    'total_changes': (0, 0),
+    'last_insert_rowid': (0, 0),
+    'likely': (1, 1),
+    'unlikely': (1, 1),
+    'likelihood': (2, 2),
+    'printf': (0, 1000),
+    'format': (0, 1000),
+    'like': (2, 3),
+    'glob': (2, 2),
     'row_number': (0, 0),
     'rank': (0, 0),
     'dense_rank': (0, 0),
@@ -88,7 +117,7 @@ final class FunctionExpr extends Expr {
     'lower': (1, 1),
     'upper': (1, 1),
     'typeof': (1, 1),
-    'coalesce': (2, 127),
+    'coalesce': (2, 1000),
     'ifnull': (2, 2),
     'nullif': (2, 2),
     'iif': (2, 1000),
@@ -97,8 +126,9 @@ final class FunctionExpr extends Expr {
     ...dateFunctionArities,
     'hex': (1, 1),
     'quote': (1, 1),
+    'unistr_quote': (1, 1),
     'unicode': (1, 1),
-    'char': (0, 127),
+    'char': (0, 1000),
     'substr': (2, 3),
     'substring': (2, 3),
     'replace': (3, 3),
@@ -110,11 +140,16 @@ final class FunctionExpr extends Expr {
     'sum': (1, 1),
     'total': (1, 1),
     'avg': (1, 1),
-    'min': (1, 127),
-    'max': (1, 127),
+    'min': (1, 1000),
+    'max': (1, 1000),
     'group_concat': (1, 2),
     'string_agg': (2, 2),
+    'median': (1, 1),
+    'percentile': (2, 2),
+    'percentile_cont': (2, 2),
+    'percentile_disc': (2, 2),
   };
+  static Map<String, (int, int)> get builtinArities => _arities;
   @override
   void validate(Set<String> columns) {
     if (isAggregate &&
@@ -158,6 +193,18 @@ final class FunctionExpr extends Expr {
       return registered!
           .invoke(arguments.map((arg) => arg.evaluate(context)).toList());
     }
+    if (key == 'changes') {
+      return SqlFunctionRegistry.current?.connectionState.changes ??
+          BigInt.zero;
+    }
+    if (key == 'total_changes') {
+      return SqlFunctionRegistry.current?.connectionState.totalChanges ??
+          BigInt.zero;
+    }
+    if (key == 'last_insert_rowid') {
+      return SqlFunctionRegistry.current?.connectionState.lastInsertRowid ??
+          BigInt.zero;
+    }
     if (key == 'coalesce' || key == 'ifnull') {
       for (final arg in arguments) {
         final value = arg.evaluate(context);
@@ -173,11 +220,23 @@ final class FunctionExpr extends Expr {
       }
       return arguments.length.isOdd ? arguments.last.evaluate(context) : null;
     }
+    if (['likely', 'unlikely', 'likelihood'].contains(key)) {
+      return arguments.first.evaluate(context);
+    }
     final collation = arguments
         .map((arg) => arg.collation(context))
         .whereType<String>()
         .firstOrNull;
     final args = arguments.map((arg) => arg.evaluate(context)).toList();
+    if (key == 'printf' || key == 'format') {
+      return sqlitePrintf(args, context.encoding);
+    }
+    if (key == 'like' || key == 'glob') {
+      return PatternExpr(Literal(args[1]), Literal(args[0]),
+              escape: args.length == 3 ? Literal(args[2]) : null,
+              glob: key == 'glob')
+          .evaluate(context);
+    }
     if (dateFunctionArities.containsKey(key)) {
       final timeArgs = key == 'strftime' ? args.skip(1).toList() : args;
       bool rawNow(Object? value) =>
@@ -228,7 +287,7 @@ final class FunctionExpr extends Expr {
           .join()
           .toUpperCase();
     }
-    if (key == 'quote') {
+    if (key == 'quote' || key == 'unistr_quote') {
       final value = args[0];
       if (value == null) return 'NULL';
       if (value is Uint8List) {
@@ -237,6 +296,20 @@ final class FunctionExpr extends Expr {
       }
       if (value is String) {
         final text = value.split('\u0000').first;
+        if (key == 'unistr_quote' &&
+            text.codeUnits.any((unit) => unit >= 1 && unit <= 31)) {
+          final output = StringBuffer("unistr('");
+          for (final unit in text.codeUnits) {
+            if (unit >= 1 && unit <= 31) {
+              output.write('\\u${unit.toRadixString(16).padLeft(4, '0')}');
+            } else {
+              output.writeCharCode(unit);
+              if (unit == 39 || unit == 92) output.writeCharCode(unit);
+            }
+            _checkOutput(output.length + 2);
+          }
+          return "$output')";
+        }
         _checkOutput(text.length + "'".allMatches(text).length + 2);
         return "'${text.replaceAll("'", "''")}'";
       }
@@ -253,9 +326,7 @@ final class FunctionExpr extends Expr {
     }
     if (key == 'char') {
       return String.fromCharCodes(args.map((v) {
-        final n = toSqlInteger(
-            numeric(v, prefix: true, encoding: context.encoding) ??
-                BigInt.zero);
+        final n = scalarInt64(v, context.encoding);
         return n < BigInt.zero ||
                 n > BigInt.from(0x10ffff) ||
                 n >= BigInt.from(0xd800) && n <= BigInt.from(0xdfff)
@@ -266,8 +337,7 @@ final class FunctionExpr extends Expr {
     if (args.any((arg) => arg == null)) return null;
     final value = args.first!;
     String text(Object v) => stringify(v, context.encoding);
-    BigInt integer(Object v) => toSqlInteger(
-        numeric(v, prefix: true, encoding: context.encoding) ?? BigInt.zero);
+    BigInt integer(Object v) => scalarInt64(v, context.encoding);
     if (key == 'abs') {
       if (value is BigInt) {
         if (value == -(BigInt.one << 63)) {
@@ -463,6 +533,9 @@ final class FunctionExpr extends Expr {
       } catch (_) {
         throw SqlException('User aggregate $name failed');
       }
+    }
+    if (percentileFunctionNames.contains(key)) {
+      return percentileAggregate(key, prepared.map((entry) => entry.$1));
     }
     final argumentsByRow = [
       for (final entry in prepared)

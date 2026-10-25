@@ -2,6 +2,7 @@ import 'parser.dart';
 import 'functions.dart';
 import 'values.dart';
 import 'tokenizer.dart';
+import 'percentile_functions.dart';
 
 final class WindowBound {
   WindowBound(this.kind, [this.offset]);
@@ -16,6 +17,13 @@ final class _WindowRow {
   final int ordinal;
 }
 
+final class _PercentileWindow {
+  _PercentileWindow(String name) : validator = PercentileValidator(name);
+  final PercentileValidator validator;
+  final Map<RowValues, List<Object?>?> arguments = {};
+  var stepped = -1;
+}
+
 final class WindowExpr extends Expr {
   WindowExpr(this.function, this.partition, this.order, this.mode, this.start,
       this.end,
@@ -28,6 +36,7 @@ final class WindowExpr extends Expr {
   String exclusion;
   String? baseName;
   bool directName = false, explicitFrame = false, _resolved = false;
+  bool explicitExclusion = false;
   void resolve(Map<String, WindowExpr> definitions, Set<String> visiting) {
     if (_resolved) return;
     final name = baseName;
@@ -45,6 +54,7 @@ final class WindowExpr extends Expr {
         start = base.start;
         end = base.end;
         exclusion = base.exclusion;
+        explicitExclusion = base.explicitExclusion;
         explicitFrame = base.explicitFrame;
       } else {
         if (partition.isNotEmpty ||
@@ -328,6 +338,34 @@ final class WindowExpr extends Expr {
       return target < 0 || target >= frame.length
           ? null
           : function.arguments.first.evaluate(_context(context, frame[target]));
+    }
+    if (percentileFunctionNames.contains(key)) {
+      final cache = context.windowCache.putIfAbsent(
+              function, () => <List<_WindowRow>, _PercentileWindow>{})
+          as Map<List<_WindowRow>, _PercentileWindow>;
+      final state = cache.putIfAbsent(group, () => _PercentileWindow(key));
+      List<Object?>? argumentsFor(RowValues row) {
+        if (state.arguments.containsKey(row)) return state.arguments[row];
+        final ctx = _context(context, row);
+        final arguments = function.filter != null &&
+                truth(function.filter!.evaluate(ctx), ctx.encoding) != true
+            ? null
+            : function.arguments.map((arg) => arg.evaluate(ctx)).toList();
+        state.arguments[row] = arguments;
+        return arguments;
+      }
+
+      if (!explicitExclusion) {
+        // Without EXCLUDE the native window retains step state even after an
+        // inverse removes all values from its current frame.
+        while (state.stepped < last) {
+          final args = argumentsFor(group[++state.stepped].row);
+          if (args != null) state.validator.step(args);
+        }
+      }
+      return percentileAggregate(
+          key, frame.map(argumentsFor).whereType<List<Object?>>(),
+          fraction: explicitExclusion ? null : state.validator.fraction);
     }
     return function.evaluate(_context(context, current)..group = frame);
   }

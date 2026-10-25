@@ -13,26 +13,30 @@ development reference tools. Production engine code is Pure Dart.
 | Table/index/overflow record reads | Verified fixture subset | 2,244 physical records, three encodings, 512/4096/65536-byte pages; malformed text rejected |
 | Rowid point planning | Implemented | Separator descent, residual WHERE evaluation, corruption regressions and AOT microbenchmark |
 | Secondary-index/range planning | Verified subset | Multi-column/expression equality prefixes and ranges, proved partial predicates, descending keys, rowid ranges and NULL/inclusive bounds; page-read regressions and AOT measurements |
-| SELECT expressions | Verified subset | 726 original plus 1,593 M6 pinned differential cases; IN/BETWEEN/CASE/CAST/LIKE/ESCAPE/GLOB/bitwise, VALUES rows/compounds/CTEs/subqueries; named/numbered/anonymous parameter indices and NULL/affinity behavior |
+| SELECT expressions | Verified subset | 726 original plus 1,647 M6 pinned differential cases plus 1,298 row-value cases; IN/BETWEEN/CASE/CAST/LIKE/ESCAPE/GLOB/bitwise, VALUES rows/compounds/CTEs/subqueries; named/numbered/anonymous parameter indices and NULL/affinity behavior |
 | Collations | BINARY/NOCASE/RTRIM | Declared/explicit propagation, ASCII NOCASE, SQL filtering/grouping/distinct/sorting and index constraints |
-| Joins / derived sources | Verified subset | INNER/LEFT/RIGHT/FULL/CROSS/NATURAL, ON/USING, aliases and qualified wildcards; merged-column affinity/collation and real-column precedence over implicit rowid aliases |
+| Joins / derived sources | Verified subset | INNER/LEFT/RIGHT/FULL/CROSS/NATURAL, ON/USING, ON output aliases/forward INNER references, aliases and qualified wildcards; merged-column affinity/collation and real-column precedence over implicit rowid aliases |
 | Subqueries / compounds / CTEs | Verified subset | Scalar/correlated/EXISTS/IN, UNION/ALL/INTERSECT/EXCEPT, ordinary/forward/recursive CTEs; max 100,000 queued rows; stable priority ORDER BY, LIMIT/OFFSET and UNION duplicate suppression |
-| Scalar / aggregate functions | Verified subset | Core/string/math/ROUND/variadic IF/IIF and aggregates; STRING_AGG, aggregate ORDER BY with FILTER/DISTINCT/collations; connection-local scalar/aggregate callbacks; DATE/TIME/DATETIME/JULIANDAY/UNIXEPOCH/STRFTIME/TIMEDIFF and dynamic defaults; broader edge cases remain |
+| Scalar / aggregate functions | Verified subset | Core/string/math/ROUND/variadic IF/IIF, PRINTF/FORMAT, UNISTR and aggregates; MEDIAN/PERCENTILE variants with 1,323 pinned aggregate/window cases; STRING_AGG, aggregate ORDER BY with FILTER/DISTINCT/collations; connection-local scalar/aggregate callbacks; DATE/TIME/DATETIME/JULIANDAY/UNIXEPOCH/STRFTIME/TIMEDIFF and dynamic defaults; broader edge cases remain |
 | GROUP BY / HAVING | Verified subset | Expressions/ordinals/aliases, HAVING aliases, distinct aggregates, empty inputs and bare-column MIN/MAX selection in differential cases |
 | Window functions | Verified bounded subset | Ranking, NTILE, LAG/LEAD, first/last/nth values, aggregate ROWS/GROUPS/RANGE frames/offsets, EXCLUDE, FILTER, named/inherited windows and NULLS FIRST/LAST; max 10,000 rows; grouped aggregates and HAVING feed windows |
-| Schema creation / index maintenance | Verified subset | CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, CREATE TABLE AS, ADD/RENAME/DROP COLUMN and table rename with resolved view/trigger references, ordinary and WITHOUT ROWID B-trees, auto/secondary indexes, overflow; 740 SQLite cross-open/integrity snapshots per encoding (2,220 total across UTF-8/UTF-16le/UTF-16be) |
+| Schema creation / index maintenance | Verified subset | CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, CREATE TABLE AS, ADD/RENAME/DROP COLUMN and table rename with resolved view/trigger references, ordinary and WITHOUT ROWID B-trees, auto/secondary indexes, overflow; 802 SQLite cross-open/integrity snapshots per encoding (2,406 total across UTF-8/UTF-16le/UTF-16be) |
 | Generated columns | Verified subset | VIRTUAL/STORED, deterministic expressions, dependency order/cycle rejection, affinity, constraints/indexes, ADD virtual and guarded rename/drop; native fixtures in all encodings |
 | Constraints | Verified subset | Defaults, NOT NULL/UNIQUE/CHECK, STRICT, AUTOINCREMENT, FK enable state/actions/deferral, OR IGNORE/REPLACE/FAIL/ROLLBACK, partial/expression unique keys; schema PRIMARY KEY/UNIQUE/NOT NULL conflict policies and recursive REPLACE delete triggers; evaluation errors are not ignored as constraints; broader edge-case conformance pending |
-| Views / row triggers | Verified subset | Read views; BEFORE/AFTER INSERT/UPDATE/DELETE, UPDATE OF, WHEN, OLD/NEW, DML/SELECT/WITH/VALUES bodies, WHEN subqueries, RAISE ABORT/FAIL/ROLLBACK/IGNORE, recursive_triggers state/1,000-depth bound, typed OLD/NEW and automatic rowid timing; INSTEAD OF INSERT/UPDATE/DELETE view triggers, zero direct change counts and RETURNING |
-| DML | Verified subset | INSERT VALUES/multirow/DEFAULT VALUES/SELECT, REPLACE shorthand, UPDATE/DELETE, UPSERT target/DO NOTHING/DO UPDATE, RETURNING with owner RPC; expression/partial conflict targets; combined conflict policies verified; broader syntax pending |
-| PRAGMAs | Verified subset | Header/table/index/FK metadata, integrity_check/quick_check/foreign_key_check, mutable foreign_keys/recursive_triggers/user_version/application_id; bounded to supported images/schema |
+| Views / row triggers | Verified subset | Read views; BEFORE/AFTER INSERT/UPDATE/DELETE, FK-action child row triggers, UPDATE OF, WHEN, OLD/NEW, DML/SELECT/WITH/VALUES bodies, WHEN subqueries, RAISE ABORT/FAIL/ROLLBACK/IGNORE, recursive_triggers state/1,000-depth bound, typed OLD/NEW and automatic rowid timing; INSTEAD OF INSERT/UPDATE/DELETE view triggers, zero direct change counts and RETURNING |
+| DML | Verified subset | INSERT VALUES/multirow/DEFAULT VALUES/SELECT, REPLACE shorthand, UPDATE/DELETE, UPSERT target/DO NOTHING/DO UPDATE, RETURNING with owner RPC; expression/partial conflict targets; combined conflict policies verified; WITH/RECURSIVE DML, scalar/correlated subqueries, target aliases, UPDATE FROM; broader syntax pending |
+| PRAGMAs | Verified subset | Header/table/index/FK metadata, integrity_check/quick_check/foreign_key_check, mutable foreign_keys/recursive_triggers/user_version/application_id; table_list/collation_list/function_list/pragma_list/database_list and metadata-only scalar/CAST view types; bounded to supported images/schema |
+| Row values | Verified subset | Per-field comparison/IN/BETWEEN/CASE affinity, NULLs, collations and callback order; wildcard-width preparation; 1,298 pinned cases |
+| Maintenance | Verified subset | ANALYZE/sqlite_stat1, REINDEX, VACUUM main; 285 native cross-open snapshots plus stale expression-index repair; stats-driven costing and VACUUM INTO remain unsupported |
+| Schema qualifiers / index hints | Verified main subset | main qualification bypasses CTE shadows; INDEXED BY validates index/predicate and executes single-table index plan; NOT INDEXED retains rowid plans; joins still materialize inputs; 69 pinned cases across encodings |
+| Connection counters | Verified subset | CHANGES/TOTAL_CHANGES/LAST_INSERT_ROWID, trigger-local restoration, transaction rollback/FAIL, FK actions and DROP implicit deletes; 36 pinned multi-statement sequences across encodings plus isolation/schema tests |
 | Transactions / savepoints | Implemented for image writer | SQL snapshots, nested savepoints, deferred FK commit; pinned 14-step transaction sequence |
 | Rollback journal | Conditional durable contract | PERSIST before-images, every-operation/torn-write crash tests, recovery injection; native byte-exact hot-journal recovery |
 | WAL writes / checkpoint / recovery | Exclusive-owner subset | Both checksum endians, three native cross-open commits, native continuation, torn frames/pages and every-operation growth/shrink checkpoint recovery |
 | Isolate ownership / file lease | Single-owner architecture | Serialized SendPort requests, client-owned transactions, loopback duplicate-owner guard, native SQLite lock-byte exclusion and handoff |
 | ORM / generator | Placeholders, M7 pending | No behavior or tests yet |
 | JSON/JSONB / FTS / R-tree / virtual tables | M8 pending | No implementation claim |
-| Linux x64 | Development verified | Dart 3.13.7; 2,536 engine tests, format, fatal-info analysis and locked dependencies pass |
+| Linux x64 | Development verified | Dart 3.13.7; 5,690 engine tests, format, fatal-info analysis and locked dependencies pass |
 | Windows/macOS/Android/iOS/Web | Unverified, M9 pending | Core has no dart:io dependency; optional file/owner adapter does; no execution claim |
 
 ## Query and format limits
@@ -112,3 +116,10 @@ rewriting is not claimed. Column alterations resolve supported view/trigger fiel
 and validate the proposed schema. NATURAL join rewrites follow merged-column
 origins, including RIGHT/FULL joins. Renaming USING keys rejects invalid joins,
 matching the reference. Broader schema and DQS fallback remain unverified.
+
+Constraint key collation/direction metadata and WITHOUT ROWID index suffixes are
+verified against 837 native snapshots. Repeated primary-key terms reject.
+Parent actions whose PK collation differs from its column declaration reject
+atomically; pinned SQLite can leave orphan rows here. Eager view materialization
+can invoke callbacks before a lazy subquery uses the view. These differences are
+explicit limits, not general SQLite conformance claims.

@@ -3,6 +3,7 @@ import '../btree/btree_reader.dart';
 import '../pager/read_only_pager.dart';
 import '../storage/storage_backend.dart';
 import 'catalog.dart';
+import 'column_rewriter.dart' show prepareSubqueryWidths;
 import 'parser.dart';
 import 'functions.dart';
 import 'tokenizer.dart';
@@ -13,6 +14,7 @@ import 'image_mutations.dart';
 import 'index_definition.dart';
 
 part 'relational.dart';
+part 'dml_subqueries.dart';
 
 final class QueryResult implements SqlRows {
   QueryResult(List<String> columns, List<List<Object?>> rows,
@@ -30,6 +32,7 @@ final class QueryResult implements SqlRows {
   @override
   final List<String> columnAffinities;
   final List<String> columnDeclaredTypes;
+  @override
   final List<String> columnCollations;
   @override
   final List<String> columns;
@@ -100,10 +103,46 @@ final class SqliteDatabase {
     }
   }
 
+  CatalogEntry? _hintIndex(QuerySource source, Expr? where,
+      {bool physical = true}) {
+    if (source.indexedBy == null) return null;
+    var entry = physical
+        ? catalog.entries
+            .where((entry) =>
+                entry.type == 'index' &&
+                asciiLower(entry.tableName) == asciiLower(source.table!) &&
+                asciiLower(entry.name) == asciiLower(source.indexedBy!))
+            .firstOrNull
+        : null;
+    if (entry == null && physical) {
+      final table = catalog.table(source.table!);
+      if (table.withoutRowid) {
+        final ordinal = table.autoIndexPrimary.indexOf(true) + 1;
+        final name = 'sqlite_autoindex_${table.name}_$ordinal';
+        if (asciiLower(name) == asciiLower(source.indexedBy!)) {
+          entry = CatalogEntry('index', name, table.name, table.rootPage, null);
+        }
+      }
+    }
+    if (entry == null) throw SqlException('No such index: ${source.indexedBy}');
+    final table = catalog.table(entry.tableName);
+    final definition =
+        entry.sql == null ? null : IndexDefinition.parse(entry.sql!, table);
+    if (!impliesIndexPredicate(where, definition?.predicate,
+        columnKey: (column) =>
+            indexColumnKey(column, source.alias ?? source.table!))) {
+      throw const SqlException('No query solution for required index');
+    }
+    return entry;
+  }
+
   QueryPlan _plan(
       SelectStatement statement, CatalogTable? table, List<Object?> bound) {
     if (table == null) return const QueryPlan('constant', null, null);
-    if (!table.withoutRowid) {
+    final source = statement.sources.firstOrNull;
+    final forced = source == null ? null : _hintIndex(source, statement.where);
+    final notIndexed = source?.notIndexed ?? false;
+    if (!table.withoutRowid && forced == null) {
       BigInt? lookup(Expr? expr) {
         if (expr is! BinaryExpr) return null;
         if (expr.op == 'AND') return lookup(expr.left) ?? lookup(expr.right);
@@ -239,7 +278,7 @@ final class SqliteDatabase {
         for (final name in rowidNames)
           ...bounds(ColumnExpr(name), 'numeric', 'binary')
       ];
-      if (rowBounds.isNotEmpty) {
+      if (rowBounds.isNotEmpty && forced == null) {
         return QueryPlan._indexed(
             table.rootPage,
             _IndexAccess('@rowid',
@@ -247,11 +286,15 @@ final class SqliteDatabase {
                 table: true, empty: rowBounds.any((b) => b.$2 == null)),
             'rowid-range');
       }
+      if (notIndexed) {
+        return QueryPlan('table-scan', table.rootPage, null);
+      }
       QueryPlan? best;
       var bestScore = -1;
       for (final entry in catalog.entries.where((e) =>
           e.type == 'index' &&
-          asciiLower(e.tableName) == asciiLower(table.name))) {
+          asciiLower(e.tableName) == asciiLower(table.name) &&
+          (forced == null || asciiLower(e.name) == asciiLower(forced.name)))) {
         try {
           final parsed = entry.sql == null
               ? null
@@ -299,8 +342,104 @@ final class SqliteDatabase {
       }
       if (best != null) return best;
     }
+    if (forced != null) {
+      return QueryPlan._indexed(forced.rootPage,
+          _IndexAccess(forced.name, (_) => 0), 'secondary-index-scan');
+    }
     return QueryPlan(table.withoutRowid ? 'index-tree-scan' : 'table-scan',
         table.rootPage, null);
+  }
+
+  Stream<BtreeRecord> _planRecords(CatalogTable table, QueryPlan plan) async* {
+    final reader = BtreeReader(_pager);
+    if (plan.access == 'rowid-lookup') {
+      final record = await reader.findRowid(table.rootPage, plan.rowid!);
+      if (record != null) yield record;
+      return;
+    }
+    final access = plan._index;
+    if (access == null) {
+      yield* table.withoutRowid
+          ? reader.scanIndex(table.rootPage)
+          : reader.scanTable(table.rootPage);
+      return;
+    }
+    if (access.empty) return;
+    if (access.table) {
+      yield* reader.seekTable(
+          plan.rootPage!, (rowid) => access.compare([rowid]));
+      return;
+    }
+    if (!table.withoutRowid) {
+      await for (final entry
+          in reader.seekIndex(plan.rootPage!, access.compare)) {
+        final rowid = entry.values.last;
+        if (rowid is! BigInt) {
+          throw const FormatException('Secondary index rowid missing');
+        }
+        final record = await reader.findRowid(table.rootPage, rowid);
+        if (record == null) {
+          throw const FormatException(
+              'Secondary index references missing rowid');
+        }
+        yield record;
+      }
+      return;
+    }
+    if (plan.rootPage == table.rootPage) {
+      yield* reader.scanIndex(table.rootPage);
+      return;
+    }
+    final entry = catalog.entries.firstWhere((entry) =>
+        entry.type == 'index' &&
+        asciiLower(entry.name) == asciiLower(access.name));
+    final definition = _indexDefinition(entry);
+    final primary = table.columns.where((c) => c.primaryKey != 0).toList()
+      ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+    var suffix = definition.$1.length;
+    final positions = <int>[];
+    for (final column in primary) {
+      final position = List.generate(definition.$1.length, (i) => i)
+          .where((i) =>
+              asciiLower(definition.$1[i]) == asciiLower(column.name) &&
+              definition.$3[i] ==
+                  table.primaryKeyCollations[column.primaryKey - 1])
+          .firstOrNull;
+      positions.add(position ?? suffix++);
+    }
+    final records = await reader.scanIndex(table.rootPage).toList();
+    await for (final indexed
+        in reader.seekIndex(plan.rootPage!, access.compare)) {
+      if (positions.any((position) => position >= indexed.values.length)) {
+        throw const FormatException('Secondary index primary key missing');
+      }
+      BtreeRecord? found;
+      for (final record in records) {
+        var matches = true;
+        for (var i = 0; i < primary.length; i++) {
+          final stored = table.storageColumns.indexOf(primary[i]);
+          if (stored >= record.values.length ||
+              compareValues(
+                      record.values[stored],
+                      indexed.values[positions[i]],
+                      _pager.header.textEncoding,
+                      table.primaryKeyCollations[i]) !=
+                  0) {
+            matches = false;
+            break;
+          }
+        }
+        if (matches) {
+          found = record;
+          break;
+        }
+      }
+      if (found == null) {
+        throw const FormatException(
+            'Secondary index references missing primary key');
+      }
+      yield found;
+    }
   }
 
   QueryPlan explain(String sql, [List<Object?> parameters = const []]) =>
@@ -341,6 +480,17 @@ final class SqliteDatabase {
     if (outer != null || _needsRelational(statement)) {
       final cache = <String, (CatalogTable, List<RowValues>)>{};
       await _loadRelations(statement, cache, <String>{});
+      prepareSubqueryWidths(statement, {
+        for (final entry in cache.entries)
+          for (final name in {
+            entry.key,
+            if (entry.key.startsWith('main.')) entry.key.substring(5)
+          })
+            name: (
+              columns: entry.value.$1.columns.map((c) => c.name).toList(),
+              rowid: !entry.value.$1.withoutRowid
+            )
+      });
       return _relational(statement, bound, cache, outer);
     }
     final table =
@@ -350,43 +500,8 @@ final class SqliteDatabase {
     if (table == null) {
       input.add({});
     } else {
-      final reader = BtreeReader(_pager);
       final plan = _plan(statement, table, bound);
-      Stream<BtreeRecord> point() async* {
-        final record = await reader.findRowid(table.rootPage, plan.rowid!);
-        if (record != null) yield record;
-      }
-
-      Stream<BtreeRecord> indexed() async* {
-        final access = plan._index!;
-        if (access.empty) return;
-        if (access.table) {
-          yield* reader.seekTable(
-              plan.rootPage!, (rowid) => access.compare([rowid]));
-          return;
-        }
-        await for (final entry
-            in reader.seekIndex(plan.rootPage!, access.compare)) {
-          final rowid = entry.values.last;
-          if (rowid is! BigInt) {
-            throw const FormatException('Secondary index rowid missing');
-          }
-          final record = await reader.findRowid(table.rootPage, rowid);
-          if (record == null) {
-            throw const FormatException(
-                'Secondary index references missing rowid');
-          }
-          yield record;
-        }
-      }
-
-      final stream = plan.access == 'rowid-lookup'
-          ? point()
-          : plan._index != null
-              ? indexed()
-              : table.withoutRowid
-                  ? reader.scanIndex(table.rootPage)
-                  : reader.scanTable(table.rootPage);
+      final stream = _planRecords(table, plan);
       final stored = table.storageColumns;
       await for (final record in stream) {
         if (record.values.length > stored.length) {
@@ -705,7 +820,13 @@ final class SqliteDatabase {
     final windowRows =
         windowed ? prepared.map((ctx) => ctx.row).toList() : <RowValues>[];
     final output = <(List<Object?>, List<Object?>, int)>[];
+    final streamLimit = !statement.distinct && statement.order.isEmpty;
+    var skipped = 0;
     for (final ctx in prepared) {
+      if (streamLimit && skipped < offset) {
+        skipped++;
+        continue;
+      }
       final row = ctx.row;
       ctx.windowRows = windowRows;
       ctx.windowRow = row;
@@ -742,6 +863,12 @@ final class SqliteDatabase {
             : statement.order[i].expression.evaluate(orderCtx));
       }
       output.add((values, keys, output.length));
+      if (streamLimit &&
+          limit != null &&
+          limit >= 0 &&
+          output.length >= limit) {
+        break;
+      }
     }
     final sortTerms = [
       for (var i = 0; i < statement.order.length; i++)
@@ -768,7 +895,9 @@ final class SqliteDatabase {
       }
       return a.$3.compareTo(b.$3);
     });
-    var rows = output.map((entry) => entry.$1).skip(offset < 0 ? 0 : offset);
+    var rows = output
+        .map((entry) => entry.$1)
+        .skip(streamLimit || offset < 0 ? 0 : offset);
     if (limit != null && limit >= 0) rows = rows.take(limit);
     return result(rows.toList());
   }
@@ -801,18 +930,11 @@ final class SqliteDatabase {
     if (entry.sql == null) {
       final number = int.parse(entry.name.split('_').last) - 1;
       final keys = table.autoIndexKeys[number];
-      final columns = keys
-          .map((name) => table.columns
-              .firstWhere((c) => asciiLower(c.name) == asciiLower(name)))
-          .toList();
-      final primary = columns.every((c) => c.primaryKey != 0) &&
-          columns.length ==
-              table.columns.where((c) => c.primaryKey != 0).length;
       return (
         keys,
-        columns.map((c) => c.primaryDescending).toList(),
-        columns.map((c) => c.collation).toList(),
-        primary ? 'pk' : 'u',
+        table.autoIndexDescending[number],
+        table.autoIndexCollations[number],
+        table.autoIndexPrimary[number] ? 'pk' : 'u',
         true
       );
     }
@@ -826,8 +948,473 @@ final class SqliteDatabase {
     );
   }
 
+  static const _pragmaNames = [
+    'application_id',
+    'collation_list',
+    'database_list',
+    'encoding',
+    'foreign_key_check',
+    'foreign_key_list',
+    'foreign_keys',
+    'freelist_count',
+    'function_list',
+    'index_info',
+    'index_list',
+    'index_xinfo',
+    'integrity_check',
+    'page_count',
+    'page_size',
+    'pragma_list',
+    'quick_check',
+    'recursive_triggers',
+    'schema_version',
+    'table_info',
+    'table_list',
+    'table_xinfo',
+    'user_version'
+  ];
+
+  // Metadata preparation must not scan rows, invoke callbacks, or evaluate a
+  // view's WHERE, projection, LIMIT, CTEs, or derived sources.
+  SelectStatement _pragmaMetadataQuery(SelectStatement source) {
+    Expr projection(Expr expression) {
+      if (expression is CollateExpr) {
+        return CollateExpr(projection(expression.operand), expression.name);
+      }
+      if (expression is! CastExpr) return expression;
+      final type = expression.type.toUpperCase();
+      final canonical = type.contains('INT')
+          ? 'INT'
+          : ['CHAR', 'CLOB', 'TEXT'].any(type.contains)
+              ? 'TEXT'
+              : type.isEmpty || type.contains('BLOB')
+                  ? 'BLOB'
+                  : ['REAL', 'FLOA', 'DOUB'].any(type.contains)
+                      ? 'REAL'
+                      : 'NUM';
+      return CastExpr(expression.operand, canonical);
+    }
+
+    return SelectStatement([
+      for (final item in source.items)
+        SelectItem(
+            item.expression == null ? null : projection(item.expression!),
+            item.label,
+            explicitAlias: item.explicitAlias)
+    ], source.table, source.where, source.order, Literal(BigInt.zero), null,
+        source.distinct, source.parameterCount)
+      ..valuesQuery = source.valuesQuery
+      ..sources.addAll([
+        for (final s in source.sources)
+          QuerySource(
+              table: s.table,
+              tableOffset: s.tableOffset,
+              schema: s.schema,
+              indexedBy: s.indexedBy,
+              notIndexed: s.notIndexed,
+              query: s.query == null ? null : _pragmaMetadataQuery(s.query!),
+              alias: s.alias,
+              join: s.join,
+              on: s.on,
+              using: s.using,
+              natural: s.natural)
+      ])
+      ..ctes.addAll({
+        for (final c in source.ctes.entries)
+          c.key: (c.value.$1, _pragmaMetadataQuery(c.value.$2))
+      })
+      ..compounds.addAll([
+        for (final part in source.compounds)
+          (part.$1, _pragmaMetadataQuery(part.$2))
+      ])
+      ..groupBy.addAll(source.groupBy)
+      ..having = source.having
+      ..windowDefinitions.addAll(source.windowDefinitions);
+  }
+
+  List<CatalogColumn> _pragmaColumnMetadata(SelectStatement query,
+      Map<String, (CatalogTable, List<RowValues>)> metadata,
+      [Map<String, CatalogColumn?> outer = const {},
+      Map<String, List<CatalogColumn> Function()> inheritedCtes = const {},
+      bool rightmost = false]) {
+    final ctes = {...inheritedCtes};
+    final cached = <String, List<CatalogColumn>>{};
+    final loading = <String>{};
+    List<CatalogColumn> materialize(List<CatalogColumn> columns,
+        [List<String>? labels]) {
+      final names = _relationColumnNames(
+          labels ?? columns.map((column) => column.name).toList());
+      return [
+        for (var i = 0; i < columns.length; i++)
+          CatalogColumn(names[i], columns[i].declaredType,
+              affinityOverride: columns[i].affinity,
+              collation: columns[i].collation.isEmpty
+                  ? 'binary'
+                  : columns[i].collation)
+      ];
+    }
+
+    for (final entry in query.ctes.entries) {
+      ctes[entry.key] = () {
+        if (cached.containsKey(entry.key)) return cached[entry.key]!;
+        if (!loading.add(entry.key)) {
+          throw const SqlException('Circular CTE metadata');
+        }
+        try {
+          // Compound output types come from the anchor, so a recursive term
+          // never needs to execute or resolve itself to describe the output.
+          final columns =
+              _pragmaColumnMetadata(entry.value.$2, metadata, outer, ctes);
+          final names = entry.value.$1;
+          if (names.isNotEmpty && names.length != columns.length) {
+            throw const SqlException('CTE column width mismatch');
+          }
+          return cached[entry.key] =
+              materialize(columns, names.isEmpty ? null : names);
+        } finally {
+          loading.remove(entry.key);
+        }
+      };
+    }
+    if (rightmost && query.compounds.isNotEmpty) {
+      return _pragmaColumnMetadata(
+          query.compounds.last.$2, metadata, outer, ctes, true);
+    }
+    final local = <String, CatalogColumn?>{};
+    final star = <CatalogColumn>[];
+    final qualified = <String, List<CatalogColumn>>{};
+    final implicit = <String, CatalogColumn?>{};
+    for (var i = 0; i < query.sources.length; i++) {
+      final source = query.sources[i];
+      final key = source.schema == null
+          ? asciiLower(source.table ?? '')
+          : 'main.${asciiLower(source.table!)}';
+      final table = metadata[key]?.$1;
+      final columns = source.query != null
+          ? materialize(
+              _pragmaColumnMetadata(source.query!, metadata, outer, ctes))
+          : source.schema == null && ctes.containsKey(key)
+              ? ctes[key]!()
+              : table?.columns;
+      if (columns == null) {
+        throw SqlException('Unknown metadata source: ${source.table}');
+      }
+      final alias = asciiLower(source.alias ?? source.table ?? '@$i');
+      qualified[alias] = columns;
+      final physical = source.table != null &&
+          (source.schema != null || !ctes.containsKey(key));
+      if (physical) qualified['main.$alias'] = columns;
+      final using = source.natural
+          ? columns
+              .map((c) => asciiLower(c.name))
+              .where((name) => star.any((c) => asciiLower(c.name) == name))
+              .toSet()
+          : source.using.map(asciiLower).toSet();
+      for (final column in columns) {
+        final name = asciiLower(column.name);
+        local['$alias.$name'] = column;
+        if (physical) local['main.$alias.$name'] = column;
+        if (using.contains(name)) {
+          final ordinal = star.indexWhere((c) => asciiLower(c.name) == name);
+          if (ordinal < 0 || local[name] == null) {
+            throw const SqlException('USING column missing or ambiguous');
+          }
+          final merged = source.join == 'RIGHT'
+              ? column
+              : source.join == 'FULL'
+                  ? CatalogColumn(star[ordinal].name, '',
+                      affinityOverride: 'none', collation: '')
+                  : star[ordinal];
+          local[name] = merged;
+          star[ordinal] = merged;
+        } else {
+          local[name] = local.containsKey(name) ? null : column;
+          star.add(column);
+        }
+      }
+      if (source.query == null && table != null && !table.withoutRowid) {
+        for (final name in ['rowid', '_rowid_', 'oid']) {
+          if (columns.any((c) => asciiLower(c.name) == name)) continue;
+          final column = CatalogColumn(table.rowidAlias ?? 'rowid', 'INTEGER');
+          implicit['$alias.$name'] = column;
+          if (physical) implicit['main.$alias.$name'] = column;
+          implicit[name] = implicit.containsKey(name) ? null : column;
+        }
+      }
+    }
+    for (final entry in implicit.entries) {
+      local.putIfAbsent(entry.key, () => entry.value);
+    }
+    final scope = {...outer, ...local};
+    final context = EvalContext({}, {
+      for (final entry in scope.entries)
+        if (entry.value != null) entry.key: entry.value!.affinity
+    }, const [], _pager.header.textEncoding)
+      ..collations = {
+        for (final entry in scope.entries)
+          if (entry.value != null) entry.key: entry.value!.collation
+      };
+    CatalogColumn expression(Expr expr) {
+      if (expr is ColumnExpr) {
+        final column = scope[expr.key];
+        if (column == null) {
+          throw SqlException('Unknown or ambiguous column: ${expr.name}');
+        }
+        return column;
+      }
+      if (expr is CollateExpr) {
+        final column = expression(expr.operand);
+        return CatalogColumn(column.name, column.declaredType,
+            affinityOverride: column.affinity, collation: expr.name);
+      }
+      if (expr is SubqueryExpr) {
+        final columns =
+            _pragmaColumnMetadata(expr.statement, metadata, scope, ctes, true);
+        if (expr.exists) return CatalogColumn('', '');
+        if (columns.length != 1) {
+          throw const SqlException('Scalar subquery must return one column');
+        }
+        return columns.single;
+      }
+      for (final child in expr.children) {
+        expression(child);
+      }
+      String type = '';
+      if (expr is CastExpr) {
+        final declared = expr.type.toUpperCase();
+        type = declared.contains('INT')
+            ? 'INT'
+            : ['CHAR', 'CLOB', 'TEXT'].any(declared.contains)
+                ? 'TEXT'
+                : declared.isEmpty || declared.contains('BLOB')
+                    ? 'BLOB'
+                    : ['REAL', 'FLOA', 'DOUB'].any(declared.contains)
+                        ? 'REAL'
+                        : 'NUM';
+      }
+      return CatalogColumn('', type,
+          affinityOverride: expr.affinity(context),
+          collation: expr.collation(context) ?? '');
+    }
+
+    final result = <CatalogColumn>[];
+    for (final item in query.items) {
+      if (item.expression == null) {
+        final columns = item.label == '*'
+            ? star
+            : qualified[
+                asciiLower(item.label.substring(0, item.label.length - 2))];
+        if (columns == null) throw const SqlException('Unknown table wildcard');
+        result.addAll(columns);
+      } else {
+        final column = expression(item.expression!);
+        final operand = indexOperand(item.expression!);
+        result.add(CatalogColumn(
+            !item.explicitAlias && operand is ColumnExpr
+                ? column.name
+                : item.label,
+            column.declaredType,
+            affinityOverride: column.affinity,
+            collation: column.collation));
+      }
+    }
+    return result;
+  }
+
+  CatalogTable _pragmaTable(String name,
+      [Map<String, (CatalogTable, List<RowValues>)>? metadata,
+      Set<String>? loading]) {
+    final key = asciiLower(name);
+    metadata ??= {};
+    loading ??= {};
+    if (metadata.containsKey(key)) return metadata[key]!.$1;
+    final entry = catalog.entries
+        .where((e) => e.type == 'view' && asciiLower(e.name) == key)
+        .firstOrNull;
+    if (entry == null) {
+      final table = catalog.table(name);
+      // SQLite derives BLOB as the type of a view's untyped table column.
+      final result = CatalogTable(
+          table.name,
+          table.rootPage,
+          [
+            for (final c in table.columns)
+              CatalogColumn(
+                  c.name, c.declaredType.isEmpty ? 'BLOB' : c.declaredType,
+                  collation: c.collation)
+          ],
+          withoutRowid: table.withoutRowid,
+          rowidAlias: table.rowidAlias);
+      metadata[key] = (result, []);
+      return result;
+    }
+    if (!loading.add(key)) throw const SqlException('Circular view');
+    try {
+      final parser = SqlParser(entry.sql!);
+      parser.require('CREATE');
+      parser.require('VIEW');
+      if (parser.take('IF')) {
+        parser.require('NOT');
+        parser.require('EXISTS');
+      }
+      parser.identifier();
+      final declared = <String>[];
+      if (parser.take('(')) {
+        do {
+          declared.add(parser.identifier());
+        } while (parser.take(','));
+        parser.require(')');
+      }
+      parser.require('AS');
+      final query = _pragmaMetadataQuery(parser.select());
+      void prepare(SelectStatement query, [Set<String> inherited = const {}]) {
+        final scope = {...inherited, ...query.ctes.keys};
+        for (final c in query.ctes.values) {
+          prepare(c.$2, scope);
+        }
+        for (final source in query.sources) {
+          if (source.query != null) {
+            prepare(source.query!, scope);
+          } else if (source.schema != null ||
+              !scope.contains(asciiLower(source.table!))) {
+            final table = _pragmaTable(source.table!, metadata, loading);
+            if (source.schema != null) {
+              metadata!['main.${asciiLower(source.table!)}'] = (table, []);
+            }
+          }
+        }
+        for (final expression in _expressions(query)) {
+          for (final nested in _nested(expression)) {
+            prepare(nested, scope);
+          }
+        }
+        for (final part in query.compounds) {
+          prepare(part.$2, scope);
+        }
+      }
+
+      prepare(query);
+      final result = _relational(query, const [], metadata, null);
+      final columns = _pragmaColumnMetadata(query, metadata);
+      final names =
+          declared.isEmpty ? columns.map((c) => c.name).toList() : declared;
+      if (names.length != result.columns.length) {
+        throw const SqlException('View column width mismatch');
+      }
+      final seen = <String>{}, unique = <String>[];
+      for (final name in names) {
+        var candidate = name, suffix = 0;
+        while (seen.contains(asciiLower(candidate))) {
+          candidate = '${name.replaceFirst(RegExp(r':\d+$'), '')}:${++suffix}';
+        }
+        seen.add(asciiLower(candidate));
+        unique.add(candidate);
+      }
+      final table = CatalogTable(
+          entry.name,
+          0,
+          [
+            for (var i = 0; i < unique.length; i++)
+              CatalogColumn(unique[i], columns[i].declaredType,
+                  affinityOverride: columns[i].affinity,
+                  collation: columns[i].collation)
+          ],
+          withoutRowid: true);
+      metadata[key] = (table, []);
+      return table;
+    } finally {
+      loading.remove(key);
+    }
+  }
+
+  QueryResult _pragmaFunctions() {
+    final rows = <List<Object?>>[];
+    final window = {
+      ...FunctionExpr.windowNames,
+      'count',
+      'sum',
+      'total',
+      'avg',
+      'group_concat',
+      'string_agg',
+      'median',
+      'percentile',
+      'percentile_cont',
+      'percentile_disc'
+    };
+    final variadic = {
+      'concat': -3,
+      'concat_ws': -4,
+      'coalesce': -4,
+      'if': -4,
+      'iif': -4,
+      'min': -3,
+      'max': -3
+    };
+    void add(String name, String type, int count, int flags) => rows.add([
+          name,
+          BigInt.one,
+          type,
+          'utf8',
+          BigInt.from(count),
+          BigInt.from(flags)
+        ]);
+    for (final entry in FunctionExpr.builtinArities.entries) {
+      final name = entry.key, range = entry.value;
+      if (name == 'min' || name == 'max') {
+        add(name, 'w', 1, 2097152);
+        add(name, 's', variadic[name]!, 2099200);
+        continue;
+      }
+      final type = window.contains(name) ? 'w' : 's';
+      final flags = [
+        'median',
+        'percentile',
+        'percentile_cont',
+        'percentile_disc'
+      ].contains(name)
+          ? 0
+          : type == 'w' ||
+                  name.startsWith('current_') ||
+                  [
+                    'random',
+                    'randomblob',
+                    'changes',
+                    'total_changes',
+                    'last_insert_rowid'
+                  ].contains(name)
+              ? 2097152
+              : 2099200;
+      if (range.$2 >= 127) {
+        add(name, type, variadic[name] ?? -1, flags);
+      } else {
+        for (var count = range.$1; count <= range.$2; count++) {
+          add(name, type, count, flags);
+        }
+      }
+    }
+    for (final function in functions.registeredFunctions) {
+      rows.add([
+        asciiLower(function.name),
+        BigInt.zero,
+        function.aggregate == null ? 's' : 'a',
+        'utf8',
+        BigInt.from(function.argumentCount),
+        BigInt.from(function.deterministic ? 2048 : 0)
+      ]);
+    }
+    return QueryResult(
+        ['name', 'builtin', 'type', 'enc', 'narg', 'flags'], rows);
+  }
+
   Future<QueryResult> _pragma(SqlParser parser) async {
-    final name = asciiLower(parser.identifier());
+    var name = asciiLower(parser.identifier());
+    if (parser.take('.')) {
+      if (name != 'main') {
+        throw SqlException('Unsupported database schema $name');
+      }
+      name = asciiLower(parser.identifier());
+    }
     String? argument;
     if (parser.take('(')) {
       if ([SqlTokenKind.string, SqlTokenKind.number]
@@ -838,9 +1425,73 @@ final class SqliteDatabase {
         argument = parser.identifier();
       }
       parser.require(')');
+    } else if (parser.take('=')) {
+      argument = [SqlTokenKind.string, SqlTokenKind.number]
+              .contains(parser.current.kind)
+          ? parser.tokens[parser.position++].text
+          : parser.identifier();
     }
     parser.finish();
     final header = _pager.header;
+    if (name == 'collation_list') {
+      return QueryResult([
+        'seq',
+        'name'
+      ], [
+        [BigInt.zero, 'RTRIM'],
+        [BigInt.one, 'NOCASE'],
+        [BigInt.two, 'BINARY']
+      ]);
+    }
+    if (name == 'database_list') {
+      // StorageBackend images have no SQL attachment or filename identity.
+      return QueryResult([
+        'seq',
+        'name',
+        'file'
+      ], [
+        [BigInt.zero, 'main', '']
+      ]);
+    }
+    if (name == 'pragma_list') {
+      return QueryResult([
+        'name'
+      ], [
+        for (final name in _pragmaNames) [name]
+      ]);
+    }
+    if (name == 'function_list') return _pragmaFunctions();
+    if (name == 'table_list') {
+      final cols = ['schema', 'name', 'type', 'ncol', 'wr', 'strict'];
+      final entries = [
+        ...catalog.entries
+            .where((e) => ['table', 'view'].contains(e.type))
+            .toList()
+            .reversed,
+        CatalogEntry('table', 'sqlite_schema', 'sqlite_schema', 1, null)
+      ];
+      return QueryResult(cols, [
+        for (final entry in entries)
+          if (argument == null ||
+              asciiLower(entry.name == 'sqlite_schema'
+                      ? 'sqlite_master'
+                      : entry.name) ==
+                  asciiLower(argument))
+            (() {
+              final view = entry.type == 'view';
+              final table =
+                  view ? _pragmaTable(entry.name) : catalog.table(entry.name);
+              return <Object?>[
+                'main',
+                entry.name,
+                entry.type,
+                BigInt.from(table.columns.length),
+                boolean(!view && table.withoutRowid),
+                boolean(!view && table.columns.any((c) => c.strict))
+              ];
+            })()
+      ]);
+    }
     if (['integrity_check', 'quick_check', 'foreign_key_check']
         .contains(name)) {
       if (_pager.pageCount * header.pageSize > 64 * 1024 * 1024) {
@@ -876,6 +1527,8 @@ final class SqliteDatabase {
       'schema_version': BigInt.from(header.schemaCookie.toSigned(32)),
       'user_version': BigInt.from(header.userVersion.toSigned(32)),
       'application_id': BigInt.from(header.applicationId.toSigned(32)),
+      'foreign_keys': BigInt.zero,
+      'recursive_triggers': BigInt.zero,
       'encoding': const [
         '',
         'UTF-8',
@@ -936,13 +1589,7 @@ final class SqliteDatabase {
               asciiLower(e.tableName) == asciiLower(argument!))
           .toList();
       if (table.withoutRowid) {
-        final pk = table.columns
-            .where((c) => c.primaryKey != 0)
-            .map((c) => asciiLower(c.name))
-            .toSet();
-        final ordinal = table.autoIndexKeys.indexWhere((key) =>
-            key.length == pk.length &&
-            key.map(asciiLower).toSet().containsAll(pk));
+        final ordinal = table.autoIndexPrimary.indexOf(true);
         entries.add(CatalogEntry(
             'index',
             'sqlite_autoindex_${table.name}_${ordinal + 1}',
@@ -950,7 +1597,8 @@ final class SqliteDatabase {
             table.rootPage,
             null));
         entries.sort((a, b) => a.sql == null && b.sql == null
-            ? a.name.compareTo(b.name)
+            ? int.parse(a.name.split('_').last)
+                .compareTo(int.parse(b.name.split('_').last))
             : catalog.entries.indexOf(a).compareTo(catalog.entries.indexOf(b)));
       }
       final reversed = entries.reversed.toList();
@@ -976,10 +1624,29 @@ final class SqliteDatabase {
         'name',
         if (extended) ...['desc', 'coll', 'key']
       ];
-      final entry = catalog.entries
+      var entry = catalog.entries
           .where((e) =>
               e.type == 'index' && asciiLower(e.name) == asciiLower(argument!))
           .firstOrNull;
+      if (entry == null) {
+        for (final tableEntry
+            in catalog.entries.where((e) => e.type == 'table')) {
+          final table = catalog.table(tableEntry.name);
+          if (!table.withoutRowid) continue;
+          final primary = table.autoIndexPrimary.indexOf(true);
+          if (asciiLower(argument) == asciiLower(table.name) ||
+              asciiLower(argument) ==
+                  asciiLower('sqlite_autoindex_${table.name}_${primary + 1}')) {
+            entry = CatalogEntry(
+                'index',
+                'sqlite_autoindex_${table.name}_${primary + 1}',
+                table.name,
+                table.rootPage,
+                null);
+            break;
+          }
+        }
+      }
       if (entry == null) return QueryResult(cols, []);
       final definition = _indexDefinition(entry);
       final table = catalog.table(entry.tableName);
@@ -1007,14 +1674,25 @@ final class SqliteDatabase {
             ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
           for (final col in pk) {
             if (!List.generate(
-                keyCount,
-                (i) =>
-                    !expressions.contains(i) &&
-                    asciiLower(keys[i]) == asciiLower(col.name) &&
-                    collations[i] == col.collation).any((v) => v)) {
+                    keyCount,
+                    (i) =>
+                        !expressions.contains(i) &&
+                        asciiLower(keys[i]) == asciiLower(col.name) &&
+                        collations[i] ==
+                            table.primaryKeyCollations[col.primaryKey - 1])
+                .any((v) => v)) {
               keys.add(col.name);
-              descending.add(col.primaryDescending);
-              collations.add(col.collation);
+              descending.add(entry.sql != null &&
+                  table.primaryKeyDescending[col.primaryKey - 1]);
+              collations.add(table.primaryKeyCollations[col.primaryKey - 1]);
+            }
+          }
+          if (definition.$4 == 'pk') {
+            for (final column in table.storageColumns
+                .where((column) => column.primaryKey == 0)) {
+              keys.add(column.name);
+              descending.add(false);
+              collations.add(column.collation);
             }
           }
         }
@@ -1054,9 +1732,12 @@ final class SqliteDatabase {
           ['sqlite_schema', 'sqlite_master'].contains(asciiLower(argument)) ||
               catalog.entries.any((entry) =>
                   asciiLower(entry.name) == asciiLower(argument!) &&
-                  entry.type == 'table');
+                  ['table', 'view'].contains(entry.type));
       if (!exists) return QueryResult(cols, []);
-      final table = catalog.table(argument);
+      final view = catalog.entries.any((entry) =>
+          entry.type == 'view' &&
+          asciiLower(entry.name) == asciiLower(argument!));
+      final table = view ? _pragmaTable(argument) : catalog.table(argument);
       final visible = table.columns
           .where((c) => name == 'table_xinfo' || c.generatedExpression == null)
           .toList();

@@ -18,9 +18,15 @@
   aggregate ORDER BY/STRING_AGG; resolved table-reference rewrites in dependent
   views/triggers; metadata-only dependent column rewrites/validation, including
   unused named windows; NATURAL/USING merged-column dependency validation,
-  join affinity/collation and compound ordering; metadata/integrity PRAGMAs.
-  Open: broader SQL/function/PRAGMA and schema conformance,
-  foreign-key/trigger interaction, planner and differential hardening audit.
+  join affinity/collation and compound ordering; row values and wildcard-width
+  preparation; DML subqueries/CTEs and UPDATE FROM; FK actions invoking row
+  triggers; constraint collation/direction metadata; main qualification/index
+  hints; core/PRINTF Unicode functions; recursive view metadata/introspection;
+  ANALYZE/stat1, REINDEX and VACUUM main; MEDIAN/PERCENTILE aggregate/windows;
+  connection counters and trigger/FK save/restore; metadata/integrity PRAGMAs.
+  Open: parenthesized join groups and their schema metadata, remaining dependent
+  DML rewrites, lazy view callback/preparation behavior, statistics-driven planning
+  and broader SQL/function/PRAGMA/differential hardening.
 - [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.
 - [ ] M8: Advanced extensions, JSON/JSONB, FTS, R-tree, virtual tables.
 - [ ] M9: Browser adapters, platform matrix, AOT benchmarks, hardening and release gates.

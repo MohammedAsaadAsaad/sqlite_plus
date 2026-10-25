@@ -365,6 +365,35 @@ def main():
       "ALTER TABLE rowid_left RENAME spare TO unused", "ALTER TABLE rowid_left DROP unused",
       "SELECT * FROM rowid_join", "PRAGMA integrity_check"
     ]
+    statements += [
+      "CREATE TABLE grouped_left(a INT,spare INT)", "CREATE TABLE grouped_right(a INT)", "CREATE TABLE grouped_other(a INT)",
+      "INSERT INTO grouped_left VALUES(1,7)", "INSERT INTO grouped_right VALUES(1)", "INSERT INTO grouped_other VALUES(2)"
+    ]
+    for source in ["grouped_left JOIN grouped_right USING(a),grouped_other", "grouped_left NATURAL JOIN grouped_right CROSS JOIN grouped_other", "grouped_left FULL JOIN grouped_right USING(a),grouped_other", "grouped_left,grouped_right JOIN grouped_other USING(a)", "grouped_left,grouped_right FULL JOIN grouped_other USING(a)"]:
+      statements += [f"CREATE VIEW grouped_bad AS SELECT a FROM {source}", "ALTER TABLE grouped_left RENAME spare TO other", "ALTER TABLE grouped_left DROP spare", "DROP VIEW grouped_bad"]
+    statements += [
+      "CREATE VIEW grouped_good AS SELECT grouped_left.spare FROM grouped_left JOIN grouped_right USING(a),grouped_other",
+      "ALTER TABLE grouped_left RENAME spare TO other", "SELECT * FROM grouped_good", "DROP VIEW grouped_good"
+    ]
+    for i,declaration in enumerate(["", "(z,z)"]):
+      statements += [f"CREATE VIEW duplicate_cte{i} AS WITH q{declaration} AS(SELECT a AS z,other AS z FROM grouped_left) SELECT \"z:1\" FROM q"]
+    statements += ["ALTER TABLE grouped_left RENAME other TO spare", "SELECT * FROM duplicate_cte0", "SELECT * FROM duplicate_cte1", "ALTER TABLE grouped_left DROP spare", "PRAGMA integrity_check"]
+    statements += [
+      "CREATE TABLE qualified_alter(a INT,spare INT)", "INSERT INTO qualified_alter VALUES(1,7)",
+      "CREATE VIEW qualified_view AS WITH qualified_alter AS(SELECT 99 AS a) SELECT main.qualified_alter.a AS fixed FROM main.qualified_alter",
+      "CREATE VIEW qualified_alias AS SELECT main.q.a AS fixed FROM qualified_alter q",
+      "ALTER TABLE qualified_alter RENAME a TO value", "SELECT * FROM qualified_view", "SELECT * FROM qualified_alias",
+      "ALTER TABLE qualified_alter RENAME TO qualified_renamed", "SELECT * FROM qualified_view", "SELECT * FROM qualified_alias",
+      "ALTER TABLE qualified_renamed DROP spare", "ALTER TABLE qualified_renamed DROP value", "PRAGMA integrity_check"
+    ]
+    statements += [
+      "CREATE TABLE on_alias_left(a INT,spare INT)", "CREATE TABLE on_alias_right(b INT)",
+      "INSERT INTO on_alias_left VALUES(1,0),(3,0)", "INSERT INTO on_alias_right VALUES(2),(9)",
+      "CREATE VIEW on_alias_view AS SELECT a+1 AS next FROM on_alias_left JOIN on_alias_right ON next=b",
+      "ALTER TABLE on_alias_left RENAME a TO value", "ALTER TABLE on_alias_left DROP spare", "SELECT * FROM on_alias_view",
+      "CREATE VIEW on_alias_invalid AS SELECT sum(value) AS total FROM on_alias_left JOIN on_alias_right ON total=b",
+      "ALTER TABLE on_alias_left RENAME value TO renamed", "DROP VIEW on_alias_invalid", "PRAGMA integrity_check"
+    ]
     bound_parameters = {
       "INSERT INTO named_rows VALUES(:id,:v) RETURNING :id,id,:v,v": [1,7],
       "UPDATE named_rows SET v=:v WHERE id=:id RETURNING :v,v,:id": [8,1],

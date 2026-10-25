@@ -11,6 +11,7 @@ abstract interface class SqlRows {
   List<String> get columns;
   List<List<Object?>> get rows;
   List<String> get columnAffinities;
+  List<String> get columnCollations;
 }
 
 typedef RowValues = Map<String, Object?>;
@@ -25,7 +26,8 @@ final class EvalContext {
       ..collations = collations
       ..group = windowGroups[values]
       ..schemaExpression = schemaExpression
-      ..inTrigger = inTrigger;
+      ..inTrigger = inTrigger
+      ..columnAliases = columnAliases;
     result.windowGroups = windowGroups;
     result.windowAggregates = windowAggregates;
     result.aggregateValues.addAll(windowAggregates[values] ?? {});
@@ -39,6 +41,8 @@ final class EvalContext {
   RowValues? windowRow;
   Map<Expr, Object> windowCache = {};
   Map<String, String> collations = {};
+  // Prepared expression aliases are evaluated lazily at their reference site.
+  Map<String, Expr> columnAliases = {};
   List<RowValues>? group;
   final Map<Expr, Object?> aggregateValues = {};
   final int encoding;
@@ -110,17 +114,27 @@ final class ColumnExpr extends Expr {
   Set<String> get unaggregatedColumns => {key};
   @override
   Object? evaluate(EvalContext context) {
-    if (!context.row.containsKey(key)) {
-      throw SqlException('No such column: $name');
-    }
-    return context.row[key];
+    if (context.row.containsKey(key)) return context.row[key];
+    final alias = context.columnAliases[key];
+    if (alias != null) return alias.evaluate(context);
+    throw SqlException('No such column: $name');
   }
 
   @override
-  String affinity(EvalContext context) => context.affinities[key] ?? 'none';
+  String affinity(EvalContext context) =>
+      context.affinities[key] ??
+      context.columnAliases[key]?.affinity(context) ??
+      'none';
   @override
-  String? collation(EvalContext context) =>
-      context.collations[key]?.isEmpty == true ? null : context.collations[key];
+  String? collation(EvalContext context) => context.collations.containsKey(key)
+      ? context.collations[key]?.isEmpty == true
+          ? null
+          : context.collations[key]
+      : context.columnAliases[key]?.collation(context);
+  @override
+  String? explicitCollation(EvalContext context) => context.row.containsKey(key)
+      ? null
+      : context.columnAliases[key]?.explicitCollation(context);
   @override
   void validate(Set<String> columns) {
     if (!columns.contains(key)) throw SqlException('No such column: $name');
@@ -195,12 +209,23 @@ final class BinaryExpr extends Expr {
   Iterable<Expr> get children => [left, right];
   @override
   void validate(Set<String> columns) {
-    left.validate(columns);
-    right.validate(columns);
+    if (isComparisonOperator(op)) {
+      validateComparisonOperands(left, right, columns);
+    } else {
+      left.validate(columns);
+      right.validate(columns);
+    }
   }
 
   @override
   Object? evaluate(EvalContext context) {
+    if (isComparisonOperator(op) &&
+        (left is RowExpr ||
+            right is RowExpr ||
+            left is SubqueryExpr && !(left as SubqueryExpr).exists ||
+            right is SubqueryExpr && !(right as SubqueryExpr).exists)) {
+      return compareRowExpressions(op, left, right, context);
+    }
     var a = left.evaluate(context);
     var b = right.evaluate(context);
     if (op == 'AND' || op == 'OR') {
@@ -343,6 +368,7 @@ final class SelectStatement {
   SelectStatement(this.items, this.table, this.where, this.order, this.limit,
       this.offset, this.distinct, this.parameterCount);
   final Map<String, (List<String>, SelectStatement)> ctes = {};
+  final Map<String, bool> cteMaterialization = {};
   final List<QuerySource> sources = [];
   final List<(String, SelectStatement)> compounds = [];
   final List<Expr> groupBy = [];
@@ -357,19 +383,30 @@ final class SelectStatement {
   final bool distinct;
   final int parameterCount;
   bool valuesQuery = false;
+
+  /// Resolved without evaluating expressions during statement preparation.
+  int? preparedColumnCount;
 }
 
 final class QuerySource {
   QuerySource(
       {this.table,
       this.tableOffset,
+      this.schema,
+      this.indexedBy,
+      this.notIndexed = false,
+      this.rowIdentity,
       this.query,
       this.alias,
       this.join = 'CROSS',
       this.on,
       this.using = const [],
       this.natural = false});
-  final String? table, alias;
+  final String? table, alias, schema, indexedBy;
+  final bool notIndexed;
+
+  /// Internal materialized-DML identity; never a user-visible source field.
+  final String? rowIdentity;
   final int? tableOffset;
   final SelectStatement? query;
   final String join;
@@ -410,6 +447,44 @@ final class SqlParser {
     return tokens[position++].text;
   }
 
+  /// SQLite stores CREATE object SQL without the leading schema qualifier.
+  static String canonicalSchemaCreation(String sql) {
+    final parser = SqlParser(sql);
+    if (!parser.take('CREATE')) return sql;
+    parser.take('UNIQUE');
+    if (!['TABLE', 'VIEW', 'INDEX', 'TRIGGER']
+        .contains(parser.current.keyword)) {
+      return sql;
+    }
+    parser.position++;
+    if (parser.take('IF')) {
+      parser.require('NOT');
+      parser.require('EXISTS');
+    }
+    final start = parser.current.offset;
+    parser.identifier();
+    if (!parser.take('.')) return sql;
+    final end = parser.current.offset;
+    parser.position =
+        parser.tokens.indexWhere((token) => token.offset == start);
+    parser.qualifiedIdentifier();
+    return sql.substring(0, start) + sql.substring(end);
+  }
+
+  /// The engine has one persistent schema. Explicit qualifiers never resolve
+  /// through a CTE or silently select an attached database.
+  String qualifiedIdentifier({bool allowQualified = true}) {
+    final first = identifier();
+    if (!take('.')) return first;
+    if (!allowQualified) {
+      throw const SqlException('Qualified target prohibited in trigger body');
+    }
+    if (asciiLower(first) != 'main') {
+      throw SqlException('Unknown database: $first');
+    }
+    return identifier();
+  }
+
   void finish() {
     take(';');
     if (current.kind != SqlTokenKind.end) {
@@ -432,6 +507,7 @@ final class SqlParser {
 
   SelectStatement _select({bool nested = false, bool component = false}) {
     final ctes = <String, (List<String>, SelectStatement)>{};
+    final materialization = <String, bool>{};
     if (take('WITH')) {
       take('RECURSIVE');
       do {
@@ -447,8 +523,9 @@ final class SqlParser {
         require('AS');
         if (take('NOT')) {
           require('MATERIALIZED');
-        } else {
-          take('MATERIALIZED');
+          materialization[name] = false;
+        } else if (take('MATERIALIZED')) {
+          materialization[name] = true;
         }
         require('(');
         final query = select(nested: true);
@@ -457,7 +534,8 @@ final class SqlParser {
       } while (take(','));
     }
     if (take('VALUES')) {
-      return _values(ctes, nested: nested, component: component);
+      return _values(ctes, nested: nested, component: component)
+        ..cteMaterialization.addAll(materialization);
     }
     require('SELECT');
     final distinct = take('DISTINCT');
@@ -588,6 +666,7 @@ final class SqlParser {
     return SelectStatement(
         items, table, where, order, limit, offset, distinct, parameterCount)
       ..ctes.addAll(ctes)
+      ..cteMaterialization.addAll(materialization)
       ..sources.addAll(sources)
       ..compounds.addAll(compounds)
       ..groupBy.addAll(groups)
@@ -750,7 +829,8 @@ final class SqlParser {
       }
     }
     var exclusion = 'NO OTHERS';
-    if (take('EXCLUDE')) {
+    final explicitExclusion = take('EXCLUDE');
+    if (explicitExclusion) {
       if (take('CURRENT')) {
         require('ROW');
         exclusion = 'CURRENT ROW';
@@ -780,6 +860,7 @@ final class SqlParser {
     }
     return WindowExpr(function, partition, order, mode, start, end, exclusion)
       ..baseName = baseName
+      ..explicitExclusion = explicitExclusion
       ..explicitFrame = explicitFrame;
   }
 
@@ -826,10 +907,13 @@ final class SqlParser {
         'AS',
         'COLLATE',
         'ASC',
-        'DESC'
+        'DESC',
+        'INDEXED',
+        'NOT'
       }.contains(current.keyword);
   QuerySource _source(String join, bool natural) {
-    String? table;
+    String? table, schema, indexedBy;
+    var notIndexed = false;
     int? tableOffset;
     SelectStatement? query;
     if (take('(')) {
@@ -838,8 +922,23 @@ final class SqlParser {
     } else {
       tableOffset = current.offset;
       table = identifier();
+      if (take('.')) {
+        schema = asciiLower(table);
+        if (schema != 'main') throw SqlException('Unknown database: $table');
+        tableOffset = current.offset;
+        table = identifier();
+      }
     }
     final alias = take('AS') || _implicitAlias() ? _alias() : null;
+    if (query == null) {
+      if (take('INDEXED')) {
+        require('BY');
+        indexedBy = identifier();
+      } else if (take('NOT')) {
+        require('INDEXED');
+        notIndexed = true;
+      }
+    }
     Expr? on;
     final using = <String>[];
     if (take('ON')) {
@@ -857,6 +956,9 @@ final class SqlParser {
     return QuerySource(
         table: table,
         tableOffset: tableOffset,
+        schema: schema,
+        indexedBy: indexedBy,
+        notIndexed: notIndexed,
         query: query,
         alias: alias,
         join: join,
@@ -931,9 +1033,18 @@ final class SqlParser {
       left = SubqueryExpr(select(nested: true), exists: true);
       require(')');
     } else if (take('(')) {
-      left = ['SELECT', 'WITH', 'VALUES'].contains(current.keyword)
-          ? SubqueryExpr(select(nested: true))
-          : expression();
+      if (['SELECT', 'WITH', 'VALUES'].contains(current.keyword)) {
+        left = SubqueryExpr(select(nested: true));
+      } else {
+        left = expression();
+        if (take(',')) {
+          final fields = <Expr>[left];
+          do {
+            fields.add(expression());
+          } while (take(','));
+          left = RowExpr(fields);
+        }
+      }
       require(')');
     } else {
       final token = current;
@@ -1031,13 +1142,24 @@ final class SqlParser {
           var name = token.text;
           String? qualifier;
           var columnOffset = token.offset;
+          var referenceOffset = token.offset;
           if (take('.')) {
             columnOffset = current.offset;
             qualifier = token.text;
-            name += '.${take('*') ? '*' : identifier()}';
+            final second = take('*') ? '*' : identifier();
+            name += '.$second';
+            if (take('.')) {
+              if (asciiLower(token.text) != 'main' || second == '*') {
+                throw SqlException('Unknown database: ${token.text}');
+              }
+              referenceOffset = columnOffset;
+              qualifier = 'main.$second';
+              columnOffset = current.offset;
+              name = 'main.$second.${identifier()}';
+            }
           }
           left = ColumnExpr(name,
-              offset: token.offset,
+              offset: referenceOffset,
               qualifier: qualifier,
               columnOffset: columnOffset);
         }

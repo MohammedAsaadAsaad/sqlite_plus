@@ -2,6 +2,7 @@ import 'dart:async';
 import 'tokenizer.dart';
 import 'values.dart';
 import 'date_functions.dart';
+import 'connection_state.dart';
 
 /// A fresh aggregate instance is created for each SQL group/frame.
 abstract class SqlAggregate {
@@ -35,6 +36,11 @@ final class RegisteredSqlFunction {
 final class SqlFunctionRegistry {
   static final Object _zoneKey = Object();
   final Map<String, Map<int, RegisteredSqlFunction>> _functions = {};
+  final SqlConnectionState connectionState = SqlConnectionState();
+
+  /// Registered overloads for connection metadata; callbacks are not invoked.
+  Iterable<RegisteredSqlFunction> get registeredFunctions =>
+      _functions.values.expand((overloads) => overloads.values);
   void registerScalar(String name, int argumentCount,
           Object? Function(List<Object?>) callback,
           {bool deterministic = false}) =>

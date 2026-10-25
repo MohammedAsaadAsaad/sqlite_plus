@@ -26,6 +26,12 @@ jobs:
           python3 tool/generate_wal_fixture.py --verify
           python3 tool/generate_semantics_oracle.py --verify
           python3 tool/generate_generated_fixtures.py --verify
+          python3 tool/generate_core_function_oracle.py --verify
+          python3 tool/generate_printf_oracle.py --verify
+          python3 tool/generate_row_value_oracle.py --verify
+          python3 tool/generate_source_hint_oracle.py --verify
+          python3 tool/generate_percentile_oracle.py --verify
+          python3 tool/generate_connection_state_oracle.py --verify
       - name: Install dependencies
         run: dart pub get --enforce-lockfile
       - name: Format
