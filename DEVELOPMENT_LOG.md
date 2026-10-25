@@ -539,3 +539,24 @@
   rewritten views/triggers, rollback, quoted names and unresolved-reference errors.
   Existing mutation/transaction/journal/WAL/owner-handoff checks also pass.
 - M6 remains open for dependent column rewrites and the broader documented audit.
+
+## 2026-10-25 — M6 dependent column alterations
+
+- Added metadata-only column binding resolution for views, derived/correlated/
+  CTE sources, explicit aliases and trigger WHEN/DML/OLD/NEW/EXCLUDED fields.
+  Column renames update resolved references; drops validate the proposed schema.
+  Reject downstream automatic output-name breakage atomically, matching the
+  pinned reference; preserve explicit aliases and support case-only renames.
+- Retain named-window definitions for schema rewriting, including unused windows
+  that ordinary queries ignore. Both table/column rewrites and drop validation
+  now visit their references. Guard NATURAL/USING-key and ambiguous schema shapes.
+- Fixed unary dynamic defaults invoking functions while parsing schema metadata.
+  Only literal/unary-literal defaults are folded; dynamic defaults run on INSERT.
+  ALTER ADD rejects non-literal default expressions without executing callbacks.
+- Verification: all 2,461 engine tests, all-package locked installs/fatal-info
+  analysis, formatting and all fixture/oracle checksums pass. Pinned SQLite
+  verifies 663 snapshots per encoding (1,989 total), including dependent aliases,
+  joins/correlation, trigger fields, case-only/quoted renames, rejected drops,
+  unused windows and overflow-producing defaults deferred until INSERT. Existing
+  mutation/transaction/rollback/WAL/native owner-handoff checks also pass.
+- M6 remains open for guarded schema shapes and the broader conformance audit.

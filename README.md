@@ -306,8 +306,8 @@ INSERT SELECT and RETURNING. INSERT conflict policies compose with UPSERT; DO UP
 index/FK/sequence metadata and resolved references in dependent views/triggers.
 Column rename rewrites supported CHECK/key/index/FK references; explicit DROP
 COLUMN rewrites stored records and rejects key/index/CHECK/FK dependencies.
-Dependent column rewrites in views/triggers remain open; column alterations involving them reject
-before mutation. No automatic destructive migration is performed.
+Column rename also resolves dependent view/trigger fields and write targets.
+Drops validate dependent SQL against the proposed schema before committing. No automatic destructive migration is performed.
 
 RAISE(FAIL) reports an error while retaining prior rows and trigger effects;
 these partial images cross the pager commit boundary outside an explicit
@@ -427,7 +427,14 @@ calls remains prohibited, matching the reference.
 Table renaming tracks parsed source bindings through views, subqueries, CTE
 shadows, qualifiers, wildcards and trigger DML/WHEN bodies. Aliases and literals
 retain their meaning. Unresolved/duplicate aliases and trigger pseudo-row/table
-namespace collisions reject atomically. Column alteration dependency guards remain.
+namespace collisions reject atomically. Dependent column alterations validate
+view/trigger metadata and reject changes that break downstream output references.
 The pinned SQLite 3.53.1 trigger-target rename also rebinds UPSERT EXCLUDED
 qualifiers to the renamed target; this observed reference quirk is reproduced
 and tested, including its effect on subsequent updates.
+
+Column dependency checks use metadata-only resolution, including explicit view/
+CTE aliases, correlated sources, trigger OLD/NEW/EXCLUDED fields and unused named
+windows. View queries and dynamic unary defaults do not execute during metadata
+parsing. Renaming USING keys and NATURAL-dependent shapes remains guarded; more
+complex schema/DQS fallback behavior is outside the verified subset.

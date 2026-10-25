@@ -16,6 +16,7 @@ import 'function_registry.dart';
 import 'values.dart';
 import 'index_definition.dart';
 import 'schema_rewriter.dart';
+import 'column_rewriter.dart';
 
 final class MutationImage {
   MutationImage(this.image, this.changes, this.lastRowid, [this.returning]);
@@ -1052,7 +1053,8 @@ final class ImageMutations {
     return (rewritten, parameters);
   }
 
-  String _rewriteIdentifiers(String sql, Map<int, String> replacements) {
+  String _rewriteIdentifiers(String sql, Map<int, String> replacements,
+      {bool quote = true}) {
     var result = '';
     var start = 0;
     for (final token in SqlTokenizer.tokenize(sql)) {
@@ -1073,8 +1075,8 @@ final class ImageMutations {
           }
         }
       }
-      result +=
-          '${sql.substring(start, token.offset)}"${replacement.replaceAll('"', '""')}"';
+      result += sql.substring(start, token.offset) +
+          (quote ? '"${replacement.replaceAll('"', '""')}"' : replacement);
       start = end;
     }
     return result + sql.substring(start);
@@ -1208,16 +1210,22 @@ final class ImageMutations {
     return _rewriteIdentifiers(table.sql, replacements);
   }
 
-  void _checkColumnDependencies(String tableName) {
-    if (other.any((object) =>
-        object.sql != null &&
-        SqlTokenizer.tokenize(object.sql!).any((t) =>
-            t.kind == SqlTokenKind.identifier &&
-            asciiLower(t.text) == asciiLower(tableName)))) {
-      throw const SqlException(
-          'Column alteration with dependent views/triggers unsupported');
-    }
-  }
+  Map<String, SchemaColumns> get _schemaColumns => {
+        for (final entry in _tables.entries)
+          entry.key: (
+            columns: entry.value.schema.columns.map((c) => c.name).toList(),
+            rowid: !entry.value.schema.withoutRowid
+          )
+      };
+  List<DependentSchema> _dependentSchema(List<ImageObject> objects) => [
+        for (final object in objects.where((o) => o.sql != null))
+          (
+            type: object.type,
+            name: object.name,
+            owner: object.tableName,
+            sql: object.sql!
+          )
+      ];
 
   int _executionDepth = 0;
   final List<String?> _conflictPolicies = [];
@@ -1512,11 +1520,29 @@ final class ImageMutations {
         final column = _column(table.schema, old);
         final oldKey = asciiLower(column.name);
         final renamed = drop ? null : (p..require('TO')).identifier();
+        final quotedRename = !drop && p.tokens[p.position - 1].quoted;
         p.finish();
-        _checkColumnDependencies(name);
+        final dependencyEdits = <ImageObject, Map<int, String>>{};
         if (!drop) {
-          if (table.schema.columns
-              .any((c) => asciiLower(c.name) == asciiLower(renamed!))) {
+          final views = {
+            for (final object in other.where((o) => o.type == 'view'))
+              asciiLower(object.name): object.sql!
+          };
+          for (final object in other.where((o) => o.sql != null)) {
+            dependencyEdits[object] = renamedColumnReferences(
+                object.sql!,
+                object.type,
+                object.tableName,
+                name,
+                column.name,
+                renamed!,
+                _schemaColumns,
+                views);
+          }
+        }
+        if (!drop) {
+          if (table.schema.columns.any((c) =>
+              c != column && asciiLower(c.name) == asciiLower(renamed!))) {
             throw const SqlException('Column exists');
           }
           final changed = _renameColumnSql(table, column.name, renamed!);
@@ -1629,6 +1655,21 @@ final class ImageMutations {
               ])
           ]);
         }
+        final proposed = [
+          for (final object in other)
+            dependencyEdits[object]?.isNotEmpty == true
+                ? ImageObject(
+                    object.type,
+                    object.name,
+                    object.tableName,
+                    _rewriteIdentifiers(object.sql!, dependencyEdits[object]!,
+                        quote: quotedRename))
+                : object
+        ];
+        validateColumnDependencies(_schemaColumns, _dependentSchema(proposed));
+        other
+          ..clear()
+          ..addAll(proposed);
         schemaChanged = true;
         return MutationImage(
             serialize(
@@ -1751,7 +1792,7 @@ final class ImageMutations {
       }
       if (column.defaultSql != null) {
         final value = SqlParser(column.defaultSql!).expression();
-        if (value is! Literal && value is! UnaryExpr) {
+        if (!isLiteralConstant(value)) {
           throw const SqlException('ALTER default must be constant');
         }
       }

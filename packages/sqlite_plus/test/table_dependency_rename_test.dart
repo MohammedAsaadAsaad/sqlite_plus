@@ -94,8 +94,15 @@ void main() {
     addTearDown(db.close);
     await db.execute('CREATE TABLE "odd.name"(x INT)');
     await db.execute('INSERT INTO "odd.name" VALUES(3)');
-    await db.execute('CREATE VIEW q AS SELECT "odd.name".* FROM "odd.name"');
+    await db.execute(
+        'CREATE VIEW q AS SELECT "odd.name".* FROM "odd.name" WINDOW w AS(ORDER BY "odd.name".x)');
     await db.execute('ALTER TABLE "odd.name" RENAME TO "new name"');
+    expect(
+        (await db.query("SELECT sql FROM sqlite_schema WHERE name='q'"))
+            .rows
+            .single
+            .single,
+        contains('ORDER BY "new name".x'));
     expect((await db.query('SELECT * FROM q')).rows, [
       [BigInt.from(3)]
     ]);

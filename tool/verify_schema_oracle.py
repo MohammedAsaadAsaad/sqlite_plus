@@ -301,6 +301,50 @@ def main():
       "CREATE VIEW rename_invalid_wildcard AS SELECT renamed_source.* FROM renamed_source AS a",
       "ALTER TABLE renamed_source RENAME TO invalid_target", "DROP VIEW rename_invalid_wildcard"
     ]
+    statements += [
+      "CREATE TABLE column_source(id INTEGER PRIMARY KEY,a INT UNIQUE,b TEXT,spare INT)",
+      "INSERT INTO column_source VALUES(1,2,'one',0),(2,4,'two',0)",
+      "CREATE TABLE column_other(id INT,z INT)","INSERT INTO column_other VALUES(1,7)",
+      "CREATE VIEW column_plain AS SELECT column_source.a,column_source.b FROM column_source",
+      "CREATE VIEW column_fixed(label) AS SELECT a FROM column_source",
+      "CREATE VIEW column_cte AS WITH c(value) AS(SELECT a FROM column_source) SELECT value FROM c",
+      "CREATE VIEW column_alias AS SELECT a AS a,b FROM column_source ORDER BY a",
+      "CREATE VIEW column_correlated AS SELECT x.id,(SELECT count(*) FROM column_source y WHERE y.a<=x.a) AS n FROM column_source x",
+      "CREATE VIEW column_joined AS SELECT column_source.a,column_other.z FROM column_source JOIN column_other ON column_source.id=column_other.id",
+      "CREATE TABLE column_events(id INT,v INT)","CREATE TABLE column_audit(old_value INT,new_value INT)",
+      "CREATE TRIGGER column_observe AFTER UPDATE OF a ON column_source WHEN old.a!=new.a BEGIN INSERT INTO column_audit VALUES(old.a,new.a); END",
+      "CREATE TRIGGER column_route AFTER INSERT ON column_events BEGIN INSERT INTO column_source(id,a) VALUES(new.id,new.v) ON CONFLICT(id) DO UPDATE SET a=a+excluded.a; END",
+      "ALTER TABLE column_source RENAME a TO value",
+      "SELECT * FROM column_plain ORDER BY value", "SELECT * FROM column_fixed ORDER BY label",
+      "SELECT * FROM column_cte ORDER BY value", "SELECT * FROM column_alias", "SELECT * FROM column_correlated ORDER BY id", "SELECT * FROM column_joined",
+      "INSERT INTO column_events VALUES(1,3),(1,1)", "SELECT * FROM column_audit",
+      "ALTER TABLE column_source DROP spare", "ALTER TABLE column_source DROP b",
+      "ALTER TABLE column_source RENAME value TO VALUE", "SELECT * FROM column_plain ORDER BY VALUE",
+      "BEGIN", "ALTER TABLE column_source RENAME VALUE TO undone", "ROLLBACK",
+      "CREATE TABLE column_chain(a INT,b INT)","INSERT INTO column_chain VALUES(1,2)",
+      "CREATE VIEW column_v AS SELECT a FROM column_chain", "CREATE VIEW column_w AS SELECT a FROM column_v",
+      "ALTER TABLE column_chain RENAME a TO value", "DROP VIEW column_w", "DROP VIEW column_v",
+      "CREATE VIEW column_v AS SELECT a AS a FROM column_chain", "CREATE VIEW column_w AS SELECT a FROM column_v",
+      "ALTER TABLE column_chain RENAME a TO value", "SELECT * FROM column_w",
+      "CREATE TABLE column_quote(\"a.b\" INT,spare INT)","INSERT INTO column_quote VALUES(3,0)",
+      "CREATE VIEW column_quoted AS SELECT column_quote.\"a.b\" AS fixed FROM column_quote",
+      "CREATE VIEW column_computed AS SELECT column_quote.\"a.b\"+1 FROM column_quote",
+      "ALTER TABLE column_quote RENAME \"a.b\" TO \"new value\"", "SELECT * FROM column_computed", "SELECT * FROM column_quoted",
+      "ALTER TABLE column_quote DROP spare",
+      "CREATE TABLE unary_default_guard(a INT DEFAULT(-abs(-9223372036854775808)),b INT)",
+      "CREATE VIEW unary_default_view AS SELECT b FROM unary_default_guard",
+      "ALTER TABLE unary_default_guard RENAME b TO value", "INSERT INTO unary_default_guard DEFAULT VALUES",
+      "PRAGMA integrity_check"
+    ]
+    statements += [
+      "CREATE TABLE window_dependency(a INT,b INT)","INSERT INTO window_dependency VALUES(1,2)",
+      "CREATE VIEW window_unused AS SELECT b FROM window_dependency WINDOW w AS(ORDER BY a)",
+      "CREATE VIEW window_table AS SELECT b FROM window_dependency WINDOW w AS(ORDER BY window_dependency.a)",
+      "ALTER TABLE window_dependency RENAME a TO value", "SELECT * FROM window_unused",
+      "ALTER TABLE window_dependency DROP value", "SELECT sql FROM sqlite_schema WHERE name='window_unused'",
+      "ALTER TABLE window_dependency RENAME TO window_named", "SELECT sql FROM sqlite_schema WHERE name='window_table'",
+      "PRAGMA integrity_check"
+    ]
     bound_parameters = {
       "INSERT INTO named_rows VALUES(:id,:v) RETURNING :id,id,:v,v": [1,7],
       "UPDATE named_rows SET v=:v WHERE id=:id RETURNING :v,v,:id": [8,1],

@@ -403,7 +403,7 @@ final class DatabaseCatalog {
             }
             expr.validate({});
             defaultExpression = expr;
-            if (expr is Literal || expr is UnaryExpr) {
+            if (isLiteralConstant(expr)) {
               defaultValue = expr.evaluate(EvalContext({}, {}, []));
             }
           } else if (parser.current.keyword == 'GENERATED' ||

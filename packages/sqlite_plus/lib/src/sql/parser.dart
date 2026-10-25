@@ -100,7 +100,8 @@ BigInt? expressionOrdinal(Expr expression) {
 }
 
 final class ColumnExpr extends Expr {
-  ColumnExpr(this.name, {this.offset, this.qualifier});
+  ColumnExpr(this.name, {this.offset, this.qualifier, this.columnOffset});
+  final int? columnOffset;
   final int? offset;
   final String? qualifier;
   final String name;
@@ -131,6 +132,10 @@ final class ParameterExpr extends Expr {
   @override
   Object? evaluate(EvalContext context) => context.parameters[index];
 }
+
+bool isLiteralConstant(Expr expression) =>
+    expression is Literal ||
+    expression is UnaryExpr && isLiteralConstant(expression.operand);
 
 final class UnaryExpr extends Expr {
   UnaryExpr(this.op, this.operand);
@@ -340,6 +345,7 @@ final class SelectStatement {
   final List<QuerySource> sources = [];
   final List<(String, SelectStatement)> compounds = [];
   final List<Expr> groupBy = [];
+  final Map<String, WindowExpr> windowDefinitions = {};
   Expr? having;
   final List<SelectItem> items;
   final String? table;
@@ -584,6 +590,7 @@ final class SqlParser {
       ..sources.addAll(sources)
       ..compounds.addAll(compounds)
       ..groupBy.addAll(groups)
+      ..windowDefinitions.addAll(windows)
       ..having = having;
   }
 
@@ -1022,11 +1029,16 @@ final class SqlParser {
         } else {
           var name = token.text;
           String? qualifier;
+          var columnOffset = token.offset;
           if (take('.')) {
+            columnOffset = current.offset;
             qualifier = token.text;
             name += '.${take('*') ? '*' : identifier()}';
           }
-          left = ColumnExpr(name, offset: token.offset, qualifier: qualifier);
+          left = ColumnExpr(name,
+              offset: token.offset,
+              qualifier: qualifier,
+              columnOffset: columnOffset);
         }
       } else {
         throw SqlException('Expected expression', token.offset);

@@ -127,7 +127,8 @@ final class _TableRenameVisitor {
       ...select.order.map((t) => t.expression),
       select.limit,
       select.offset,
-      ...select.sources.map((s) => s.on)
+      ...select.sources.map((s) => s.on),
+      ...select.windowDefinitions.values
     ]) {
       if (expr != null) expression(expr, bindings, visibleCtes);
     }

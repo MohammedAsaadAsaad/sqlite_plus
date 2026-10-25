@@ -16,8 +16,9 @@
   queues, LIMIT/OFFSET and duplicate suppression; VALUES queries/CTEs/subqueries/
   trigger bodies; CREATE TABLE AS and REPLACE shorthand; named parameter indices;
   aggregate ORDER BY/STRING_AGG; resolved table-reference rewrites in dependent
-  views/triggers; metadata/integrity PRAGMAs.
-  Open: dependent column rewrites in views/triggers and broader ALTER, SQL/function/PRAGMA,
+  views/triggers; metadata-only dependent column rewrites/validation, including
+  unused named windows; metadata/integrity PRAGMAs.
+  Open: NATURAL/USING-dependent ALTER shapes and broader SQL/function/PRAGMA,
   foreign-key/trigger interaction, planner and differential hardening audit.
 - [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.
 - [ ] M8: Advanced extensions, JSON/JSONB, FTS, R-tree, virtual tables.

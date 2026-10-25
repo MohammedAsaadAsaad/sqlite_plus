@@ -68,8 +68,9 @@ void main() {
       ['x', BigInt.from(7)]
     ]);
     await db.execute('CREATE VIEW alter_view AS SELECT * FROM alter_p');
-    await expectLater(db.execute('ALTER TABLE alter_p RENAME label TO blocked'),
-        throwsA(isA<SqlException>()));
+    await db.execute('ALTER TABLE alter_p RENAME label TO blocked');
+    expect((await db.query('SELECT * FROM alter_view')).columns,
+        contains('blocked'));
   });
   test('integrity checks detect stale index keys without mutating data',
       () async {
