@@ -11162,6 +11162,590 @@
   },
   {
     "file": "sqlite-512.db",
+    "sql": "SELECT 1_000,typeof(1_000)",
+    "parameters": [],
+    "columns": [
+      "1_000",
+      "typeof(1_000)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1000"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 0_0,typeof(0_0)",
+    "parameters": [],
+    "columns": [
+      "0_0",
+      "typeof(0_0)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_2_3,typeof(1_2_3)",
+    "parameters": [],
+    "columns": [
+      "1_2_3",
+      "typeof(1_2_3)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "123"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT .1_0,typeof(.1_0)",
+    "parameters": [],
+    "columns": [
+      ".1_0",
+      "typeof(.1_0)"
+    ],
+    "rows": [
+      [
+        0.1,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_0.,typeof(1_0.)",
+    "parameters": [],
+    "columns": [
+      "1_0.",
+      "typeof(1_0.)"
+    ],
+    "rows": [
+      [
+        10.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_0.0_1,typeof(1_0.0_1)",
+    "parameters": [],
+    "columns": [
+      "1_0.0_1",
+      "typeof(1_0.0_1)"
+    ],
+    "rows": [
+      [
+        10.01,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1e1_0,typeof(1e1_0)",
+    "parameters": [],
+    "columns": [
+      "1e1_0",
+      "typeof(1e1_0)"
+    ],
+    "rows": [
+      [
+        10000000000.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_0e+0_2,typeof(1_0e+0_2)",
+    "parameters": [],
+    "columns": [
+      "1_0e+0_2",
+      "typeof(1_0e+0_2)"
+    ],
+    "rows": [
+      [
+        1000.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_0e-0_2,typeof(1_0e-0_2)",
+    "parameters": [],
+    "columns": [
+      "1_0e-0_2",
+      "typeof(1_0e-0_2)"
+    ],
+    "rows": [
+      [
+        0.1,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 9_223_372_036_854_775_807,typeof(9_223_372_036_854_775_807)",
+    "parameters": [],
+    "columns": [
+      "9_223_372_036_854_775_807",
+      "typeof(9_223_372_036_854_775_807)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT -9_223_372_036_854_775_808,typeof(-9_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "-9_223_372_036_854_775_808",
+      "typeof(-9_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT -09_223_372_036_854_775_808,typeof(-09_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "-09_223_372_036_854_775_808",
+      "typeof(-09_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 9_223_372_036_854_775_808,typeof(9_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "9_223_372_036_854_775_808",
+      "typeof(9_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        9.223372036854776e+18,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 0x1_2,typeof(0x1_2)",
+    "parameters": [],
+    "columns": [
+      "0x1_2",
+      "typeof(0x1_2)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "18"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 0x7fff_ffff_ffff_ffff,typeof(0x7fff_ffff_ffff_ffff)",
+    "parameters": [],
+    "columns": [
+      "0x7fff_ffff_ffff_ffff",
+      "typeof(0x7fff_ffff_ffff_ffff)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 0x8000_0000_0000_0000,typeof(0x8000_0000_0000_0000)",
+    "parameters": [],
+    "columns": [
+      "0x8000_0000_0000_0000",
+      "typeof(0x8000_0000_0000_0000)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 0xffff_ffff_ffff_ffff,typeof(0xffff_ffff_ffff_ffff)",
+    "parameters": [],
+    "columns": [
+      "0xffff_ffff_ffff_ffff",
+      "typeof(0xffff_ffff_ffff_ffff)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT -0x8000_0000_0000_0000,typeof(-0x8000_0000_0000_0000)",
+    "parameters": [],
+    "error": "hex literal too big: -0x8000000000000000"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT -(0x8000000000000000),typeof(-(0x8000000000000000))",
+    "parameters": [],
+    "error": "hex literal too big: -0x8000000000000000"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT -+0x8000000000000000,typeof(-+0x8000000000000000)",
+    "parameters": [],
+    "error": "hex literal too big: -0x8000000000000000"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT -0xffffffffffffffff,typeof(-0xffffffffffffffff)",
+    "parameters": [],
+    "columns": [
+      "-0xffffffffffffffff",
+      "typeof(-0xffffffffffffffff)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1__0,typeof(1__0)",
+    "parameters": [],
+    "error": "unrecognized token: \"1__0\""
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_,typeof(1_)",
+    "parameters": [],
+    "error": "unrecognized token: \"1_\""
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_.0,typeof(1_.0)",
+    "parameters": [],
+    "error": "unrecognized token: \"1_.0\""
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1._0,typeof(1._0)",
+    "parameters": [],
+    "error": "unrecognized token: \"1._0\""
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1e_2,typeof(1e_2)",
+    "parameters": [],
+    "error": "unrecognized token: \"1e_2\""
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1e2_,typeof(1e2_)",
+    "parameters": [],
+    "error": "unrecognized token: \"1e2_\""
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 0x_1,typeof(0x_1)",
+    "parameters": [],
+    "error": "unrecognized token: \"0x_1\""
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 0x1__2,typeof(0x1__2)",
+    "parameters": [],
+    "error": "unrecognized token: \"0x1__2\""
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 0x1_,typeof(0x1_)",
+    "parameters": [],
+    "error": "unrecognized token: \"0x1_\""
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT CAST('1_000' AS INT),typeof(CAST('1_000' AS INT))",
+    "parameters": [],
+    "columns": [
+      "CAST('1_000' AS INT)",
+      "typeof(CAST('1_000' AS INT))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT CAST('1_0.2' AS REAL),typeof(CAST('1_0.2' AS REAL))",
+    "parameters": [],
+    "columns": [
+      "CAST('1_0.2' AS REAL)",
+      "typeof(CAST('1_0.2' AS REAL))"
+    ],
+    "rows": [
+      [
+        1.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 NOT NULL,typeof(1 NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "1 NOT NULL",
+      "typeof(1 NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT NULL NOT NULL,typeof(NULL NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "NULL NOT NULL",
+      "typeof(NULL NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 NOT NULL IS FALSE,typeof(1 NOT NULL IS FALSE)",
+    "parameters": [],
+    "columns": [
+      "1 NOT NULL IS FALSE",
+      "typeof(1 NOT NULL IS FALSE)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT NULL NOT NULL=0,typeof(NULL NOT NULL=0)",
+    "parameters": [],
+    "columns": [
+      "NULL NOT NULL=0",
+      "typeof(NULL NOT NULL=0)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1+NULL NOT NULL,typeof(1+NULL NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "1+NULL NOT NULL",
+      "typeof(1+NULL NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT (1,2) NOT NULL,typeof((1,2) NOT NULL)",
+    "parameters": [],
+    "error": "row value misused"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT NOT 1 NOT NULL,typeof(NOT 1 NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "NOT 1 NOT NULL",
+      "typeof(NOT 1 NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1 NOT NULL AND NULL NOT NULL,typeof(1 NOT NULL AND NULL NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "1 NOT NULL AND NULL NOT NULL",
+      "typeof(1 NOT NULL AND NULL NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_0.0 UNION ALL SELECT 3 ORDER BY 10.0",
+    "parameters": [],
+    "columns": [
+      "1_0.0"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        10.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_0.0 UNION ALL SELECT 3 ORDER BY 1_0.0",
+    "parameters": [],
+    "columns": [
+      "1_0.0"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        10.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_0 UNION ALL SELECT 3 ORDER BY 1_0",
+    "parameters": [],
+    "error": "1st ORDER BY term out of range - should be between 1 and 1"
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1_0.0=10.0,1_0.0 IS 10.0,typeof(-09_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "1_0.0=10.0",
+      "1_0.0 IS 10.0",
+      "typeof(-09_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
     "sql": "SELECT :x,:x,?",
     "parameters": [
       {
@@ -22653,6 +23237,590 @@
   },
   {
     "file": "sqlite-4096.db",
+    "sql": "SELECT 1_000,typeof(1_000)",
+    "parameters": [],
+    "columns": [
+      "1_000",
+      "typeof(1_000)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1000"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 0_0,typeof(0_0)",
+    "parameters": [],
+    "columns": [
+      "0_0",
+      "typeof(0_0)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_2_3,typeof(1_2_3)",
+    "parameters": [],
+    "columns": [
+      "1_2_3",
+      "typeof(1_2_3)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "123"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT .1_0,typeof(.1_0)",
+    "parameters": [],
+    "columns": [
+      ".1_0",
+      "typeof(.1_0)"
+    ],
+    "rows": [
+      [
+        0.1,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_0.,typeof(1_0.)",
+    "parameters": [],
+    "columns": [
+      "1_0.",
+      "typeof(1_0.)"
+    ],
+    "rows": [
+      [
+        10.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_0.0_1,typeof(1_0.0_1)",
+    "parameters": [],
+    "columns": [
+      "1_0.0_1",
+      "typeof(1_0.0_1)"
+    ],
+    "rows": [
+      [
+        10.01,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1e1_0,typeof(1e1_0)",
+    "parameters": [],
+    "columns": [
+      "1e1_0",
+      "typeof(1e1_0)"
+    ],
+    "rows": [
+      [
+        10000000000.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_0e+0_2,typeof(1_0e+0_2)",
+    "parameters": [],
+    "columns": [
+      "1_0e+0_2",
+      "typeof(1_0e+0_2)"
+    ],
+    "rows": [
+      [
+        1000.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_0e-0_2,typeof(1_0e-0_2)",
+    "parameters": [],
+    "columns": [
+      "1_0e-0_2",
+      "typeof(1_0e-0_2)"
+    ],
+    "rows": [
+      [
+        0.1,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 9_223_372_036_854_775_807,typeof(9_223_372_036_854_775_807)",
+    "parameters": [],
+    "columns": [
+      "9_223_372_036_854_775_807",
+      "typeof(9_223_372_036_854_775_807)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT -9_223_372_036_854_775_808,typeof(-9_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "-9_223_372_036_854_775_808",
+      "typeof(-9_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT -09_223_372_036_854_775_808,typeof(-09_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "-09_223_372_036_854_775_808",
+      "typeof(-09_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 9_223_372_036_854_775_808,typeof(9_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "9_223_372_036_854_775_808",
+      "typeof(9_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        9.223372036854776e+18,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 0x1_2,typeof(0x1_2)",
+    "parameters": [],
+    "columns": [
+      "0x1_2",
+      "typeof(0x1_2)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "18"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 0x7fff_ffff_ffff_ffff,typeof(0x7fff_ffff_ffff_ffff)",
+    "parameters": [],
+    "columns": [
+      "0x7fff_ffff_ffff_ffff",
+      "typeof(0x7fff_ffff_ffff_ffff)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 0x8000_0000_0000_0000,typeof(0x8000_0000_0000_0000)",
+    "parameters": [],
+    "columns": [
+      "0x8000_0000_0000_0000",
+      "typeof(0x8000_0000_0000_0000)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 0xffff_ffff_ffff_ffff,typeof(0xffff_ffff_ffff_ffff)",
+    "parameters": [],
+    "columns": [
+      "0xffff_ffff_ffff_ffff",
+      "typeof(0xffff_ffff_ffff_ffff)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT -0x8000_0000_0000_0000,typeof(-0x8000_0000_0000_0000)",
+    "parameters": [],
+    "error": "hex literal too big: -0x8000000000000000"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT -(0x8000000000000000),typeof(-(0x8000000000000000))",
+    "parameters": [],
+    "error": "hex literal too big: -0x8000000000000000"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT -+0x8000000000000000,typeof(-+0x8000000000000000)",
+    "parameters": [],
+    "error": "hex literal too big: -0x8000000000000000"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT -0xffffffffffffffff,typeof(-0xffffffffffffffff)",
+    "parameters": [],
+    "columns": [
+      "-0xffffffffffffffff",
+      "typeof(-0xffffffffffffffff)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1__0,typeof(1__0)",
+    "parameters": [],
+    "error": "unrecognized token: \"1__0\""
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_,typeof(1_)",
+    "parameters": [],
+    "error": "unrecognized token: \"1_\""
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_.0,typeof(1_.0)",
+    "parameters": [],
+    "error": "unrecognized token: \"1_.0\""
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1._0,typeof(1._0)",
+    "parameters": [],
+    "error": "unrecognized token: \"1._0\""
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1e_2,typeof(1e_2)",
+    "parameters": [],
+    "error": "unrecognized token: \"1e_2\""
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1e2_,typeof(1e2_)",
+    "parameters": [],
+    "error": "unrecognized token: \"1e2_\""
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 0x_1,typeof(0x_1)",
+    "parameters": [],
+    "error": "unrecognized token: \"0x_1\""
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 0x1__2,typeof(0x1__2)",
+    "parameters": [],
+    "error": "unrecognized token: \"0x1__2\""
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 0x1_,typeof(0x1_)",
+    "parameters": [],
+    "error": "unrecognized token: \"0x1_\""
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT CAST('1_000' AS INT),typeof(CAST('1_000' AS INT))",
+    "parameters": [],
+    "columns": [
+      "CAST('1_000' AS INT)",
+      "typeof(CAST('1_000' AS INT))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT CAST('1_0.2' AS REAL),typeof(CAST('1_0.2' AS REAL))",
+    "parameters": [],
+    "columns": [
+      "CAST('1_0.2' AS REAL)",
+      "typeof(CAST('1_0.2' AS REAL))"
+    ],
+    "rows": [
+      [
+        1.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 NOT NULL,typeof(1 NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "1 NOT NULL",
+      "typeof(1 NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT NULL NOT NULL,typeof(NULL NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "NULL NOT NULL",
+      "typeof(NULL NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 NOT NULL IS FALSE,typeof(1 NOT NULL IS FALSE)",
+    "parameters": [],
+    "columns": [
+      "1 NOT NULL IS FALSE",
+      "typeof(1 NOT NULL IS FALSE)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT NULL NOT NULL=0,typeof(NULL NOT NULL=0)",
+    "parameters": [],
+    "columns": [
+      "NULL NOT NULL=0",
+      "typeof(NULL NOT NULL=0)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1+NULL NOT NULL,typeof(1+NULL NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "1+NULL NOT NULL",
+      "typeof(1+NULL NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT (1,2) NOT NULL,typeof((1,2) NOT NULL)",
+    "parameters": [],
+    "error": "row value misused"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT NOT 1 NOT NULL,typeof(NOT 1 NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "NOT 1 NOT NULL",
+      "typeof(NOT 1 NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1 NOT NULL AND NULL NOT NULL,typeof(1 NOT NULL AND NULL NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "1 NOT NULL AND NULL NOT NULL",
+      "typeof(1 NOT NULL AND NULL NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_0.0 UNION ALL SELECT 3 ORDER BY 10.0",
+    "parameters": [],
+    "columns": [
+      "1_0.0"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        10.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_0.0 UNION ALL SELECT 3 ORDER BY 1_0.0",
+    "parameters": [],
+    "columns": [
+      "1_0.0"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        10.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_0 UNION ALL SELECT 3 ORDER BY 1_0",
+    "parameters": [],
+    "error": "1st ORDER BY term out of range - should be between 1 and 1"
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1_0.0=10.0,1_0.0 IS 10.0,typeof(-09_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "1_0.0=10.0",
+      "1_0.0 IS 10.0",
+      "typeof(-09_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
     "sql": "SELECT :x,:x,?",
     "parameters": [
       {
@@ -34141,6 +35309,590 @@
     "sql": "SELECT 1 IN missing_table",
     "parameters": [],
     "error": "no such table: missing_table"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_000,typeof(1_000)",
+    "parameters": [],
+    "columns": [
+      "1_000",
+      "typeof(1_000)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1000"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 0_0,typeof(0_0)",
+    "parameters": [],
+    "columns": [
+      "0_0",
+      "typeof(0_0)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_2_3,typeof(1_2_3)",
+    "parameters": [],
+    "columns": [
+      "1_2_3",
+      "typeof(1_2_3)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "123"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT .1_0,typeof(.1_0)",
+    "parameters": [],
+    "columns": [
+      ".1_0",
+      "typeof(.1_0)"
+    ],
+    "rows": [
+      [
+        0.1,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_0.,typeof(1_0.)",
+    "parameters": [],
+    "columns": [
+      "1_0.",
+      "typeof(1_0.)"
+    ],
+    "rows": [
+      [
+        10.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_0.0_1,typeof(1_0.0_1)",
+    "parameters": [],
+    "columns": [
+      "1_0.0_1",
+      "typeof(1_0.0_1)"
+    ],
+    "rows": [
+      [
+        10.01,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1e1_0,typeof(1e1_0)",
+    "parameters": [],
+    "columns": [
+      "1e1_0",
+      "typeof(1e1_0)"
+    ],
+    "rows": [
+      [
+        10000000000.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_0e+0_2,typeof(1_0e+0_2)",
+    "parameters": [],
+    "columns": [
+      "1_0e+0_2",
+      "typeof(1_0e+0_2)"
+    ],
+    "rows": [
+      [
+        1000.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_0e-0_2,typeof(1_0e-0_2)",
+    "parameters": [],
+    "columns": [
+      "1_0e-0_2",
+      "typeof(1_0e-0_2)"
+    ],
+    "rows": [
+      [
+        0.1,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 9_223_372_036_854_775_807,typeof(9_223_372_036_854_775_807)",
+    "parameters": [],
+    "columns": [
+      "9_223_372_036_854_775_807",
+      "typeof(9_223_372_036_854_775_807)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT -9_223_372_036_854_775_808,typeof(-9_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "-9_223_372_036_854_775_808",
+      "typeof(-9_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT -09_223_372_036_854_775_808,typeof(-09_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "-09_223_372_036_854_775_808",
+      "typeof(-09_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 9_223_372_036_854_775_808,typeof(9_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "9_223_372_036_854_775_808",
+      "typeof(9_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        9.223372036854776e+18,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 0x1_2,typeof(0x1_2)",
+    "parameters": [],
+    "columns": [
+      "0x1_2",
+      "typeof(0x1_2)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "18"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 0x7fff_ffff_ffff_ffff,typeof(0x7fff_ffff_ffff_ffff)",
+    "parameters": [],
+    "columns": [
+      "0x7fff_ffff_ffff_ffff",
+      "typeof(0x7fff_ffff_ffff_ffff)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 0x8000_0000_0000_0000,typeof(0x8000_0000_0000_0000)",
+    "parameters": [],
+    "columns": [
+      "0x8000_0000_0000_0000",
+      "typeof(0x8000_0000_0000_0000)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 0xffff_ffff_ffff_ffff,typeof(0xffff_ffff_ffff_ffff)",
+    "parameters": [],
+    "columns": [
+      "0xffff_ffff_ffff_ffff",
+      "typeof(0xffff_ffff_ffff_ffff)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "-1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT -0x8000_0000_0000_0000,typeof(-0x8000_0000_0000_0000)",
+    "parameters": [],
+    "error": "hex literal too big: -0x8000000000000000"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT -(0x8000000000000000),typeof(-(0x8000000000000000))",
+    "parameters": [],
+    "error": "hex literal too big: -0x8000000000000000"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT -+0x8000000000000000,typeof(-+0x8000000000000000)",
+    "parameters": [],
+    "error": "hex literal too big: -0x8000000000000000"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT -0xffffffffffffffff,typeof(-0xffffffffffffffff)",
+    "parameters": [],
+    "columns": [
+      "-0xffffffffffffffff",
+      "typeof(-0xffffffffffffffff)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1__0,typeof(1__0)",
+    "parameters": [],
+    "error": "unrecognized token: \"1__0\""
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_,typeof(1_)",
+    "parameters": [],
+    "error": "unrecognized token: \"1_\""
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_.0,typeof(1_.0)",
+    "parameters": [],
+    "error": "unrecognized token: \"1_.0\""
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1._0,typeof(1._0)",
+    "parameters": [],
+    "error": "unrecognized token: \"1._0\""
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1e_2,typeof(1e_2)",
+    "parameters": [],
+    "error": "unrecognized token: \"1e_2\""
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1e2_,typeof(1e2_)",
+    "parameters": [],
+    "error": "unrecognized token: \"1e2_\""
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 0x_1,typeof(0x_1)",
+    "parameters": [],
+    "error": "unrecognized token: \"0x_1\""
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 0x1__2,typeof(0x1__2)",
+    "parameters": [],
+    "error": "unrecognized token: \"0x1__2\""
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 0x1_,typeof(0x1_)",
+    "parameters": [],
+    "error": "unrecognized token: \"0x1_\""
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT CAST('1_000' AS INT),typeof(CAST('1_000' AS INT))",
+    "parameters": [],
+    "columns": [
+      "CAST('1_000' AS INT)",
+      "typeof(CAST('1_000' AS INT))"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT CAST('1_0.2' AS REAL),typeof(CAST('1_0.2' AS REAL))",
+    "parameters": [],
+    "columns": [
+      "CAST('1_0.2' AS REAL)",
+      "typeof(CAST('1_0.2' AS REAL))"
+    ],
+    "rows": [
+      [
+        1.0,
+        "real"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 NOT NULL,typeof(1 NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "1 NOT NULL",
+      "typeof(1 NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT NULL NOT NULL,typeof(NULL NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "NULL NOT NULL",
+      "typeof(NULL NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 NOT NULL IS FALSE,typeof(1 NOT NULL IS FALSE)",
+    "parameters": [],
+    "columns": [
+      "1 NOT NULL IS FALSE",
+      "typeof(1 NOT NULL IS FALSE)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT NULL NOT NULL=0,typeof(NULL NOT NULL=0)",
+    "parameters": [],
+    "columns": [
+      "NULL NOT NULL=0",
+      "typeof(NULL NOT NULL=0)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1+NULL NOT NULL,typeof(1+NULL NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "1+NULL NOT NULL",
+      "typeof(1+NULL NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT (1,2) NOT NULL,typeof((1,2) NOT NULL)",
+    "parameters": [],
+    "error": "row value misused"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT NOT 1 NOT NULL,typeof(NOT 1 NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "NOT 1 NOT NULL",
+      "typeof(NOT 1 NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1 NOT NULL AND NULL NOT NULL,typeof(1 NOT NULL AND NULL NOT NULL)",
+    "parameters": [],
+    "columns": [
+      "1 NOT NULL AND NULL NOT NULL",
+      "typeof(1 NOT NULL AND NULL NOT NULL)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_0.0 UNION ALL SELECT 3 ORDER BY 10.0",
+    "parameters": [],
+    "columns": [
+      "1_0.0"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        10.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_0.0 UNION ALL SELECT 3 ORDER BY 1_0.0",
+    "parameters": [],
+    "columns": [
+      "1_0.0"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "3"
+        }
+      ],
+      [
+        10.0
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_0 UNION ALL SELECT 3 ORDER BY 1_0",
+    "parameters": [],
+    "error": "1st ORDER BY term out of range - should be between 1 and 1"
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1_0.0=10.0,1_0.0 IS 10.0,typeof(-09_223_372_036_854_775_808)",
+    "parameters": [],
+    "columns": [
+      "1_0.0=10.0",
+      "1_0.0 IS 10.0",
+      "typeof(-09_223_372_036_854_775_808)"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
   },
   {
     "file": "sqlite-65536.db",

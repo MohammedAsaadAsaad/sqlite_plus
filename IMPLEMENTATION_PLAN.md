@@ -26,7 +26,8 @@
   connection counters and trigger/FK save/restore; metadata/integrity PRAGMAs;
   parenthesized join scopes/metadata, UPDATE FROM dependency rewrites, deferred
   views and default-evaluation order, scalar-subquery types/affinity, STAT1 index
-  ranking, boolean-name binding, IN table and qualified state PRAGMAs.
+  ranking, boolean-name binding, IN table and qualified state PRAGMAs; numeric
+  separators/postfix NULL syntax and row-valued UPDATE/UPSERT assignments.
   Open: streaming INSERT SELECT and ordinary/NOT MATERIALIZED CTE evaluation,
   remaining SQL grammar/PRAGMA/function coverage and differential hardening.
 - [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.

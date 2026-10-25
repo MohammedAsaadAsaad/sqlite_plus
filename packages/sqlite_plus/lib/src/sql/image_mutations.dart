@@ -2162,7 +2162,9 @@ final class ImageMutations {
       ...schema.columns
           .where((c) => c.generatedExpression == null)
           .map((c) => asciiLower(c.name)),
-      if (!schema.withoutRowid) ...['rowid', '_rowid_', 'oid'],
+      if (!schema.withoutRowid)
+        ...['rowid', '_rowid_', 'oid']
+            .where((name) => !columnNames.contains(name)),
     };
     final valid = {
       ...columnNames,
@@ -2173,6 +2175,19 @@ final class ImageMutations {
       },
       ...?_triggerContexts.lastOrNull?.row.keys
     };
+    List<String> assignmentTargets() {
+      final tuple = p.take('('), fields = <String>[];
+      do {
+        final field = asciiLower(p.identifier());
+        if (!writable.contains(field)) {
+          throw const SqlException('Unknown assignment column');
+        }
+        fields.add(field);
+      } while (tuple && p.take(','));
+      if (tuple) p.require(')');
+      return fields;
+    }
+
     void validateRequiredIndex(Expr? predicate) {
       if (requiredIndex == null) return;
       final index = _indexes
@@ -2287,16 +2302,16 @@ final class ImageMutations {
       if (update) {
         p.require('SET');
         do {
-          final name = asciiLower(p.identifier());
-          if (!writable.contains(name)) {
-            throw const SqlException('Unknown column');
-          }
+          final targets = assignmentTargets();
           p.require('=');
           final expr = p.expression();
           if (expr.containsAggregate || expr.containsWindow) {
             throw const SqlException('Aggregate in UPDATE');
           }
-          assignments[name] = expr;
+          final fields = assignmentFields(expr, targets.length);
+          for (var i = 0; i < targets.length; i++) {
+            assignments[targets[i]] = fields[i];
+          }
         } while (p.take(','));
         if (p.take('FROM')) {
           var tail = p.tokens.length - 1;
@@ -2429,17 +2444,17 @@ final class ImageMutations {
               'excluded.$key'
           };
           do {
-            final column = asciiLower(p.identifier());
-            if (!writable.contains(column) || column.contains('.')) {
-              throw const SqlException('Invalid UPSERT column');
-            }
+            final targets = assignmentTargets();
             p.require('=');
             final expr = p.expression();
-            expr.validate(scope);
             if (expr.containsAggregate || expr.containsWindow) {
               throw const SqlException('Aggregate/window in UPSERT');
             }
-            changes[column] = expr;
+            final fields = assignmentFields(expr, targets.length);
+            for (var i = 0; i < targets.length; i++) {
+              fields[i].validate(scope);
+              changes[targets[i]] = fields[i];
+            }
           } while (p.take(','));
           if (p.take('WHERE')) {
             predicate = p.expression();
@@ -2496,6 +2511,32 @@ final class ImageMutations {
           returning.add(SelectItem(expression, label));
         }
       } while (p.take(','));
+    }
+    void orderAssignments(Map<String, Expr> fields) {
+      final original = {
+        for (var i = 0; i < fields.length; i++) fields.keys.elementAt(i): i
+      };
+      int position(String column) => !schema.withoutRowid &&
+              (column == asciiLower(schema.rowidAlias ?? '') ||
+                  !columnNames.contains(column) &&
+                      ['rowid', '_rowid_', 'oid'].contains(column))
+          ? -1
+          : columnNames.indexOf(column);
+      final entries = fields.entries.toList()
+        ..sort((a, b) {
+          final difference = position(a.key).compareTo(position(b.key));
+          return difference != 0
+              ? difference
+              : original[a.key]!.compareTo(original[b.key]!);
+        });
+      fields
+        ..clear()
+        ..addEntries(entries);
+    }
+
+    orderAssignments(assignments);
+    for (final clause in upserts) {
+      orderAssignments(clause.assignments);
     }
     validateRequiredIndex(where);
     p.finish();

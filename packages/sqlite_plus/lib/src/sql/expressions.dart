@@ -4,6 +4,8 @@ import 'parser.dart';
 import 'tokenizer.dart';
 import 'values.dart';
 
+part 'row_assignments.dart';
+
 final class ValueExpr extends Expr {
   ValueExpr(this.value, this.valueAffinity,
       [this.valueCollation, this.valueExplicitCollation]);

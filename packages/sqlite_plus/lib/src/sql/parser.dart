@@ -74,9 +74,10 @@ abstract class Expr {
 }
 
 final class Literal extends Expr {
-  Literal(this.value, [this.spelling]);
+  Literal(this.value, [this.spelling, this.hexadecimal = false]);
   final Object? value;
   final String? spelling;
+  final bool hexadecimal;
   @override
   Object? evaluate(EvalContext context) => value;
 }
@@ -1106,11 +1107,22 @@ final class SqlParser {
       left = UnaryExpr('+', expression(15));
     } else if (take('-')) {
       if (current.kind == SqlTokenKind.number &&
-          current.text == '9223372036854775808') {
+          RegExp(r'^0*9223372036854775808$')
+              .hasMatch(current.text.replaceAll('_', ''))) {
         position++;
         left = Literal(-(BigInt.one << 63));
       } else {
-        left = UnaryExpr('-', expression(15));
+        final operand = expression(15);
+        Expr constant = operand;
+        while (constant is UnaryExpr && constant.op == '+') {
+          constant = constant.operand;
+        }
+        if (constant is Literal &&
+            constant.hexadecimal &&
+            constant.value == -(BigInt.one << 63)) {
+          throw const SqlException('Hex integer too large after negation');
+        }
+        left = UnaryExpr('-', operand);
       }
     } else if (take('~')) {
       left = UnaryExpr('~', expression(15));
@@ -1136,7 +1148,7 @@ final class SqlParser {
       final token = current;
       position++;
       if (token.kind == SqlTokenKind.number) {
-        final text = token.text;
+        final text = token.text.replaceAll('_', '');
         Object value;
         if (text.toLowerCase().startsWith('0x')) {
           final integer = BigInt.parse(text.substring(2), radix: 16);
@@ -1148,7 +1160,8 @@ final class SqlParser {
           value = numeric(text) ??
               (throw SqlException('Invalid number', token.offset));
         }
-        left = Literal(value, value is double ? asciiLower(token.text) : null);
+        left = Literal(value, value is double ? asciiLower(text) : null,
+            asciiLower(text).startsWith('0x'));
       } else if (token.kind == SqlTokenKind.string) {
         left = Literal(token.text);
       } else if (token.kind == SqlTokenKind.blob) {
@@ -1343,11 +1356,14 @@ final class SqlParser {
         }
         continue;
       }
-      if (minimum <= 4 && (take('ISNULL') || take('NOTNULL'))) {
-        left = BinaryExpr(
-            tokens[position - 1].keyword == 'ISNULL' ? 'IS' : 'IS NOT',
-            left,
-            Literal(null));
+      if (minimum <= 4 &&
+          (current.keyword == 'ISNULL' ||
+              current.keyword == 'NOTNULL' ||
+              current.keyword == 'NOT' &&
+                  tokens[position + 1].keyword == 'NULL')) {
+        final negate = current.keyword != 'ISNULL';
+        position += current.keyword == 'NOT' ? 2 : 1;
+        left = BinaryExpr(negate ? 'IS NOT' : 'IS', left, Literal(null));
         continue;
       }
       var op =

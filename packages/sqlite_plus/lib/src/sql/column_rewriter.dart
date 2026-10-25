@@ -614,7 +614,14 @@ final class _ColumnVisitor {
     void assignments(_ColumnScope bindings) {
       p.require('SET');
       do {
-        field();
+        if (p.take('(')) {
+          do {
+            field();
+          } while (p.take(','));
+          p.require(')');
+        } else {
+          field();
+        }
         p.require('=');
         expr(bindings);
       } while (p.take(','));
@@ -668,7 +675,14 @@ final class _ColumnVisitor {
         p.require('SET');
         final expressions = <Expr>[];
         do {
-          field();
+          if (p.take('(')) {
+            do {
+              field();
+            } while (p.take(','));
+            p.require(')');
+          } else {
+            field();
+          }
           p.require('=');
           expressions.add(p.expression());
         } while (p.take(','));

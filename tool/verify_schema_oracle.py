@@ -402,6 +402,18 @@ def main():
       "CREATE VIEW in_view AS SELECT 1 IN main.in_renamed AS found", "DELETE FROM in_renamed WHERE value IN main.in_renamed",
       "SELECT * FROM in_view", "PRAGMA integrity_check"
     ]
+    statements += [
+      "CREATE TABLE vector_update(id INTEGER PRIMARY KEY,a INT,b TEXT)",
+      "INSERT INTO vector_update VALUES(1,7,'one'),(2,9,'two')",
+      "UPDATE vector_update SET (a,b)=(a+1,b||'!') RETURNING *",
+      "UPDATE vector_update SET (a,b)=(SELECT a,b FROM vector_update WHERE id=1) WHERE id=2 RETURNING *",
+      "INSERT INTO vector_update VALUES(1,10,'changed') ON CONFLICT(id) DO UPDATE SET (a,b)=(excluded.a,excluded.b) RETURNING *",
+      "CREATE TABLE vector_events(id INT)",
+      "CREATE TRIGGER vector_changed AFTER INSERT ON vector_events BEGIN UPDATE vector_update SET (a,b)=(a+1,b||'x') WHERE id=new.id; END",
+      "ALTER TABLE vector_update RENAME a TO value", "ALTER TABLE vector_update RENAME TO vector_named",
+      "INSERT INTO vector_events VALUES(1)", "SELECT * FROM vector_named ORDER BY id",
+      "UPDATE vector_named SET (value,b)=(1,2,3)", "PRAGMA integrity_check"
+    ]
     bound_parameters = {
       "INSERT INTO named_rows VALUES(:id,:v) RETURNING :id,id,:v,v": [1,7],
       "UPDATE named_rows SET v=:v WHERE id=:id RETURNING :v,v,:id": [8,1],

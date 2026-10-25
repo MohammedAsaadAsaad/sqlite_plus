@@ -1,0 +1,8270 @@
+{
+  "source_id": "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+  "suites": [
+    {
+      "encoding": 1,
+      "steps": [
+        {
+          "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,a,b,c)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "CREATE TABLE src(k,a,b)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "INSERT INTO src VALUES(1,7,8),(2,9,10)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(b,a) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 4
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 4
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 4
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 4
+        },
+        {
+          "sql": "UPDATE t SET (b,a)=(tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "5"
+              },
+              {
+                "integer": "6"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 8
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "5"
+              },
+              {
+                "integer": "6"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 8
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 8
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 8
+        },
+        {
+          "sql": "UPDATE t SET b=tick(),a=tick() RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "11"
+              },
+              {
+                "integer": "12"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 12
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "11"
+              },
+              {
+                "integer": "12"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 12
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 12
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 12
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(tick(),tick()),a=99 RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "13"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "14"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 14
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "13"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "14"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 14
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 14
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 14
+        },
+        {
+          "sql": "UPDATE t SET (a,a)=(tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "15"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "16"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "15"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "16"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 16
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(tick(),tick()),a=99,b=98 RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 16
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 18
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 18
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 18
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 18
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT tick(),tick()),a=99 RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 20
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 20
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 20
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 20
+        },
+        {
+          "sql": "UPDATE t SET (b,a)=(SELECT tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 22
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 22
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 22
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 22
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(VALUES(tick(),tick())) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT s.a,s.b FROM src s WHERE s.k=t.id) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT s.a,s.b FROM src s WHERE 0) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              null,
+              null,
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              null,
+              null,
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              null,
+              null,
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              null,
+              null,
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT count(*),max(k) FROM src) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT 1,2 UNION ALL SELECT 3,4) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a)=(tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "25"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "26"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 26
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "25"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "26"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 26
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 26
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 26
+        },
+        {
+          "sql": "UPDATE t SET (id,a)=(tick(),tick()),b=tick() RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "27"
+              },
+              {
+                "integer": "28"
+              },
+              {
+                "integer": "29"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "30"
+              },
+              {
+                "integer": "31"
+              },
+              {
+                "integer": "32"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 32
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "27"
+              },
+              {
+                "integer": "28"
+              },
+              {
+                "integer": "29"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "30"
+              },
+              {
+                "integer": "31"
+              },
+              {
+                "integer": "32"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 32
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 32
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 32
+        },
+        {
+          "sql": "UPDATE t SET a=tick(),id=tick(),b=tick() RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "33"
+              },
+              {
+                "integer": "34"
+              },
+              {
+                "integer": "35"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "36"
+              },
+              {
+                "integer": "37"
+              },
+              {
+                "integer": "38"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "33"
+              },
+              {
+                "integer": "34"
+              },
+              {
+                "integer": "35"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "36"
+              },
+              {
+                "integer": "37"
+              },
+              {
+                "integer": "38"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=1 RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(1,2,3) RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT 1) RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT * FROM src) RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT missing,1 FROM src) RETURNING id,a,b,c",
+          "query": false,
+          "error": "no such column: missing",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,missing)=(1,2) RETURNING id,a,b,c",
+          "query": false,
+          "error": "no such column: missing",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(sum(a),1) RETURNING id,a,b,c",
+          "query": false,
+          "error": "misuse of aggregate function sum()",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (t.a,b)=(1,2) RETURNING id,a,b,c",
+          "query": false,
+          "error": "near \".\": syntax error",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT 1)",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT * FROM src)",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=1",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(excluded.b,excluded.a) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "80"
+              },
+              {
+                "integer": "70"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "80"
+              },
+              {
+                "integer": "70"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (b,a)=(tick(),tick()) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "39"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 40
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "39"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 40
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(SELECT tick(),tick()) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "41"
+              },
+              {
+                "integer": "42"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 42
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "41"
+              },
+              {
+                "integer": "42"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 42
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(1,2),a=3 RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 42
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 42
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(1,2,3) RETURNING *",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 42
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 42
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(s.a,s.b) FROM src s WHERE t.id=s.k RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 42
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT tick(),s.b) FROM src s WHERE t.id=s.k RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "43"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "44"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 44
+        },
+        {
+          "sql": "WITH q AS(SELECT k,a,b FROM src) UPDATE t SET (a,b)=(SELECT q.a,q.b FROM q WHERE q.k=t.id) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TABLE events(id)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TRIGGER changed AFTER INSERT ON events BEGIN UPDATE t SET (a,b)=(b,a) WHERE id=new.id; END",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "INSERT INTO events VALUES(1)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 44
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "ALTER TABLE t RENAME a TO amount",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "ALTER TABLE t RENAME TO renamed",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "INSERT INTO events VALUES(2)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 44
+        },
+        {
+          "sql": "SELECT * FROM renamed ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE VIEW v AS SELECT id,amount,b FROM renamed",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TRIGGER view_update INSTEAD OF UPDATE ON v BEGIN UPDATE renamed SET (amount,b)=(new.amount,new.b) WHERE id=old.id; END",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "UPDATE v SET (amount,b)=(b,amount) WHERE id=1",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "SELECT * FROM v ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "9"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TABLE wr(a,b,k PRIMARY KEY) WITHOUT ROWID",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "INSERT INTO wr VALUES(10,20,30)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 44
+        },
+        {
+          "sql": "UPDATE wr SET b=tick(),a=tick(),k=tick() RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "45"
+              },
+              {
+                "integer": "46"
+              },
+              {
+                "integer": "47"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE wr SET (a,b)=(b,a) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "46"
+              },
+              {
+                "integer": "45"
+              },
+              {
+                "integer": "47"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "CREATE TABLE dotted(\"a.b\",c)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO dotted VALUES(1,2)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE dotted SET (\"a.b\",c)=(c,\"a.b\") RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX dotted_key ON dotted(c)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO dotted VALUES(5,1) ON CONFLICT(c) DO UPDATE SET (\"a.b\",c)=(excluded.c,excluded.\"a.b\") RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "5"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "CREATE TABLE generated_aliases(x,rowid AS(x+1),_rowid_ AS(x+2),oid AS(x+3))",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO generated_aliases(x) VALUES(1)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE generated_aliases SET (rowid,x)=(8,3)",
+          "query": false,
+          "error": "cannot UPDATE generated column \"rowid\"",
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO generated_aliases(rowid,x) VALUES(8,3)",
+          "query": false,
+          "error": "cannot INSERT into generated column \"rowid\"",
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE generated_aliases SET (_rowid_,oid)=(8,9)",
+          "query": false,
+          "error": "cannot UPDATE generated column \"_rowid_\"",
+          "calls": 47
+        },
+        {
+          "sql": "SELECT * FROM generated_aliases",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "PRAGMA integrity_check",
+          "query": true,
+          "rows": [
+            [
+              "ok"
+            ]
+          ],
+          "changes": 0,
+          "calls": 47
+        }
+      ]
+    },
+    {
+      "encoding": 2,
+      "steps": [
+        {
+          "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,a,b,c)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "CREATE TABLE src(k,a,b)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "INSERT INTO src VALUES(1,7,8),(2,9,10)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(b,a) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 4
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 4
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 4
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 4
+        },
+        {
+          "sql": "UPDATE t SET (b,a)=(tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "5"
+              },
+              {
+                "integer": "6"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 8
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "5"
+              },
+              {
+                "integer": "6"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 8
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 8
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 8
+        },
+        {
+          "sql": "UPDATE t SET b=tick(),a=tick() RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "11"
+              },
+              {
+                "integer": "12"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 12
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "11"
+              },
+              {
+                "integer": "12"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 12
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 12
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 12
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(tick(),tick()),a=99 RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "13"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "14"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 14
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "13"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "14"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 14
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 14
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 14
+        },
+        {
+          "sql": "UPDATE t SET (a,a)=(tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "15"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "16"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "15"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "16"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 16
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(tick(),tick()),a=99,b=98 RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 16
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 18
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 18
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 18
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 18
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT tick(),tick()),a=99 RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 20
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 20
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 20
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 20
+        },
+        {
+          "sql": "UPDATE t SET (b,a)=(SELECT tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 22
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 22
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 22
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 22
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(VALUES(tick(),tick())) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT s.a,s.b FROM src s WHERE s.k=t.id) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT s.a,s.b FROM src s WHERE 0) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              null,
+              null,
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              null,
+              null,
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              null,
+              null,
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              null,
+              null,
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT count(*),max(k) FROM src) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT 1,2 UNION ALL SELECT 3,4) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a)=(tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "25"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "26"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 26
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "25"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "26"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 26
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 26
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 26
+        },
+        {
+          "sql": "UPDATE t SET (id,a)=(tick(),tick()),b=tick() RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "27"
+              },
+              {
+                "integer": "28"
+              },
+              {
+                "integer": "29"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "30"
+              },
+              {
+                "integer": "31"
+              },
+              {
+                "integer": "32"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 32
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "27"
+              },
+              {
+                "integer": "28"
+              },
+              {
+                "integer": "29"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "30"
+              },
+              {
+                "integer": "31"
+              },
+              {
+                "integer": "32"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 32
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 32
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 32
+        },
+        {
+          "sql": "UPDATE t SET a=tick(),id=tick(),b=tick() RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "33"
+              },
+              {
+                "integer": "34"
+              },
+              {
+                "integer": "35"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "36"
+              },
+              {
+                "integer": "37"
+              },
+              {
+                "integer": "38"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "33"
+              },
+              {
+                "integer": "34"
+              },
+              {
+                "integer": "35"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "36"
+              },
+              {
+                "integer": "37"
+              },
+              {
+                "integer": "38"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=1 RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(1,2,3) RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT 1) RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT * FROM src) RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT missing,1 FROM src) RETURNING id,a,b,c",
+          "query": false,
+          "error": "no such column: missing",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,missing)=(1,2) RETURNING id,a,b,c",
+          "query": false,
+          "error": "no such column: missing",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(sum(a),1) RETURNING id,a,b,c",
+          "query": false,
+          "error": "misuse of aggregate function sum()",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (t.a,b)=(1,2) RETURNING id,a,b,c",
+          "query": false,
+          "error": "near \".\": syntax error",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT 1)",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT * FROM src)",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=1",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(excluded.b,excluded.a) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "80"
+              },
+              {
+                "integer": "70"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "80"
+              },
+              {
+                "integer": "70"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (b,a)=(tick(),tick()) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "39"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 40
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "39"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 40
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(SELECT tick(),tick()) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "41"
+              },
+              {
+                "integer": "42"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 42
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "41"
+              },
+              {
+                "integer": "42"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 42
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(1,2),a=3 RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 42
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 42
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(1,2,3) RETURNING *",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 42
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 42
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(s.a,s.b) FROM src s WHERE t.id=s.k RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 42
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT tick(),s.b) FROM src s WHERE t.id=s.k RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "43"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "44"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 44
+        },
+        {
+          "sql": "WITH q AS(SELECT k,a,b FROM src) UPDATE t SET (a,b)=(SELECT q.a,q.b FROM q WHERE q.k=t.id) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TABLE events(id)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TRIGGER changed AFTER INSERT ON events BEGIN UPDATE t SET (a,b)=(b,a) WHERE id=new.id; END",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "INSERT INTO events VALUES(1)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 44
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "ALTER TABLE t RENAME a TO amount",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "ALTER TABLE t RENAME TO renamed",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "INSERT INTO events VALUES(2)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 44
+        },
+        {
+          "sql": "SELECT * FROM renamed ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE VIEW v AS SELECT id,amount,b FROM renamed",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TRIGGER view_update INSTEAD OF UPDATE ON v BEGIN UPDATE renamed SET (amount,b)=(new.amount,new.b) WHERE id=old.id; END",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "UPDATE v SET (amount,b)=(b,amount) WHERE id=1",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "SELECT * FROM v ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "9"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TABLE wr(a,b,k PRIMARY KEY) WITHOUT ROWID",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "INSERT INTO wr VALUES(10,20,30)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 44
+        },
+        {
+          "sql": "UPDATE wr SET b=tick(),a=tick(),k=tick() RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "45"
+              },
+              {
+                "integer": "46"
+              },
+              {
+                "integer": "47"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE wr SET (a,b)=(b,a) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "46"
+              },
+              {
+                "integer": "45"
+              },
+              {
+                "integer": "47"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "CREATE TABLE dotted(\"a.b\",c)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO dotted VALUES(1,2)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE dotted SET (\"a.b\",c)=(c,\"a.b\") RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX dotted_key ON dotted(c)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO dotted VALUES(5,1) ON CONFLICT(c) DO UPDATE SET (\"a.b\",c)=(excluded.c,excluded.\"a.b\") RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "5"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "CREATE TABLE generated_aliases(x,rowid AS(x+1),_rowid_ AS(x+2),oid AS(x+3))",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO generated_aliases(x) VALUES(1)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE generated_aliases SET (rowid,x)=(8,3)",
+          "query": false,
+          "error": "cannot UPDATE generated column \"rowid\"",
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO generated_aliases(rowid,x) VALUES(8,3)",
+          "query": false,
+          "error": "cannot INSERT into generated column \"rowid\"",
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE generated_aliases SET (_rowid_,oid)=(8,9)",
+          "query": false,
+          "error": "cannot UPDATE generated column \"_rowid_\"",
+          "calls": 47
+        },
+        {
+          "sql": "SELECT * FROM generated_aliases",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "PRAGMA integrity_check",
+          "query": true,
+          "rows": [
+            [
+              "ok"
+            ]
+          ],
+          "changes": 0,
+          "calls": 47
+        }
+      ]
+    },
+    {
+      "encoding": 3,
+      "steps": [
+        {
+          "sql": "CREATE TABLE t(id INTEGER PRIMARY KEY,a,b,c)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "CREATE TABLE src(k,a,b)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "INSERT INTO src VALUES(1,7,8),(2,9,10)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(b,a) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 0
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 0
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 4
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 4
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 4
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 4
+        },
+        {
+          "sql": "UPDATE t SET (b,a)=(tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "5"
+              },
+              {
+                "integer": "6"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 8
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "5"
+              },
+              {
+                "integer": "6"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 8
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 8
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 8
+        },
+        {
+          "sql": "UPDATE t SET b=tick(),a=tick() RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "11"
+              },
+              {
+                "integer": "12"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 12
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "11"
+              },
+              {
+                "integer": "12"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 12
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 12
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 12
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(tick(),tick()),a=99 RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "13"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "14"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 14
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "13"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "14"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 14
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 14
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 14
+        },
+        {
+          "sql": "UPDATE t SET (a,a)=(tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "15"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "16"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "15"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "16"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 16
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(tick(),tick()),a=99,b=98 RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "98"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 16
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 16
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 18
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "17"
+              },
+              {
+                "integer": "18"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 18
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 18
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 18
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT tick(),tick()),a=99 RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 20
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "99"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 20
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 20
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 20
+        },
+        {
+          "sql": "UPDATE t SET (b,a)=(SELECT tick(),tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 22
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "22"
+              },
+              {
+                "integer": "21"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 22
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 22
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 22
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(VALUES(tick(),tick())) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "23"
+              },
+              {
+                "integer": "24"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT s.a,s.b FROM src s WHERE s.k=t.id) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT s.a,s.b FROM src s WHERE 0) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              null,
+              null,
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              null,
+              null,
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              null,
+              null,
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              null,
+              null,
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT count(*),max(k) FROM src) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT 1,2 UNION ALL SELECT 3,4) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 24
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 24
+        },
+        {
+          "sql": "UPDATE t SET (a)=(tick()) RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "25"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "26"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 26
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "25"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "26"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 26
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 26
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 26
+        },
+        {
+          "sql": "UPDATE t SET (id,a)=(tick(),tick()),b=tick() RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "27"
+              },
+              {
+                "integer": "28"
+              },
+              {
+                "integer": "29"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "30"
+              },
+              {
+                "integer": "31"
+              },
+              {
+                "integer": "32"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 32
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "27"
+              },
+              {
+                "integer": "28"
+              },
+              {
+                "integer": "29"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "30"
+              },
+              {
+                "integer": "31"
+              },
+              {
+                "integer": "32"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 32
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 32
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 32
+        },
+        {
+          "sql": "UPDATE t SET a=tick(),id=tick(),b=tick() RETURNING id,a,b,c",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "33"
+              },
+              {
+                "integer": "34"
+              },
+              {
+                "integer": "35"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "36"
+              },
+              {
+                "integer": "37"
+              },
+              {
+                "integer": "38"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "33"
+              },
+              {
+                "integer": "34"
+              },
+              {
+                "integer": "35"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "36"
+              },
+              {
+                "integer": "37"
+              },
+              {
+                "integer": "38"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=1 RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(1,2,3) RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT 1) RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT * FROM src) RETURNING id,a,b,c",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT missing,1 FROM src) RETURNING id,a,b,c",
+          "query": false,
+          "error": "no such column: missing",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,missing)=(1,2) RETURNING id,a,b,c",
+          "query": false,
+          "error": "no such column: missing",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(sum(a),1) RETURNING id,a,b,c",
+          "query": false,
+          "error": "misuse of aggregate function sum()",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (t.a,b)=(1,2) RETURNING id,a,b,c",
+          "query": false,
+          "error": "near \".\": syntax error",
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "20"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "DELETE FROM t",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT 1)",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT * FROM src)",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 38
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=1",
+          "query": false,
+          "error": "2 columns assigned 1 values",
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,10,20,30),(2,40,50,60)",
+          "query": false,
+          "rows": [],
+          "changes": 2,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(excluded.b,excluded.a) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "80"
+              },
+              {
+                "integer": "70"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 38
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "80"
+              },
+              {
+                "integer": "70"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 38
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (b,a)=(tick(),tick()) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "39"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 40
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "39"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 40
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(SELECT tick(),tick()) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "41"
+              },
+              {
+                "integer": "42"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 42
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "41"
+              },
+              {
+                "integer": "42"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 42
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(1,2),a=3 RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 42
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 42
+        },
+        {
+          "sql": "INSERT INTO t VALUES(1,70,80,90) ON CONFLICT(id) DO UPDATE SET (a,b)=(1,2,3) RETURNING *",
+          "query": false,
+          "error": "2 columns assigned 3 values",
+          "calls": 42
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "40"
+              },
+              {
+                "integer": "50"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 42
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(s.a,s.b) FROM src s WHERE t.id=s.k RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 42
+        },
+        {
+          "sql": "UPDATE t SET (a,b)=(SELECT tick(),s.b) FROM src s WHERE t.id=s.k RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "43"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "44"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 44
+        },
+        {
+          "sql": "WITH q AS(SELECT k,a,b FROM src) UPDATE t SET (a,b)=(SELECT q.a,q.b FROM q WHERE q.k=t.id) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 2,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TABLE events(id)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TRIGGER changed AFTER INSERT ON events BEGIN UPDATE t SET (a,b)=(b,a) WHERE id=new.id; END",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "INSERT INTO events VALUES(1)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 44
+        },
+        {
+          "sql": "SELECT * FROM t ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "ALTER TABLE t RENAME a TO amount",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "ALTER TABLE t RENAME TO renamed",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "INSERT INTO events VALUES(2)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 44
+        },
+        {
+          "sql": "SELECT * FROM renamed ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "30"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "9"
+              },
+              {
+                "integer": "60"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE VIEW v AS SELECT id,amount,b FROM renamed",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TRIGGER view_update INSTEAD OF UPDATE ON v BEGIN UPDATE renamed SET (amount,b)=(new.amount,new.b) WHERE id=old.id; END",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "UPDATE v SET (amount,b)=(b,amount) WHERE id=1",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "SELECT * FROM v ORDER BY id",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "7"
+              },
+              {
+                "integer": "8"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "9"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "CREATE TABLE wr(a,b,k PRIMARY KEY) WITHOUT ROWID",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 44
+        },
+        {
+          "sql": "INSERT INTO wr VALUES(10,20,30)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 44
+        },
+        {
+          "sql": "UPDATE wr SET b=tick(),a=tick(),k=tick() RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "45"
+              },
+              {
+                "integer": "46"
+              },
+              {
+                "integer": "47"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE wr SET (a,b)=(b,a) RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "46"
+              },
+              {
+                "integer": "45"
+              },
+              {
+                "integer": "47"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "CREATE TABLE dotted(\"a.b\",c)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO dotted VALUES(1,2)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE dotted SET (\"a.b\",c)=(c,\"a.b\") RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "CREATE UNIQUE INDEX dotted_key ON dotted(c)",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO dotted VALUES(5,1) ON CONFLICT(c) DO UPDATE SET (\"a.b\",c)=(excluded.c,excluded.\"a.b\") RETURNING *",
+          "query": false,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "5"
+              }
+            ]
+          ],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "CREATE TABLE generated_aliases(x,rowid AS(x+1),_rowid_ AS(x+2),oid AS(x+3))",
+          "query": false,
+          "rows": [],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO generated_aliases(x) VALUES(1)",
+          "query": false,
+          "rows": [],
+          "changes": 1,
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE generated_aliases SET (rowid,x)=(8,3)",
+          "query": false,
+          "error": "cannot UPDATE generated column \"rowid\"",
+          "calls": 47
+        },
+        {
+          "sql": "INSERT INTO generated_aliases(rowid,x) VALUES(8,3)",
+          "query": false,
+          "error": "cannot INSERT into generated column \"rowid\"",
+          "calls": 47
+        },
+        {
+          "sql": "UPDATE generated_aliases SET (_rowid_,oid)=(8,9)",
+          "query": false,
+          "error": "cannot UPDATE generated column \"_rowid_\"",
+          "calls": 47
+        },
+        {
+          "sql": "SELECT * FROM generated_aliases",
+          "query": true,
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "changes": 0,
+          "calls": 47
+        },
+        {
+          "sql": "PRAGMA integrity_check",
+          "query": true,
+          "rows": [
+            [
+              "ok"
+            ]
+          ],
+          "changes": 0,
+          "calls": 47
+        }
+      ]
+    }
+  ]
+}

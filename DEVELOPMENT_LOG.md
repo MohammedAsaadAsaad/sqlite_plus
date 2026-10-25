@@ -654,3 +654,26 @@
   metadata comparisons, 294 scalar-metadata operations, 504 UPDATE FROM/group
   dependency snapshots, 165 lazy/default callback operations, 30 STAT1 plans and
   results, and the existing DML/constraint/maintenance/JOIN/metadata/storage checks.
+
+## 2026-10-25 — M6 numeric grammar and row assignments
+
+- Decode single underscore separators in decimal/hex/exponent SQL literals while
+  retaining raw labels and separate string/PRAGMA prefix rules. Handle signed-min
+  literals with separators/leading zeros; reject native unary-negation overflow
+  for hexadecimal signed-min constants. Normalize separator spelling for compound
+  ORDER BY expression matching. Add the NOT NULL postfix spelling.
+- Support SET/UPSERT target vectors with literal rows and SELECT/VALUES sources.
+  Check width before empty-target execution. Cache subquery rows per context;
+  expand literal vectors before duplicate-target elimination so unused fields do
+  not invoke callbacks. Evaluate fields in native column order, with rowid first
+  for INTEGER PRIMARY KEY tables and declared order for WITHOUT ROWID tables.
+- Extend trigger dependency rewriting through vector targets/RHS expressions.
+  Permit quoted dotted UPSERT target fields. Keep generated rowid/_rowid_/oid
+  columns out of the implicit-rowid writable set.
+- Verification: 7,481 engine tests, fatal-info analysis and formatting pass. The
+  general M6 corpus has 1,872 cases; the new assignment corpus has 459 pinned
+  operations in three encodings, including callback counts, duplicate fields,
+  correlated/uncorrelated/empty queries, UPSERT/FROM, views/triggers/ALTER and
+  generated-column rejection. Native SQLite cross-opens 828 schema snapshots per
+  encoding (2,484 total); all fifteen fixture/oracle checksum tools pass.
+- M6 remains open for the documented streaming/CTE execution work and SQL audit.

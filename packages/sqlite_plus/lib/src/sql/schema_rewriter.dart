@@ -192,7 +192,14 @@ final class _TableRenameVisitor {
     void assignments() {
       p.require('SET');
       do {
-        p.identifier();
+        if (p.take('(')) {
+          do {
+            p.identifier();
+          } while (p.take(','));
+          p.require(')');
+        } else {
+          p.identifier();
+        }
         p.require('=');
         expr();
       } while (p.take(','));
@@ -248,7 +255,14 @@ final class _TableRenameVisitor {
         p.require('SET');
         final expressions = <Expr>[];
         do {
-          p.identifier();
+          if (p.take('(')) {
+            do {
+              p.identifier();
+            } while (p.take(','));
+            p.require(')');
+          } else {
+            p.identifier();
+          }
           p.require('=');
           expressions.add(p.expression());
         } while (p.take(','));

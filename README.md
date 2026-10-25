@@ -346,7 +346,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 1,740 differential queries across the
+The pinned M6 oracle currently contains 1,872 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 
@@ -530,3 +530,15 @@ cd packages/sqlite_plus
 dart compile exe benchmark/planner_statistics.dart -o /tmp/sqlite-plus-stat1
 /tmp/sqlite-plus-stat1
 ```
+
+Numeric SQL literals accept single underscore separators between decimal/hex
+and exponent digits; string coercions retain SQLite's separate numeric-prefix
+rules. The `expr NOT NULL` postfix form is also supported. Numeric separators do
+not change literal labels or native compound ORDER BY matching.
+
+UPDATE and UPSERT support row assignments such as `SET (a,b)=(b,a)` and row-valued
+SELECT/VALUES sources. Assignments read the original row; subquery vectors compute
+once, while overwritten literal fields do not run callbacks. Evaluation follows
+native target-column order, including INTEGER PRIMARY KEY handling. The native
+oracle checks 459 operations across all encodings, including UPDATE FROM, CTEs,
+views, triggers, ALTER dependencies, width errors and generated rowid-name guards.

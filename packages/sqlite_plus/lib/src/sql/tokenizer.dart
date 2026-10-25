@@ -110,7 +110,7 @@ abstract final class SqlTokenizer {
       if (digit(c) ||
           c == 46 && i + 1 < sql.length && digit(sql.codeUnitAt(i + 1))) {
         final number = RegExp(
-                r'^(?:0[xX][0-9a-fA-F]+|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)')
+                r'^(?:0[xX][0-9a-fA-F](?:_?[0-9a-fA-F])*|(?:[0-9](?:_?[0-9])*(?:\.(?:[0-9](?:_?[0-9])*)?)?|\.[0-9](?:_?[0-9])*)(?:[eE][+-]?[0-9](?:_?[0-9])*)?)')
             .firstMatch(sql.substring(i))!;
         i += number.end;
         if (i < sql.length && identifierStart(sql.codeUnitAt(i))) {

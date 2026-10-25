@@ -34,6 +34,7 @@ jobs:
           python3 tool/generate_connection_state_oracle.py --verify
           python3 tool/generate_join_group_oracle.py --verify
           python3 tool/generate_boolean_name_oracle.py --verify
+          python3 tool/generate_assignment_oracle.py --verify
       - name: Install dependencies
         run: dart pub get --enforce-lockfile
       - name: Format

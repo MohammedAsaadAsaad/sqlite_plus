@@ -444,6 +444,25 @@ def main():
       'SELECT 1 IN other.q',
       'SELECT 1 IN missing_table',
     ]
+    for expression in [
+        '1_000', '0_0', '1_2_3', '.1_0', '1_0.', '1_0.0_1', '1e1_0', '1_0e+0_2',
+        '1_0e-0_2', '9_223_372_036_854_775_807', '-9_223_372_036_854_775_808',
+        '-09_223_372_036_854_775_808', '9_223_372_036_854_775_808',
+        '0x1_2', '0x7fff_ffff_ffff_ffff', '0x8000_0000_0000_0000',
+        '0xffff_ffff_ffff_ffff', '-0x8000_0000_0000_0000',
+        '-(0x8000000000000000)', '-+0x8000000000000000', '-0xffffffffffffffff',
+        '1__0', '1_', '1_.0', '1._0', '1e_2', '1e2_', '0x_1', '0x1__2', '0x1_',
+        "CAST('1_000' AS INT)", "CAST('1_0.2' AS REAL)", '1 NOT NULL', 'NULL NOT NULL',
+        '1 NOT NULL IS FALSE', 'NULL NOT NULL=0', '1+NULL NOT NULL', '(1,2) NOT NULL',
+        'NOT 1 NOT NULL', '1 NOT NULL AND NULL NOT NULL',
+    ]:
+        queries.append(f'SELECT {expression},typeof({expression})')
+    queries += [
+        'SELECT 1_0.0 UNION ALL SELECT 3 ORDER BY 10.0',
+        'SELECT 1_0.0 UNION ALL SELECT 3 ORDER BY 1_0.0',
+        'SELECT 1_0 UNION ALL SELECT 3 ORDER BY 1_0',
+        'SELECT 1_0.0=10.0,1_0.0 IS 10.0,typeof(-09_223_372_036_854_775_808)',
+    ]
     parameter_queries = {
       'SELECT :x,:x,?': [7,8],
       'SELECT :x,@x,$x,:x': [1,2,3],
