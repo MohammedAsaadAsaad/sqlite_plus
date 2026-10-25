@@ -21,8 +21,8 @@ final class QueryResult implements SqlRows {
       List<String>? collations])
       : columnDeclaredTypes =
             List.unmodifiable(declaredTypes ?? List.filled(columns.length, '')),
-        columnCollations = List.unmodifiable(
-            collations ?? List.filled(columns.length, 'binary')),
+        columnCollations =
+            List.unmodifiable(collations ?? List.filled(columns.length, '')),
         columnAffinities = List.unmodifiable(
             affinities ?? List.filled(columns.length, 'none')),
         columns = List.unmodifiable(columns),
@@ -579,8 +579,7 @@ final class SqliteDatabase {
               : '';
         }).toList(),
         items
-            .map((item) =>
-                item.expression!.collation(constantContext) ?? 'binary')
+            .map((item) => item.expression!.collation(constantContext) ?? '')
             .toList());
 
     final limit = count(statement.limit);

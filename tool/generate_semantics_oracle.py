@@ -384,6 +384,33 @@ def main():
       "SELECT group_concat(dart_counter(),dart_counter()),dart_counter() FROM sample WHERE id>0 AND id<=3",
       "SELECT group_concat(dart_counter() ORDER BY dart_counter()) FILTER(WHERE 0),dart_counter() FROM sample WHERE id>0 AND id<=3"
     ]
+    for join in ['JOIN','LEFT JOIN','RIGHT JOIN','FULL JOIN']:
+      queries += [
+        f"SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l {join} (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+        f"SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l {join} (SELECT 'A' AS x) r USING(x)",
+      ]
+    queries += [
+      "SELECT a.x,b.x FROM (SELECT 'a' COLLATE NOCASE AS x) a JOIN (SELECT 'A' AS x) b ON a.x=b.x",
+      "SELECT a.x,b.x FROM (SELECT 'a' AS x) a RIGHT JOIN (SELECT 'A' COLLATE NOCASE AS x) b ON a.x=b.x",
+      "SELECT x,typeof(x) FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)",
+      "SELECT x FROM (SELECT CAST('1' AS TEXT) AS x) l FULL JOIN (SELECT CAST(1 AS INT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)",
+      "SELECT x=y FROM (SELECT x FROM (SELECT 'a' AS x) l FULL JOIN (SELECT 'a' AS x) r USING(x)) merged CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)",
+      "SELECT x FROM (SELECT 'a' AS x) UNION SELECT 'A' COLLATE NOCASE",
+      "SELECT lower('A')=y FROM (SELECT 'A' COLLATE NOCASE AS y)",
+      "SELECT x=y FROM (SELECT lower('A') AS x) q CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)",
+    ]
+    queries += [
+      'SELECT 2 AS x UNION SELECT 1 UNION ALL SELECT 0',
+      'SELECT 2 AS x UNION SELECT 1 EXCEPT SELECT 0 UNION ALL SELECT 3',
+      'SELECT 2 AS x UNION ALL SELECT 1 EXCEPT SELECT 0',
+      "SELECT 'A' AS x UNION SELECT 'a' COLLATE NOCASE"
+    ]
+    queries += [
+      "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x",
+      "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY +1",
+      "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x COLLATE BINARY",
+      'SELECT 1+1 AS x UNION ALL SELECT 2+2 ORDER BY 1+1 DESC'
+    ]
     parameter_queries = {
       'SELECT :x,:x,?': [7,8],
       'SELECT :x,@x,$x,:x': [1,2,3],

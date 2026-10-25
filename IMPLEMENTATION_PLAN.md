@@ -17,8 +17,9 @@
   trigger bodies; CREATE TABLE AS and REPLACE shorthand; named parameter indices;
   aggregate ORDER BY/STRING_AGG; resolved table-reference rewrites in dependent
   views/triggers; metadata-only dependent column rewrites/validation, including
-  unused named windows; metadata/integrity PRAGMAs.
-  Open: NATURAL/USING-dependent ALTER shapes and broader SQL/function/PRAGMA,
+  unused named windows; NATURAL/USING merged-column dependency validation,
+  join affinity/collation and compound ordering; metadata/integrity PRAGMAs.
+  Open: broader SQL/function/PRAGMA and schema conformance,
   foreign-key/trigger interaction, planner and differential hardening audit.
 - [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.
 - [ ] M8: Advanced extensions, JSON/JSONB, FTS, R-tree, virtual tables.

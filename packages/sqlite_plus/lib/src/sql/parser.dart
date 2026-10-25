@@ -119,7 +119,8 @@ final class ColumnExpr extends Expr {
   @override
   String affinity(EvalContext context) => context.affinities[key] ?? 'none';
   @override
-  String? collation(EvalContext context) => context.collations[key];
+  String? collation(EvalContext context) =>
+      context.collations[key]?.isEmpty == true ? null : context.collations[key];
   @override
   void validate(Set<String> columns) {
     if (!columns.contains(key)) throw SqlException('No such column: $name');

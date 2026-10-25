@@ -345,6 +345,26 @@ def main():
       "ALTER TABLE window_dependency RENAME TO window_named", "SELECT sql FROM sqlite_schema WHERE name='window_table'",
       "PRAGMA integrity_check"
     ]
+    for i,(join,target) in enumerate([('', 'l'),('LEFT','l'),('RIGHT','l'),('FULL','l'),('', 'r'),('LEFT','r'),('RIGHT','r'),('FULL','r')]):
+      left,right,view=f'natural_l{i}',f'natural_r{i}',f'natural_v{i}'
+      statements += [f"CREATE TABLE {left}(a INT,l TEXT)", f"CREATE TABLE {right}(a INT,r TEXT)",
+        f"INSERT INTO {left} VALUES(1,'t1'),(2,'t2')",f"INSERT INTO {right} VALUES(1,'u1'),(3,'u3')",
+        f"CREATE VIEW {view} AS SELECT a FROM {left} NATURAL {join} JOIN {right}",
+        f"ALTER TABLE {left if target=='l' else right} RENAME a TO renamed", f"SELECT * FROM {view} ORDER BY 1"]
+    statements += ["CREATE TABLE using_l(a INT,b INT)","CREATE TABLE using_r(a INT,c INT)",
+      "CREATE VIEW using_view AS SELECT a FROM using_l JOIN using_r USING(a)",
+      "ALTER TABLE using_l RENAME a TO renamed", "DROP VIEW using_view",
+      "CREATE VIEW using_view AS SELECT a FROM using_l x JOIN using_l y USING(a)",
+      "ALTER TABLE using_l RENAME a TO renamed", "DROP VIEW using_view",
+      "CREATE VIEW using_view AS SELECT a FROM using_l x NATURAL FULL JOIN using_l y",
+      "ALTER TABLE using_l RENAME a TO renamed", "DROP VIEW using_view", "PRAGMA integrity_check"]
+    statements += [
+      "CREATE TABLE rowid_left(a INT,spare INT)","CREATE TABLE rowid_right(a INT,rowid INT)",
+      "INSERT INTO rowid_left VALUES(1,0)","INSERT INTO rowid_right VALUES(1,7)",
+      "CREATE VIEW rowid_join AS SELECT a,rowid FROM rowid_left NATURAL JOIN rowid_right",
+      "ALTER TABLE rowid_left RENAME spare TO unused", "ALTER TABLE rowid_left DROP unused",
+      "SELECT * FROM rowid_join", "PRAGMA integrity_check"
+    ]
     bound_parameters = {
       "INSERT INTO named_rows VALUES(:id,:v) RETURNING :id,id,:v,v": [1,7],
       "UPDATE named_rows SET v=:v WHERE id=:id RETURNING :v,v,:id": [8,1],

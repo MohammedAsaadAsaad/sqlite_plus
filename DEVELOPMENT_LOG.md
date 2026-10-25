@@ -560,3 +560,19 @@
   unused windows and overflow-producing defaults deferred until INSERT. Existing
   mutation/transaction/rollback/WAL/native owner-handoff checks also pass.
 - M6 remains open for guarded schema shapes and the broader conformance audit.
+
+## 2026-10-25 — M6 join metadata and dependent alterations
+
+- Resolve NATURAL/USING merged-column origins for column alterations, including
+  LEFT/RIGHT/FULL joins and implicit-rowid collisions. Reject renamed USING keys
+  when the resulting schema is invalid, matching pinned SQLite atomically.
+- Preserve original-left affinity/collation during USING comparisons while
+  exposing the correct merged result metadata. Real fields outrank implicit
+  rowid aliases. Normalize derived-column collation at materialization boundaries.
+- Match compound set-stage sorting and ORDER BY expression/ordinal/collation
+  resolution, including stable UNION ALL concatenation.
+- Verification: isolated staged snapshot passes all 2,536 engine tests, all-package
+  formatting/fatal-info analysis and locked installs. The pinned query corpus has
+  1,593 M6 cases; native SQLite verifies 740 schema/DML/query snapshots per encoding
+  (2,220 total), including ALTER dependencies, join coercion and atomic errors.
+- M6 remains open for the remaining SQL/schema/function/PRAGMA and trigger/FK audit.

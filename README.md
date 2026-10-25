@@ -346,7 +346,7 @@ it is a diagnostic, not SQLite bytecode or a cost model. Other predicates scan.
 All results are materialized. Numeric precision, resource limits and other
 unsupported features are recorded in `COMPATIBILITY_MATRIX.md`.
 
-The pinned M6 oracle currently contains 1,521 differential queries across the
+The pinned M6 oracle currently contains 1,593 differential queries across the
 three encodings. Development-only schema verification cross-opens Dart images
 with SQLite after every mutation and runs integrity_check:
 
@@ -436,5 +436,7 @@ and tested, including its effect on subsequent updates.
 Column dependency checks use metadata-only resolution, including explicit view/
 CTE aliases, correlated sources, trigger OLD/NEW/EXCLUDED fields and unused named
 windows. View queries and dynamic unary defaults do not execute during metadata
-parsing. Renaming USING keys and NATURAL-dependent shapes remains guarded; more
+parsing. NATURAL join rewrites follow the merged column origin for LEFT/RIGHT/FULL
+joins; renaming USING keys rejects when the resulting join becomes invalid, as
+in the reference. Real columns take precedence over implicit rowid aliases. More
 complex schema/DQS fallback behavior is outside the verified subset.

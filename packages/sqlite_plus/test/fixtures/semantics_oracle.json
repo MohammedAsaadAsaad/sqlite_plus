@@ -10080,6 +10080,458 @@
   },
   {
     "file": "sqlite-512.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l LEFT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l LEFT JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        "1",
+        "text",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l RIGHT JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "A",
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l FULL JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l FULL JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT a.x,b.x FROM (SELECT 'a' COLLATE NOCASE AS x) a JOIN (SELECT 'A' AS x) b ON a.x=b.x",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT a.x,b.x FROM (SELECT 'a' AS x) a RIGHT JOIN (SELECT 'A' COLLATE NOCASE AS x) b ON a.x=b.x",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        null,
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x,typeof(x) FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)"
+    ],
+    "rows": [
+      [
+        "1",
+        "text"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x FROM (SELECT CAST('1' AS TEXT) AS x) l FULL JOIN (SELECT CAST(1 AS INT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x=y FROM (SELECT x FROM (SELECT 'a' AS x) l FULL JOIN (SELECT 'a' AS x) r USING(x)) merged CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)",
+    "parameters": [],
+    "columns": [
+      "x=y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x FROM (SELECT 'a' AS x) UNION SELECT 'A' COLLATE NOCASE",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "A"
+      ],
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT lower('A')=y FROM (SELECT 'A' COLLATE NOCASE AS y)",
+    "parameters": [],
+    "columns": [
+      "lower('A')=y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT x=y FROM (SELECT lower('A') AS x) q CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)",
+    "parameters": [],
+    "columns": [
+      "x=y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 2 AS x UNION SELECT 1 UNION ALL SELECT 0",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 2 AS x UNION SELECT 1 EXCEPT SELECT 0 UNION ALL SELECT 3",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 2 AS x UNION ALL SELECT 1 EXCEPT SELECT 0",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 'A' AS x UNION SELECT 'a' COLLATE NOCASE",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ],
+      [
+        "B"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY +1",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ],
+      [
+        "B"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x COLLATE BINARY",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "B"
+      ],
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
+    "sql": "SELECT 1+1 AS x UNION ALL SELECT 2+2 ORDER BY 1+1 DESC",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-512.db",
     "sql": "SELECT :x,:x,?",
     "parameters": [
       {
@@ -20489,6 +20941,458 @@
   },
   {
     "file": "sqlite-4096.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l LEFT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l LEFT JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        "1",
+        "text",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l RIGHT JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "A",
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l FULL JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l FULL JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT a.x,b.x FROM (SELECT 'a' COLLATE NOCASE AS x) a JOIN (SELECT 'A' AS x) b ON a.x=b.x",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT a.x,b.x FROM (SELECT 'a' AS x) a RIGHT JOIN (SELECT 'A' COLLATE NOCASE AS x) b ON a.x=b.x",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        null,
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x,typeof(x) FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)"
+    ],
+    "rows": [
+      [
+        "1",
+        "text"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x FROM (SELECT CAST('1' AS TEXT) AS x) l FULL JOIN (SELECT CAST(1 AS INT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x=y FROM (SELECT x FROM (SELECT 'a' AS x) l FULL JOIN (SELECT 'a' AS x) r USING(x)) merged CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)",
+    "parameters": [],
+    "columns": [
+      "x=y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x FROM (SELECT 'a' AS x) UNION SELECT 'A' COLLATE NOCASE",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "A"
+      ],
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT lower('A')=y FROM (SELECT 'A' COLLATE NOCASE AS y)",
+    "parameters": [],
+    "columns": [
+      "lower('A')=y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT x=y FROM (SELECT lower('A') AS x) q CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)",
+    "parameters": [],
+    "columns": [
+      "x=y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 2 AS x UNION SELECT 1 UNION ALL SELECT 0",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 2 AS x UNION SELECT 1 EXCEPT SELECT 0 UNION ALL SELECT 3",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 2 AS x UNION ALL SELECT 1 EXCEPT SELECT 0",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 'A' AS x UNION SELECT 'a' COLLATE NOCASE",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ],
+      [
+        "B"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY +1",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ],
+      [
+        "B"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x COLLATE BINARY",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "B"
+      ],
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
+    "sql": "SELECT 1+1 AS x UNION ALL SELECT 2+2 ORDER BY 1+1 DESC",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-4096.db",
     "sql": "SELECT :x,:x,?",
     "parameters": [
       {
@@ -30892,6 +31796,458 @@
         null,
         {
           "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l LEFT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l LEFT JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        "1",
+        "text",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l RIGHT JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "A",
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l FULL JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)",
+      "x='1'"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l FULL JOIN (SELECT 'A' AS x) r USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x='a'",
+      "x='A'",
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        },
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT a.x,b.x FROM (SELECT 'a' COLLATE NOCASE AS x) a JOIN (SELECT 'A' AS x) b ON a.x=b.x",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        "a",
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT a.x,b.x FROM (SELECT 'a' AS x) a RIGHT JOIN (SELECT 'A' COLLATE NOCASE AS x) b ON a.x=b.x",
+    "parameters": [],
+    "columns": [
+      "x",
+      "x"
+    ],
+    "rows": [
+      [
+        null,
+        "A"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x,typeof(x) FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)",
+    "parameters": [],
+    "columns": [
+      "x",
+      "typeof(x)"
+    ],
+    "rows": [
+      [
+        "1",
+        "text"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x FROM (SELECT CAST('1' AS TEXT) AS x) l FULL JOIN (SELECT CAST(1 AS INT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x=y FROM (SELECT x FROM (SELECT 'a' AS x) l FULL JOIN (SELECT 'a' AS x) r USING(x)) merged CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)",
+    "parameters": [],
+    "columns": [
+      "x=y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x FROM (SELECT 'a' AS x) UNION SELECT 'A' COLLATE NOCASE",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "A"
+      ],
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT lower('A')=y FROM (SELECT 'A' COLLATE NOCASE AS y)",
+    "parameters": [],
+    "columns": [
+      "lower('A')=y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT x=y FROM (SELECT lower('A') AS x) q CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)",
+    "parameters": [],
+    "columns": [
+      "x=y"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 2 AS x UNION SELECT 1 UNION ALL SELECT 0",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 2 AS x UNION SELECT 1 EXCEPT SELECT 0 UNION ALL SELECT 3",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ],
+      [
+        {
+          "integer": "3"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 2 AS x UNION ALL SELECT 1 EXCEPT SELECT 0",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 'A' AS x UNION SELECT 'a' COLLATE NOCASE",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ],
+      [
+        "B"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY +1",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "a"
+      ],
+      [
+        "B"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x COLLATE BINARY",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        "B"
+      ],
+      [
+        "a"
+      ]
+    ]
+  },
+  {
+    "file": "sqlite-65536.db",
+    "sql": "SELECT 1+1 AS x UNION ALL SELECT 2+2 ORDER BY 1+1 DESC",
+    "parameters": [],
+    "columns": [
+      "x"
+    ],
+    "rows": [
+      [
+        {
+          "integer": "4"
+        }
+      ],
+      [
+        {
+          "integer": "2"
         }
       ]
     ]

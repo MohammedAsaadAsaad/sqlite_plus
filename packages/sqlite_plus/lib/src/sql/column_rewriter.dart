@@ -183,7 +183,8 @@ final class _Columns {
 
 final class _SourceColumns {
   _SourceColumns(this.alias, this.names, this.target,
-      {this.qualifiedOnly = false});
+      {this.qualifiedOnly = false, this.implicit = const {}});
+  final Set<String> implicit;
   final bool qualifiedOnly;
   final String alias;
   final Set<String> names;
@@ -191,7 +192,9 @@ final class _SourceColumns {
 }
 
 final class _ColumnScope {
-  _ColumnScope(this.sources, [this.outer, this.merged = const {}]);
+  _ColumnScope(this.sources,
+      [this.outer, this.merged = const {}, this.origins = const {}]);
+  final Map<String, _SourceColumns> origins;
   final Set<String> merged;
   final List<_SourceColumns> sources;
   final _ColumnScope? outer;
@@ -199,13 +202,17 @@ final class _ColumnScope {
     final key = expr.qualifier == null
         ? expr.key
         : asciiLower(expr.name.substring(expr.qualifier!.length + 1));
-    final matches = expr.qualifier == null
+    var matches = expr.qualifier == null
         ? sources
             .where((s) => !s.qualifiedOnly && s.names.contains(key))
             .toList()
         : sources.where((s) => s.alias == asciiLower(expr.qualifier!)).toList();
+    if (expr.qualifier == null &&
+        matches.any((s) => !s.implicit.contains(key))) {
+      matches = matches.where((s) => !s.implicit.contains(key)).toList();
+    }
     if (matches.length > 1 && expr.qualifier == null && merged.contains(key)) {
-      return matches.first;
+      return origins[key] ?? matches.first;
     }
     if (matches.length > 1) {
       throw const SqlException('Ambiguous dependent column');
@@ -238,11 +245,15 @@ final class _ColumnVisitor {
     final key = asciiLower(name);
     final names =
         (ctes.containsKey(key) ? ctes[key]!() : resolver.relation(key)).toSet();
+    final implicit = <String>{};
     if (!ctes.containsKey(key) && resolver.tables[key]?.rowid == true) {
-      names.addAll(['rowid', '_rowid_', 'oid']);
+      implicit.addAll(
+          ['rowid', '_rowid_', 'oid'].where((name) => !names.contains(name)));
+      names.addAll(implicit);
     }
     return _SourceColumns(
-        asciiLower(alias), names, !ctes.containsKey(key) && key == table);
+        asciiLower(alias), names, !ctes.containsKey(key) && key == table,
+        implicit: implicit);
   }
 
   void expression(Expr expr, _ColumnScope scope, _Ctes ctes,
@@ -289,32 +300,40 @@ final class _ColumnVisitor {
       }
     }
     final merged = <String>{};
+    final origins = <String, _SourceColumns>{};
     final previous = <String>{};
+    final visible = [
+      for (final source in select.sources) resolver.source(source, ctes).toSet()
+    ];
     for (var i = 0; i < sources.length; i++) {
       final source = select.sources[i];
-      merged.addAll(source.using.map(asciiLower));
-      if (source.natural) {
-        merged.addAll(sources[i].names.where(previous.contains));
+      final keys = source.natural
+          ? visible[i].where(previous.contains).toSet()
+          : source.using.map(asciiLower).toSet();
+      merged.addAll(keys);
+      for (final key in keys) {
+        if (!visible[i].contains(key) ||
+            !visible.take(i).any((names) => names.contains(key))) {
+          throw const SqlException('Unresolved dependent USING column');
+        }
+        if (source.join == 'RIGHT') {
+          origins[key] = sources[i];
+        } else if (source.join == 'FULL') {
+          origins[key] = _SourceColumns('@merged', {key}, false);
+        } else {
+          origins.putIfAbsent(
+              key,
+              () => sources[visible
+                  .take(i)
+                  .toList()
+                  .indexWhere((names) => names.contains(key))]);
+        }
       }
-      previous.addAll(sources[i].names);
+      previous.addAll(visible[i]);
     }
-    final scope = _ColumnScope(sources, outer, merged);
+    final scope = _ColumnScope(sources, outer, merged, origins);
     for (var i = 0; i < select.sources.length; i++) {
       final source = select.sources[i];
-      if (source.natural || source.using.isNotEmpty) {
-        if (sources.any((s) => s.target) &&
-            (source.natural ||
-                source.using.map(asciiLower).contains(oldColumn))) {
-          throw const SqlException(
-              'Column rewrite through NATURAL/USING requires explicit schema changes');
-        }
-        for (final name in source.using) {
-          if (!sources[i].names.contains(asciiLower(name)) ||
-              !sources.take(i).any((s) => s.names.contains(asciiLower(name)))) {
-            throw const SqlException('Unresolved dependent USING column');
-          }
-        }
-      }
       if (source.on != null) expression(source.on!, scope, ctes);
     }
     // Resolve wildcard names as well as explicit expressions without running SQL.
