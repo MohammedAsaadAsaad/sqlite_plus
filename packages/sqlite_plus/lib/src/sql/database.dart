@@ -14,11 +14,14 @@ import 'function_registry.dart';
 import 'image_mutations.dart';
 import 'index_definition.dart';
 import 'planner_statistics.dart';
+import 'windows.dart';
 
 part 'relational.dart';
 part 'join_groups.dart';
 part 'dml_subqueries.dart';
 part 'lazy_views.dart';
+part 'query_execution.dart';
+part 'pragma_tables.dart';
 
 final class QueryResult implements SqlRows {
   QueryResult(List<String> columns, List<List<Object?>> rows,
@@ -503,6 +506,25 @@ final class SqliteDatabase {
       }
       return _pragma(pragmaParser);
     }
+    return (await _prepareQuery(sql, parameters, outer)).materialize();
+  }
+
+  /// Resolve physical table reads through view and CTE source scopes.
+  bool queryReadsTable(SelectStatement query, String table) =>
+      _queryReadsTable(query, table);
+
+  /// Internal mutation cursor; public query results remain materialized.
+  Future<({List<String> columns, Iterable<List<Object?>> rows})>
+      prepareInsertSelect(String sql, List<Object?> parameters,
+              [EvalContext? outer]) =>
+          functions.run(() async {
+            final execution = await _prepareQuery(sql, parameters, outer);
+            return (columns: execution.columns, rows: execution.rows);
+          });
+
+  Future<_QueryExecution> _prepareQuery(String sql, List<Object?> parameters,
+      [EvalContext? outer]) async {
+    if (_closed) throw StateError('Database is closed');
     final statement = SqlParser(sql).select();
     if (parameters.length != statement.parameterCount) {
       throw const SqlException('Incorrect parameter count');
@@ -518,13 +540,16 @@ final class SqliteDatabase {
             if (entry.key.startsWith('main.')) entry.key.substring(5)
           })
             name: (
-              columns: entry.value.$1.columns.map((c) => c.name).toList(),
+              columns: entry.value.$1.columns
+                  .where((c) => !c.hidden)
+                  .map((c) => c.name)
+                  .toList(),
               rowid: !entry.value.$1.withoutRowid
             )
       });
       if (statement.limit is Literal &&
           (statement.limit as Literal).value == BigInt.zero) {
-        return _relational(
+        return _relationalExecution(
             _pragmaMetadataQuery(statement, canonicalCasts: false),
             bound,
             {
@@ -533,7 +558,7 @@ final class SqliteDatabase {
             },
             outer);
       }
-      return _relational(statement, bound, cache, outer);
+      return _relationalExecution(statement, bound, cache, outer);
     }
     final table =
         statement.table == null ? null : catalog.table(statement.table!);
@@ -575,17 +600,141 @@ final class SqliteDatabase {
             row.putIfAbsent(name, () => record.rowId);
           }
         }
-        table.evaluateGenerated(row, _pager.header.textEncoding);
+        table.evaluateGenerated(row, _pager.header.textEncoding, lazy: true);
         input.add(row);
       }
     }
-    return _evaluate(statement, bound, table, input);
+    final scanOrder =
+        table == null ? null : _physicalScanOrder(statement, table);
+    if (scanOrder != null) _sortPhysicalRows(input, scanOrder);
+    return _evaluate(statement, bound, table, input,
+        inputOrdered: scanOrder != null);
   }
 
-  QueryResult _evaluate(SelectStatement statement, List<Object?> bound,
-      CatalogTable? table, List<RowValues> input,
+  /// A primary B-tree can supply these orders before projection callbacks.
+  /// The caller chooses the key prefix used by its bound source rows.
+  List<(String, bool, String)>? _physicalScanOrder(
+      SelectStatement query, CatalogTable table,
+      {String prefix = ''}) {
+    if (query.order.isEmpty ||
+        query.groupBy.isNotEmpty ||
+        query.items.any((item) =>
+            item.expression?.containsAggregate == true ||
+            item.expression?.containsWindow == true)) {
+      return null;
+    }
+    final source = query.sources.singleOrNull;
+    final alias = asciiLower(source?.alias ?? source?.table ?? table.name);
+    final primary = table.columns
+        .where((column) => column.primaryKey > 0)
+        .toList()
+      ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+    if (table.withoutRowid && query.order.length > primary.length ||
+        !table.withoutRowid && query.order.length != 1) {
+      return null;
+    }
+    String? physicalName(Expr expression) {
+      final operand = indexOperand(expression);
+      if (operand is! ColumnExpr) return null;
+      final key = operand.key;
+      if (operand.qualifier == null) return key;
+      for (final qualifier in ['$alias.', 'main.$alias.']) {
+        if (key.startsWith(qualifier)) return key.substring(qualifier.length);
+      }
+      return null;
+    }
+
+    final context = EvalContext({}, {
+      for (final column in table.columns) ...{
+        asciiLower(column.name): column.affinity,
+        '$alias.${asciiLower(column.name)}': column.affinity,
+        'main.$alias.${asciiLower(column.name)}': column.affinity
+      }
+    }, const [], _pager.header.textEncoding)
+      ..collations = {
+        for (final column in table.columns) ...{
+          asciiLower(column.name): column.collation,
+          '$alias.${asciiLower(column.name)}': column.collation,
+          'main.$alias.${asciiLower(column.name)}': column.collation
+        }
+      };
+    bool? reversed;
+    for (var i = 0; i < query.order.length; i++) {
+      final term = query.order[i];
+      var expression = term.expression;
+      final ordinal = expressionOrdinal(expression);
+      if (ordinal != null) {
+        if (ordinal < BigInt.one ||
+            ordinal > BigInt.from(query.items.length) ||
+            query.items[ordinal.toInt() - 1].expression == null) {
+          return null;
+        }
+        expression = query.items[ordinal.toInt() - 1].expression!;
+      } else {
+        final operand = indexOperand(expression);
+        if (operand is ColumnExpr && operand.qualifier == null) {
+          final output = query.items
+              .where((item) =>
+                  item.explicitAlias && asciiLower(item.label) == operand.key)
+              .firstOrNull;
+          if (output != null) expression = output.expression!;
+        }
+      }
+      final name = physicalName(expression);
+      if (name == null) return null;
+      if (!table.withoutRowid) {
+        final rowids = {
+          if (table.rowidAlias != null) asciiLower(table.rowidAlias!),
+          for (final key in ['rowid', '_rowid_', 'oid'])
+            if (!table.columns.any((column) => asciiLower(column.name) == key))
+              key
+        };
+        if (!rowids.contains(name)) return null;
+        return [('$prefix$name', term.descending, 'binary')];
+      }
+      final collation = term.expression.explicitCollation(context) ??
+          expression.collation(context) ??
+          'binary';
+      if (name != asciiLower(primary[i].name) ||
+          collation != table.primaryKeyCollations[i]) {
+        return null;
+      }
+      final direction = term.descending != table.primaryKeyDescending[i];
+      reversed ??= direction;
+      if (direction != reversed) return null;
+    }
+    return [
+      for (var i = 0; i < primary.length; i++)
+        (
+          '$prefix${asciiLower(primary[i].name)}',
+          table.primaryKeyDescending[i] != (reversed ?? false),
+          table.primaryKeyCollations[i]
+        )
+    ];
+  }
+
+  void _sortPhysicalRows(
+      List<RowValues> rows, List<(String, bool, String)> order) {
+    rows.sort((a, b) {
+      for (final term in order) {
+        final comparison = compareValues(
+            a[term.$1], b[term.$1], _pager.header.textEncoding, term.$3);
+        if (comparison != 0) return term.$2 ? -comparison : comparison;
+      }
+      return 0;
+    });
+  }
+
+  _QueryExecution _evaluate(SelectStatement statement, List<Object?> bound,
+      CatalogTable? table, Iterable<RowValues> input,
       {SqlRows Function(SelectStatement, EvalContext)? subquery,
-      bool inTrigger = false}) {
+      bool inTrigger = false,
+      bool inputOrdered = false,
+      bool deferredProjection = false,
+      bool omitProjection = false}) {
+    final order =
+        inputOrdered || omitProjection ? const <OrderTerm>[] : statement.order;
+    final distinct = !omitProjection && statement.distinct;
     final columns = table?.columns ?? <CatalogColumn>[];
     final collations = {
       for (final column in columns) asciiLower(column.name): column.collation
@@ -666,7 +815,7 @@ final class SqliteDatabase {
     }
     final aggregate = groupBy.isNotEmpty ||
         items.any((item) => item.expression!.containsAggregate) ||
-        statement.order.any((term) => term.expression.containsAggregate) ||
+        order.any((term) => term.expression.containsAggregate) ||
         (statement.having?.containsAggregate ?? false);
     if (statement.having != null && !aggregate) {
       throw const SqlException('HAVING requires aggregate query');
@@ -699,8 +848,13 @@ final class SqliteDatabase {
           (item) => sameExpression(indexOperand(item.expression!), operand));
     }
 
+    if (omitProjection) {
+      for (final term in statement.order) {
+        projectionSlot(term.expression);
+      }
+    }
     final orderSlots =
-        statement.order.map((term) => projectionSlot(term.expression)).toList();
+        order.map((term) => projectionSlot(term.expression)).toList();
     final havingAliases = <String>{};
     void havingReferences(Expr expr) {
       havingAliases.addAll(expr.unaggregatedColumns);
@@ -737,9 +891,395 @@ final class SqliteDatabase {
       return value.toInt();
     }
 
-    QueryResult result(List<List<Object?>> values) => QueryResult(
+    Iterable<List<Object?>> rows([_QueryOffset? consumerOffset]) sync* {
+      final windowed = items.any((item) => item.expression!.containsWindow) ||
+          (omitProjection ? statement.order : order)
+              .any((term) => term.expression.containsWindow);
+      final limit = count(statement.limit);
+      final offset = count(statement.offset) ?? 0;
+      if (limit == 0) return;
+      final selected = input.where((row) {
+        final ctx =
+            EvalContext(row, affinities, bound, _pager.header.textEncoding)
+              ..inTrigger = inTrigger
+              ..subquery = subquery
+              ..columnAliases = aliasExpressions
+              ..collations = collations;
+        return statement.where == null ||
+            truth(statement.where!.evaluate(ctx), _pager.header.textEncoding) ==
+                true;
+      });
+      final filtered = windowed && !aggregate ? selected.toList() : selected;
+      final groups = <(List<Object?>, Iterable<RowValues>)>[];
+      if (aggregate && groupBy.isEmpty) {
+        groups.add(([], filtered));
+      } else if (aggregate) {
+        final groupCollations =
+            groupBy.map((expr) => expr.collation(constantContext)).toList();
+        for (final row in filtered) {
+          final ctx =
+              EvalContext(row, affinities, bound, _pager.header.textEncoding)
+                ..inTrigger = inTrigger
+                ..subquery = subquery
+                ..collations = collations;
+          final keys = groupBy.map((expr) => expr.evaluate(ctx)).toList();
+          final index = groups
+              .indexWhere((group) => _same(group.$1, keys, groupCollations));
+          if (index < 0) {
+            groups.add((keys, <RowValues>[row]));
+          } else {
+            (groups[index].$2 as List<RowValues>).add(row);
+          }
+        }
+        groups.sort((a, b) {
+          for (var i = 0; i < groupBy.length; i++) {
+            final comparison = compareValues(a.$1[i], b.$1[i],
+                _pager.header.textEncoding, groupCollations[i]);
+            if (comparison != 0) return comparison;
+          }
+          return 0;
+        });
+      }
+      final aggregateReferences = <FunctionExpr>[
+        for (final expr in [
+          ...items.map((item) => item.expression!),
+          if (statement.having != null) statement.having!,
+          ...order.map((term) => term.expression)
+        ])
+          ...aggregateFunctions(expr)
+      ];
+      final functions = <FunctionExpr>[];
+      final aggregateSlots = <FunctionExpr, int>{};
+      for (final function in aggregateReferences) {
+        var slot = functions.indexWhere((previous) =>
+            identical(previous, function) ||
+            sameExpression(previous, function));
+        if (slot < 0) {
+          slot = functions.length;
+          functions.add(function);
+        }
+        aggregateSlots[function] = slot;
+      }
+      final groupProjectionSlots = [
+        for (final item in items)
+          groupBy.indexWhere(
+              (expression) => sameExpression(expression, item.expression!))
+      ];
+      final preparedGroupKeys = <EvalContext, List<Object?>>{};
+      final windowGroups = <RowValues, List<RowValues>>{};
+      final windowAggregates = <RowValues, Map<Expr, Object?>>{};
+      Iterable<EvalContext> prepare() sync* {
+        final Iterable<(List<Object?>, Iterable<RowValues>)> inputs = aggregate
+            ? groups
+            : filtered.map((row) => (<Object?>[], <RowValues>[row]));
+        for (final group in inputs) {
+          final groupRows = <RowValues>[];
+          final base =
+              EvalContext({}, affinities, bound, _pager.header.textEncoding)
+                ..inTrigger = inTrigger
+                ..subquery = subquery
+                ..collations = collations;
+          final accumulators = aggregate
+              ? functions.map((fn) => PreparedSqlAggregate(fn, base)).toList()
+              : <PreparedSqlAggregate>[];
+          for (final candidate in group.$2) {
+            groupRows.add(candidate);
+            if (aggregate) {
+              final context = base.forRow(candidate);
+              for (final accumulator in accumulators) {
+                accumulator.step(context);
+              }
+            }
+          }
+          var row = groupRows.isEmpty
+              ? <String, Object?>{for (final name in names) name: null}
+              : groupRows.first;
+          final extrema = accumulators
+              .where((accumulator) =>
+                  accumulator.function.registered == null &&
+                  ['min', 'max'].contains(accumulator.function.key))
+              .toList();
+          if (extrema.length == 1 && groupRows.isNotEmpty) {
+            row = extrema.single.representative ?? groupRows.first;
+          }
+          row = {...row};
+          final ctx =
+              EvalContext(row, affinities, bound, _pager.header.textEncoding)
+                ..group = aggregate ? groupRows : null
+                ..windowRow = groupRows.firstOrNull
+                ..windowCache = windowCache
+                ..inTrigger = inTrigger
+                ..subquery = subquery
+                ..collations = collations;
+          if (aggregate) {
+            final values = [
+              for (final accumulator in accumulators) accumulator.finish()
+            ];
+            for (final entry in aggregateSlots.entries) {
+              ctx.aggregateValues[entry.key] = values[entry.value];
+            }
+            preparedGroupKeys[ctx] = group.$1;
+          }
+          for (final item in items) {
+            if (!item.expression!.containsWindow &&
+                havingAliases.contains(asciiLower(item.label)) &&
+                !names.contains(asciiLower(item.label))) {
+              row[asciiLower(item.label)] = item.expression!.evaluate(ctx);
+            }
+          }
+          if (statement.having != null &&
+              truth(statement.having!.evaluate(ctx),
+                      _pager.header.textEncoding) !=
+                  true) {
+            continue;
+          }
+          if (windowed) {
+            if (ctx.group != null) windowGroups[row] = ctx.group!;
+            windowAggregates[row] = ctx.aggregateValues;
+          }
+          yield ctx;
+        }
+      }
+
+      var prepared = windowed ? prepare().toList() : prepare();
+      final windowRows =
+          windowed ? prepared.map((ctx) => ctx.row).toList() : <RowValues>[];
+      WindowProgram? windowProgram;
+      if (windowed) {
+        for (final ctx in prepared) {
+          ctx.windowRows = windowRows;
+          ctx.windowGroups = windowGroups;
+          ctx.windowAggregates = windowAggregates;
+        }
+        bool orderedWindowInput(WindowExpr window) {
+          if (aggregate || statement.sources.length != 1) return false;
+          final source = statement.sources.single;
+          if (source.query != null ||
+              source.group.isNotEmpty ||
+              source.table == null ||
+              statement.ctes.containsKey(asciiLower(source.table!))) {
+            return false;
+          }
+          final physicalEntry = catalog.entries
+              .where((entry) =>
+                  entry.type == 'table' &&
+                  asciiLower(entry.name) == asciiLower(source.table!))
+              .firstOrNull;
+          final physical =
+              physicalEntry == null ? null : catalog.table(physicalEntry.name);
+          if (physical == null ||
+              physical.withoutRowid ||
+              window.partition.isNotEmpty) {
+            return false;
+          }
+          if (window.order.isEmpty) return true;
+          if (window.order.length != 1) return false;
+          final expression = indexOperand(window.order.single.expression);
+          if (expression is! ColumnExpr) return false;
+          final key = expression.key.split('.').last;
+          return key == asciiLower(physical.rowidAlias ?? '') ||
+              ['rowid', '_rowid_', 'oid'].contains(key) &&
+                  !physical.columns
+                      .any((column) => asciiLower(column.name) == key);
+        }
+
+        windowProgram = WindowProgram(
+            prepared.toList(),
+            [
+              ...items.map((item) => item.expression!),
+              ...(omitProjection ? statement.order : order)
+                  .map((term) => term.expression)
+            ],
+            orderedWindowInput);
+        prepared = windowProgram.contexts;
+      }
+      final sortTerms = [
+        for (var i = 0; i < order.length; i++)
+          OrderTerm(
+              CollateExpr(
+                  order[i].expression,
+                  order[i].expression.explicitCollation(constantContext) ??
+                      (orderSlots[i] >= 0
+                          ? items[orderSlots[i]]
+                              .expression!
+                              .collation(constantContext)
+                          : order[i].expression.collation(constantContext)) ??
+                      'binary'),
+              order[i].descending,
+              order[i].nullsFirst)
+      ];
+      int compareKeys(List<Object?> a, List<Object?> b) {
+        for (var i = 0; i < order.length; i++) {
+          final comparison = sortTerms[i].compare(a[i], b[i], constantContext);
+          if (comparison != 0) return comparison;
+        }
+        return 0;
+      }
+
+      final output = <(List<Object?>, List<Object?>, int)>[];
+      final unsorted = order.isEmpty;
+      final streamLimit = !distinct && unsorted;
+      var emitted = 0;
+      var sequence = 0;
+      var skipped = 0;
+      for (final ctx in prepared) {
+        windowProgram?.advance(ctx);
+        if (streamLimit && skipped < offset) {
+          skipped++;
+          continue;
+        }
+        if (streamLimit && (consumerOffset?.remaining ?? 0) > 0) {
+          consumerOffset!.remaining--;
+          emitted++;
+          if (limit != null && limit >= 0 && emitted >= limit) return;
+          continue;
+        }
+        final row = ctx.row;
+        ctx.windowRows = windowRows;
+        ctx.windowRow = row;
+        ctx.windowGroups = windowGroups;
+        ctx.windowAggregates = windowAggregates;
+        final defer = deferredProjection &&
+            !aggregate &&
+            !windowed &&
+            !distinct &&
+            order.isEmpty &&
+            statement.offset == null;
+        if (omitProjection && windowed) {
+          void evaluateWindows(Expr expression) {
+            if (expression is WindowExpr) {
+              expression.evaluate(ctx);
+              return;
+            }
+            for (final child in expression.children) {
+              evaluateWindows(child);
+            }
+          }
+
+          for (final expression in [
+            ...items.map((item) => item.expression!),
+            ...statement.order.map((term) => term.expression)
+          ]) {
+            evaluateWindows(expression);
+          }
+        }
+        final values = List<Object?>.filled(items.length, null);
+        final evaluated = <int>{};
+        Object? project(int slot) {
+          if (evaluated.add(slot)) {
+            final grouped = aggregate ? groupProjectionSlots[slot] : -1;
+            values[slot] = omitProjection
+                ? BigInt.one
+                : grouped >= 0
+                    ? preparedGroupKeys[ctx]![grouped]
+                    : defer
+                        ? SqlValueBinding(
+                            () => items[slot].expression!.evaluate(ctx))
+                        : items[slot].expression!.evaluate(ctx);
+          }
+          return values[slot];
+        }
+
+        final earlyKeys = !unsorted &&
+            statement.limit != null &&
+            !distinct &&
+            !statement.subqueryFirstRowOnly;
+        List<Object?>? candidateKeys;
+        if (earlyKeys) {
+          ctx.columnAliases = aliasExpressions;
+          candidateKeys = [
+            for (var i = 0; i < order.length; i++)
+              orderSlots[i] >= 0
+                  ? project(orderSlots[i])
+                  : order[i].expression.evaluate(ctx)
+          ];
+          final capacity = limit != null && limit >= 0
+              ? limit + (offset > 0 ? offset : 0)
+              : null;
+          if (capacity != null && output.length >= capacity) {
+            var worst = 0;
+            for (var i = 1; i < output.length; i++) {
+              if (compareKeys(output[i].$2, output[worst].$2) >= 0) worst = i;
+            }
+            if (compareKeys(candidateKeys, output[worst].$2) >= 0) continue;
+            output.removeAt(worst);
+          }
+        }
+        for (var i = 0; i < items.length; i++) {
+          project(i);
+        }
+        if (distinct &&
+            output.any((entry) => _same(
+                entry.$1,
+                values,
+                items
+                    .map((item) => item.expression!.collation(ctx))
+                    .toList()))) {
+          continue;
+        }
+        if (unsorted) {
+          if (distinct) {
+            output.add((values, const [], output.length));
+            if (skipped < offset) {
+              skipped++;
+              continue;
+            }
+          }
+          yield values;
+          emitted++;
+          if (limit != null && limit >= 0 && emitted >= limit) return;
+          continue;
+        }
+        final orderRow = {...row};
+        for (var i = 0; i < items.length; i++) {
+          orderRow[asciiLower(items[i].label)] = values[i];
+        }
+        final orderCtx =
+            EvalContext(orderRow, affinities, bound, _pager.header.textEncoding)
+              ..group = ctx.group
+              ..windowRows = windowRows
+              ..windowRow = row
+              ..windowCache = windowCache
+              ..inTrigger = inTrigger
+              ..subquery = subquery
+              ..collations = collations;
+        orderCtx.windowGroups = windowGroups;
+        orderCtx.windowAggregates = windowAggregates;
+        orderCtx.aggregateValues.addAll(ctx.aggregateValues);
+        final keys = candidateKeys ?? <Object?>[];
+        for (var i = 0; candidateKeys == null && i < order.length; i++) {
+          final slot = orderSlots[i];
+          keys.add(slot >= 0
+              ? values[slot]
+              : order[i].expression.evaluate(orderCtx));
+        }
+        output.add((values, keys, sequence++));
+        if (streamLimit &&
+            limit != null &&
+            limit >= 0 &&
+            output.length >= limit) {
+          break;
+        }
+      }
+      if (unsorted) return;
+      output.sort((a, b) {
+        for (var i = 0; i < order.length; i++) {
+          final comparison =
+              sortTerms[i].compare(a.$2[i], b.$2[i], constantContext);
+          if (comparison != 0) return comparison;
+        }
+        return a.$3.compareTo(b.$3);
+      });
+      var rows = output
+          .map((entry) => entry.$1)
+          .skip(streamLimit || offset < 0 ? 0 : offset);
+      if (limit != null && limit >= 0) rows = rows.take(limit);
+      yield* rows;
+    }
+
+    final metadata = _QueryExecution(
         _labels(items, columns, table),
-        values,
+        rows(),
         items
             .map((item) => item.expression!.affinity(constantContext))
             .toList(),
@@ -759,212 +1299,10 @@ final class SqliteDatabase {
         }).toList(),
         items
             .map((item) => item.expression!.collation(constantContext) ?? '')
-            .toList());
+            .toList(),
+        skipRows: rows);
 
-    final limit = count(statement.limit);
-    final offset = count(statement.offset) ?? 0;
-    if (limit == 0) return result([]);
-    final filtered = input.where((row) {
-      final ctx =
-          EvalContext(row, affinities, bound, _pager.header.textEncoding)
-            ..inTrigger = inTrigger
-            ..subquery = subquery
-            ..columnAliases = aliasExpressions
-            ..collations = collations;
-      return statement.where == null ||
-          truth(statement.where!.evaluate(ctx), _pager.header.textEncoding) ==
-              true;
-    }).toList();
-    final groups = <(List<Object?>, List<RowValues>)>[];
-    if (aggregate && groupBy.isEmpty) {
-      groups.add(([], filtered));
-    } else {
-      for (final row in filtered) {
-        final ctx =
-            EvalContext(row, affinities, bound, _pager.header.textEncoding)
-              ..inTrigger = inTrigger
-              ..subquery = subquery
-              ..collations = collations;
-        final keys = groupBy.map((expr) => expr.evaluate(ctx)).toList();
-        if (!aggregate) {
-          groups.add((keys, [row]));
-          continue;
-        }
-        final index = groups.indexWhere((group) => _same(group.$1, keys,
-            groupBy.map((expr) => expr.collation(constantContext)).toList()));
-        if (index < 0) {
-          groups.add((keys, [row]));
-        } else {
-          groups[index].$2.add(row);
-        }
-      }
-    }
-    final windowed = items.any((item) => item.expression!.containsWindow) ||
-        statement.order.any((term) => term.expression.containsWindow);
-    final windowGroups = <RowValues, List<RowValues>>{};
-    final windowAggregates = <RowValues, Map<Expr, Object?>>{};
-    Iterable<EvalContext> prepare() sync* {
-      for (final group in groups) {
-        var row = group.$2.isEmpty
-            ? <String, Object?>{for (final name in names) name: null}
-            : group.$2.first;
-        final extrema = items
-            .expand((item) => aggregateFunctions(item.expression!))
-            .where((fn) => ['min', 'max'].contains(fn.key))
-            .toList();
-        if (aggregate && extrema.length == 1 && group.$2.isNotEmpty) {
-          final fn = extrema.single;
-          Object? best;
-          row = group.$2.last;
-          for (final candidate in group.$2) {
-            final context = EvalContext(
-                candidate, affinities, bound, _pager.header.textEncoding)
-              ..inTrigger = inTrigger
-              ..subquery = subquery
-              ..collations = collations;
-            if (fn.filter != null &&
-                truth(fn.filter!.evaluate(context), context.encoding) != true) {
-              continue;
-            }
-            final value = fn.arguments.single.evaluate(context);
-            if (value == null) continue;
-            final comparison = best == null
-                ? 0
-                : compareValues(value, best, _pager.header.textEncoding,
-                    fn.arguments.single.collation(context));
-            if (best == null ||
-                (fn.key == 'min' ? comparison < 0 : comparison > 0)) {
-              best = value;
-              row = candidate;
-            }
-          }
-        }
-        row = {...row};
-        final ctx =
-            EvalContext(row, affinities, bound, _pager.header.textEncoding)
-              ..group = aggregate ? group.$2 : null
-              ..windowRows = filtered
-              ..windowRow = group.$2.isEmpty ? null : group.$2.first
-              ..windowCache = windowCache
-              ..inTrigger = inTrigger
-              ..subquery = subquery
-              ..collations = collations;
-        if (aggregate) {
-          for (final expr in [
-            ...items.map((item) => item.expression!),
-            if (statement.having != null) statement.having!,
-            ...statement.order.map((term) => term.expression)
-          ]) {
-            for (final function in aggregateFunctions(expr)) {
-              ctx.aggregateValues[function] = function.evaluate(ctx);
-            }
-          }
-        }
-        for (final item in items) {
-          if (!item.expression!.containsWindow &&
-              havingAliases.contains(asciiLower(item.label)) &&
-              !names.contains(asciiLower(item.label))) {
-            row[asciiLower(item.label)] = item.expression!.evaluate(ctx);
-          }
-        }
-        if (statement.having != null &&
-            truth(statement.having!.evaluate(ctx),
-                    _pager.header.textEncoding) !=
-                true) {
-          continue;
-        }
-        if (windowed) {
-          if (ctx.group != null) windowGroups[row] = ctx.group!;
-          windowAggregates[row] = ctx.aggregateValues;
-        }
-        yield ctx;
-      }
-    }
-
-    final prepared = windowed ? prepare().toList() : prepare();
-    final windowRows =
-        windowed ? prepared.map((ctx) => ctx.row).toList() : <RowValues>[];
-    final output = <(List<Object?>, List<Object?>, int)>[];
-    final streamLimit = !statement.distinct && statement.order.isEmpty;
-    var skipped = 0;
-    for (final ctx in prepared) {
-      if (streamLimit && skipped < offset) {
-        skipped++;
-        continue;
-      }
-      final row = ctx.row;
-      ctx.windowRows = windowRows;
-      ctx.windowRow = row;
-      ctx.windowGroups = windowGroups;
-      ctx.windowAggregates = windowAggregates;
-      final values =
-          items.map((item) => item.expression!.evaluate(ctx)).toList();
-      if (statement.distinct &&
-          output.any((entry) => _same(entry.$1, values,
-              items.map((item) => item.expression!.collation(ctx)).toList()))) {
-        continue;
-      }
-      final orderRow = {...row};
-      for (var i = 0; i < items.length; i++) {
-        orderRow[asciiLower(items[i].label)] = values[i];
-      }
-      final orderCtx =
-          EvalContext(orderRow, affinities, bound, _pager.header.textEncoding)
-            ..group = ctx.group
-            ..windowRows = windowRows
-            ..windowRow = row
-            ..windowCache = windowCache
-            ..inTrigger = inTrigger
-            ..subquery = subquery
-            ..collations = collations;
-      orderCtx.windowGroups = windowGroups;
-      orderCtx.windowAggregates = windowAggregates;
-      orderCtx.aggregateValues.addAll(ctx.aggregateValues);
-      final keys = <Object?>[];
-      for (var i = 0; i < statement.order.length; i++) {
-        final slot = orderSlots[i];
-        keys.add(slot >= 0
-            ? values[slot]
-            : statement.order[i].expression.evaluate(orderCtx));
-      }
-      output.add((values, keys, output.length));
-      if (streamLimit &&
-          limit != null &&
-          limit >= 0 &&
-          output.length >= limit) {
-        break;
-      }
-    }
-    final sortTerms = [
-      for (var i = 0; i < statement.order.length; i++)
-        OrderTerm(
-            CollateExpr(
-                statement.order[i].expression,
-                statement.order[i].expression
-                        .explicitCollation(constantContext) ??
-                    (orderSlots[i] >= 0
-                        ? items[orderSlots[i]]
-                            .expression!
-                            .collation(constantContext)
-                        : statement.order[i].expression
-                            .collation(constantContext)) ??
-                    'binary'),
-            statement.order[i].descending,
-            statement.order[i].nullsFirst)
-    ];
-    output.sort((a, b) {
-      for (var i = 0; i < statement.order.length; i++) {
-        final comparison =
-            sortTerms[i].compare(a.$2[i], b.$2[i], constantContext);
-        if (comparison != 0) return comparison;
-      }
-      return a.$3.compareTo(b.$3);
-    });
-    var rows = output
-        .map((entry) => entry.$1)
-        .skip(streamLimit || offset < 0 ? 0 : offset);
-    if (limit != null && limit >= 0) rows = rows.take(limit);
-    return result(rows.toList());
+    return metadata;
   }
 
   List<String> _labels(List<SelectItem> items, List<CatalogColumn> columns,
@@ -1069,6 +1407,7 @@ final class SqliteDatabase {
         indexedBy: s.indexedBy,
         notIndexed: s.notIndexed,
         rowIdentity: s.rowIdentity,
+        pragmaArguments: s.pragmaArguments,
         query: s.query == null
             ? null
             : _pragmaMetadataQuery(s.query!, canonicalCasts: canonicalCasts),
@@ -1198,7 +1537,7 @@ final class SqliteDatabase {
       for (final entry in metadata.entries) {
         final original = entry.value.$1;
         final descriptor = descriptors.putIfAbsent(original, () {
-          final table = original.rootPage == 0
+          final table = original.rootPage <= 0
               ? original
               : CatalogTable(
                   original.name,
@@ -1227,7 +1566,10 @@ final class SqliteDatabase {
         String? table = source.table;
         final key = asciiLower(source.table ?? '');
         final cte = source.schema == null ? ctes[key] : null;
-        if (source.query != null || cte != null) {
+        if (_isPragmaTableSource(source) && cte == null) {
+          table = '\u0000metadata${ordinal++}';
+          prepared[table] = (_pragmaSourceTable(source), []);
+        } else if (source.query != null || cte != null) {
           final columns = source.query != null
               ? materialize(
                   _pragmaColumnMetadata(source.query!, metadata, outer, ctes))
@@ -1244,7 +1586,10 @@ final class SqliteDatabase {
             notIndexed: source.notIndexed,
             rowIdentity: source.rowIdentity,
             group: source.group.map(describe).toList(),
-            alias: source.alias ?? (cte != null ? source.table : null),
+            alias: source.alias ??
+                (cte != null || _isPragmaTableSource(source)
+                    ? source.table
+                    : null),
             join: source.join,
             on: source.on,
             using: source.using,
@@ -1294,12 +1639,15 @@ final class SqliteDatabase {
             ? asciiLower(source.table ?? '')
             : 'main.${asciiLower(source.table!)}';
         final table = metadata[key]?.$1;
-        var columns = source.query != null
-            ? materialize(
-                _pragmaColumnMetadata(source.query!, metadata, outer, ctes))
-            : source.schema == null && ctes.containsKey(key)
-                ? ctes[key]!()
-                : table?.columns;
+        var columns = _isPragmaTableSource(source) &&
+                (source.schema != null || !ctes.containsKey(key))
+            ? _pragmaSourceTable(source).columns
+            : source.query != null
+                ? materialize(
+                    _pragmaColumnMetadata(source.query!, metadata, outer, ctes))
+                : source.schema == null && ctes.containsKey(key)
+                    ? ctes[key]!()
+                    : table?.columns;
         if (columns == null) {
           throw SqlException('Unknown metadata source: ${source.table}');
         }
@@ -1313,10 +1661,10 @@ final class SqliteDatabase {
           ];
         }
         final alias = asciiLower(source.alias ?? source.table ?? '@$i');
-        qualified[alias] = columns;
+        qualified[alias] = columns.where((column) => !column.hidden).toList();
         final physical = source.table != null &&
             (source.schema != null || !ctes.containsKey(key));
-        if (physical) qualified['main.$alias'] = columns;
+        if (physical) qualified['main.$alias'] = qualified[alias]!;
         final using = source.natural
             ? columns
                 .map((c) => asciiLower(c.name))
@@ -1340,9 +1688,11 @@ final class SqliteDatabase {
                     : star[ordinal];
             local[name] = merged;
             star[ordinal] = merged;
-          } else {
+          } else if (!column.hidden) {
             local[name] = local.containsKey(name) ? null : column;
             star.add(column);
+          } else {
+            local[name] = local.containsKey(name) ? null : column;
           }
         }
         if (source.query == null && table != null && !table.withoutRowid) {
@@ -1452,6 +1802,10 @@ final class SqliteDatabase {
     metadata ??= {};
     loading ??= {};
     if (metadata.containsKey(key)) return metadata[key]!.$1;
+    if (pragmaTableColumns.containsKey(key) &&
+        !catalog.entries.any((entry) => asciiLower(entry.name) == key)) {
+      return _pragmaSourceTable(QuerySource(table: name));
+    }
     final entry = catalog.entries
         .where((e) => e.type == 'view' && asciiLower(e.name) == key)
         .firstOrNull;
@@ -1503,6 +1857,7 @@ final class SqliteDatabase {
               !scope.contains(asciiLower(source.table!))) {
             final table = _pragmaTable(source.table!, metadata, loading);
             final value = metadata![asciiLower(source.table!)] ?? (table, []);
+            metadata[asciiLower(source.table!)] = value;
             metadata['main.${asciiLower(source.table!)}'] = value;
           }
         }
@@ -1576,6 +1931,10 @@ final class SqliteDatabase {
         ]);
     for (final entry in FunctionExpr.builtinArities.entries) {
       final name = entry.key, range = entry.value;
+      if (name == 'match') {
+        rows.add(['match', BigInt.zero, 's', 'utf8', BigInt.two, BigInt.zero]);
+        continue;
+      }
       if (name == 'min' || name == 'max') {
         add(name, 'w', 1, 2097152);
         add(name, 's', variadic[name]!, 2099200);
@@ -1648,34 +2007,8 @@ final class SqliteDatabase {
     }
     parser.finish();
     final header = _pager.header;
-    if (name == 'collation_list') {
-      return QueryResult([
-        'seq',
-        'name'
-      ], [
-        [BigInt.zero, 'RTRIM'],
-        [BigInt.one, 'NOCASE'],
-        [BigInt.two, 'BINARY']
-      ]);
-    }
-    if (name == 'database_list') {
-      // StorageBackend images have no SQL attachment or filename identity.
-      return QueryResult([
-        'seq',
-        'name',
-        'file'
-      ], [
-        [BigInt.zero, 'main', '']
-      ]);
-    }
-    if (name == 'pragma_list') {
-      return QueryResult([
-        'name'
-      ], [
-        for (final name in _pragmaNames) [name]
-      ]);
-    }
-    if (name == 'function_list') return _pragmaFunctions();
+    final metadata = _readMetadataPragma(name, argument);
+    if (metadata != null) return metadata;
     if (name == 'table_list') {
       final cols = ['schema', 'name', 'type', 'ncol', 'wr', 'strict'];
       final entries = [
@@ -1756,226 +2089,6 @@ final class SqliteDatabase {
         name
       ], [
         [values[name]]
-      ]);
-    }
-    if (name == 'foreign_key_list' && argument != null) {
-      final cols = [
-        'id',
-        'seq',
-        'table',
-        'from',
-        'to',
-        'on_update',
-        'on_delete',
-        'match'
-      ];
-      final entry = catalog.entries
-          .where((e) =>
-              e.type == 'table' && asciiLower(e.name) == asciiLower(argument!))
-          .firstOrNull;
-      if (entry == null) return QueryResult(cols, []);
-      final keys = catalog.table(argument).foreignKeys.reversed.toList();
-      return QueryResult(cols, [
-        for (var i = 0; i < keys.length; i++)
-          for (var j = 0; j < keys[i].columns.length; j++)
-            [
-              BigInt.from(i),
-              BigInt.from(j),
-              keys[i].table,
-              keys[i].columns[j],
-              keys[i].targetColumns.isEmpty ? null : keys[i].targetColumns[j],
-              keys[i].onUpdate,
-              keys[i].onDelete,
-              'NONE'
-            ]
-      ]);
-    }
-    if (name == 'index_list' && argument != null) {
-      final cols = ['seq', 'name', 'unique', 'origin', 'partial'];
-      final tableEntry = catalog.entries
-          .where((e) =>
-              e.type == 'table' && asciiLower(e.name) == asciiLower(argument!))
-          .firstOrNull;
-      if (tableEntry == null) return QueryResult(cols, []);
-      final table = catalog.table(argument);
-      final entries = catalog.entries
-          .where((e) =>
-              e.type == 'index' &&
-              asciiLower(e.tableName) == asciiLower(argument!))
-          .toList();
-      if (table.withoutRowid) {
-        final ordinal = table.autoIndexPrimary.indexOf(true);
-        entries.add(CatalogEntry(
-            'index',
-            'sqlite_autoindex_${table.name}_${ordinal + 1}',
-            table.name,
-            table.rootPage,
-            null));
-        entries.sort((a, b) => a.sql == null && b.sql == null
-            ? int.parse(a.name.split('_').last)
-                .compareTo(int.parse(b.name.split('_').last))
-            : catalog.entries.indexOf(a).compareTo(catalog.entries.indexOf(b)));
-      }
-      final reversed = entries.reversed.toList();
-      return QueryResult(cols, [
-        for (var i = 0; i < reversed.length; i++)
-          [
-            BigInt.from(i),
-            reversed[i].name,
-            boolean(_indexDefinition(reversed[i]).$5),
-            _indexDefinition(reversed[i]).$4,
-            boolean(reversed[i].sql != null &&
-                SqlParser(reversed[i].sql!)
-                    .tokens
-                    .any((t) => t.keyword == 'WHERE'))
-          ]
-      ]);
-    }
-    if (['index_info', 'index_xinfo'].contains(name) && argument != null) {
-      final extended = name == 'index_xinfo';
-      final cols = [
-        'seqno',
-        'cid',
-        'name',
-        if (extended) ...['desc', 'coll', 'key']
-      ];
-      var entry = catalog.entries
-          .where((e) =>
-              e.type == 'index' && asciiLower(e.name) == asciiLower(argument!))
-          .firstOrNull;
-      if (entry == null) {
-        for (final tableEntry
-            in catalog.entries.where((e) => e.type == 'table')) {
-          final table = catalog.table(tableEntry.name);
-          if (!table.withoutRowid) continue;
-          final primary = table.autoIndexPrimary.indexOf(true);
-          if (asciiLower(argument) == asciiLower(table.name) ||
-              asciiLower(argument) ==
-                  asciiLower('sqlite_autoindex_${table.name}_${primary + 1}')) {
-            entry = CatalogEntry(
-                'index',
-                'sqlite_autoindex_${table.name}_${primary + 1}',
-                table.name,
-                table.rootPage,
-                null);
-            break;
-          }
-        }
-      }
-      if (entry == null) return QueryResult(cols, []);
-      final definition = _indexDefinition(entry);
-      final table = catalog.table(entry.tableName);
-      final keys = definition.$1.toList();
-      final descending = definition.$2.toList();
-      final collations = definition.$3.toList();
-      final keyCount = keys.length;
-      final expressions = entry.sql == null
-          ? <int>{}
-          : {
-              for (var i = 0; i < keyCount; i++)
-                if (IndexDefinition.parse(entry.sql!, table)
-                        .terms[i]
-                        .columnName ==
-                    null)
-                  i
-            };
-      if (extended) {
-        if (!table.withoutRowid) {
-          keys.add('');
-          descending.add(false);
-          collations.add('binary');
-        } else {
-          final pk = table.columns.where((c) => c.primaryKey != 0).toList()
-            ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
-          for (final col in pk) {
-            if (!List.generate(
-                    keyCount,
-                    (i) =>
-                        !expressions.contains(i) &&
-                        asciiLower(keys[i]) == asciiLower(col.name) &&
-                        collations[i] ==
-                            table.primaryKeyCollations[col.primaryKey - 1])
-                .any((v) => v)) {
-              keys.add(col.name);
-              descending.add(entry.sql != null &&
-                  table.primaryKeyDescending[col.primaryKey - 1]);
-              collations.add(table.primaryKeyCollations[col.primaryKey - 1]);
-            }
-          }
-          if (definition.$4 == 'pk') {
-            for (final column in table.storageColumns
-                .where((column) => column.primaryKey == 0)) {
-              keys.add(column.name);
-              descending.add(false);
-              collations.add(column.collation);
-            }
-          }
-        }
-      }
-      return QueryResult(cols, [
-        for (var i = 0; i < keys.length; i++)
-          [
-            BigInt.from(i),
-            BigInt.from(expressions.contains(i)
-                ? -2
-                : i >= keyCount && !table.withoutRowid
-                    ? -1
-                    : table.columns.indexWhere(
-                        (c) => asciiLower(c.name) == asciiLower(keys[i]))),
-            expressions.contains(i) || i >= keyCount && !table.withoutRowid
-                ? null
-                : keys[i],
-            if (extended) ...[
-              boolean(descending[i]),
-              collations[i].toUpperCase(),
-              boolean(i < keyCount)
-            ]
-          ]
-      ]);
-    }
-    if (['table_info', 'table_xinfo'].contains(name) && argument != null) {
-      final cols = [
-        'cid',
-        'name',
-        'type',
-        'notnull',
-        'dflt_value',
-        'pk',
-        if (name == 'table_xinfo') 'hidden'
-      ];
-      final exists =
-          ['sqlite_schema', 'sqlite_master'].contains(asciiLower(argument)) ||
-              catalog.entries.any((entry) =>
-                  asciiLower(entry.name) == asciiLower(argument!) &&
-                  ['table', 'view'].contains(entry.type));
-      if (!exists) return QueryResult(cols, []);
-      final view = catalog.entries.any((entry) =>
-          entry.type == 'view' &&
-          asciiLower(entry.name) == asciiLower(argument!));
-      final table = view ? _pragmaTable(argument) : catalog.table(argument);
-      final visible = table.columns
-          .where((c) => name == 'table_xinfo' || c.generatedExpression == null)
-          .toList();
-      return QueryResult(cols, [
-        for (var i = 0; i < visible.length; i++)
-          [
-            BigInt.from(i),
-            visible[i].name,
-            visible[i].declaredType,
-            boolean(visible[i].notNull ||
-                (table.withoutRowid ||
-                        visible[i].strict &&
-                            visible[i].name != table.rowidAlias) &&
-                    visible[i].primaryKey != 0),
-            visible[i].defaultSql,
-            BigInt.from(visible[i].primaryKey),
-            if (name == 'table_xinfo')
-              BigInt.from(visible[i].generatedExpression == null
-                  ? 0
-                  : visible[i].generatedStored
-                      ? 3
-                      : 2)
-          ]
       ]);
     }
     throw SqlException('Unsupported PRAGMA $name');

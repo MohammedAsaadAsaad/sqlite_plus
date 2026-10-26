@@ -49,7 +49,9 @@ Object? numeric(Object? value, {bool prefix = false, int encoding = 1}) {
   if (value is BigInt || value is double) return value;
   if (value is Uint8List) value = decodeSqlText(value, encoding);
   if (value is! String) return null;
-  final text = value.trim();
+  final terminator = value.indexOf('\u0000');
+  final text = trimSqlWhitespace(
+      !prefix && terminator >= 0 ? value.substring(0, terminator) : value);
   final match = RegExp(prefix
           ? r'^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?'
           : r'^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$')
@@ -58,9 +60,48 @@ Object? numeric(Object? value, {bool prefix = false, int encoding = 1}) {
   final literal = match[0]!;
   if (!literal.contains(RegExp('[.eE]'))) {
     final integer = BigInt.parse(literal);
+    if (!prefix && terminator >= 0) {
+      // SQLite's floating text scanner stops at NUL while its integer scanner
+      // checks the complete byte length. Numeric affinity consequently rounds
+      // this spelling through REAL before attempting an INTEGER representation.
+      final real = integer.toDouble();
+      return real > _minInt.toDouble() && real < -_minInt.toDouble()
+          ? BigInt.from(real)
+          : real;
+    }
     return narrowInteger(integer);
   }
   return double.tryParse(literal);
+}
+
+/// Arithmetic classifies an otherwise valid number containing NUL as REAL.
+/// CAST and affinity have separate integer conversion rules for that spelling.
+Object? arithmeticNumeric(Object? value, int encoding) {
+  final number = numeric(value, prefix: true, encoding: encoding);
+  final text = value is Uint8List ? decodeSqlText(value, encoding) : value;
+  if (number is BigInt &&
+      text is String &&
+      text.contains('\u0000') &&
+      numeric(text) != null) {
+    return number.toDouble();
+  }
+  return number;
+}
+
+/// Whitespace accepted by SQLite's numeric conversions. Dart's Unicode trim
+/// also removes characters such as NBSP and BOM, which are SQL value data.
+String trimSqlWhitespace(String value, {bool trailing = true}) {
+  bool isSpace(int unit) => unit == 32 || unit >= 9 && unit <= 13;
+  var start = 0, end = value.length;
+  while (start < end && isSpace(value.codeUnitAt(start))) {
+    start++;
+  }
+  if (trailing) {
+    while (end > start && isSpace(value.codeUnitAt(end - 1))) {
+      end--;
+    }
+  }
+  return value.substring(start, end);
 }
 
 bool? truth(Object? value, [int encoding = 1]) {

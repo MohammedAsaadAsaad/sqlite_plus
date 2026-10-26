@@ -85,6 +85,30 @@ void main() {
     }
   });
 
+  test('unused WITH mutation functions are resolved only if referenced',
+      () async {
+    final db = await database();
+    expect(
+        (await db.execute('WITH unused AS(SELECT missing_function()) '
+                'UPDATE t SET x=x+1'))
+            .changes,
+        3);
+    expect(
+        (await db.execute('WITH unused AS(SELECT abs(1,2)) '
+                'DELETE FROM t WHERE 0'))
+            .changes,
+        0);
+    await expectLater(
+        db.execute('WITH used AS(SELECT missing_function() AS v) '
+            'UPDATE t SET x=(SELECT v FROM used)'),
+        throwsA(isA<SqlException>()));
+    expect((await db.query('SELECT x FROM t ORDER BY id')).rows, [
+      [BigInt.two],
+      [BigInt.from(3)],
+      [BigInt.from(4)]
+    ]);
+  });
+
   test('correlated views refresh their dependency order after earlier rows',
       () async {
     final db = await database();

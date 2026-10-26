@@ -27,7 +27,7 @@ development reference tools. Production engine code is Pure Dart.
 | DML | Verified subset | INSERT VALUES/multirow/DEFAULT VALUES/SELECT, REPLACE shorthand, UPDATE/DELETE, UPSERT target/DO NOTHING/DO UPDATE, RETURNING with owner RPC; expression/partial conflict targets; combined conflict policies verified; WITH/RECURSIVE DML, scalar/correlated subqueries, target aliases, UPDATE FROM, tuple SET/UPSERT assignments; broader syntax pending |
 | PRAGMAs | Verified subset | Header/table/index/FK metadata, integrity_check/quick_check/foreign_key_check, mutable foreign_keys/recursive_triggers/user_version/application_id; table_list/collation_list/function_list/pragma_list/database_list and metadata-only scalar/CAST view types; bounded to supported images/schema |
 | Row values | Verified subset | Per-field comparison/IN/BETWEEN/CASE affinity, NULLs, collations and callback order; wildcard-width preparation; 1,298 pinned cases |
-| Maintenance | Verified subset | ANALYZE/sqlite_stat1, REINDEX, VACUUM main; 285 native cross-open snapshots plus stale expression-index repair; stats-driven costing and VACUUM INTO remain unsupported |
+| Maintenance | Verified subset | ANALYZE/sqlite_stat1, REINDEX, VACUUM main; 285 native cross-open snapshots plus stale expression-index repair; STAT1 prefix ranking implemented, native cost-model equivalence and VACUUM INTO unsupported |
 | Schema qualifiers / index hints | Verified main subset | main qualification bypasses CTE shadows; INDEXED BY validates index/predicate and executes single-table index plan; NOT INDEXED retains rowid plans; joins still materialize inputs; 69 pinned cases across encodings |
 | Connection counters | Verified subset | CHANGES/TOTAL_CHANGES/LAST_INSERT_ROWID, trigger-local restoration, transaction rollback/FAIL, FK actions and DROP implicit deletes; 48 pinned multi-statement sequences across encodings plus isolation/schema tests |
 | Transactions / savepoints | Implemented for image writer | SQL snapshots, nested savepoints, deferred FK commit; pinned 14-step transaction sequence |
@@ -36,7 +36,7 @@ development reference tools. Production engine code is Pure Dart.
 | Isolate ownership / file lease | Single-owner architecture | Serialized SendPort requests, client-owned transactions, loopback duplicate-owner guard, native SQLite lock-byte exclusion and handoff |
 | ORM / generator | Placeholders, M7 pending | No behavior or tests yet |
 | JSON/JSONB / FTS / R-tree / virtual tables | M8 pending | No implementation claim |
-| Linux x64 | Development verified | Dart 3.13.7; 7,481 engine tests, format, fatal-info analysis and locked dependencies pass |
+| Linux x64 | Development verified | Dart 3.13.7; 9,632 engine tests, format, fatal-info analysis and locked dependencies pass |
 | Windows/macOS/Android/iOS/Web | Unverified, M9 pending | Core has no dart:io dependency; optional file/owner adapter does; no execution claim |
 
 ## Query and format limits
@@ -98,17 +98,17 @@ Multi-database atomic transactions and other journal modes remain unsupported.
 
 ## Remaining milestones / release gates
 
-M6 is **open**: SQL/function/PRAGMA breadth, remaining UPSERT shapes, ALTER variants,
-additional trigger/FK shapes, optimizer coverage and full differential
-hardening remain. M7 ORM/generator, M8 extensions and M9 browser/platform/release
+M6's bounded main-schema engine baseline is defined separately from the remaining
+SQLite targets in [ENGINE_SUPPORT.md](docs/ENGINE_SUPPORT.md). TEMP/ATTACH,
+unlisted PRAGMA state, native EXPLAIN/cost-model equivalence, custom collations
+and broader conformance remain unsupported. M7 ORM/generator, M8 extensions and M9 browser/platform/release
 work have not passed their gates. Saved AOT benchmarks contain real raw samples
 for small Linux memory workloads, not the required 1k/10k/100k/1m scale and
 platform/ORM/native-engine comparison matrix. No release-ready or all-milestones
 completion claim is made.
 
-M6 completion audit still has concrete open items: broader schema conformance; additional trigger/FK interactions;
-remaining SQL/function/PRAGMA conformance and hardening.
-These are not marked implemented by passing the expanded subset tests.
+The master specification's full SQLite target is not marked implemented by
+passing the bounded engine gate.
 
 Table-rename verification includes qualified/wildcard/correlated views, aliases,
 CTE shadows, trigger owners/WHEN/DML and the pinned trigger UPSERT EXCLUDED
@@ -122,9 +122,10 @@ Constraint key collation/direction metadata and WITHOUT ROWID index suffixes are
 verified against 837 native snapshots. Repeated primary-key terms reject.
 Parent actions whose PK collation differs from its column declaration reject
 atomically; pinned SQLite can leave orphan rows here. Views now prepare metadata
-and defer rows without callbacks. Full INSERT SELECT streaming and native CTE
-materialization/flattening are still open. These differences are explicit limits,
-not general SQLite conformance claims.
+and defer rows without callbacks. Eligible INSERT SELECT inputs stream, while
+target interaction and RETURNING retain materialization boundaries. Ordinary/
+NOT MATERIALIZED relations substitute eligible expressions and MATERIALIZED
+retains values in the pinned cases. Native optimizer equivalence is not claimed.
 
 STAT1 planning ranks supported single-table index candidates using prefix row
 estimates, preserving mandatory hints and partial-index proofs. Thirty native
@@ -144,3 +145,16 @@ oracle, including signed-64-bit/hex boundaries and malformed tokens. Row-valued
 UPDATE/UPSERT assignments have 459 native operation comparisons across encodings;
 subqueries compute a vector once and fields evaluate in native target-column
 order. Generated columns named rowid/_rowid_/oid remain read-only.
+
+Execution-order hardening adds 321 streaming scenarios (1,740 live operations and
+321 native cross-open images), 1,053 CTE/scalar/EXISTS cases, 180 aggregate cases,
+261 window cases and 306 generated-column read cases. Window inputs cache each
+argument/filter and preserve tested lookahead/sorter/coroutine boundaries;
+callback-bearing WHERE filtering can still buffer before window output.
+
+Pattern function dispatch and stored view/trigger/default signature preparation
+have 6,438 native operations. Numeric text coercion has 1,392 operations covering
+ASCII/Unicode whitespace, NUL, integer prefixes and storage-class boundaries.
+Table-valued metadata PRAGMAs have 576 comparisons including ALTER dependencies;
+forward-source/reordered correlation, correlated RIGHT/FULL sources and hidden
+argument IN subqueries remain explicit limits.

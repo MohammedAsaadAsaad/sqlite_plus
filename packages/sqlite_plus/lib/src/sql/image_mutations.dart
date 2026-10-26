@@ -19,6 +19,8 @@ import 'schema_rewriter.dart';
 import 'column_rewriter.dart';
 import 'expressions.dart';
 import 'connection_state.dart';
+import 'functions.dart';
+import 'windows.dart';
 
 part 'image_maintenance.dart';
 
@@ -590,7 +592,7 @@ final class ImageMutations {
         value is double &&
         value.isFinite &&
         value == value.truncateToDouble() &&
-        value >= -(BigInt.one << 63).toDouble() &&
+        value > -(BigInt.one << 63).toDouble() &&
         value < (BigInt.one << 63).toDouble()) {
       value = BigInt.from(value);
     }
@@ -1020,6 +1022,102 @@ final class ImageMutations {
 
   final List<String> _activeTriggers = [];
   bool _recursiveTriggers = false;
+  final Set<String> _preparingTriggerPrograms = {};
+
+  void _resolveQueryFunctions(SelectStatement query) {
+    for (final name in usedCteNames(query)) {
+      _resolveQueryFunctions(query.ctes[name]!.$2);
+    }
+    for (final source in query.allSources) {
+      if (source.query != null) _resolveQueryFunctions(source.query!);
+      if (source.on != null) _resolveExpressionFunctions(source.on!);
+      for (final argument in source.pragmaArguments ?? const <Expr>[]) {
+        _resolveExpressionFunctions(argument);
+      }
+    }
+    for (final expression in [
+      ...query.items.map((item) => item.expression),
+      query.where,
+      ...query.groupBy,
+      query.having,
+      ...query.order.map((term) => term.expression),
+      query.limit,
+      query.offset
+    ].whereType<Expr>()) {
+      _resolveExpressionFunctions(expression);
+    }
+    for (final part in query.compounds) {
+      _resolveQueryFunctions(part.$2);
+    }
+  }
+
+  void _resolveExpressionFunctions(Expr expression) {
+    if (expression is FunctionExpr) expression.resolveSignature();
+    if (expression is WindowExpr) {
+      expression.function.resolveSignature();
+      if (!expression.function.isAggregate &&
+          !FunctionExpr.windowNames.contains(expression.function.key)) {
+        throw const SqlException('Function cannot be a window');
+      }
+    }
+    if (expression is SubqueryExpr) {
+      _resolveQueryFunctions(expression.statement);
+    }
+    if (expression is InSelectExpr) {
+      _resolveQueryFunctions(expression.statement);
+    }
+    for (final child in expression.children) {
+      _resolveExpressionFunctions(child);
+    }
+  }
+
+  /// Resolve applicable stored programs before evaluating the invoking DML,
+  /// including when its WHERE/LIMIT would produce no rows. Merely inspecting
+  /// another event's trigger never resolves that trigger's functions.
+  Future<void> _prepareTriggerPrograms(
+      _Table table, String event, Set<String> changed) async {
+    for (final object in other.where((object) =>
+        object.type == 'trigger' &&
+        asciiLower(object.tableName) == asciiLower(table.schema.name))) {
+      final trigger = TriggerDefinition.parse(object.sql!);
+      if (trigger.event != event ||
+          trigger.columns.isNotEmpty &&
+              !trigger.columns.any(changed.contains)) {
+        continue;
+      }
+      final key = asciiLower(trigger.name);
+      if (!_preparingTriggerPrograms.add(key)) continue;
+      try {
+        final values = <String, Object?>{
+          for (final prefix in [
+            if (event != 'INSERT') 'old',
+            if (event != 'DELETE') 'new'
+          ])
+            for (final column in [
+              ...table.schema.columns.map((column) => asciiLower(column.name)),
+              if (!table.schema.withoutRowid) ...['rowid', '_rowid_', 'oid']
+            ])
+              '$prefix.$column': null
+        };
+        if (trigger.whenSql != null) {
+          final bound =
+              _bindTrigger('SELECT 1 WHERE (${trigger.whenSql})', values);
+          _resolveQueryFunctions(SqlParser(bound.$1).select());
+        }
+        for (final statement in trigger.statements) {
+          final parser = SqlParser(statement);
+          if (['SELECT', 'WITH', 'VALUES'].contains(parser.current.keyword)) {
+            _resolveQueryFunctions(parser.select());
+          } else {
+            final bound = _bindTrigger(statement, values);
+            await execute(bound.$1, bound.$2, compileOnly: true);
+          }
+        }
+      } finally {
+        _preparingTriggerPrograms.remove(key);
+      }
+    }
+  }
 
   Future<_Table?> _target(String name) async {
     final physical = _tables[asciiLower(name)];
@@ -1092,7 +1190,7 @@ final class ImageMutations {
         .toList()
         .reversed;
     for (final object in definitions) {
-      final trigger = TriggerDefinition.parse(object.sql!);
+      var trigger = TriggerDefinition.parse(object.sql!);
       final key = asciiLower(trigger.name);
       if (trigger.timing != timing ||
           trigger.event != event ||
@@ -1101,6 +1199,8 @@ final class ImageMutations {
               !trigger.columns.any(columns.contains)) {
         continue;
       }
+      trigger =
+          TriggerDefinition.parse(object.sql!, deferFunctionResolution: false);
       if (_activeTriggers.length >= 1000) {
         throw const SqlException('Trigger recursion limit');
       }
@@ -1395,6 +1495,7 @@ final class ImageMutations {
       {bool foreignKeys = false,
       bool inTransaction = false,
       bool compileOnly = false,
+      bool deferTriggerFunctions = false,
       bool? recursiveTriggers}) async {
     final outer = _executionDepth++ == 0;
     _subqueries.add(null);
@@ -1406,6 +1507,7 @@ final class ImageMutations {
           foreignKeys: foreignKeys,
           inTransaction: inTransaction,
           compileOnly: compileOnly,
+          deferTriggerFunctions: deferTriggerFunctions,
           recursiveTriggers: recursiveTriggers);
       _counterFrames.last?.finish();
       return result;
@@ -1434,10 +1536,13 @@ final class ImageMutations {
       {bool foreignKeys = false,
       bool inTransaction = false,
       bool compileOnly = false,
+      bool deferTriggerFunctions = false,
       bool? recursiveTriggers}) async {
     if (recursiveTriggers != null) _recursiveTriggers = recursiveTriggers;
     sql = SqlParser.canonicalSchemaCreation(sql);
-    final p = SqlParser(sql);
+    final p = SqlParser(sql,
+        deferFunctionResolution: deferTriggerFunctions,
+        deferFunctionValidation: deferTriggerFunctions);
     final leadingCtes = <String, (List<String>, SelectStatement)>{};
     final cteMaterialization = <String, bool>{};
     if (p.take('WITH')) {
@@ -1462,7 +1567,14 @@ final class ImageMutations {
           if (p.take('MATERIALIZED')) cteMaterialization[key] = true;
         }
         p.require('(');
-        final query = p.select(nested: true);
+        final savedResolution = p.deferFunctionResolution;
+        late SelectStatement query;
+        p.deferFunctionResolution = true;
+        try {
+          query = p.select(nested: true);
+        } finally {
+          p.deferFunctionResolution = savedResolution;
+        }
         p.require(')');
         leadingCtes[key] = (columns, query);
       } while (p.take(','));
@@ -1488,7 +1600,8 @@ final class ImageMutations {
         if (unique || parameters.isNotEmpty) {
           throw const SqlException('Invalid trigger definition');
         }
-        final trigger = TriggerDefinition.parse(sql);
+        final trigger =
+            TriggerDefinition.parse(sql, deferFunctionValidation: true);
         final exists = other.any((o) =>
             o.type == 'trigger' &&
             asciiLower(o.name) == asciiLower(trigger.name));
@@ -1526,7 +1639,8 @@ final class ImageMutations {
             throw const SqlException('RETURNING prohibited in trigger bodies');
           }
           if (['SELECT', 'WITH', 'VALUES'].contains(body.current.keyword)) {
-            final select = SqlParser(statement).select();
+            final select =
+                SqlParser(statement, deferFunctionResolution: true).select();
             if (select.parameterCount != 0) {
               throw const SqlException(
                   'Parameters prohibited in trigger SELECT');
@@ -1537,7 +1651,8 @@ final class ImageMutations {
               throw const SqlException('Invalid trigger statement');
             }
             final bound = _bindTrigger(statement, values);
-            await execute(bound.$1, bound.$2, compileOnly: true);
+            await execute(bound.$1, bound.$2,
+                compileOnly: true, deferTriggerFunctions: true);
           }
         }
         other.add(ImageObject('trigger', trigger.name, table.schema.name, sql));
@@ -1570,7 +1685,9 @@ final class ImageMutations {
           p.require(')');
         }
         p.require('AS');
-        final definition = SqlParser(sql.substring(p.current.offset)).select();
+        final definition = SqlParser(sql.substring(p.current.offset),
+                deferFunctionResolution: true)
+            .select();
         if (definition.parameterCount != 0 || parameters.isNotEmpty) {
           throw const SqlException('Parameters prohibited in view');
         }
@@ -2211,6 +2328,7 @@ final class ImageMutations {
     final input = <String>[];
     final inserts = <List<Expr>>[];
     var insertSelect = false;
+    (String, SelectStatement)? insertQuery;
     final assignments = <String, Expr>{};
     List<QuerySource>? fromSources;
     Expr? where;
@@ -2252,30 +2370,12 @@ final class ImageMutations {
         }
         final query =
             '$ctePrefix${sql.substring(p.current.offset, p.tokens[tail].offset)}';
-        final queryParser = SqlParser(query);
+        final queryParser = SqlParser(query,
+            deferFunctionResolution: deferTriggerFunctions,
+            deferFunctionValidation: deferTriggerFunctions);
         final statement = queryParser.select();
         p.parameterNames.addAll(queryParser.parameterNames);
-        if (!compileOnly) {
-          _beginCounters();
-          final storage = MemoryStorageBackend();
-          await storage.write(0, serialize());
-          final db = await SqliteDatabase.openReadOnly(storage,
-              functions: SqlFunctionRegistry.current);
-          try {
-            final params = parameters.take(statement.parameterCount).toList();
-            final result = _triggerContexts.isEmpty
-                ? await db.query(query, params)
-                : await db.queryWithContext(
-                    query, params, _triggerContexts.last);
-            if (result.columns.length != input.length) {
-              throw const SqlException('INSERT SELECT width mismatch');
-            }
-            inserts.addAll(
-                result.rows.map((row) => row.map(Literal.new).toList()));
-          } finally {
-            await db.close();
-          }
-        }
+        insertQuery = (query, statement);
         p.position = tail;
         p.parameterCount = statement.parameterCount;
       } else {
@@ -2581,6 +2681,52 @@ final class ImageMutations {
             updated: upsert.assignments.keys.toSet());
       }
     }
+    if (!deferTriggerFunctions) {
+      for (final column in schema.columns) {
+        final name = asciiLower(column.name);
+        final defaultExpression = column.defaultExpression;
+        final replacedNull = column.notNull &&
+            (insert || assignments.containsKey(name)) &&
+            (policy == 'REPLACE' ||
+                policy == 'DEFAULT' && column.notNullPolicy == 'REPLACE');
+        if (defaultExpression == null ||
+            column.name == schema.rowidAlias ||
+            column.generatedExpression != null ||
+            !(insert && !input.contains(name) || replacedNull)) {
+          continue;
+        }
+        _resolveExpressionFunctions(defaultExpression);
+        if (defaultExpression.containsAggregate ||
+            defaultExpression.containsWindow) {
+          throw const SqlException('Aggregate/window in schema default');
+        }
+      }
+      await _prepareTriggerPrograms(
+          table,
+          insert
+              ? 'INSERT'
+              : update
+                  ? 'UPDATE'
+                  : 'DELETE',
+          assignments.keys.toSet());
+      for (final upsert in upserts.where((upsert) => !upsert.nothing)) {
+        await _prepareTriggerPrograms(
+            table, 'UPDATE', upsert.assignments.keys.toSet());
+      }
+      if (insertQuery != null) _resolveQueryFunctions(insertQuery.$2);
+      for (final expression in [
+        ...inserts.expand((row) => row),
+        ...assignments.values,
+        if (where != null) where,
+        for (final clause in upserts) ...[
+          ...clause.assignments.values,
+          if (clause.where != null) clause.where!
+        ],
+        ...returning.map((item) => item.expression!)
+      ]) {
+        _resolveExpressionFunctions(expression);
+      }
+    }
     if (compileOnly) return MutationImage(original, 0, null);
     _beginCounters();
     final bound = parameters.map(sqlValue).toList();
@@ -2705,12 +2851,16 @@ final class ImageMutations {
         await reader.close();
       }
     }
-    // Self-reading VALUES are materialized before writes, including callbacks
-    // in the other VALUES terms. This also isolates them from row triggers.
+    // Multi-row self-reading VALUES are materialized before writes, including
+    // callbacks in the other terms. A single VALUES row evaluates directly in
+    // declared destination order, including with triggers and RETURNING.
     if (insert &&
-        (other.any((object) =>
+        inserts.length > 1 &&
+        (hasReturning ||
+            other.any((object) =>
                 object.type == 'trigger' &&
-                asciiLower(object.tableName) == asciiLower(name)) ||
+                asciiLower(object.tableName) == asciiLower(name) &&
+                TriggerDefinition.parse(object.sql!).event == 'INSERT') ||
             inserts
                 .expand((row) => row)
                 .any((expr) => queries(expr).any(readsTarget)))) {
@@ -2721,6 +2871,35 @@ final class ImageMutations {
             .toList();
       }
     }
+    Stream<List<Expr>> selectedInsertRows() async* {
+      final (query, statement) = insertQuery!;
+      final storage = MemoryStorageBackend();
+      await storage.write(0, serialize());
+      final reader = await SqliteDatabase.openReadOnly(storage,
+          functions: SqlFunctionRegistry.current);
+      try {
+        final execution = await reader.prepareInsertSelect(
+            query,
+            parameters.take(statement.parameterCount).toList(),
+            _triggerContexts.lastOrNull);
+        if (execution.columns.length != input.length) {
+          throw const SqlException('INSERT SELECT width mismatch');
+        }
+        final materialize = hasReturning ||
+            other.any((object) =>
+                object.type == 'trigger' &&
+                asciiLower(object.tableName) == asciiLower(name) &&
+                TriggerDefinition.parse(object.sql!).event == 'INSERT') ||
+            reader.queryReadsTable(statement, name);
+        final rows = materialize ? execution.rows.toList() : execution.rows;
+        for (final row in rows) {
+          yield row.map(Literal.new).toList();
+        }
+      } finally {
+        await reader.close();
+      }
+    }
+
     BigInt id(Object? value) {
       value = value is String ? numeric(value) : value;
       if (value is double &&
@@ -3181,24 +3360,41 @@ final class ImageMutations {
       BigInt largestRowid() => table.rows.isEmpty
           ? BigInt.zero
           : table.rows.map((r) => r.rowId).reduce((a, b) => a > b ? a : b);
-      for (final expressions in inserts) {
+      await for (final expressions in insertQuery == null
+          ? Stream.fromIterable(inserts)
+          : selectedInsertRows()) {
         if (triggered) insertMax = largestRowid();
         final data = <String, Object?>{};
         final context = _constantContext(bound);
-        for (var i = 0; i < input.length; i++) {
-          data[input[i]] = expressions[i].evaluate(context);
+        final singleValues = insertQuery == null && inserts.length == 1;
+        if (!singleValues) {
+          for (var i = 0; i < input.length; i++) {
+            data[input[i]] = expressions[i].evaluate(context);
+          }
         }
         for (final column in schema.columns) {
           final key = asciiLower(column.name);
-          if (!data.containsKey(key)) {
-            // INTEGER PRIMARY KEY defaults never override automatic rowids.
-            // Defaults for supplied columns must not execute user callbacks.
+          final slot = singleValues ? input.indexOf(key) : -1;
+          if (slot >= 0) {
+            data[key] = expressions[slot].evaluate(context);
+          } else if (!data.containsKey(key)) {
+            // Single VALUES evaluates supplied fields and defaults in declared
+            // destination order. Coroutine inputs have already produced their
+            // complete row before omitted defaults run.
             data[key] = column.name == schema.rowidAlias ||
                     column.generatedExpression != null
                 ? null
                 : column.defaultExpression
                         ?.evaluate(EvalContext({}, {}, bound, encoding)) ??
                     column.defaultValue;
+          }
+        }
+        if (singleValues) {
+          // An implicit rowid target follows all declared table fields.
+          for (var i = 0; i < input.length; i++) {
+            if (!data.containsKey(input[i])) {
+              data[input[i]] = expressions[i].evaluate(context);
+            }
           }
         }
         Object? requested = schema.rowidAlias == null

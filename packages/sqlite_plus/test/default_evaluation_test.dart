@@ -25,8 +25,7 @@ void main() {
     ]);
   });
 
-  test(
-      'VALUES callbacks precede omitted defaults and triggers materialize inputs',
+  test('RETURNING and triggers materialize VALUES before omitted defaults',
       () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
@@ -36,8 +35,8 @@ void main() {
     final first = await db
         .execute('INSERT INTO t(y) VALUES(tick()),(tick()) RETURNING *');
     expect(first.returning!.rows, [
-      [BigInt.two, BigInt.one],
-      [BigInt.from(4), BigInt.from(3)]
+      [BigInt.from(3), BigInt.one],
+      [BigInt.from(4), BigInt.two]
     ]);
     calls = 0;
     await db.execute('CREATE TABLE audit(x)');

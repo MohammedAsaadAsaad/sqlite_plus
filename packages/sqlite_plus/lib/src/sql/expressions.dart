@@ -371,7 +371,8 @@ final class CastExpr extends Expr {
     final affinity = affinityFor(type);
     if (upper.contains('INT')) {
       if (value is BigInt || value is double) return toSqlInteger(value);
-      final text = stringify(value, context.encoding).trimLeft();
+      final text = trimSqlWhitespace(stringify(value, context.encoding),
+          trailing: false);
       final prefix = RegExp(r'^[+-]?[0-9]+').firstMatch(text)?[0];
       return clampInteger(prefix == null ? BigInt.zero : BigInt.parse(prefix));
     }
@@ -539,6 +540,8 @@ final class SubqueryExpr extends Expr {
     if (callback == null) {
       throw const SqlException('Subquery context unavailable');
     }
+    statement.subqueryFirstRowOnly = true;
+    statement.subqueryExists = exists;
     final result = callback(statement, context);
     final affinities = preparedColumnAffinities;
     return affinities != null && affinities.length == result.columns.length

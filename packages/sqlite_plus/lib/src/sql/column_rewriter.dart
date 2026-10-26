@@ -20,8 +20,8 @@ void prepareSubqueryWidths(
   void visit(SelectStatement query, _Ctes inherited) {
     final ctes = resolver.ctes(query, inherited);
     query.preparedColumnCount = resolver.columns(query, inherited).length;
-    for (final entry in query.ctes.values) {
-      visit(entry.$2, ctes);
+    for (final name in usedCteNames(query)) {
+      visit(query.ctes[name]!.$2, ctes);
     }
     for (final source in query.leafSources) {
       if (source.query != null) visit(source.query!, ctes);
@@ -42,7 +42,8 @@ void prepareSubqueryWidths(
       ...query.order.map((term) => term.expression),
       query.limit,
       query.offset,
-      ...query.allSources.map((source) => source.on)
+      ...query.allSources.map((source) => source.on),
+      ...query.allSources.expand((source) => source.pragmaArguments ?? <Expr>[])
     ].whereType<Expr>();
     for (final expr in expressions) {
       expression(expr);
@@ -178,6 +179,15 @@ final class _Columns {
     return result;
   }
 
+  bool pragmaSource(QuerySource source, _Ctes scope) {
+    final key = asciiLower(source.table ?? '');
+    return pragmaTableColumns.containsKey(key) &&
+        (source.pragmaArguments != null ||
+            !tables.containsKey(key) &&
+                !views.containsKey(key) &&
+                (source.schema != null || !scope.containsKey(key)));
+  }
+
   List<String> source(QuerySource source, _Ctes scope) {
     if (source.group.isNotEmpty) {
       final query = SelectStatement(
@@ -187,6 +197,7 @@ final class _Columns {
     }
     if (source.query != null) return _unique(columns(source.query!, scope));
     final key = asciiLower(source.table!);
+    if (pragmaSource(source, scope)) return pragmaTableColumns[key]!;
     return source.schema == null && scope.containsKey(key)
         ? scope[key]!()
         : relation(key);
@@ -428,7 +439,20 @@ final class _ColumnVisitor {
             qualifiedNames: resolver.groupQualifiedNames(source, ctes)));
         continue;
       }
-      if (source.query != null) {
+      if (resolver.pragmaSource(source, ctes)) {
+        final name = asciiLower(source.table!);
+        const implicit = {'rowid', '_rowid_', 'oid'};
+        sources.add(_SourceColumns(
+            asciiLower(source.alias ?? source.table!),
+            {
+              ...pragmaTableColumns[name]!,
+              if (pragmaTableHasArgument(name)) ...{'arg', 'schema'},
+              ...implicit
+            },
+            false,
+            mainQualified: true,
+            implicit: implicit));
+      } else if (source.query != null) {
         query(source.query!, outer, ctes);
         sources.add(_SourceColumns(asciiLower(source.alias ?? '@$i'),
             resolver.source(source, ctes).toSet(), false));
@@ -491,6 +515,9 @@ final class _ColumnVisitor {
       final source = querySources[i];
       if (source.on != null) {
         expression(source.on!, scope, ctes, aliases: onAliases.keys.toSet());
+      }
+      for (final argument in source.pragmaArguments ?? const <Expr>[]) {
+        expression(argument, scope, ctes);
       }
     }
     // Resolve wildcard names as well as explicit expressions without running SQL.

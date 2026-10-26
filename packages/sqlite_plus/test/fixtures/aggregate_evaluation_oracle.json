@@ -1,0 +1,6335 @@
+{
+  "source_id": "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+  "suites": [
+    {
+      "encoding": 1,
+      "cases": [
+        {
+          "sql": "SELECT sum(visit(id)),sum(visit(id)+0) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id))",
+            "sum(visit(id)+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT sum(visit(id)),sum(visit(id)),count(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id))",
+            "sum(visit(id))",
+            "count(visit(id))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT sum(visit(id)),count(visit(v)),total(visit(v)) FROM t WHERE keep(id)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id))",
+            "count(visit(v))",
+            "total(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "2"
+              },
+              8.0
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:4",
+            "visit:4",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:4",
+            "visit:4",
+            "keep:4",
+            "visit:4",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT sum(visit(id)) FILTER(WHERE keep(id)),count(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id)) FILTER(WHERE keep(id))",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "3"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:4",
+            "keep:2",
+            "visit:2",
+            "keep:3",
+            "visit:3",
+            "visit:4",
+            "keep:4",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT sum(DISTINCT visit(v)),count(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(DISTINCT visit(v))",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "6"
+              },
+              {
+                "integer": "3"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:4",
+            "visit:2",
+            "visit:2",
+            "visit:4",
+            "visit:4",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,max(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "max(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FILTER(WHERE keep(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v)) FILTER(WHERE keep(id))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:4",
+            "keep:2",
+            "keep:3",
+            "visit:4",
+            "keep:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(NULL)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(NULL))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "4"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:null",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(DISTINCT visit(NULL)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(DISTINCT visit(NULL))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "4"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:null",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(NULL)) FILTER(WHERE id<3) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(NULL)) FILTER(WHERE id<3)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FILTER(WHERE 0) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v)) FILTER(WHERE 0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              null
+            ]
+          ],
+          "trace": []
+        },
+        {
+          "sql": "SELECT id,min(DISTINCT visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(DISTINCT visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,max(DISTINCT visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "max(DISTINCT visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FILTER(WHERE id=4) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v)) FILTER(WHERE id=4)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "4"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v) ORDER BY id DESC) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v) ORDER BY id DESC)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT visit(k),count(*) FROM t GROUP BY visit(k)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "visit(k)",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              "A",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "a",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:b",
+            "visit:a",
+            "visit:b",
+            "visit:A"
+          ]
+        },
+        {
+          "sql": "SELECT visit(k)||'!',count(*) FROM t GROUP BY visit(k)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "visit(k)||'!'",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              "A!",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "a!",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b!",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:b",
+            "visit:a",
+            "visit:b",
+            "visit:A",
+            "visit:A",
+            "visit:a",
+            "visit:b"
+          ]
+        },
+        {
+          "sql": "SELECT visit(k) COLLATE NOCASE,count(*) FROM t GROUP BY visit(k) COLLATE NOCASE",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "visit(k) COLLATE NOCASE",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              "a",
+              {
+                "integer": "2"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:b",
+            "visit:a",
+            "visit:b",
+            "visit:A"
+          ]
+        },
+        {
+          "sql": "SELECT k,fold_a(visit(v)),fold_b(visit(id)) FROM t GROUP BY k",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "fold_a(visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "A",
+              "null",
+              "4"
+            ],
+            [
+              "a",
+              "2",
+              "2"
+            ],
+            [
+              "b",
+              "4|4",
+              "1|3"
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "a:finish",
+            "b:finish",
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|2|4|null",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),fold_a(visit(v)),fold_b(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "fold_a(visit(v))",
+            "fold_b(visit(v))"
+          ],
+          "rows": [
+            [
+              "4|2|4|null",
+              "4|2|4|null",
+              "4|2|4|null"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "visit:null",
+            "a:null",
+            "visit:null",
+            "b:null",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t WHERE keep(id)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|4|null",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)) FILTER(WHERE keep(id)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v)) FILTER(WHERE keep(id))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|4|null",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "visit:2",
+            "b:2",
+            "keep:3",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(DISTINCT visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(DISTINCT visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|2|null",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v) ORDER BY id DESC),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v) ORDER BY id DESC)",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|4|2|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:4",
+            "a:2",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_b(visit(id)),fold_a(visit(v) ORDER BY id DESC) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_b(visit(id))",
+            "fold_a(visit(v) ORDER BY id DESC)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "null|4|2|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "b:1",
+            "visit:4",
+            "visit:2",
+            "b:2",
+            "visit:2",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "visit:null",
+            "b:finish",
+            "a:null",
+            "a:4",
+            "a:2",
+            "a:4",
+            "a:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v) ORDER BY visit(id) DESC),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v) ORDER BY visit(id) DESC)",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|4|2|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:4",
+            "a:2",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v) ORDER BY visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|2|4|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:2",
+            "a:4",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(DISTINCT visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(DISTINCT visit(v) ORDER BY visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|2|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:2",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),tick() FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "tick()"
+          ],
+          "rows": [
+            [
+              "4|2|4|null",
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:2",
+            "a:2",
+            "visit:4",
+            "a:4",
+            "visit:null",
+            "a:null",
+            "a:finish",
+            "tick:1"
+          ]
+        },
+        {
+          "sql": "SELECT k,fold_a(visit(v)),tick() FROM t GROUP BY k",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "fold_a(visit(v))",
+            "tick()"
+          ],
+          "rows": [
+            [
+              "A",
+              "null",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "a",
+              "2",
+              {
+                "integer": "2"
+              }
+            ],
+            [
+              "b",
+              "4|4",
+              {
+                "integer": "3"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "a:null",
+            "a:finish",
+            "tick:1",
+            "visit:2",
+            "a:2",
+            "a:finish",
+            "tick:2",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "a:4",
+            "a:finish",
+            "tick:3"
+          ]
+        },
+        {
+          "sql": "SELECT k,count(visit(v)) FROM t WHERE keep(id) GROUP BY visit(k)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              "A",
+              {
+                "integer": "0"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:b",
+            "keep:2",
+            "keep:3",
+            "visit:b",
+            "keep:4",
+            "visit:A",
+            "visit:null",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(v))>0",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              "a",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:2",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(id))>0",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              "A",
+              {
+                "integer": "0"
+              }
+            ],
+            [
+              "a",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:4",
+            "visit:2",
+            "visit:2",
+            "visit:4",
+            "visit:1",
+            "visit:4",
+            "visit:3"
+          ]
+        },
+        {
+          "sql": "SELECT count(visit(v)),count(visit(v)) FROM t WHERE 0",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "count(visit(v))",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "0"
+              },
+              {
+                "integer": "0"
+              }
+            ]
+          ],
+          "trace": []
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|2|1",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:2",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|2|1",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:2",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4",
+            "a:1",
+            "b:1",
+            "a:2",
+            "b:2",
+            "a:3",
+            "b:3",
+            "a:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|2|1",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4",
+            "b:1",
+            "b:2",
+            "b:3",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:2",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "8"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|3|4",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|1",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "8"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|3|4",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|1",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "8"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|3|4",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "a:1",
+            "b:1",
+            "a:3",
+            "b:3",
+            "a:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|1",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "b:1",
+            "b:3",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": 2,
+      "cases": [
+        {
+          "sql": "SELECT sum(visit(id)),sum(visit(id)+0) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id))",
+            "sum(visit(id)+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT sum(visit(id)),sum(visit(id)),count(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id))",
+            "sum(visit(id))",
+            "count(visit(id))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT sum(visit(id)),count(visit(v)),total(visit(v)) FROM t WHERE keep(id)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id))",
+            "count(visit(v))",
+            "total(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "2"
+              },
+              8.0
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:4",
+            "visit:4",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:4",
+            "visit:4",
+            "keep:4",
+            "visit:4",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT sum(visit(id)) FILTER(WHERE keep(id)),count(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id)) FILTER(WHERE keep(id))",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "3"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:4",
+            "keep:2",
+            "visit:2",
+            "keep:3",
+            "visit:3",
+            "visit:4",
+            "keep:4",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT sum(DISTINCT visit(v)),count(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(DISTINCT visit(v))",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "6"
+              },
+              {
+                "integer": "3"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:4",
+            "visit:2",
+            "visit:2",
+            "visit:4",
+            "visit:4",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,max(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "max(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FILTER(WHERE keep(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v)) FILTER(WHERE keep(id))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:4",
+            "keep:2",
+            "keep:3",
+            "visit:4",
+            "keep:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(NULL)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(NULL))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "4"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:null",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(DISTINCT visit(NULL)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(DISTINCT visit(NULL))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "4"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:null",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(NULL)) FILTER(WHERE id<3) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(NULL)) FILTER(WHERE id<3)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FILTER(WHERE 0) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v)) FILTER(WHERE 0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              null
+            ]
+          ],
+          "trace": []
+        },
+        {
+          "sql": "SELECT id,min(DISTINCT visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(DISTINCT visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,max(DISTINCT visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "max(DISTINCT visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FILTER(WHERE id=4) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v)) FILTER(WHERE id=4)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "4"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v) ORDER BY id DESC) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v) ORDER BY id DESC)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT visit(k),count(*) FROM t GROUP BY visit(k)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "visit(k)",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              "A",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "a",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:b",
+            "visit:a",
+            "visit:b",
+            "visit:A"
+          ]
+        },
+        {
+          "sql": "SELECT visit(k)||'!',count(*) FROM t GROUP BY visit(k)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "visit(k)||'!'",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              "A!",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "a!",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b!",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:b",
+            "visit:a",
+            "visit:b",
+            "visit:A",
+            "visit:A",
+            "visit:a",
+            "visit:b"
+          ]
+        },
+        {
+          "sql": "SELECT visit(k) COLLATE NOCASE,count(*) FROM t GROUP BY visit(k) COLLATE NOCASE",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "visit(k) COLLATE NOCASE",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              "a",
+              {
+                "integer": "2"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:b",
+            "visit:a",
+            "visit:b",
+            "visit:A"
+          ]
+        },
+        {
+          "sql": "SELECT k,fold_a(visit(v)),fold_b(visit(id)) FROM t GROUP BY k",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "fold_a(visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "A",
+              "null",
+              "4"
+            ],
+            [
+              "a",
+              "2",
+              "2"
+            ],
+            [
+              "b",
+              "4|4",
+              "1|3"
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "a:finish",
+            "b:finish",
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|2|4|null",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),fold_a(visit(v)),fold_b(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "fold_a(visit(v))",
+            "fold_b(visit(v))"
+          ],
+          "rows": [
+            [
+              "4|2|4|null",
+              "4|2|4|null",
+              "4|2|4|null"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "visit:null",
+            "a:null",
+            "visit:null",
+            "b:null",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t WHERE keep(id)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|4|null",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)) FILTER(WHERE keep(id)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v)) FILTER(WHERE keep(id))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|4|null",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "visit:2",
+            "b:2",
+            "keep:3",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(DISTINCT visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(DISTINCT visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|2|null",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v) ORDER BY id DESC),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v) ORDER BY id DESC)",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|4|2|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:4",
+            "a:2",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_b(visit(id)),fold_a(visit(v) ORDER BY id DESC) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_b(visit(id))",
+            "fold_a(visit(v) ORDER BY id DESC)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "null|4|2|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "b:1",
+            "visit:4",
+            "visit:2",
+            "b:2",
+            "visit:2",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "visit:null",
+            "b:finish",
+            "a:null",
+            "a:4",
+            "a:2",
+            "a:4",
+            "a:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v) ORDER BY visit(id) DESC),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v) ORDER BY visit(id) DESC)",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|4|2|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:4",
+            "a:2",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v) ORDER BY visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|2|4|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:2",
+            "a:4",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(DISTINCT visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(DISTINCT visit(v) ORDER BY visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|2|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:2",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),tick() FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "tick()"
+          ],
+          "rows": [
+            [
+              "4|2|4|null",
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:2",
+            "a:2",
+            "visit:4",
+            "a:4",
+            "visit:null",
+            "a:null",
+            "a:finish",
+            "tick:1"
+          ]
+        },
+        {
+          "sql": "SELECT k,fold_a(visit(v)),tick() FROM t GROUP BY k",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "fold_a(visit(v))",
+            "tick()"
+          ],
+          "rows": [
+            [
+              "A",
+              "null",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "a",
+              "2",
+              {
+                "integer": "2"
+              }
+            ],
+            [
+              "b",
+              "4|4",
+              {
+                "integer": "3"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "a:null",
+            "a:finish",
+            "tick:1",
+            "visit:2",
+            "a:2",
+            "a:finish",
+            "tick:2",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "a:4",
+            "a:finish",
+            "tick:3"
+          ]
+        },
+        {
+          "sql": "SELECT k,count(visit(v)) FROM t WHERE keep(id) GROUP BY visit(k)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              "A",
+              {
+                "integer": "0"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:b",
+            "keep:2",
+            "keep:3",
+            "visit:b",
+            "keep:4",
+            "visit:A",
+            "visit:null",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(v))>0",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              "a",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:2",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(id))>0",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              "A",
+              {
+                "integer": "0"
+              }
+            ],
+            [
+              "a",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:4",
+            "visit:2",
+            "visit:2",
+            "visit:4",
+            "visit:1",
+            "visit:4",
+            "visit:3"
+          ]
+        },
+        {
+          "sql": "SELECT count(visit(v)),count(visit(v)) FROM t WHERE 0",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "count(visit(v))",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "0"
+              },
+              {
+                "integer": "0"
+              }
+            ]
+          ],
+          "trace": []
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|2|1",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:2",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|2|1",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:2",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4",
+            "a:1",
+            "b:1",
+            "a:2",
+            "b:2",
+            "a:3",
+            "b:3",
+            "a:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|2|1",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4",
+            "b:1",
+            "b:2",
+            "b:3",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:2",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "8"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|3|4",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|1",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "8"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|3|4",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|1",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "8"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|3|4",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "a:1",
+            "b:1",
+            "a:3",
+            "b:3",
+            "a:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|1",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "b:1",
+            "b:3",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": 3,
+      "cases": [
+        {
+          "sql": "SELECT sum(visit(id)),sum(visit(id)+0) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id))",
+            "sum(visit(id)+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT sum(visit(id)),sum(visit(id)),count(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id))",
+            "sum(visit(id))",
+            "count(visit(id))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT sum(visit(id)),count(visit(v)),total(visit(v)) FROM t WHERE keep(id)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id))",
+            "count(visit(v))",
+            "total(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "2"
+              },
+              8.0
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:4",
+            "visit:4",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:4",
+            "visit:4",
+            "keep:4",
+            "visit:4",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT sum(visit(id)) FILTER(WHERE keep(id)),count(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(visit(id)) FILTER(WHERE keep(id))",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "3"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:4",
+            "keep:2",
+            "visit:2",
+            "keep:3",
+            "visit:3",
+            "visit:4",
+            "keep:4",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT sum(DISTINCT visit(v)),count(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(DISTINCT visit(v))",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "6"
+              },
+              {
+                "integer": "3"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:4",
+            "visit:2",
+            "visit:2",
+            "visit:4",
+            "visit:4",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,max(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "max(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FILTER(WHERE keep(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v)) FILTER(WHERE keep(id))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:4",
+            "keep:2",
+            "keep:3",
+            "visit:4",
+            "keep:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(NULL)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(NULL))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "4"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:null",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(DISTINCT visit(NULL)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(DISTINCT visit(NULL))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "4"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:null",
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(NULL)) FILTER(WHERE id<3) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(NULL)) FILTER(WHERE id<3)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FILTER(WHERE 0) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v)) FILTER(WHERE 0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              null
+            ]
+          ],
+          "trace": []
+        },
+        {
+          "sql": "SELECT id,min(DISTINCT visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(DISTINCT visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,max(DISTINCT visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "max(DISTINCT visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "4"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v)) FILTER(WHERE id=4) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v)) FILTER(WHERE id=4)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "4"
+              },
+              null
+            ]
+          ],
+          "trace": [
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT id,min(visit(v) ORDER BY id DESC) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "id",
+            "min(visit(v) ORDER BY id DESC)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:2",
+            "visit:4",
+            "visit:null"
+          ]
+        },
+        {
+          "sql": "SELECT visit(k),count(*) FROM t GROUP BY visit(k)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "visit(k)",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              "A",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "a",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:b",
+            "visit:a",
+            "visit:b",
+            "visit:A"
+          ]
+        },
+        {
+          "sql": "SELECT visit(k)||'!',count(*) FROM t GROUP BY visit(k)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "visit(k)||'!'",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              "A!",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "a!",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b!",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:b",
+            "visit:a",
+            "visit:b",
+            "visit:A",
+            "visit:A",
+            "visit:a",
+            "visit:b"
+          ]
+        },
+        {
+          "sql": "SELECT visit(k) COLLATE NOCASE,count(*) FROM t GROUP BY visit(k) COLLATE NOCASE",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "visit(k) COLLATE NOCASE",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              "a",
+              {
+                "integer": "2"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:b",
+            "visit:a",
+            "visit:b",
+            "visit:A"
+          ]
+        },
+        {
+          "sql": "SELECT k,fold_a(visit(v)),fold_b(visit(id)) FROM t GROUP BY k",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "fold_a(visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "A",
+              "null",
+              "4"
+            ],
+            [
+              "a",
+              "2",
+              "2"
+            ],
+            [
+              "b",
+              "4|4",
+              "1|3"
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "a:finish",
+            "b:finish",
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|2|4|null",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),fold_a(visit(v)),fold_b(visit(v)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "fold_a(visit(v))",
+            "fold_b(visit(v))"
+          ],
+          "rows": [
+            [
+              "4|2|4|null",
+              "4|2|4|null",
+              "4|2|4|null"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "visit:null",
+            "a:null",
+            "visit:null",
+            "b:null",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t WHERE keep(id)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|4|null",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)) FILTER(WHERE keep(id)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v)) FILTER(WHERE keep(id))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|4|null",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "visit:2",
+            "b:2",
+            "keep:3",
+            "visit:4",
+            "a:4",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(DISTINCT visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(DISTINCT visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "4|2|null",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "a:null",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v) ORDER BY id DESC),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v) ORDER BY id DESC)",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|4|2|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:4",
+            "a:2",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_b(visit(id)),fold_a(visit(v) ORDER BY id DESC) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_b(visit(id))",
+            "fold_a(visit(v) ORDER BY id DESC)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "null|4|2|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "b:1",
+            "visit:4",
+            "visit:2",
+            "b:2",
+            "visit:2",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "visit:null",
+            "b:finish",
+            "a:null",
+            "a:4",
+            "a:2",
+            "a:4",
+            "a:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v) ORDER BY visit(id) DESC),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v) ORDER BY visit(id) DESC)",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|4|2|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:4",
+            "a:2",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v) ORDER BY visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|2|4|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:2",
+            "a:4",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(DISTINCT visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(DISTINCT visit(v) ORDER BY visit(v))",
+            "fold_b(visit(id))"
+          ],
+          "rows": [
+            [
+              "null|2|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:4",
+            "visit:3",
+            "b:3",
+            "visit:null",
+            "visit:4",
+            "b:4",
+            "a:null",
+            "a:2",
+            "a:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "SELECT fold_a(visit(v)),tick() FROM t",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(visit(v))",
+            "tick()"
+          ],
+          "rows": [
+            [
+              "4|2|4|null",
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:4",
+            "a:4",
+            "visit:2",
+            "a:2",
+            "visit:4",
+            "a:4",
+            "visit:null",
+            "a:null",
+            "a:finish",
+            "tick:1"
+          ]
+        },
+        {
+          "sql": "SELECT k,fold_a(visit(v)),tick() FROM t GROUP BY k",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "fold_a(visit(v))",
+            "tick()"
+          ],
+          "rows": [
+            [
+              "A",
+              "null",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "a",
+              "2",
+              {
+                "integer": "2"
+              }
+            ],
+            [
+              "b",
+              "4|4",
+              {
+                "integer": "3"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "a:null",
+            "a:finish",
+            "tick:1",
+            "visit:2",
+            "a:2",
+            "a:finish",
+            "tick:2",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "a:4",
+            "a:finish",
+            "tick:3"
+          ]
+        },
+        {
+          "sql": "SELECT k,count(visit(v)) FROM t WHERE keep(id) GROUP BY visit(k)",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              "A",
+              {
+                "integer": "0"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:b",
+            "keep:2",
+            "keep:3",
+            "visit:b",
+            "keep:4",
+            "visit:A",
+            "visit:null",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(v))>0",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              "a",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:2",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(id))>0",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "k",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              "A",
+              {
+                "integer": "0"
+              }
+            ],
+            [
+              "a",
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              "b",
+              {
+                "integer": "2"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:null",
+            "visit:4",
+            "visit:2",
+            "visit:2",
+            "visit:4",
+            "visit:1",
+            "visit:4",
+            "visit:3"
+          ]
+        },
+        {
+          "sql": "SELECT count(visit(v)),count(visit(v)) FROM t WHERE 0",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "count(visit(v))",
+            "count(visit(v))"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "0"
+              },
+              {
+                "integer": "0"
+              }
+            ]
+          ],
+          "trace": []
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|2|1",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:2",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "visit:2",
+            "visit:2",
+            "visit:3",
+            "visit:3",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "a:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|2|1",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "visit:2",
+            "visit:2",
+            "b:2",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:2",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "10"
+              },
+              {
+                "integer": "10"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|2|3|4",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4",
+            "a:1",
+            "b:1",
+            "a:2",
+            "b:2",
+            "a:3",
+            "b:3",
+            "a:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|2|1",
+              "1|2|3|4"
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4",
+            "b:1",
+            "b:2",
+            "b:3",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:2",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "2"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "visit:1",
+            "visit:2",
+            "visit:3",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "8"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|3|4",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|1",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "8"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|3|4",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "a:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "a:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "a:4",
+            "visit:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|1",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "visit:1",
+            "b:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "visit:3",
+            "b:3",
+            "keep:4",
+            "visit:4",
+            "visit:4",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "sum(x)",
+            "sum(x+0)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "8"
+              },
+              {
+                "integer": "8"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "1|3|4",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "a:1",
+            "b:1",
+            "a:3",
+            "b:3",
+            "a:4",
+            "b:4",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "fold_a(x ORDER BY x DESC)",
+            "fold_b(x)"
+          ],
+          "rows": [
+            [
+              "4|3|1",
+              "1|3|4"
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4",
+            "b:1",
+            "b:3",
+            "b:4",
+            "a:4",
+            "a:3",
+            "a:1",
+            "a:finish",
+            "b:finish"
+          ]
+        },
+        {
+          "sql": "WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x",
+          "setup": [
+            "CREATE TABLE t(id INTEGER PRIMARY KEY,k TEXT,v)",
+            "INSERT INTO t VALUES(1,'b',4),(2,'a',2),(3,'b',4),(4,'A',NULL)"
+          ],
+          "columns": [
+            "x",
+            "count(*)"
+          ],
+          "rows": [
+            [
+              {
+                "integer": "1"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "3"
+              },
+              {
+                "integer": "1"
+              }
+            ],
+            [
+              {
+                "integer": "4"
+              },
+              {
+                "integer": "1"
+              }
+            ]
+          ],
+          "trace": [
+            "keep:1",
+            "visit:1",
+            "keep:2",
+            "keep:3",
+            "visit:3",
+            "keep:4",
+            "visit:4"
+          ]
+        }
+      ]
+    }
+  ]
+}

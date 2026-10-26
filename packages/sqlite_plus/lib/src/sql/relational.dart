@@ -13,6 +13,7 @@ extension _RelationalQueries on SqliteDatabase {
     }
     for (final source in s.allSources) {
       if (source.on != null) yield source.on!;
+      yield* source.pragmaArguments ?? const <Expr>[];
     }
   }
 
@@ -24,6 +25,9 @@ extension _RelationalQueries on SqliteDatabase {
     }
   }
 
+  Set<String> _usedCteNames(SelectStatement statement) =>
+      usedCteNames(statement);
+
   bool _needsRelational(SelectStatement s) =>
       s.ctes.isNotEmpty ||
       s.sources.any((source) =>
@@ -34,6 +38,7 @@ extension _RelationalQueries on SqliteDatabase {
       s.compounds.isNotEmpty ||
       s.sources.length > 1 ||
       s.sources.any((source) =>
+          _isPragmaTableSource(source) ||
           source.alias != null ||
           source.query != null ||
           source.group.isNotEmpty) ||
@@ -48,8 +53,8 @@ extension _RelationalQueries on SqliteDatabase {
       Map<String, (CatalogTable, List<RowValues>)> cache, Set<String> loading,
       [Set<String> cteNames = const {}]) async {
     final cteScope = {...cteNames, ...s.ctes.keys};
-    for (final cte in s.ctes.values) {
-      await _loadRelations(cte.$2, cache, loading, cteScope);
+    for (final name in _usedCteNames(s)) {
+      await _loadRelations(s.ctes[name]!.$2, cache, loading, cteScope);
     }
     for (final source in s.leafSources) {
       if (source.query != null) {
@@ -60,7 +65,19 @@ extension _RelationalQueries on SqliteDatabase {
       final key =
           source.schema == null ? asciiLower(name) : 'main.${asciiLower(name)}';
       if (source.schema == null && cteScope.contains(key)) {
+        if (source.pragmaArguments != null) {
+          throw SqlException('${source.table} is not a table-valued function');
+        }
         _hintIndex(source, s.where, physical: false);
+        continue;
+      }
+      if (_isPragmaTableSource(source)) {
+        if (source.indexedBy != null || source.notIndexed) {
+          throw const SqlException('Index hints on a PRAGMA table source');
+        }
+        final descriptor = (_pragmaSourceTable(source), <RowValues>[]);
+        cache[key] = descriptor;
+        cache['main.${asciiLower(name)}'] = descriptor;
         continue;
       }
       _hintIndex(source, s.where,
@@ -93,6 +110,20 @@ extension _RelationalQueries on SqliteDatabase {
           final query =
               SqlParser(entry.sql!.substring(parser.current.offset)).select();
           await _loadRelations(query, cache, loading, cteScope);
+          prepareSubqueryWidths(query, {
+            for (final relation in cache.entries)
+              for (final name in {
+                relation.key,
+                if (relation.key.startsWith('main.')) relation.key.substring(5)
+              })
+                name: (
+                  columns: relation.value.$1.columns
+                      .where((column) => !column.hidden)
+                      .map((column) => column.name)
+                      .toList(),
+                  rowid: !relation.value.$1.withoutRowid
+                )
+          });
           final columns = _pragmaColumnMetadata(query, cache);
           final names = _relationColumnNames(declared.isEmpty
               ? columns.map((column) => column.name).toList()
@@ -113,16 +144,13 @@ extension _RelationalQueries on SqliteDatabase {
                             : columns[i].collation)
                 ],
                 withoutRowid: true),
-            _DeferredRelationRows(() {
-              final result = _relational(query, const [], cache, null);
-              return [
-                for (final row in result.rows)
-                  {
-                    for (var i = 0; i < names.length; i++)
-                      asciiLower(names[i]): row[i]
-                  }
-              ];
-            })
+            _QueryRelationRows(
+                query,
+                names,
+                (query, deferred) => _relationalExecution(
+                    query, const [], cache, null,
+                    deferredProjection: deferred),
+                describe: (query) => _pragmaColumnMetadata(query, cache))
           );
         } else {
           final table = catalog.table(name);
@@ -157,7 +185,8 @@ extension _RelationalQueries on SqliteDatabase {
                 row.putIfAbsent(id, () => record.rowId);
               }
             }
-            table.evaluateGenerated(row, _pager.header.textEncoding);
+            table.evaluateGenerated(row, _pager.header.textEncoding,
+                lazy: true);
             rows.add(row);
           }
           cache[key] = (table, rows);
@@ -187,11 +216,15 @@ extension _RelationalQueries on SqliteDatabase {
       relationColumnNames(columns);
 
   SelectStatement _copy(SelectStatement source, List<SelectItem> items,
-          {bool tail = true, Expr? limitOverride}) =>
+          {bool tail = true,
+          Expr? limitOverride,
+          Set<Expr> omitConditions = const {}}) =>
       SelectStatement(
           items,
           source.table,
-          source.where,
+          source.where == null
+              ? null
+              : _omitPragmaConstraints(source.where!, omitConditions),
           tail ? source.order : [],
           tail ? source.limit : limitOverride,
           tail ? source.offset : null,
@@ -199,6 +232,8 @@ extension _RelationalQueries on SqliteDatabase {
           source.parameterCount)
         ..groupBy.addAll(source.groupBy)
         ..cteMaterialization.addAll(source.cteMaterialization)
+        ..subqueryFirstRowOnly = source.subqueryFirstRowOnly
+        ..subqueryExists = source.subqueryExists
         ..having = source.having;
 
   QueryResult _relational(SelectStatement s, List<Object?> bound,
@@ -208,19 +243,55 @@ extension _RelationalQueries on SqliteDatabase {
           mutationSubqueries,
       Map<SelectStatement, (CatalogTable, List<RowValues>)?>? mutationCtes,
       _JoinedGroup? sourceGroup}) {
+    return _relationalExecution(s, bound, cache, outer,
+            mutationSubqueries: mutationSubqueries,
+            mutationCtes: mutationCtes,
+            sourceGroup: sourceGroup)
+        .materialize(firstRowOnly: s.subqueryFirstRowOnly);
+  }
+
+  _QueryExecution _relationalExecution(SelectStatement s, List<Object?> bound,
+      Map<String, (CatalogTable, List<RowValues>)> cache, EvalContext? outer,
+      {SqlRows Function(SelectStatement, EvalContext,
+              Map<String, (CatalogTable, List<RowValues>)>)?
+          mutationSubqueries,
+      Map<SelectStatement, (CatalogTable, List<RowValues>)?>? mutationCtes,
+      _JoinedGroup? sourceGroup,
+      bool deferredProjection = false}) {
+    if (s.subqueryFirstRowOnly) {
+      s = _relationQuery(s, limitOverride: _ScalarSubqueryLimit(s.limit));
+    }
+    final outerMetadata = <String, CatalogColumn?>{
+      if (outer != null)
+        for (final name in outer.row.keys)
+          name: CatalogColumn(name, '',
+              affinityOverride: outer.affinities[name] ?? 'none',
+              collation: outer.collations[name] ?? '')
+    };
     QueryResult evaluate(
             SelectStatement query,
             Map<String, (CatalogTable, List<RowValues>)> scope,
             EvalContext? context) =>
         _relational(query, bound, scope, context,
             mutationSubqueries: mutationSubqueries, mutationCtes: mutationCtes);
-    SqlRows subquery(SelectStatement query, EvalContext context) =>
-        mutationSubqueries != null
-            ? mutationSubqueries(query, context, cache)
-            : evaluate(query, cache, context);
+    final once = <SelectStatement, SqlRows>{};
+    SqlRows subquery(SelectStatement query, EvalContext context) {
+      if (mutationSubqueries != null) {
+        return mutationSubqueries(query, context, cache);
+      }
+      final correlated =
+          _mutationCorrelated(query, cache, context.row.keys.toSet());
+      if (!correlated && once.containsKey(query)) return once[query]!;
+      final result = evaluate(query, cache, context);
+      if (!correlated) once[query] = result;
+      return result;
+    }
+
     if (s.ctes.isNotEmpty) {
       cache = Map.of(cache);
-      final pending = Map.of(s.ctes);
+      final pending = {
+        for (final name in _usedCteNames(s)) name: s.ctes[name]!
+      };
       while (pending.isNotEmpty) {
         var progressed = false;
         for (final name in pending.keys.toList()) {
@@ -233,15 +304,7 @@ extension _RelationalQueries on SqliteDatabase {
             progressed = true;
             continue;
           }
-          final references = <String>{
-            for (final source in query.leafSources)
-              if (source.table != null && source.schema == null)
-                asciiLower(source.table!),
-            for (final part in query.compounds)
-              for (final source in part.$2.leafSources)
-                if (source.table != null && source.schema == null)
-                  asciiLower(source.table!)
-          };
+          final references = usedCteNames(s, consumer: query);
           if (references
               .any((ref) => ref != name && pending.containsKey(ref))) {
             continue;
@@ -283,8 +346,53 @@ extension _RelationalQueries on SqliteDatabase {
               limitOverride: recursiveLimit == 0 ? Literal(BigInt.zero) : null)
             ..sources.addAll(query.sources)
             ..ctes.addAll(query.ctes);
-          final first = evaluate(
-              references.contains(name) ? anchor : query, cache, outer);
+          if (!references.contains(name)) {
+            final metadata = _pragmaColumnMetadata(query, cache, outerMetadata);
+            final names = _relationColumnNames(entry.$1.isEmpty
+                ? metadata.map((column) => column.name).toList()
+                : entry.$1);
+            if (names.length != metadata.length) {
+              throw const SqlException('CTE column width mismatch');
+            }
+            // A pushed consumer predicate may reference another WITH name
+            // which is prepared later. Keep this lexical frame live until
+            // all reachable declarations have been installed.
+            final scope = cache;
+            cache[name] = (
+              CatalogTable(
+                  name,
+                  0,
+                  [
+                    for (var i = 0; i < names.length; i++)
+                      CatalogColumn(names[i], metadata[i].declaredType,
+                          affinityOverride: metadata[i].affinity,
+                          collation: metadata[i].collation.isEmpty
+                              ? 'binary'
+                              : metadata[i].collation)
+                  ],
+                  withoutRowid: true),
+              _QueryRelationRows(
+                  query,
+                  names,
+                  (query, deferred) => _relationalExecution(
+                      query, bound, scope, outer,
+                      mutationSubqueries: mutationSubqueries,
+                      mutationCtes: mutationCtes,
+                      deferredProjection: deferred),
+                  materialized: s.cteMaterialization[name] == true ||
+                      (mutationCtes?.containsKey(query) ?? false),
+                  cte: true,
+                  describe: (query) =>
+                      _pragmaColumnMetadata(query, scope, outerMetadata))
+            );
+            if (mutationCtes?.containsKey(query) ?? false) {
+              mutationCtes![query] = cache[name]!;
+            }
+            pending.remove(name);
+            progressed = true;
+            continue;
+          }
+          final first = evaluate(anchor, cache, outer);
           final columns =
               _relationColumnNames(entry.$1.isEmpty ? first.columns : entry.$1);
           if (columns.length != first.columns.length) {
@@ -461,6 +569,7 @@ extension _RelationalQueries on SqliteDatabase {
       }
     }
     final sources = s.normalizedSources;
+    final consumedPragmaConditions = <Expr>{};
     final inaccessibleGroupQualifiers = {
       for (final source in sources.where((source) => source.group.isNotEmpty))
         for (final child in source.leafSources)
@@ -474,7 +583,7 @@ extension _RelationalQueries on SqliteDatabase {
         s.sources.single.group.isNotEmpty &&
         s.sources.single.alias != null;
     final fieldOrder = <String>[];
-    var joined = <RowValues>[{}];
+    Iterable<RowValues> joined = <RowValues>[{}];
     final aliases = <String>{};
     final refs = <String, List<String>>{};
     final implicitRefs = <String>{};
@@ -485,7 +594,7 @@ extension _RelationalQueries on SqliteDatabase {
     final star = <(String, String)>[];
     final sourceStars = <String, List<(String, String)>>{};
     Set<String> keysBefore = {};
-    final joinSteps = <void Function()>[];
+    final joinSteps = <Iterable<RowValues> Function(Iterable<RowValues>)>[];
     final columnStages = <String, int>{};
     final onStages = <QuerySource, int>{};
     final onConditions = <QuerySource, Expr>{};
@@ -564,7 +673,47 @@ extension _RelationalQueries on SqliteDatabase {
       CatalogTable table;
       List<RowValues> rows;
       _JoinedGroup? group;
-      if (source.group.isNotEmpty) {
+      final pragmaEntry = source.table == null
+          ? null
+          : cache[source.schema == null
+              ? asciiLower(source.table!)
+              : 'main.${asciiLower(source.table!)}'];
+      final pragmaSource = _isPragmaTableSource(source) &&
+          (source.pragmaArguments != null || pragmaEntry?.$1.rootPage == -1);
+      final precedingRefs = {
+        for (final entry in refs.entries)
+          if (entry.value.length == 1) entry.key: entry.value.single
+      };
+      final precedingColumns = Map<String, CatalogColumn>.of(declared);
+      final pragmaKnown = {
+        ...declared.keys,
+        ...precedingRefs.keys,
+        ...?outer?.row.keys
+      };
+      final (pragmaArguments, consumedConditions) = pragmaSource
+          ? _pragmaSourceArguments(source, s, pragmaKnown)
+          : (const <Expr>[], const <Expr>{});
+      consumedPragmaConditions.addAll(consumedConditions);
+      for (final expression in pragmaArguments) {
+        if (expression.containsAggregate || expression.containsWindow) {
+          throw const SqlException('Aggregate or window in a PRAGMA source');
+        }
+        expression.validate(pragmaKnown);
+      }
+      bool localReference(Expr expression) =>
+          expression is ColumnExpr &&
+              (declared.containsKey(expression.key) ||
+                  precedingRefs.containsKey(expression.key)) ||
+          expression.children.any(localReference);
+      if (pragmaSource &&
+          ['RIGHT', 'FULL'].contains(source.join) &&
+          pragmaArguments.any(localReference)) {
+        throw const SqlException('Correlated PRAGMA source in RIGHT/FULL JOIN');
+      }
+      if (pragmaSource) {
+        table = _pragmaSourceTable(source);
+        rows = [];
+      } else if (source.group.isNotEmpty) {
         group = _JoinedGroup('${sourceGroup?.prefix ?? ''}.$index');
         final query = SelectStatement(
             [], null, null, [], null, null, false, s.parameterCount)
@@ -577,31 +726,32 @@ extension _RelationalQueries on SqliteDatabase {
         table = CatalogTable('@group$index', 0, [], withoutRowid: true);
         rows = group.rows;
       } else if (source.query != null) {
-        final result = evaluate(source.query!, cache, outer);
-        final names = _relationColumnNames(result.columns);
+        final query = source.query!;
+        final metadata = _pragmaColumnMetadata(query, cache, outerMetadata);
+        final names = _relationColumnNames(
+            metadata.map((column) => column.name).toList());
         table = CatalogTable(
             '@$index',
             0,
             [
-              for (var i = 0; i < result.columns.length; i++)
-                CatalogColumn(
-                    names[i],
-                    result.columnDeclaredTypes[i].isEmpty
-                        ? _affinityType(result.columnAffinities[i])
-                        : result.columnDeclaredTypes[i],
-                    affinityOverride: result.columnAffinities[i],
-                    collation: result.columnCollations[i].isEmpty
+              for (var i = 0; i < names.length; i++)
+                CatalogColumn(names[i], metadata[i].declaredType,
+                    affinityOverride: metadata[i].affinity,
+                    collation: metadata[i].collation.isEmpty
                         ? 'binary'
-                        : result.columnCollations[i])
+                        : metadata[i].collation)
             ],
             withoutRowid: true);
-        rows = [
-          for (final row in result.rows)
-            {
-              for (var i = 0; i < result.columns.length; i++)
-                asciiLower(names[i]): row[i]
-            }
-        ];
+        rows = _QueryRelationRows(
+            query,
+            names,
+            (query, deferred) => _relationalExecution(
+                query, bound, cache, outer,
+                mutationSubqueries: mutationSubqueries,
+                mutationCtes: mutationCtes,
+                deferredProjection: deferred),
+            describe: (query) =>
+                _pragmaColumnMetadata(query, cache, outerMetadata));
       } else {
         final entry = cache[source.schema == null
             ? asciiLower(source.table!)
@@ -612,6 +762,12 @@ extension _RelationalQueries on SqliteDatabase {
         (table, rows) = entry;
       }
       final alias = asciiLower(source.alias ?? source.table ?? '@$index');
+      if (rows is _QueryRelationRows) {
+        final prepared =
+            _prepareRelationSource(rows, s, source, alias, index, subquery);
+        rows = prepared.$1;
+        if (prepared.$2 != null) s = prepared.$2!;
+      }
       if (group == null) {
         if (!aliases.add(alias)) {
           throw const SqlException('Duplicate table alias');
@@ -719,7 +875,7 @@ extension _RelationalQueries on SqliteDatabase {
               refs.putIfAbsent(name, () => []).add(key);
             }
           }
-          if (rightNames.contains(name)) {
+          if (rightNames.contains(name) && !column.hidden) {
             allStar.add((column.name, key));
             if (!using.contains(name)) star.add((column.name, key));
           }
@@ -796,21 +952,51 @@ extension _RelationalQueries on SqliteDatabase {
         for (final e in refs.entries)
           if (e.value.length == 1) e.key: declared[e.value.first]!.collation
       };
-      final right = group != null
-          ? rows
-          : [
-              for (var rowIndex = 0; rowIndex < rows.length; rowIndex++)
-                {
-                  for (final key in rightKeys)
-                    key: source.rowIdentity != null &&
-                            key == '$alias.${source.rowIdentity}'
-                        ? BigInt.from(rowIndex + 1)
-                        : rows[rowIndex][key.substring(
-                            (key.startsWith('main.$alias.') ? 5 : 0) +
-                                alias.length +
-                                1)]
-                }
-            ];
+      Iterable<RowValues> qualifyRows(Iterable<RowValues> input) sync* {
+        var rowIndex = 0;
+        for (final row in input) {
+          yield {
+            for (final key in rightKeys)
+              key: source.rowIdentity != null &&
+                      key == '$alias.${source.rowIdentity}'
+                  ? BigInt.from(rowIndex + 1)
+                  : row[key.substring((key.startsWith('main.$alias.') ? 5 : 0) +
+                      alias.length +
+                      1)],
+            for (final entry in row.entries)
+              if (entry.key.startsWith('\u0000relation')) entry.key: entry.value
+          };
+          rowIndex++;
+        }
+      }
+
+      final right = group != null ? rows : qualifyRows(rows);
+      Iterable<RowValues> rightFor(RowValues left) {
+        if (!pragmaSource) return right;
+        final context = EvalContext({
+          ...?outer?.row,
+          ...left,
+          for (final entry in precedingRefs.entries)
+            entry.key: left[entry.value]
+        }, {
+          ...?outer?.affinities,
+          for (final entry in precedingColumns.entries)
+            entry.key: entry.value.affinity,
+          for (final entry in precedingRefs.entries)
+            entry.key: precedingColumns[entry.value]!.affinity
+        }, bound, _pager.header.textEncoding)
+          ..inTrigger = outer?.inTrigger ?? false
+          ..collations = {
+            ...?outer?.collations,
+            for (final entry in precedingColumns.entries)
+              entry.key: entry.value.collation,
+            for (final entry in precedingRefs.entries)
+              entry.key: precedingColumns[entry.value]!.collation
+          }
+          ..subquery = subquery;
+        return qualifyRows(_pragmaSourceRows(source, pragmaArguments, context));
+      }
+
       for (final key in rightKeys) {
         columnStages[key] = index;
       }
@@ -819,9 +1005,45 @@ extension _RelationalQueries on SqliteDatabase {
         columnStages[key] =
             join == 'RIGHT' || join == 'FULL' ? index : columnStages[left]!;
       }
+      // Rowid access bounds are applied by SQLite's source scan before ON
+      // callbacks, even when the textual predicate follows a callback term.
+      final rowidKeys = {
+        if (!table.withoutRowid && table.rootPage > 0) ...{
+          if (table.rowidAlias != null)
+            '$alias.${asciiLower(table.rowidAlias!)}',
+          for (final name in ['rowid', '_rowid_', 'oid'])
+            if (!table.columns.any((column) => asciiLower(column.name) == name))
+              '$alias.$name'
+        }
+      };
+      bool scanConstant(Expr expression) =>
+          expression is Literal ||
+          expression is ParameterExpr ||
+          expression is UnaryExpr && expression.children.every(scanConstant);
+      Iterable<Expr> rowidBounds(Expr? expression) sync* {
+        if (expression is BinaryExpr && expression.op == 'AND') {
+          yield* rowidBounds(expression.left);
+          yield* rowidBounds(expression.right);
+        } else if (expression is BinaryExpr &&
+            ['=', '==', '<', '<=', '>', '>='].contains(expression.op)) {
+          final left = indexOperand(expression.left),
+              right = indexOperand(expression.right);
+          if (left is ColumnExpr &&
+                  rowidKeys.contains(left.key.replaceFirst('main.', '')) &&
+                  scanConstant(right) ||
+              right is ColumnExpr &&
+                  rowidKeys.contains(right.key.replaceFirst('main.', '')) &&
+                  scanConstant(left)) {
+            yield expression;
+          }
+        }
+      }
+
+      final scanBounds = ['RIGHT', 'FULL'].contains(source.join)
+          ? const <Expr>[]
+          : rowidBounds(source.on).toList();
       final leftKeys = Set<String>.of(keysBefore);
-      joinSteps.add(() {
-        final next = <RowValues>[];
+      joinSteps.add((leftRows) sync* {
         RowValues merge(RowValues row) {
           for (final key in mergedKeys) {
             final (left, right, join) = mergedValues[key]!;
@@ -834,54 +1056,68 @@ extension _RelationalQueries on SqliteDatabase {
           return row;
         }
 
-        final matched = List<bool>.filled(right.length, false);
-        for (final left in joined) {
-          var found = false;
-          for (var r = 0; r < right.length; r++) {
-            final combined = merge({...left, ...right[r]});
-            var equal = true;
-            for (final name in using) {
-              final rightKey = rightRefs[name]!;
-              final leftValue = combined[leftRefs[name]];
-              final ctx = EvalContext({
-                ...combined,
-                '@left': applyAffinity(leftValue, leftColumns[name]!.affinity)
-              }, {
-                ...af,
-                '@left': leftColumns[name]!.affinity
-              }, bound, _pager.header.textEncoding)
-                ..collations = {...cs, '@left': leftColumns[name]!.collation};
-              if (BinaryExpr('=', ColumnExpr('@left'), ColumnExpr(rightKey))
-                      .evaluate(ctx) !=
-                  BigInt.one) {
-                equal = false;
-                break;
+        final matched = <int>{};
+        Iterable<RowValues> combine() sync* {
+          for (final left in leftRows) {
+            var found = false;
+            var r = -1;
+            for (final rightRow in rightFor(left)) {
+              r++;
+              final combined = merge({...left, ...rightRow});
+              if (scanBounds.isNotEmpty &&
+                  scanBounds.any((bound) =>
+                      truth(bound.evaluate(onContext(combined)),
+                          _pager.header.textEncoding) !=
+                      true)) {
+                continue;
+              }
+              var equal = true;
+              for (final name in using) {
+                final rightKey = rightRefs[name]!;
+                final leftValue = combined[leftRefs[name]];
+                final ctx = EvalContext({
+                  ...combined,
+                  '@left': applyAffinity(leftValue, leftColumns[name]!.affinity)
+                }, {
+                  ...af,
+                  '@left': leftColumns[name]!.affinity
+                }, bound, _pager.header.textEncoding)
+                  ..collations = {...cs, '@left': leftColumns[name]!.collation};
+                if (BinaryExpr('=', ColumnExpr('@left'), ColumnExpr(rightKey))
+                        .evaluate(ctx) !=
+                    BigInt.one) {
+                  equal = false;
+                  break;
+                }
+              }
+              if (!equal) continue;
+              final ctx = onContext(combined);
+              if (source.on != null &&
+                  onStages[source]! <= index &&
+                  !matchesOn(onConditions[source]!, ctx)) {
+                continue;
+              }
+              found = true;
+              matched.add(r);
+              yield combined;
+            }
+            if (!found && ['LEFT', 'FULL'].contains(source.join)) {
+              yield merge({...left, for (final key in rightKeys) key: null});
+            }
+          }
+          if (['RIGHT', 'FULL'].contains(source.join)) {
+            var r = -1;
+            for (final rightRow in rightFor({})) {
+              r++;
+              if (!matched.contains(r)) {
+                yield merge(
+                    {for (final key in leftKeys) key: null, ...rightRow});
               }
             }
-            if (!equal) continue;
-            final ctx = onContext(combined);
-            if (source.on != null &&
-                onStages[source]! <= index &&
-                !matchesOn(onConditions[source]!, ctx)) {
-              continue;
-            }
-            found = true;
-            matched[r] = true;
-            next.add(combined);
-          }
-          if (!found && ['LEFT', 'FULL'].contains(source.join)) {
-            next.add(merge({...left, for (final key in rightKeys) key: null}));
           }
         }
-        if (['RIGHT', 'FULL'].contains(source.join)) {
-          for (var r = 0; r < right.length; r++) {
-            if (!matched[r]) {
-              next.add(
-                  merge({for (final key in leftKeys) key: null, ...right[r]}));
-            }
-          }
-        }
-        joined = next.where((row) {
+
+        yield* combine().where((row) {
           for (var earlier = 0; earlier < index; earlier++) {
             final pending = sources[earlier];
             if (pending.on != null && onStages[pending] == index) {
@@ -892,7 +1128,7 @@ extension _RelationalQueries on SqliteDatabase {
             }
           }
           return true;
-        }).toList();
+        });
       });
       keysBefore = {...keysBefore, ...rightKeys, ...mergedKeys};
     }
@@ -1029,7 +1265,8 @@ extension _RelationalQueries on SqliteDatabase {
       if (condition.containsAggregate || condition.containsWindow) {
         throw const SqlException('Aggregate or window in JOIN ON');
       }
-      final prepared = preparedOn(condition);
+      final prepared = preparedOn(
+          _omitPragmaConstraints(condition, consumedPragmaConditions));
       prepared.validate({...known, ...onAliases.keys});
       onConditions[source] = prepared;
       final ready = stage(prepared);
@@ -1067,10 +1304,10 @@ extension _RelationalQueries on SqliteDatabase {
     }
     _prepareScalarMetadata(s, cache, columns);
     for (final step in joinSteps) {
-      step();
+      joined = step(joined);
     }
     if (sourceGroup != null) {
-      sourceGroup.rows = joined;
+      sourceGroup.rows = joined.toList();
       sourceGroup.aliases.addAll(aliases);
       sourceGroup.declared.addAll(declared);
       sourceGroup.refs.addAll(refs);
@@ -1084,9 +1321,10 @@ extension _RelationalQueries on SqliteDatabase {
       sourceGroup.sourceStars.addAll(sourceStars);
       sourceGroup.canonical.addAll(canonical);
       sourceGroup.fieldOrder.addAll(fieldOrder);
-      return QueryResult(star.map((slot) => slot.$1).toList(), [
-        for (final row in joined) [for (final slot in star) row[slot.$2]]
-      ]);
+      return _QueryExecution(star.map((slot) => slot.$1).toList(), [
+        for (final row in sourceGroup.rows)
+          [for (final slot in star) row[slot.$2]]
+      ], [], [], []);
     }
     final items = <SelectItem>[];
     for (final item in s.items) {
@@ -1133,109 +1371,60 @@ extension _RelationalQueries on SqliteDatabase {
       }
     }
     final virtual = CatalogTable('@scope', 0, columns, withoutRowid: true);
-    final component = _copy(s, items, tail: s.compounds.isEmpty);
-    var result = _evaluate(
-        component, bound, virtual, joined.map(scope).toList(),
-        inTrigger: outer?.inTrigger ?? false, subquery: subquery);
-    if (s.compounds.isEmpty) return result;
-    var values = result.rows.map((row) => row.toList()).toList();
-    final compoundCollations = result.columnCollations.toList();
-    bool same(List<Object?> a, List<Object?> b) {
-      for (var i = 0; i < a.length; i++) {
-        if (compareValues(a[i], b[i], _pager.header.textEncoding,
-                compoundCollations[i]) !=
-            0) {
-          return false;
+    final component = _copy(s, items,
+        tail: s.compounds.isEmpty, omitConditions: consumedPragmaConditions);
+    Iterable<RowValues> inputs = joined.map(scope);
+    var inputOrdered = false;
+    if (sources.length == 1 && s.compounds.isEmpty) {
+      final source = sources.single;
+      if (source.table != null &&
+          source.query == null &&
+          source.group.isEmpty &&
+          !_isPragmaTableSource(source)) {
+        final physical = cache[source.schema == null
+                ? asciiLower(source.table!)
+                : 'main.${asciiLower(source.table!)}']
+            ?.$1;
+        if (physical != null && physical.rootPage > 0) {
+          final alias = asciiLower(source.alias ?? source.table!);
+          final scanOrder = _physicalScanOrder(s, physical, prefix: '$alias.');
+          if (scanOrder != null) {
+            final ordered = inputs.toList();
+            _sortPhysicalRows(ordered, scanOrder);
+            inputs = ordered;
+            inputOrdered = true;
+          }
         }
       }
-      return true;
     }
-
-    for (final part in s.compounds) {
-      final rhs = evaluate(part.$2, cache, outer);
-      if (rhs.columns.length != result.columns.length) {
+    var result = _evaluate(component, bound, virtual, inputs,
+        inTrigger: outer?.inTrigger ?? false,
+        subquery: subquery,
+        omitProjection: s.subqueryExists &&
+            s.compounds.every((part) => part.$1 == 'UNION ALL'),
+        inputOrdered: inputOrdered,
+        deferredProjection: deferredProjection);
+    if (s.compounds.isEmpty) return result;
+    final operands = [
+      for (final part in s.compounds)
+        (
+          part.$1,
+          _relationalExecution(
+              part.$2
+                ..subqueryExists = s.subqueryExists &&
+                    s.compounds.every((part) => part.$1 == 'UNION ALL'),
+              bound,
+              cache,
+              outer,
+              mutationSubqueries: mutationSubqueries,
+              mutationCtes: mutationCtes,
+              deferredProjection: deferredProjection)
+        )
+    ];
+    for (final part in operands) {
+      if (part.$2.columns.length != result.columns.length) {
         throw const SqlException('Compound SELECT width mismatch');
       }
-      for (var i = 0; i < compoundCollations.length; i++) {
-        if (compoundCollations[i].isEmpty) {
-          compoundCollations[i] = rhs.columnCollations[i];
-        }
-      }
-      if (part.$1 == 'UNION ALL') {
-        values.addAll(rhs.rows);
-      } else if (part.$1 == 'UNION') {
-        values.addAll(rhs.rows);
-        final unique = <List<Object?>>[];
-        for (final row in values) {
-          unique.removeWhere((old) => same(old, row));
-          unique.add(row);
-        }
-        values = unique;
-      } else {
-        final filtered = <List<Object?>>[];
-        for (final row in values) {
-          if (rhs.rows.any((other) => same(row, other)) ==
-                  (part.$1 == 'INTERSECT') &&
-              !filtered.any((old) => same(old, row))) {
-            filtered.add(row);
-          }
-        }
-        values = filtered;
-      }
-      if (part.$1 != 'UNION ALL') {
-        values.sort((a, b) {
-          for (var i = 0; i < a.length; i++) {
-            final comparison = compareValues(
-                a[i], b[i], _pager.header.textEncoding, compoundCollations[i]);
-            if (comparison != 0) return comparison;
-          }
-          return 0;
-        });
-      }
-    }
-    if (s.order.isNotEmpty) {
-      final positions = <int>[];
-      for (final term in s.order) {
-        final expr = indexOperand(term.expression);
-        final ordinal = expressionOrdinal(term.expression);
-        var index = ordinal == null ? -1 : ordinal.toInt() - 1;
-        if (ordinal == null && expr is ColumnExpr) {
-          index =
-              result.columns.indexWhere((name) => asciiLower(name) == expr.key);
-        }
-        if (ordinal == null && index < 0) {
-          for (final component in [s, ...s.compounds.map((part) => part.$2)]) {
-            index = component.items.indexWhere((item) =>
-                expr is ColumnExpr &&
-                    item.explicitAlias &&
-                    asciiLower(item.label) == expr.key ||
-                item.expression != null &&
-                    sameExpression(expr, indexOperand(item.expression!)));
-            if (index >= 0) break;
-          }
-        }
-        if (index < 0 || index >= result.columns.length) {
-          throw const SqlException(
-              'Compound ORDER BY must name an output expression');
-        }
-        positions.add(index);
-      }
-      values.sort((a, b) {
-        final context = EvalContext({}, {}, bound, _pager.header.textEncoding);
-        for (var i = 0; i < positions.length; i++) {
-          final term = s.order[i], slot = positions[i];
-          final collation = term.expression.explicitCollation(context) ??
-              compoundCollations[slot];
-          final order = OrderTerm(
-              CollateExpr(
-                  Literal(null), collation.isEmpty ? 'binary' : collation),
-              term.descending,
-              term.nullsFirst);
-          final comparison = order.compare(a[slot], b[slot], context);
-          if (comparison != 0) return comparison;
-        }
-        return 0;
-      });
     }
     int count(Expr? expr, int fallback) {
       if (expr == null) return fallback;
@@ -1261,11 +1450,140 @@ extension _RelationalQueries on SqliteDatabase {
 
     final offset = count(s.offset, 0);
     final limit = count(s.limit, -1);
-    var selected = values.skip(offset < 0 ? 0 : offset);
-    if (limit >= 0) selected = selected.take(limit);
-    return QueryResult(
+    final compoundCollations = result.columnCollations.toList();
+    final positions = <int>[];
+    if (s.order.isNotEmpty) {
+      for (final term in s.order) {
+        final expr = indexOperand(term.expression);
+        final ordinal = expressionOrdinal(term.expression);
+        var index = ordinal == null ? -1 : ordinal.toInt() - 1;
+        if (ordinal == null && expr is ColumnExpr) {
+          index =
+              result.columns.indexWhere((name) => asciiLower(name) == expr.key);
+        }
+        if (ordinal == null && index < 0) {
+          for (final component in [s, ...s.compounds.map((part) => part.$2)]) {
+            index = component.items.indexWhere((item) =>
+                expr is ColumnExpr &&
+                    item.explicitAlias &&
+                    asciiLower(item.label) == expr.key ||
+                item.expression != null &&
+                    sameExpression(expr, indexOperand(item.expression!)));
+            if (index >= 0) break;
+          }
+        }
+        if (index < 0 || index >= result.columns.length) {
+          throw const SqlException(
+              'Compound ORDER BY must name an output expression');
+        }
+        positions.add(index);
+      }
+    }
+    for (final part in operands) {
+      for (var i = 0; i < compoundCollations.length; i++) {
+        if (compoundCollations[i].isEmpty) {
+          compoundCollations[i] = part.$2.columnCollations[i];
+        }
+      }
+    }
+    Iterable<List<Object?>> compoundRows() sync* {
+      if (limit == 0) return;
+      if (s.order.isEmpty && operands.every((part) => part.$1 == 'UNION ALL')) {
+        final consumerOffset = _QueryOffset(offset < 0 ? 0 : offset);
+        Iterable<List<Object?>> concatenate() sync* {
+          yield* result.consume(consumerOffset);
+          for (final part in operands) {
+            yield* part.$2.consume(consumerOffset);
+          }
+        }
+
+        var selected = concatenate();
+        if (limit >= 0) selected = selected.take(limit);
+        yield* selected;
+        return;
+      }
+      var values = result.rows.map((row) => row.toList()).toList();
+      bool same(List<Object?> a, List<Object?> b) {
+        for (var i = 0; i < a.length; i++) {
+          if (compareValues(a[i], b[i], _pager.header.textEncoding,
+                  compoundCollations[i]) !=
+              0) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      for (final part in operands) {
+        final rhs = part.$2.materialize();
+        if (rhs.columns.length != result.columns.length) {
+          throw const SqlException('Compound SELECT width mismatch');
+        }
+        for (var i = 0; i < compoundCollations.length; i++) {
+          if (compoundCollations[i].isEmpty) {
+            compoundCollations[i] = rhs.columnCollations[i];
+          }
+        }
+        if (part.$1 == 'UNION ALL') {
+          values.addAll(rhs.rows);
+        } else if (part.$1 == 'UNION') {
+          values.addAll(rhs.rows);
+          final unique = <List<Object?>>[];
+          for (final row in values) {
+            unique.removeWhere((old) => same(old, row));
+            unique.add(row);
+          }
+          values = unique;
+        } else {
+          final filtered = <List<Object?>>[];
+          for (final row in values) {
+            if (rhs.rows.any((other) => same(row, other)) ==
+                    (part.$1 == 'INTERSECT') &&
+                !filtered.any((old) => same(old, row))) {
+              filtered.add(row);
+            }
+          }
+          values = filtered;
+        }
+        if (part.$1 != 'UNION ALL') {
+          values.sort((a, b) {
+            for (var i = 0; i < a.length; i++) {
+              final comparison = compareValues(a[i], b[i],
+                  _pager.header.textEncoding, compoundCollations[i]);
+              if (comparison != 0) return comparison;
+            }
+            return 0;
+          });
+        }
+      }
+      if (s.order.isNotEmpty) {
+        values.sort((a, b) {
+          final context =
+              EvalContext({}, {}, bound, _pager.header.textEncoding);
+          for (var i = 0; i < positions.length; i++) {
+            final term = s.order[i], slot = positions[i];
+            final collation = term.expression.explicitCollation(context) ??
+                compoundCollations[slot];
+            final order = OrderTerm(
+                CollateExpr(
+                    Literal(null), collation.isEmpty ? 'binary' : collation),
+                term.descending,
+                term.nullsFirst);
+            final comparison = order.compare(a[slot], b[slot], context);
+            if (comparison != 0) return comparison;
+          }
+          return 0;
+        });
+      }
+
+      var selected = values.skip(offset < 0 ? 0 : offset);
+      if (limit >= 0) selected = selected.take(limit);
+      yield* selected;
+    }
+
+    return _QueryExecution(
         result.columns,
-        selected.toList(),
+        compoundRows(),
         result.columnAffinities,
         result.columnDeclaredTypes,
         compoundCollations);

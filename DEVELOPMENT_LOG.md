@@ -677,3 +677,46 @@
   generated-column rejection. Native SQLite cross-opens 828 schema snapshots per
   encoding (2,484 total); all fifteen fixture/oracle checksum tools pass.
 - M6 remains open for the documented streaming/CTE execution work and SQL audit.
+
+## 2026-10-26 — M6 execution and verified engine handoff
+
+- Introduce internal row cursors beneath materialized public query results.
+  INSERT SELECT resumes expressions between writes; target reads/triggers and
+  RETURNING materialize as required. Single VALUES evaluates fields/defaults in
+  destination order. Preserve primary-key scan order for aliases, qualifiers,
+  WITHOUT ROWID prefixes, ordinals and output aliases with LIMIT.
+- Substitute eligible ordinary/NOT MATERIALIZED CTE/view/derived expressions;
+  retain explicit materialization and coroutine boundaries. Ignore unreachable
+  CTE sources/signatures, retain lexical scopes, and cache uncorrelated scalar/
+  IN/EXISTS reads. Scalar queries stop at the first row; EXISTS suppresses unused
+  projections while preserving preparation, aggregate/window and set semantics.
+- Interleave aggregate inputs/steps by row, deduplicate equivalent aggregates,
+  reuse grouping keys and native MIN/MAX representatives. Cache window inputs,
+  filters and keys with tested lookahead/sorter/layered coroutine scheduling.
+  VIRTUAL generated reads evaluate per reference; STORED values remain persisted.
+- Add supported table-valued metadata PRAGMAs, hidden argument/schema fields,
+  tested left-source correlation and ALTER dependency traversal. Dispatch SQL
+  pattern operators through registered functions. Defer stored view/trigger/
+  DEFAULT signatures and prepare applicable programs before mutation callbacks.
+- Match ASCII numeric whitespace, NUL scanning, integer-prefix bitwise/remainder
+  conversion and REAL-to-INTEGER signed64 boundaries. Keep bare boolean folding
+  consistent with column resolution and aggregate/window preparation.
+- Verification: all 9,632 engine tests pass. Locked dependency installation,
+  formatting (129 repository Dart files), all-package fatal-info analysis and all
+  23 fixture/oracle checksums pass. New pinned corpora contain 321 streaming,
+  1,053 CTE/scalar/EXISTS, 180 aggregate, 261 window and 306 generated-read cases;
+  pattern/stored SQL has 6,438 operations, numeric text 1,392 operations, and
+  metadata table sources/dependencies 576 comparisons across three encodings.
+- Native SQLite cross-opens 828 schema snapshots per encoding (2,484 total).
+  Existing DML (483), key (837), maintenance (285 plus repairs), FROM dependencies
+  (504), scalar metadata (294), grouped metadata (1,224), JOIN binding (4,692),
+  metadata PRAGMA (180) and STAT1 (30) comparisons pass. Journal byte recovery,
+  WAL continuation/checkpoint/ownership and mutation/transaction checks pass.
+  Streaming additionally verifies 1,740 operations and 321 cross-open images.
+  Window execution verifies 1,311 operations and 261 cross-open images.
+- Close M6 specifically as the documented main-schema engine baseline, following
+  the bounded contracts used by prior storage milestones. The full master target
+  remains broader: TEMP/ATTACH, unlisted PRAGMA state, native planner/EXPLAIN,
+  custom collations and other exclusions are retained in ENGINE_SUPPORT.md and
+  the matrix. This is not a full SQLite compatibility or release-ready claim.
+  M7 now consumes the verified public API; M8/M9 retain separate gates.

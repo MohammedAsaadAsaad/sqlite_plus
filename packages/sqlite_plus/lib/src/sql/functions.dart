@@ -13,8 +13,21 @@ import 'percentile_functions.dart';
 
 final class FunctionExpr extends Expr {
   FunctionExpr(this.name, this.arguments,
-      {this.distinct = false, this.star = false})
-      : registered = SqlFunctionRegistry.resolve(name, arguments.length) {
+      {this.distinct = false,
+      this.star = false,
+      bool deferResolution = false,
+      this.deferValidation = false})
+      : registered = _registered(name, arguments.length) {
+    // CREATE VIEW stores syntactically valid SQL. Function availability and
+    // signatures are resolved when the stored query is later prepared.
+    if (!deferResolution) _resolveSignature();
+  }
+
+  bool _signatureResolved = false;
+  final bool deferValidation;
+  void resolveSignature() => _resolveSignature();
+  void _resolveSignature() {
+    if (_signatureResolved) return;
     final range = registered == null
         ? _arities[key]
         : (registered!.argumentCount == -1
@@ -37,12 +50,26 @@ final class FunctionExpr extends Expr {
             'second argument to likelihood() must be a constant between 0.0 and 1.0');
       }
     }
+    _signatureResolved = true;
   }
+
   final RegisteredSqlFunction? registered;
   final String name;
   final List<Expr> arguments;
   final bool distinct;
   final bool star;
+  static RegisteredSqlFunction? _registered(String name, int count) {
+    final definition = SqlFunctionRegistry.resolve(name, count);
+    // The pinned FTS extension installs its MATCH(2) error stub as a
+    // connection-local exact overload, ahead of a user variadic overload.
+    if (asciiLower(name) == 'match' &&
+        count == 2 &&
+        definition?.argumentCount == -1) {
+      return null;
+    }
+    return definition;
+  }
+
   Expr? filter;
   final List<OrderTerm> order = [];
   bool windowFunction = false;
@@ -101,6 +128,7 @@ final class FunctionExpr extends Expr {
     'format': (0, 1000),
     'like': (2, 3),
     'glob': (2, 2),
+    'match': (2, 2),
     'row_number': (0, 0),
     'rank': (0, 0),
     'dense_rank': (0, 0),
@@ -152,6 +180,7 @@ final class FunctionExpr extends Expr {
   static Map<String, (int, int)> get builtinArities => _arities;
   @override
   void validate(Set<String> columns) {
+    if (!deferValidation) _resolveSignature();
     if (isAggregate &&
         !windowFunction &&
         arguments.any((arg) => arg.containsAggregate)) {
@@ -181,6 +210,7 @@ final class FunctionExpr extends Expr {
 
   @override
   Object? evaluate(EvalContext context) {
+    _resolveSignature();
     if (registered == null && windowNames.contains(key)) {
       throw const SqlException('Window function requires OVER');
     }
@@ -236,6 +266,10 @@ final class FunctionExpr extends Expr {
               escape: args.length == 3 ? Literal(args[2]) : null,
               glob: key == 'glob')
           .evaluate(context);
+    }
+    if (key == 'match') {
+      throw const SqlException(
+          'Unable to use function MATCH in the requested context');
     }
     if (dateFunctionArities.containsKey(key)) {
       final timeArgs = key == 'strftime' ? args.skip(1).toList() : args;
@@ -455,63 +489,15 @@ final class FunctionExpr extends Expr {
     if (group == null) {
       throw const SqlException('Aggregate used outside aggregate query');
     }
-    if (registered != null && order.isEmpty) {
-      try {
-        final state = registered!.aggregate!();
-        final seen = <List<Object?>>[];
-        for (final row in group) {
-          final ctx = context.forRow(row);
-          if (filter != null &&
-              truth(filter!.evaluate(ctx), ctx.encoding) != true) {
-            continue;
-          }
-          final args = arguments.map((arg) => arg.evaluate(ctx)).toList();
-          if (distinct &&
-              seen.any((previous) =>
-                  compareValues(previous.single, args.single, context.encoding,
-                      arguments.single.collation(context)) ==
-                  0)) {
-            continue;
-          }
-          seen.add(args);
-          state.step(List.unmodifiable(args.map(sqlValue)));
-        }
-        return sqlValue(state.finish());
-      } on SqlException {
-        rethrow;
-      } catch (_) {
-        throw SqlException('User aggregate $name failed');
-      }
-    }
-    final prepared = <(List<Object?>, List<Object?>, int)>[];
-    final reuse = arguments.length == 1 &&
-        order.length == 1 &&
-        sameExpression(arguments.single, order.single.expression);
+    final accumulator = PreparedSqlAggregate(this, context);
     for (final row in group) {
-      final ctx = context.forRow(row);
-      if (filter != null &&
-          truth(filter!.evaluate(ctx), ctx.encoding) != true) {
-        continue;
-      }
-      final keys = reuse
-          ? <Object?>[]
-          : order.map((t) => t.expression.evaluate(ctx)).toList();
-      final args = star || arguments.isEmpty
-          ? (registered == null ? <Object?>[BigInt.one] : <Object?>[])
-          : arguments.map((arg) => arg.evaluate(ctx)).toList();
-      if (reuse) keys.add(args.single);
-      if (distinct) {
-        final existing = prepared.indexWhere((entry) =>
-            compareValues(entry.$1.single, args.single, context.encoding,
-                arguments.single.collation(context)) ==
-            0);
-        if (existing >= 0) {
-          if (reuse) prepared[existing] = (args, keys, prepared[existing].$3);
-          continue;
-        }
-      }
-      prepared.add((args, keys, prepared.length));
+      accumulator.step(context.forRow(row));
     }
+    return accumulator.finish();
+  }
+
+  Object? _finishAggregate(
+      EvalContext context, List<(List<Object?>, List<Object?>, int)> prepared) {
     if (order.isNotEmpty) {
       prepared.sort((a, b) {
         for (var i = 0; i < order.length; i++) {
@@ -598,6 +584,9 @@ final class FunctionExpr extends Expr {
     for (final value in values) {
       var n = numeric(value, prefix: true, encoding: context.encoding) ??
           BigInt.zero;
+      if (value is String && value.contains('\u0000')) {
+        n = numeric(value) ?? n;
+      }
       if (value is Uint8List || value is String && numeric(value) == null) {
         n = n is BigInt ? n.toDouble() : n;
       }
@@ -622,6 +611,101 @@ final class FunctionExpr extends Expr {
     if (key == 'avg') return real.isNaN ? null : real / values.length;
     if (floating) return real.isNaN ? null : real;
     return integer;
+  }
+}
+
+/// One accumulator per prepared aggregate. The executor advances all
+/// accumulators for one input row before requesting the next source row.
+/// Ordered aggregates retain arguments until their local sort is complete.
+final class PreparedSqlAggregate {
+  PreparedSqlAggregate(this.function, this.context) {
+    if (function.registered != null && function.order.isEmpty) {
+      try {
+        _state = function.registered!.aggregate!();
+      } on SqlException {
+        rethrow;
+      } catch (_) {
+        throw SqlException('User aggregate ${function.name} failed');
+      }
+    }
+  }
+  final FunctionExpr function;
+  final EvalContext context;
+  final _prepared = <(List<Object?>, List<Object?>, int)>[];
+  SqlAggregate? _state;
+  RowValues? representative;
+  Object? _extreme;
+  bool _copyBare = true;
+
+  void step(EvalContext row) {
+    final fn = function;
+    if (fn.filter != null &&
+        truth(fn.filter!.evaluate(row), row.encoding) != true) {
+      return;
+    }
+    final reuse = fn.arguments.length == 1 &&
+        fn.order.length == 1 &&
+        sameExpression(fn.arguments.single, fn.order.single.expression);
+    final keys = reuse
+        ? <Object?>[]
+        : fn.order.map((term) => term.expression.evaluate(row)).toList();
+    final args = fn.star || fn.arguments.isEmpty
+        ? (fn.registered == null ? <Object?>[BigInt.one] : <Object?>[])
+        : fn.arguments.map((argument) => argument.evaluate(row)).toList();
+    if (reuse) keys.add(args.single);
+    if (fn.distinct) {
+      final existing = _prepared.indexWhere((entry) =>
+          compareValues(entry.$1.single, args.single, context.encoding,
+              fn.arguments.single.collation(context)) ==
+          0);
+      if (existing >= 0) {
+        if (reuse) _prepared[existing] = (args, keys, _prepared[existing].$3);
+        if (fn.registered == null &&
+            ['min', 'max'].contains(fn.key) &&
+            _copyBare) {
+          representative = row.row;
+        }
+        return;
+      }
+    }
+    _prepared.add((args, keys, _prepared.length));
+    if (fn.registered == null && ['min', 'max'].contains(fn.key)) {
+      final value = args.single;
+      if (value == null) {
+        _copyBare = _extreme == null;
+      } else {
+        final comparison = _extreme == null
+            ? 0
+            : compareValues(value, _extreme, context.encoding,
+                fn.arguments.single.collation(context));
+        _copyBare = _extreme == null ||
+            (fn.key == 'min' ? comparison < 0 : comparison > 0);
+        if (_copyBare) _extreme = value;
+      }
+      if (_copyBare) representative = row.row;
+    }
+    if (_state != null) {
+      try {
+        _state!.step(List.unmodifiable(args.map(sqlValue)));
+      } on SqlException {
+        rethrow;
+      } catch (_) {
+        throw SqlException('User aggregate ${fn.name} failed');
+      }
+    }
+  }
+
+  Object? finish() {
+    if (_state != null) {
+      try {
+        return sqlValue(_state!.finish());
+      } on SqlException {
+        rethrow;
+      } catch (_) {
+        throw SqlException('User aggregate ${function.name} failed');
+      }
+    }
+    return function._finishAggregate(context, _prepared);
   }
 }
 

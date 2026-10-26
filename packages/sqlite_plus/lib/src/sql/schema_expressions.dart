@@ -27,7 +27,8 @@ void validateSchemaExpression(Expr expression, Set<String> columns) {
                 'randomblob',
                 'changes',
                 'total_changes',
-                'last_insert_rowid'
+                'last_insert_rowid',
+                'match'
               ].contains(e.key)) {
         throw const SqlException(
             'Non-deterministic function in schema expression');

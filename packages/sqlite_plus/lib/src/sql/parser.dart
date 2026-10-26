@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'tokenizer.dart';
 import 'values.dart';
 import 'functions.dart';
+import 'core_functions.dart' show scalarInt64;
 import 'expressions.dart';
 import 'triggers.dart';
 import 'windows.dart';
@@ -15,6 +16,73 @@ abstract interface class SqlRows {
 }
 
 typedef RowValues = Map<String, Object?>;
+
+/// Names in this WITH frame which can be reached from a consumer. Unused WITH
+/// declarations are neither resolved nor prepared by SQLite.
+Set<String> usedCteNames(SelectStatement statement,
+    {SelectStatement? consumer}) {
+  final used = <String>{};
+  final visited = <SelectStatement>{};
+  void visit(SelectStatement query, List<SelectStatement> parents) {
+    if (!visited.add(query)) return;
+    final frames = [...parents, query];
+    for (final source in query.leafSources) {
+      if (source.query != null) {
+        visit(source.query!, frames);
+      } else if (source.table != null && source.schema == null) {
+        final name = asciiLower(source.table!);
+        for (var i = frames.length - 1; i >= 0; i--) {
+          final declaration = frames[i].ctes[name];
+          if (declaration == null) continue;
+          if (identical(frames[i], statement)) used.add(name);
+          visit(declaration.$2, frames.sublist(0, i + 1));
+          break;
+        }
+      }
+    }
+    void expression(Expr expr) {
+      if (expr is SubqueryExpr) visit(expr.statement, frames);
+      if (expr is InSelectExpr) visit(expr.statement, frames);
+      for (final child in expr.children) {
+        expression(child);
+      }
+    }
+
+    for (final expr in <Expr?>[
+      ...query.items.map((item) => item.expression),
+      query.where,
+      ...query.groupBy,
+      query.having,
+      ...query.order.map((term) => term.expression),
+      query.limit,
+      query.offset,
+      ...query.allSources.map((source) => source.on),
+      ...query.allSources.expand((source) => source.pragmaArguments ?? <Expr>[])
+    ].whereType<Expr>()) {
+      expression(expr);
+    }
+    for (final part in query.compounds) {
+      visit(part.$2, frames);
+    }
+  }
+
+  visit(consumer ?? statement, consumer == null ? const [] : [statement]);
+  return used;
+}
+
+/// A prepared expression substituted for an inline relation column. Each SQL
+/// reference evaluates the expression again, like SQLite query flattening.
+final class SqlValueBinding {
+  SqlValueBinding(this.evaluate);
+  final Object? Function() evaluate;
+}
+
+Object? resolveSqlValue(Object? value) {
+  while (value is SqlValueBinding) {
+    value = value.evaluate();
+  }
+  return value;
+}
 
 final class EvalContext {
   EvalContext(this.row, this.affinities, this.parameters, [this.encoding = 1]);
@@ -74,10 +142,14 @@ abstract class Expr {
 }
 
 final class Literal extends Expr {
-  Literal(this.value, [this.spelling, this.hexadecimal = false]);
+  Literal(this.value,
+      [this.spelling, this.hexadecimal = false, this.integerBoolean = false]);
   final Object? value;
   final String? spelling;
   final bool hexadecimal;
+  // SQLite recognizes bare small integer truth constants for AND/OR folding.
+  // Signs, COLLATE, digit separators and larger integers retain evaluation.
+  final bool integerBoolean;
   @override
   Object? evaluate(EvalContext context) => value;
 }
@@ -115,7 +187,7 @@ class ColumnExpr extends Expr {
   Set<String> get unaggregatedColumns => {key};
   @override
   Object? evaluate(EvalContext context) {
-    if (context.row.containsKey(key)) return context.row[key];
+    if (context.row.containsKey(key)) return resolveSqlValue(context.row[key]);
     final alias = context.columnAliases[key];
     if (alias != null) return alias.evaluate(context);
     throw SqlException('No such column: $name');
@@ -178,12 +250,9 @@ final class UnaryExpr extends Expr {
           : boolean(!truth(value, context.encoding)!);
     }
     if (value == null) return null;
-    final n =
-        numeric(value, prefix: true, encoding: context.encoding) ?? BigInt.zero;
+    if (op == '~') return ~scalarInt64(value, context.encoding);
+    final n = arithmeticNumeric(value, context.encoding) ?? BigInt.zero;
     if (op == '-') return n is BigInt ? narrowInteger(-n) : -(n as double);
-    if (op == '~') {
-      return ~toSqlInteger(n).toSigned(64);
-    }
     throw SqlException('Unsupported unary operator $op');
   }
 }
@@ -224,6 +293,13 @@ final class BinaryExpr extends Expr {
 
   @override
   Object? evaluate(EvalContext context) {
+    if (op == 'OR' &&
+        [left, right].any((expression) =>
+            expression is Literal &&
+            expression.integerBoolean &&
+            expression.value != BigInt.zero)) {
+      return BigInt.one;
+    }
     if (isComparisonOperator(op) &&
         (left is RowExpr ||
             right is RowExpr ||
@@ -307,11 +383,9 @@ final class BinaryExpr extends Expr {
     if (op == '||') {
       return stringify(a, context.encoding) + stringify(b, context.encoding);
     }
-    a = numeric(a, prefix: true, encoding: context.encoding) ?? BigInt.zero;
-    b = numeric(b, prefix: true, encoding: context.encoding) ?? BigInt.zero;
     if (['&', '|', '<<', '>>'].contains(op)) {
-      final aa = toSqlInteger(a);
-      final bb = toSqlInteger(b);
+      final aa = scalarInt64(a, context.encoding);
+      final bb = scalarInt64(b, context.encoding);
       if (op == '&') return (aa & bb).toSigned(64);
       if (op == '|') return (aa | bb).toSigned(64);
       final shift = bb.abs() > BigInt.from(64) ? 64 : bb.abs().toInt();
@@ -320,7 +394,19 @@ final class BinaryExpr extends Expr {
           ? (aa << shift).toSigned(64)
           : (aa.toSigned(64) >> shift);
     }
-    if ((op == '/' || op == '%') && compareValues(b, BigInt.zero) == 0) {
+    // Remainder keeps the operand's integer-prefix conversion even when its
+    // numeric classification is REAL (for example, the TEXT value '1e2').
+    final remainder = op == '%'
+        ? (scalarInt64(a, context.encoding), scalarInt64(b, context.encoding))
+        : null;
+    a = arithmeticNumeric(a, context.encoding) ?? BigInt.zero;
+    b = arithmeticNumeric(b, context.encoding) ?? BigInt.zero;
+    if (remainder != null) {
+      if (remainder.$2 == BigInt.zero) return null;
+      final result = remainder.$1.remainder(remainder.$2);
+      return a is BigInt && b is BigInt ? result : result.toDouble();
+    }
+    if (op == '/' && compareValues(b, BigInt.zero) == 0) {
       return null;
     }
     if (a is BigInt && b is BigInt) {
@@ -329,18 +415,11 @@ final class BinaryExpr extends Expr {
         '-' => narrowInteger(a - b),
         '*' => narrowInteger(a * b),
         '/' => narrowInteger(a ~/ b),
-        '%' => a.remainder(b),
         _ => throw SqlException('Unsupported operator $op'),
       };
     }
     final aa = a is BigInt ? a.toDouble() : a as double;
     final bb = b is BigInt ? b.toDouble() : b as double;
-    if (op == '%') {
-      final divisor = toSqlInteger(bb);
-      return divisor == BigInt.zero
-          ? null
-          : toSqlInteger(aa).remainder(divisor).toDouble();
-    }
     final result = switch (op) {
       '+' => aa + bb,
       '-' => aa - bb,
@@ -418,7 +497,48 @@ final class SelectStatement {
   /// Resolved without evaluating expressions during statement preparation.
   int? preparedColumnCount;
   bool tableInShorthand = false;
+  bool subqueryFirstRowOnly = false;
+  bool subqueryExists = false;
 }
+
+/// Fixed descriptors for the supported metadata PRAGMA table sources. This is
+/// deliberately not a general virtual-table or table-function registry.
+const pragmaTableColumns = <String, List<String>>{
+  'pragma_table_info': ['cid', 'name', 'type', 'notnull', 'dflt_value', 'pk'],
+  'pragma_table_xinfo': [
+    'cid',
+    'name',
+    'type',
+    'notnull',
+    'dflt_value',
+    'pk',
+    'hidden'
+  ],
+  'pragma_index_list': ['seq', 'name', 'unique', 'origin', 'partial'],
+  'pragma_index_info': ['seqno', 'cid', 'name'],
+  'pragma_index_xinfo': ['seqno', 'cid', 'name', 'desc', 'coll', 'key'],
+  'pragma_foreign_key_list': [
+    'id',
+    'seq',
+    'table',
+    'from',
+    'to',
+    'on_update',
+    'on_delete',
+    'match'
+  ],
+  'pragma_database_list': ['seq', 'name', 'file'],
+  'pragma_collation_list': ['seq', 'name'],
+  'pragma_function_list': ['name', 'builtin', 'type', 'enc', 'narg', 'flags'],
+  'pragma_pragma_list': ['name'],
+};
+
+bool pragmaTableHasArgument(String name) => !const {
+      'pragma_database_list',
+      'pragma_collation_list',
+      'pragma_function_list',
+      'pragma_pragma_list'
+    }.contains(asciiLower(name));
 
 final class QuerySource {
   QuerySource(
@@ -429,6 +549,7 @@ final class QuerySource {
       this.notIndexed = false,
       this.rowIdentity,
       this.query,
+      this.pragmaArguments,
       this.group = const [],
       this.alias,
       this.join = 'CROSS',
@@ -442,6 +563,10 @@ final class QuerySource {
   final String? rowIdentity;
   final int? tableOffset;
   final SelectStatement? query;
+
+  /// Arguments of a supported read-only PRAGMA table source. Null also permits
+  /// ordinary physical tables whose name starts with pragma_.
+  final List<Expr>? pragmaArguments;
   final List<QuerySource> group;
   Iterable<QuerySource> get allSources sync* {
     yield this;
@@ -468,11 +593,18 @@ final class QuerySource {
 
 /// Strict parser for the M3 single-table SELECT grammar. Unsupported syntax fails.
 final class SqlParser {
-  SqlParser(String sql)
+  SqlParser(String sql,
+      {this.deferFunctionResolution = false,
+      this.deferFunctionValidation = false})
       : source = sql,
         tokens = SqlTokenizer.tokenize(sql);
-  SqlParser.tokens(this.tokens) : source = null;
+  SqlParser.tokens(this.tokens,
+      {this.deferFunctionResolution = false,
+      this.deferFunctionValidation = false})
+      : source = null;
   final String? source;
+  bool deferFunctionResolution;
+  bool deferFunctionValidation;
   final List<SqlToken> tokens;
   int position = 0;
   int parameterCount = 0;
@@ -579,7 +711,14 @@ final class SqlParser {
           materialization[name] = true;
         }
         require('(');
-        final query = select(nested: true);
+        final savedResolution = deferFunctionResolution;
+        late SelectStatement query;
+        deferFunctionResolution = true;
+        try {
+          query = select(nested: true);
+        } finally {
+          deferFunctionResolution = savedResolution;
+        }
         require(')');
         ctes[name] = (columns, query);
       } while (take(','));
@@ -974,6 +1113,7 @@ final class SqlParser {
     var notIndexed = false;
     int? tableOffset;
     SelectStatement? query;
+    List<Expr>? pragmaArguments;
     var group = <QuerySource>[];
     if (take('(')) {
       if (++_sourceDepth > 128) {
@@ -998,9 +1138,25 @@ final class SqlParser {
         tableOffset = current.offset;
         table = identifier();
       }
+      if (take('(')) {
+        if (!pragmaTableColumns.containsKey(asciiLower(table))) {
+          throw SqlException('Unsupported table-valued function: $table');
+        }
+        pragmaArguments = [];
+        if (!take(')')) {
+          do {
+            pragmaArguments.add(expression());
+          } while (take(','));
+          require(')');
+        }
+        final maximum = pragmaTableHasArgument(table) ? 2 : 0;
+        if (pragmaArguments.length > maximum) {
+          throw SqlException('Too many arguments on $table()');
+        }
+      }
     }
     final alias = take('AS') || _implicitAlias() ? _alias() : null;
-    if (query == null && group.isEmpty) {
+    if (query == null && group.isEmpty && pragmaArguments == null) {
       if (take('INDEXED')) {
         require('BY');
         indexedBy = identifier();
@@ -1032,6 +1188,7 @@ final class SqlParser {
           indexedBy: child.indexedBy,
           notIndexed: child.notIndexed,
           query: child.query,
+          pragmaArguments: child.pragmaArguments,
           group: child.group,
           alias: alias ?? child.alias,
           join: join,
@@ -1046,6 +1203,7 @@ final class SqlParser {
         indexedBy: indexedBy,
         notIndexed: notIndexed,
         query: query,
+        pragmaArguments: pragmaArguments,
         group: group,
         alias: alias,
         join: join,
@@ -1160,8 +1318,14 @@ final class SqlParser {
           value = numeric(text) ??
               (throw SqlException('Invalid number', token.offset));
         }
-        left = Literal(value, value is double ? asciiLower(text) : null,
-            asciiLower(text).startsWith('0x'));
+        left = Literal(
+            value,
+            value is double ? asciiLower(text) : null,
+            asciiLower(text).startsWith('0x'),
+            !token.text.contains('_') &&
+                value is BigInt &&
+                value >= BigInt.zero &&
+                value <= BigInt.from(0x7fffffff));
       } else if (token.kind == SqlTokenKind.string) {
         left = Literal(token.text);
       } else if (token.kind == SqlTokenKind.blob) {
@@ -1186,7 +1350,9 @@ final class SqlParser {
         left = BoolNameExpr(token.text, offset: token.offset);
       } else if (['CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP']
           .contains(token.keyword)) {
-        left = FunctionExpr(asciiLower(token.text), []);
+        left = FunctionExpr(asciiLower(token.text), [],
+            deferResolution: deferFunctionResolution,
+            deferValidation: deferFunctionValidation);
       } else if (token.kind == SqlTokenKind.identifier) {
         if (take('(')) {
           if (asciiLower(token.text) == 'raise') {
@@ -1220,12 +1386,15 @@ final class SqlParser {
               }
               require(')');
             }
-            left =
-                FunctionExpr(token.text, args, distinct: distinct, star: star)
-                  ..order.addAll(argumentOrder);
+            left = FunctionExpr(token.text, args,
+                distinct: distinct,
+                star: star,
+                deferResolution: deferFunctionResolution,
+                deferValidation: deferFunctionValidation)
+              ..order.addAll(argumentOrder);
             if (take('FILTER')) {
               final function = left as FunctionExpr;
-              if (!function.isAggregate) {
+              if (!deferFunctionResolution && !function.isAggregate) {
                 throw const SqlException('FILTER requires an aggregate');
               }
               require('(');
@@ -1304,8 +1473,10 @@ final class SqlParser {
               current.keyword == 'BETWEEN' ||
               current.keyword == 'LIKE' ||
               current.keyword == 'GLOB' ||
+              current.keyword == 'REGEXP' ||
+              current.keyword == 'MATCH' ||
               current.keyword == 'NOT' &&
-                  ['IN', 'BETWEEN', 'LIKE', 'GLOB']
+                  ['IN', 'BETWEEN', 'LIKE', 'GLOB', 'REGEXP', 'MATCH']
                       .contains(tokens[position + 1].keyword))) {
         final negate = take('NOT');
         final op = current.keyword;
@@ -1351,8 +1522,14 @@ final class SqlParser {
         } else {
           final pattern = expression(6);
           final escape = take('ESCAPE') ? expression(10) : null;
-          left = PatternExpr(left, pattern,
-              escape: escape, glob: op == 'GLOB', negate: negate);
+          // SQLite lowers pattern operators to their SQL function. The pattern
+          // is the first argument, including when a connection replaces LIKE
+          // or GLOB or supplies REGEXP/MATCH itself.
+          final function = FunctionExpr(
+              asciiLower(op), [pattern, left, if (escape != null) escape],
+              deferResolution: deferFunctionResolution,
+              deferValidation: deferFunctionValidation);
+          left = negate ? UnaryExpr('NOT', function) : function;
         }
         continue;
       }
@@ -1376,7 +1553,19 @@ final class SqlParser {
         require('FROM');
         op = op == 'IS' ? 'IS NOT' : 'IS';
       }
-      left = BinaryExpr(op, left, expression(level + 1));
+      final right = expression(level + 1);
+      bool constant(Expr expression, bool expected) =>
+          expression is Literal &&
+          expression.integerBoolean &&
+          (expression.value != BigInt.zero) == expected;
+      left = op == 'AND' &&
+              !left.containsAggregate &&
+              !right.containsAggregate &&
+              !left.containsWindow &&
+              !right.containsWindow &&
+              (constant(left, false) || constant(right, false))
+          ? Literal(BigInt.zero, null, false, true)
+          : BinaryExpr(op, left, right);
     }
     return left;
   }

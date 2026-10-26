@@ -12,8 +12,12 @@ final class TriggerDefinition {
   final String? whenSql;
   final int tableOffset;
   final List<int> statementOffsets;
-  static TriggerDefinition parse(String sql) {
-    final p = SqlParser(sql);
+  static TriggerDefinition parse(String sql,
+      {bool deferFunctionResolution = true,
+      bool deferFunctionValidation = false}) {
+    final p = SqlParser(sql,
+        deferFunctionResolution: deferFunctionResolution,
+        deferFunctionValidation: deferFunctionValidation);
     p.require('CREATE');
     p.require('TRIGGER');
     if (p.take('IF')) {

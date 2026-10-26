@@ -21,12 +21,16 @@ final class CatalogColumn {
       this.collation = 'binary',
       this.autoIncrement = false,
       this.checks = const [],
-      this.primaryDescending = false});
+      this.primaryDescending = false,
+      this.hidden = false});
   final String name;
   final String declaredType;
   final String? affinityOverride;
   final Expr? generatedExpression;
   final bool generatedStored;
+
+  /// Hidden input fields of the supported metadata PRAGMA table sources.
+  final bool hidden;
   int primaryKey;
   final Object? defaultValue;
   final Expr? defaultExpression;
@@ -91,30 +95,39 @@ final class CatalogTable {
   }
 
   void evaluateGenerated(RowValues row, int encoding,
-      {bool recomputeStored = false}) {
+      {bool recomputeStored = false, bool lazy = false}) {
     final context = EvalContext(row,
         {for (final c in columns) asciiLower(c.name): c.affinity}, [], encoding)
       ..schemaExpression = true
       ..collations = {for (final c in columns) asciiLower(c.name): c.collation};
     for (final column in generatedOrder) {
       if (column.generatedStored && !recomputeStored) continue;
-      var value = applyAffinity(
-          column.generatedExpression!.evaluate(context), column.affinity);
-      if (column.affinity == 'numeric' &&
-          value is double &&
-          value.isFinite &&
-          value == value.truncateToDouble() &&
-          value >= -(BigInt.one << 63).toDouble() &&
-          value < (BigInt.one << 63).toDouble()) {
-        value = BigInt.from(value);
+      Object? evaluate() {
+        var value = applyAffinity(
+            column.generatedExpression!.evaluate(context), column.affinity);
+        if (column.affinity == 'numeric' &&
+            value is double &&
+            value.isFinite &&
+            value == value.truncateToDouble() &&
+            value > -(BigInt.one << 63).toDouble() &&
+            value < (BigInt.one << 63).toDouble()) {
+          value = BigInt.from(value);
+        }
+        if (value is BigInt &&
+            !column.declaredType.toUpperCase().contains('INT') &&
+            ['REAL', 'FLOA', 'DOUB']
+                .any(column.declaredType.toUpperCase().contains)) {
+          value = value.toDouble();
+        }
+        return sqlValue(value);
       }
-      if (value is BigInt &&
-          !column.declaredType.toUpperCase().contains('INT') &&
-          ['REAL', 'FLOA', 'DOUB']
-              .any(column.declaredType.toUpperCase().contains)) {
-        value = value.toDouble();
-      }
-      row[asciiLower(column.name)] = sqlValue(value);
+
+      // A VIRTUAL value is an expression at each reference, including repeated
+      // references in one projection. Unused expressions must not run while
+      // loading a table or preparing a query.
+      row[asciiLower(column.name)] = lazy && !column.generatedStored
+          ? SqlValueBinding(evaluate)
+          : evaluate();
     }
   }
 
@@ -438,7 +451,17 @@ final class DatabaseCatalog {
           } else if (parser.take('NULL')) {
           } else if (parser.take('DEFAULT')) {
             final start = parser.current.offset;
-            final expr = parser.expression();
+            final previousResolution = parser.deferFunctionResolution;
+            final previousValidation = parser.deferFunctionValidation;
+            parser.deferFunctionResolution = true;
+            parser.deferFunctionValidation = true;
+            late Expr expr;
+            try {
+              expr = parser.expression();
+            } finally {
+              parser.deferFunctionResolution = previousResolution;
+              parser.deferFunctionValidation = previousValidation;
+            }
             defaultSql = sql.substring(start, parser.current.offset).trim();
             if (defaultSql.startsWith('(') && defaultSql.endsWith(')')) {
               defaultSql =

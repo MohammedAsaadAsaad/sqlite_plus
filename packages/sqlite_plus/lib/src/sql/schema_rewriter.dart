@@ -162,6 +162,7 @@ final class _TableRenameVisitor {
       select.limit,
       select.offset,
       ...sources.map((s) => s.on),
+      ...sources.expand((source) => source.pragmaArguments ?? const <Expr>[]),
       ...select.windowDefinitions.values
     ]) {
       if (expr != null) expression(expr, bindings, visibleCtes);

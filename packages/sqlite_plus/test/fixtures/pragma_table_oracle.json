@@ -1,0 +1,5528 @@
+{
+  "source_id": "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+  "setup": [
+    "CREATE TABLE parent(a TEXT COLLATE NOCASE,b INT,PRIMARY KEY(a,b)) WITHOUT ROWID",
+    "CREATE TABLE sample(id INTEGER PRIMARY KEY,a TEXT NOT NULL DEFAULT 'x',b REAL,c,d INT AS(id+1),e INT AS(id+2) STORED,FOREIGN KEY(a,c) REFERENCES parent(a,b) ON DELETE CASCADE)",
+    "CREATE INDEX ix ON sample(a COLLATE RTRIM DESC,b)",
+    "CREATE INDEX ie ON sample(lower(a)) WHERE b IS NOT NULL",
+    "CREATE VIEW visible AS SELECT id,a,CAST(b AS INTEGER) AS integral FROM sample",
+    "CREATE TABLE \"\u8868 odd\"(\"quoted name\" TEXT,\"\u03b1\" INT)",
+    "CREATE TABLE names(n TEXT);",
+    "INSERT INTO names VALUES('sample'),('parent'),('missing'),('\u8868 odd')",
+    "CREATE TABLE empty(n)"
+  ],
+  "cases": [
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample', 'main')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample', NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('parent')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "b",
+          "INT",
+          {
+            "integer": "1"
+          },
+          null,
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('parent', 'main')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "b",
+          "INT",
+          {
+            "integer": "1"
+          },
+          null,
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('parent', NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "b",
+          "INT",
+          {
+            "integer": "1"
+          },
+          null,
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('visible')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "integral",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('visible', 'main')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "integral",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('visible', NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "integral",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('\u8868 odd')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "quoted name",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "\u03b1",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('\u8868 odd', 'main')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "quoted name",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "\u03b1",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('\u8868 odd', NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "quoted name",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "\u03b1",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('missing')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('missing', 'main')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('missing', NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sqlite_schema')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "type",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "name",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "tbl_name",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "rootpage",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "4"
+          },
+          "sql",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sqlite_schema', 'main')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "type",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "name",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "tbl_name",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "rootpage",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "4"
+          },
+          "sql",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sqlite_schema', NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "type",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "name",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "tbl_name",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "rootpage",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "4"
+          },
+          "sql",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info()",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info(NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample','other')",
+      "parameters": [],
+      "error": "unknown database 'other'"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample','')",
+      "parameters": [],
+      "error": "unknown database ''"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample','main',3)",
+      "parameters": [],
+      "error": "too many arguments on pragma_table_info() - max 2"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('sample')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "4"
+          },
+          "d",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          }
+        ],
+        [
+          {
+            "integer": "5"
+          },
+          "e",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "3"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('sample', 'main')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "4"
+          },
+          "d",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          }
+        ],
+        [
+          {
+            "integer": "5"
+          },
+          "e",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "3"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('sample', NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "4"
+          },
+          "d",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "2"
+          }
+        ],
+        [
+          {
+            "integer": "5"
+          },
+          "e",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "3"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('visible')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "integral",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('visible', 'main')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "integral",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('visible', NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "integral",
+          "INT",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('missing')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('missing', 'main')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('missing', NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo()",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo(NULL)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('sample','other')",
+      "parameters": [],
+      "error": "unknown database 'other'"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('sample','')",
+      "parameters": [],
+      "error": "unknown database ''"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('sample','main',3)",
+      "parameters": [],
+      "error": "too many arguments on pragma_table_xinfo() - max 2"
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('sample')",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "ie",
+          {
+            "integer": "0"
+          },
+          "c",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "ix",
+          {
+            "integer": "0"
+          },
+          "c",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('sample', 'main')",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "ie",
+          {
+            "integer": "0"
+          },
+          "c",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "ix",
+          {
+            "integer": "0"
+          },
+          "c",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('sample', NULL)",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "ie",
+          {
+            "integer": "0"
+          },
+          "c",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "ix",
+          {
+            "integer": "0"
+          },
+          "c",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('parent')",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "sqlite_autoindex_parent_1",
+          {
+            "integer": "1"
+          },
+          "pk",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('parent', 'main')",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "sqlite_autoindex_parent_1",
+          {
+            "integer": "1"
+          },
+          "pk",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('parent', NULL)",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "sqlite_autoindex_parent_1",
+          {
+            "integer": "1"
+          },
+          "pk",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('missing')",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('missing', 'main')",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('missing', NULL)",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list()",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list(NULL)",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('sample','other')",
+      "parameters": [],
+      "error": "unknown database 'other'"
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('sample','')",
+      "parameters": [],
+      "error": "unknown database ''"
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_list('sample','main',3)",
+      "parameters": [],
+      "error": "too many arguments on pragma_index_list() - max 2"
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('ix')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          "a"
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "2"
+          },
+          "b"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('ix', 'main')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          "a"
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "2"
+          },
+          "b"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('ix', NULL)",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          "a"
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "2"
+          },
+          "b"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('ie')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "-2"
+          },
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('ie', 'main')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "-2"
+          },
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('ie', NULL)",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "-2"
+          },
+          null
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('parent')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          "a"
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          "b"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('parent', 'main')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          "a"
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          "b"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('parent', NULL)",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          "a"
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          "b"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('missing')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('missing', 'main')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('missing', NULL)",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info()",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info(NULL)",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('sample','other')",
+      "parameters": [],
+      "error": "unknown database 'other'"
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('sample','')",
+      "parameters": [],
+      "error": "unknown database ''"
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_info('sample','main',3)",
+      "parameters": [],
+      "error": "too many arguments on pragma_index_info() - max 2"
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('ix')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          "a",
+          {
+            "integer": "1"
+          },
+          "RTRIM",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "2"
+          },
+          "b",
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "-1"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('ix', 'main')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          "a",
+          {
+            "integer": "1"
+          },
+          "RTRIM",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "2"
+          },
+          "b",
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "-1"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('ix', NULL)",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          "a",
+          {
+            "integer": "1"
+          },
+          "RTRIM",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "2"
+          },
+          "b",
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "-1"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('ie')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "-2"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "-1"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('ie', 'main')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "-2"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "-1"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('ie', NULL)",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "-2"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "-1"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('parent')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          "a",
+          {
+            "integer": "0"
+          },
+          "NOCASE",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          "b",
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('parent', 'main')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          "a",
+          {
+            "integer": "0"
+          },
+          "NOCASE",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          "b",
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('parent', NULL)",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          "a",
+          {
+            "integer": "0"
+          },
+          "NOCASE",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          "b",
+          {
+            "integer": "0"
+          },
+          "BINARY",
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('missing')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('missing', 'main')",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('missing', NULL)",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo()",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo(NULL)",
+      "parameters": [],
+      "columns": [
+        "seqno",
+        "cid",
+        "name",
+        "desc",
+        "coll",
+        "key"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('sample','other')",
+      "parameters": [],
+      "error": "unknown database 'other'"
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('sample','')",
+      "parameters": [],
+      "error": "unknown database ''"
+    },
+    {
+      "sql": "SELECT * FROM pragma_index_xinfo('sample','main',3)",
+      "parameters": [],
+      "error": "too many arguments on pragma_index_xinfo() - max 2"
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('sample')",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          "parent",
+          "a",
+          "a",
+          "NO ACTION",
+          "CASCADE",
+          "NONE"
+        ],
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          "parent",
+          "c",
+          "b",
+          "NO ACTION",
+          "CASCADE",
+          "NONE"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('sample', 'main')",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          "parent",
+          "a",
+          "a",
+          "NO ACTION",
+          "CASCADE",
+          "NONE"
+        ],
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          "parent",
+          "c",
+          "b",
+          "NO ACTION",
+          "CASCADE",
+          "NONE"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('sample', NULL)",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          "parent",
+          "a",
+          "a",
+          "NO ACTION",
+          "CASCADE",
+          "NONE"
+        ],
+        [
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          "parent",
+          "c",
+          "b",
+          "NO ACTION",
+          "CASCADE",
+          "NONE"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('parent')",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('parent', 'main')",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('parent', NULL)",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('missing')",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('missing', 'main')",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('missing', NULL)",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list()",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list(NULL)",
+      "parameters": [],
+      "columns": [
+        "id",
+        "seq",
+        "table",
+        "from",
+        "to",
+        "on_update",
+        "on_delete",
+        "match"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('sample','other')",
+      "parameters": [],
+      "error": "unknown database 'other'"
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('sample','')",
+      "parameters": [],
+      "error": "unknown database ''"
+    },
+    {
+      "sql": "SELECT * FROM pragma_foreign_key_list('sample','main',3)",
+      "parameters": [],
+      "error": "too many arguments on pragma_foreign_key_list() - max 2"
+    },
+    {
+      "sql": "SELECT * FROM pragma_database_list()",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name",
+        "file"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "main",
+          ""
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_collation_list()",
+      "parameters": [],
+      "columns": [
+        "seq",
+        "name"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "RTRIM"
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "NOCASE"
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "BINARY"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_function_list() WHERE name='lower' AND builtin=1 AND narg=1",
+      "parameters": [],
+      "columns": [
+        "name",
+        "builtin",
+        "type",
+        "enc",
+        "narg",
+        "flags"
+      ],
+      "rows": [
+        [
+          "lower",
+          {
+            "integer": "1"
+          },
+          "s",
+          "utf8",
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "2099200"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_pragma_list() WHERE name IN ('table_info','table_xinfo','index_info','index_xinfo','index_list','foreign_key_list') ORDER BY name",
+      "parameters": [],
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        [
+          "foreign_key_list"
+        ],
+        [
+          "index_info"
+        ],
+        [
+          "index_list"
+        ],
+        [
+          "index_xinfo"
+        ],
+        [
+          "table_info"
+        ],
+        [
+          "table_xinfo"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_database_list('main')",
+      "parameters": [],
+      "error": "too many arguments on pragma_database_list() - max 0"
+    },
+    {
+      "sql": "SELECT * FROM pragma_collation_list(NULL)",
+      "parameters": [],
+      "error": "too many arguments on pragma_collation_list() - max 0"
+    },
+    {
+      "sql": "SELECT * FROM pragma_function_list(1)",
+      "parameters": [],
+      "error": "too many arguments on pragma_function_list() - max 0"
+    },
+    {
+      "sql": "SELECT * FROM pragma_pragma_list('main')",
+      "parameters": [],
+      "error": "too many arguments on pragma_pragma_list() - max 0"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info(?,?)",
+      "parameters": [
+        "sample",
+        "main"
+      ],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info(:table,@schema) ORDER BY cid",
+      "parameters": [
+        "\u8868 odd",
+        "MAIN"
+      ],
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        [
+          "quoted name"
+        ],
+        [
+          "\u03b1"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM main.pragma_table_info('sample')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT main.p.name,p.cid FROM main.pragma_table_info('sample') AS p ORDER BY cid",
+      "parameters": [],
+      "columns": [
+        "name",
+        "cid"
+      ],
+      "rows": [
+        [
+          "id",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          "a",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          "b",
+          {
+            "integer": "2"
+          }
+        ],
+        [
+          "c",
+          {
+            "integer": "3"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT p.* FROM (pragma_table_info('sample') AS p)",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('main.sample')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample') INDEXED BY ix",
+      "parameters": [],
+      "error": "near \"INDEXED\": syntax error"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample') NOT INDEXED",
+      "parameters": [],
+      "error": "near \"NOT\": syntax error"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample') AS p NOT INDEXED",
+      "parameters": [],
+      "error": "near \"NOT\": syntax error"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info(unknown)",
+      "parameters": [],
+      "error": "no such column: unknown"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info((1,2))",
+      "parameters": [],
+      "error": "row value misused"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info(count(*))",
+      "parameters": [],
+      "error": "misuse of aggregate function count()"
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info(row_number() OVER ())",
+      "parameters": [],
+      "error": "misuse of window function row_number()"
+    },
+    {
+      "sql": "SELECT arg,schema,rowid,_rowid_,oid,name FROM pragma_table_info('sample','MAIN') ORDER BY cid",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "schema",
+        "rowid",
+        "rowid",
+        "rowid",
+        "name"
+      ],
+      "rows": [
+        [
+          "sample",
+          "MAIN",
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          "id"
+        ],
+        [
+          "sample",
+          "MAIN",
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "2"
+          },
+          "a"
+        ],
+        [
+          "sample",
+          "MAIN",
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "3"
+          },
+          "b"
+        ],
+        [
+          "sample",
+          "MAIN",
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "4"
+          },
+          "c"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info WHERE arg='sample'",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT arg,schema,name FROM pragma_table_info WHERE arg='sample' AND schema='main' ORDER BY cid",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "schema",
+        "name"
+      ],
+      "rows": [
+        [
+          "sample",
+          "main",
+          "id"
+        ],
+        [
+          "sample",
+          "main",
+          "a"
+        ],
+        [
+          "sample",
+          "main",
+          "b"
+        ],
+        [
+          "sample",
+          "main",
+          "c"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample') WHERE schema='main'",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample') WHERE arg='parent'",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample','main') WHERE schema='other'",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info WHERE schema='other'",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info((SELECT 'sample'))",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info(upper('sample'))",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT n,p.cid,p.name FROM names CROSS JOIN pragma_table_info(names.n) AS p ORDER BY n='\u8868 odd',n,p.cid",
+      "parameters": [],
+      "columns": [
+        "n",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          "parent",
+          {
+            "integer": "0"
+          },
+          "a"
+        ],
+        [
+          "parent",
+          {
+            "integer": "1"
+          },
+          "b"
+        ],
+        [
+          "sample",
+          {
+            "integer": "0"
+          },
+          "id"
+        ],
+        [
+          "sample",
+          {
+            "integer": "1"
+          },
+          "a"
+        ],
+        [
+          "sample",
+          {
+            "integer": "2"
+          },
+          "b"
+        ],
+        [
+          "sample",
+          {
+            "integer": "3"
+          },
+          "c"
+        ],
+        [
+          "\u8868 odd",
+          {
+            "integer": "0"
+          },
+          "quoted name"
+        ],
+        [
+          "\u8868 odd",
+          {
+            "integer": "1"
+          },
+          "\u03b1"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT n,p.cid,p.name FROM names LEFT JOIN pragma_table_info(names.n) AS p ON p.cid=0 ORDER BY n='\u8868 odd',n",
+      "parameters": [],
+      "columns": [
+        "n",
+        "cid",
+        "name"
+      ],
+      "rows": [
+        [
+          "missing",
+          null,
+          null
+        ],
+        [
+          "parent",
+          {
+            "integer": "0"
+          },
+          "a"
+        ],
+        [
+          "sample",
+          {
+            "integer": "0"
+          },
+          "id"
+        ],
+        [
+          "\u8868 odd",
+          {
+            "integer": "0"
+          },
+          "quoted name"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT n,p.name FROM names JOIN pragma_table_info(names.n) AS p ON p.cid=0 WHERE n<>'missing' ORDER BY n='\u8868 odd',n",
+      "parameters": [],
+      "columns": [
+        "n",
+        "name"
+      ],
+      "rows": [
+        [
+          "parent",
+          "a"
+        ],
+        [
+          "sample",
+          "id"
+        ],
+        [
+          "\u8868 odd",
+          "quoted name"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT n,(SELECT count(*) FROM pragma_table_info(names.n)) AS width FROM names ORDER BY n='\u8868 odd',n",
+      "parameters": [],
+      "columns": [
+        "n",
+        "width"
+      ],
+      "rows": [
+        [
+          "missing",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          "parent",
+          {
+            "integer": "2"
+          }
+        ],
+        [
+          "sample",
+          {
+            "integer": "4"
+          }
+        ],
+        [
+          "\u8868 odd",
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM empty,pragma_table_info(empty.n)",
+      "parameters": [],
+      "columns": [
+        "n",
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample') p JOIN pragma_index_list('sample') i ON p.cid=i.seq ORDER BY p.cid",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          },
+          "ie",
+          {
+            "integer": "0"
+          },
+          "c",
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          "ix",
+          {
+            "integer": "0"
+          },
+          "c",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('missing') p FULL JOIN (SELECT 1 x) q ON 0",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "x"
+      ],
+      "rows": [
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "WITH p AS (SELECT name,cid FROM pragma_table_info('sample')) SELECT * FROM p WHERE cid<2 ORDER BY cid",
+      "parameters": [],
+      "columns": [
+        "name",
+        "cid"
+      ],
+      "rows": [
+        [
+          "id",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          "a",
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM (SELECT * FROM pragma_table_info('sample')) WHERE cid<2 ORDER BY cid",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "WITH pragma_table_info(x) AS (VALUES(42)) SELECT * FROM pragma_table_info",
+      "parameters": [],
+      "columns": [
+        "x"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "42"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "WITH pragma_table_info(x) AS (VALUES(42)) SELECT * FROM main.pragma_table_info('sample')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "WITH pragma_table_info(x) AS (VALUES(42)) SELECT * FROM pragma_table_info('sample')",
+      "parameters": [],
+      "error": "'pragma_table_info' is not a function"
+    },
+    {
+      "sql": "SELECT * FROM (pragma_table_info('sample') p JOIN pragma_index_list('sample') i ON p.cid=i.seq) LIMIT 0",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "seq",
+        "name",
+        "unique",
+        "origin",
+        "partial"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample') LIMIT 0",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('missing') UNION ALL SELECT * FROM pragma_table_info('sample') ORDER BY cid",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "id",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "a",
+          "TEXT",
+          {
+            "integer": "1"
+          },
+          "'x'",
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b",
+          "REAL",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "c",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('pragma_table_info')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "cid",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "name",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "type",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "notnull",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "4"
+          },
+          "dflt_value",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "5"
+          },
+          "pk",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_xinfo('pragma_table_info')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk",
+        "hidden"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "cid",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "name",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "type",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "notnull",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "4"
+          },
+          "dflt_value",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "5"
+          },
+          "pk",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "6"
+          },
+          "arg",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          {
+            "integer": "7"
+          },
+          "schema",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT * FROM pragma_table_info('sample','temp')",
+      "parameters": [],
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info WHERE arg=probe('sample')",
+      "parameters": [],
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        [
+          "id"
+        ],
+        [
+          "a"
+        ],
+        [
+          "b"
+        ],
+        [
+          "c"
+        ]
+      ],
+      "calls": [
+        "sample"
+      ]
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info WHERE probe('sample')=arg",
+      "parameters": [],
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        [
+          "id"
+        ],
+        [
+          "a"
+        ],
+        [
+          "b"
+        ],
+        [
+          "c"
+        ]
+      ],
+      "calls": [
+        "sample"
+      ]
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info WHERE arg=probe('sample') AND schema=probe('main')",
+      "parameters": [],
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        [
+          "id"
+        ],
+        [
+          "a"
+        ],
+        [
+          "b"
+        ],
+        [
+          "c"
+        ]
+      ],
+      "calls": [
+        "sample",
+        "main"
+      ]
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info WHERE schema=probe('main') AND arg=probe('sample')",
+      "parameters": [],
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        [
+          "id"
+        ],
+        [
+          "a"
+        ],
+        [
+          "b"
+        ],
+        [
+          "c"
+        ]
+      ],
+      "calls": [
+        "sample",
+        "main"
+      ]
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info WHERE arg=probe('sample') AND arg=probe('sample')",
+      "parameters": [],
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        [
+          "id"
+        ],
+        [
+          "a"
+        ],
+        [
+          "b"
+        ],
+        [
+          "c"
+        ]
+      ],
+      "calls": [
+        "sample",
+        "sample",
+        "sample",
+        "sample",
+        "sample"
+      ]
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info('sample') WHERE arg=probe('sample')",
+      "parameters": [],
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        [
+          "id"
+        ],
+        [
+          "a"
+        ],
+        [
+          "b"
+        ],
+        [
+          "c"
+        ]
+      ],
+      "calls": [
+        "sample",
+        "sample",
+        "sample",
+        "sample"
+      ]
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info('sample') WHERE schema=probe('main')",
+      "parameters": [],
+      "columns": [
+        "name"
+      ],
+      "rows": [
+        [
+          "id"
+        ],
+        [
+          "a"
+        ],
+        [
+          "b"
+        ],
+        [
+          "c"
+        ]
+      ],
+      "calls": [
+        "main"
+      ]
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info WHERE arg=probe(NULL)",
+      "parameters": [],
+      "columns": [
+        "name"
+      ],
+      "rows": [],
+      "calls": [
+        null
+      ]
+    },
+    {
+      "sql": "SELECT arg,name FROM pragma_table_info WHERE arg=probe('sample') OR arg='parent'",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "name"
+      ],
+      "rows": [
+        [
+          "parent",
+          "a"
+        ],
+        [
+          "parent",
+          "b"
+        ],
+        [
+          "sample",
+          "id"
+        ],
+        [
+          "sample",
+          "a"
+        ],
+        [
+          "sample",
+          "b"
+        ],
+        [
+          "sample",
+          "c"
+        ]
+      ],
+      "calls": [
+        "sample"
+      ]
+    },
+    {
+      "sql": "SELECT arg,name FROM pragma_table_info WHERE arg=probe('sample') OR arg='sample'",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "name"
+      ],
+      "rows": [
+        [
+          "sample",
+          "id"
+        ],
+        [
+          "sample",
+          "a"
+        ],
+        [
+          "sample",
+          "b"
+        ],
+        [
+          "sample",
+          "c"
+        ]
+      ],
+      "calls": [
+        "sample"
+      ]
+    },
+    {
+      "sql": "SELECT arg,name FROM pragma_table_info WHERE arg IN (probe('sample'),probe('parent'),probe('sample'),NULL)",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "name"
+      ],
+      "rows": [
+        [
+          "parent",
+          "a"
+        ],
+        [
+          "parent",
+          "b"
+        ],
+        [
+          "sample",
+          "id"
+        ],
+        [
+          "sample",
+          "a"
+        ],
+        [
+          "sample",
+          "b"
+        ],
+        [
+          "sample",
+          "c"
+        ]
+      ],
+      "calls": [
+        "sample",
+        "parent",
+        "sample"
+      ]
+    },
+    {
+      "sql": "SELECT arg,schema,name FROM pragma_table_info WHERE arg IN ('sample','parent') AND schema IN (probe('temp'),probe('main'))",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "schema",
+        "name"
+      ],
+      "rows": [
+        [
+          "parent",
+          "main",
+          "a"
+        ],
+        [
+          "parent",
+          "main",
+          "b"
+        ],
+        [
+          "sample",
+          "main",
+          "id"
+        ],
+        [
+          "sample",
+          "main",
+          "a"
+        ],
+        [
+          "sample",
+          "main",
+          "b"
+        ],
+        [
+          "sample",
+          "main",
+          "c"
+        ]
+      ],
+      "calls": [
+        "temp",
+        "main",
+        "temp",
+        "main"
+      ]
+    },
+    {
+      "sql": "SELECT n,p.name FROM names LEFT JOIN pragma_table_info p ON p.arg=probe(n) AND p.cid=0 ORDER BY n='\u8868 odd',n",
+      "parameters": [],
+      "columns": [
+        "n",
+        "name"
+      ],
+      "rows": [
+        [
+          "missing",
+          null
+        ],
+        [
+          "parent",
+          "a"
+        ],
+        [
+          "sample",
+          "id"
+        ],
+        [
+          "\u8868 odd",
+          "quoted name"
+        ]
+      ],
+      "calls": [
+        "sample",
+        "parent",
+        "missing",
+        "\u8868 odd"
+      ]
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info WHERE arg=probe('sample') LIMIT 0",
+      "parameters": [],
+      "columns": [
+        "name"
+      ],
+      "rows": [],
+      "calls": []
+    },
+    {
+      "sql": "SELECT * FROM empty,pragma_table_info WHERE arg=probe('sample')",
+      "parameters": [],
+      "columns": [
+        "n",
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [],
+      "calls": []
+    },
+    {
+      "sql": "SELECT name FROM pragma_table_info WHERE arg=probe('sample') AND schema=probe('other')",
+      "parameters": [],
+      "error": "unknown database 'other'",
+      "calls": [
+        "sample",
+        "other"
+      ]
+    },
+    {
+      "sql": "SELECT arg,name FROM pragma_table_info WHERE arg IN ('sample','parent')",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "name"
+      ],
+      "rows": [
+        [
+          "parent",
+          "a"
+        ],
+        [
+          "parent",
+          "b"
+        ],
+        [
+          "sample",
+          "id"
+        ],
+        [
+          "sample",
+          "a"
+        ],
+        [
+          "sample",
+          "b"
+        ],
+        [
+          "sample",
+          "c"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT arg,name FROM pragma_table_info WHERE arg IN ('sample','parent','sample',NULL)",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "name"
+      ],
+      "rows": [
+        [
+          "parent",
+          "a"
+        ],
+        [
+          "parent",
+          "b"
+        ],
+        [
+          "sample",
+          "id"
+        ],
+        [
+          "sample",
+          "a"
+        ],
+        [
+          "sample",
+          "b"
+        ],
+        [
+          "sample",
+          "c"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT arg,schema,name FROM pragma_table_info('sample') WHERE schema IN ('temp','main')",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "schema",
+        "name"
+      ],
+      "rows": [
+        [
+          "sample",
+          "main",
+          "id"
+        ],
+        [
+          "sample",
+          "main",
+          "a"
+        ],
+        [
+          "sample",
+          "main",
+          "b"
+        ],
+        [
+          "sample",
+          "main",
+          "c"
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT arg,name FROM pragma_table_info WHERE arg IS 'sample'",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "name"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT arg,name FROM pragma_table_info WHERE arg IS NULL",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "name"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT arg,name FROM pragma_table_info WHERE arg=arg",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "name"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT arg,name FROM pragma_table_info p WHERE p.arg=p.arg",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "name"
+      ],
+      "rows": []
+    },
+    {
+      "sql": "SELECT arg,name FROM pragma_table_info WHERE arg=name",
+      "parameters": [],
+      "columns": [
+        "arg",
+        "name"
+      ],
+      "rows": []
+    }
+  ],
+  "schema_operations": [
+    {
+      "sql": "CREATE VIEW source_view AS SELECT names.n,p.name,p.arg,p.schema,p.rowid FROM names,pragma_table_info(names.n) p WHERE p.cid=0",
+      "query": false
+    },
+    {
+      "sql": "CREATE VIEW hidden_view AS SELECT arg,schema,rowid FROM pragma_table_info WHERE arg='sample'",
+      "query": false
+    },
+    {
+      "sql": "PRAGMA table_info('hidden_view')",
+      "query": true,
+      "columns": [
+        "cid",
+        "name",
+        "type",
+        "notnull",
+        "dflt_value",
+        "pk"
+      ],
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "arg",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "schema",
+          "",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "rowid",
+          "INTEGER",
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "ALTER TABLE names RENAME COLUMN n TO label",
+      "query": false
+    },
+    {
+      "sql": "SELECT * FROM source_view ORDER BY label='\u8868 odd',label",
+      "query": true,
+      "columns": [
+        "label",
+        "name",
+        "arg",
+        "schema",
+        "rowid"
+      ],
+      "rows": [
+        [
+          "parent",
+          "a",
+          "parent",
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          "sample",
+          "id",
+          "sample",
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          "\u8868 odd",
+          "quoted name",
+          "\u8868 odd",
+          null,
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "ALTER TABLE names RENAME TO renamed_names",
+      "query": false
+    },
+    {
+      "sql": "SELECT * FROM source_view ORDER BY label='\u8868 odd',label",
+      "query": true,
+      "columns": [
+        "label",
+        "name",
+        "arg",
+        "schema",
+        "rowid"
+      ],
+      "rows": [
+        [
+          "parent",
+          "a",
+          "parent",
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          "sample",
+          "id",
+          "sample",
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          "\u8868 odd",
+          "quoted name",
+          "\u8868 odd",
+          null,
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "SELECT sql FROM sqlite_schema WHERE name='source_view'",
+      "query": true,
+      "columns": [
+        "sql"
+      ],
+      "rows": [
+        [
+          "CREATE VIEW source_view AS SELECT \"renamed_names\".label,p.name,p.arg,p.schema,p.rowid FROM \"renamed_names\",pragma_table_info(\"renamed_names\".label) p WHERE p.cid=0"
+        ]
+      ]
+    },
+    {
+      "sql": "ALTER TABLE sample RENAME COLUMN a TO renamed_a",
+      "query": false
+    },
+    {
+      "sql": "SELECT * FROM hidden_view",
+      "query": true,
+      "columns": [
+        "arg",
+        "schema",
+        "rowid"
+      ],
+      "rows": [
+        [
+          "sample",
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          "sample",
+          null,
+          {
+            "integer": "2"
+          }
+        ],
+        [
+          "sample",
+          null,
+          {
+            "integer": "3"
+          }
+        ],
+        [
+          "sample",
+          null,
+          {
+            "integer": "4"
+          }
+        ]
+      ]
+    },
+    {
+      "sql": "CREATE TRIGGER pragma_use AFTER UPDATE ON renamed_names BEGIN SELECT p.name FROM pragma_table_info(NEW.label) AS p; END",
+      "query": false
+    },
+    {
+      "sql": "ALTER TABLE renamed_names RENAME COLUMN label TO value",
+      "query": false
+    },
+    {
+      "sql": "SELECT sql FROM sqlite_schema WHERE name='pragma_use'",
+      "query": true,
+      "columns": [
+        "sql"
+      ],
+      "rows": [
+        [
+          "CREATE TRIGGER pragma_use AFTER UPDATE ON renamed_names BEGIN SELECT p.name FROM pragma_table_info(NEW.value) AS p; END"
+        ]
+      ]
+    },
+    {
+      "sql": "UPDATE renamed_names SET value='parent' WHERE value='sample'",
+      "query": false
+    },
+    {
+      "sql": "SELECT * FROM source_view ORDER BY value='\u8868 odd',value",
+      "query": true,
+      "columns": [
+        "value",
+        "name",
+        "arg",
+        "schema",
+        "rowid"
+      ],
+      "rows": [
+        [
+          "parent",
+          "a",
+          "parent",
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          "parent",
+          "a",
+          "parent",
+          null,
+          {
+            "integer": "1"
+          }
+        ],
+        [
+          "\u8868 odd",
+          "quoted name",
+          "\u8868 odd",
+          null,
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    }
+  ]
+}

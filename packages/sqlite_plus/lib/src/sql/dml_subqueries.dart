@@ -115,6 +115,7 @@ extension MutationSubqueries on SqliteDatabase {
 
   bool _mutationCorrelated(SelectStatement query,
       Map<String, (CatalogTable, List<RowValues>)> cache, Set<String> outer) {
+    final activeRelations = <_QueryRelationRows>{};
     Set<String> output(
         SelectStatement s, Map<String, (List<String>, SelectStatement)> ctes,
         [Set<SelectStatement>? visiting]) {
@@ -158,6 +159,8 @@ extension MutationSubqueries on SqliteDatabase {
         Map<String, (List<String>, SelectStatement)> ctes) {
       if (expr is ColumnExpr &&
           !local.contains(expr.key) &&
+          !(expr.qualifier != null &&
+              local.contains('${asciiLower(expr.qualifier!)}.*')) &&
           outer.contains(expr.key)) {
         return true;
       }
@@ -182,6 +185,16 @@ extension MutationSubqueries on SqliteDatabase {
               ? asciiLower(source.table!)
               : 'main.${asciiLower(source.table!)}';
           final cte = source.schema == null ? ctes[name] : null;
+          final relation = cache[name]?.$2;
+          if (cte == null &&
+              relation is _QueryRelationRows &&
+              activeRelations.add(relation)) {
+            try {
+              if (visit(relation.query, inherited, ctes)) return true;
+            } finally {
+              activeRelations.remove(relation);
+            }
+          }
           names = cte != null
               ? (cte.$1.isNotEmpty
                   ? cte.$1.map(asciiLower).toSet()
@@ -198,18 +211,17 @@ extension MutationSubqueries on SqliteDatabase {
         final alias = asciiLower(source.alias ?? source.table ?? '@derived');
         local.addAll(names);
         local.addAll(names.map((name) => '$alias.$name'));
+        local.add('$alias.*');
+        if (source.schema != null) local.add('main.$alias.*');
       }
-      for (final source in s.normalizedSources) {
-        if (source.group.isEmpty || source.alias == null) continue;
-        final alias = asciiLower(source.alias!);
-        final description = SelectStatement([SelectItem(null, '$alias.*')],
-            null, null, [], null, null, false, s.parameterCount)
-          ..sources.add(source)
-          ..ctes.addAll(ctes);
-        final columns = _pragmaColumnMetadata(description, cache,
-            {for (final name in outer) name: CatalogColumn(name, '')});
-        local.addAll(
-            columns.map((column) => '$alias.${asciiLower(column.name)}'));
+      // A joined group's qualified namespace also contains hidden physical
+      // columns. It cannot be described with groupAlias.* (SQLite itself may
+      // reject that wildcard). Binding validation remains with the executor;
+      // here a local qualifier is sufficient to rule out outer correlation.
+      for (final source in s.allSources) {
+        if (source.group.isNotEmpty && source.alias != null) {
+          local.add('${asciiLower(source.alias!)}.*');
+        }
       }
       // SELECT aliases can bind in the clauses accepted by the query engine.
       local.addAll(s.items
@@ -220,7 +232,8 @@ extension MutationSubqueries on SqliteDatabase {
         return true;
       }
       if (s.offset != null && expression(s.offset!, local, ctes)) return true;
-      if (s.ctes.values.any((cte) => visit(cte.$2, inherited, ctes))) {
+      if (usedCteNames(s)
+          .any((name) => visit(s.ctes[name]!.$2, inherited, ctes))) {
         return true;
       }
       if (s.leafSources.any((source) =>

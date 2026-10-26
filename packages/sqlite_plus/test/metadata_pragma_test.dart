@@ -211,7 +211,8 @@ void main() {
     db.functions.registerAggregate('my_aggregate', 2, _Count.new);
     final result = await db.query('PRAGMA function_list');
     expect(result.columns, ['name', 'builtin', 'type', 'enc', 'narg', 'flags']);
-    final registered = result.rows.where((r) => r[1] == BigInt.zero).toList();
+    final registered =
+        result.rows.where((r) => (r[0] as String).startsWith('my_')).toList();
     expect(registered, [
       ['my_function', BigInt.zero, 's', 'utf8', BigInt.one, BigInt.from(2048)],
       ['my_function', BigInt.zero, 's', 'utf8', -BigInt.one, BigInt.zero],
@@ -223,6 +224,9 @@ void main() {
     ]);
     expect(result.rows.where((r) => r[0] == 'coalesce').single[4],
         BigInt.from(-4));
+    expect(result.rows.where((r) => r[0] == 'match'), [
+      ['match', BigInt.zero, 's', 'utf8', BigInt.two, BigInt.zero]
+    ]);
     db.functions.unregister('MY_FUNCTION', 1);
     expect(
         (await db.query('PRAGMA function_list'))
