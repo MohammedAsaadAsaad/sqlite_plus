@@ -223,7 +223,11 @@ String _runtimePrefix(LibraryElement library, String input) {
     'EntityKey',
     'DbModel',
     'ForeignKey',
-    'ForeignKeyAction'
+    'ForeignKeyAction',
+    'MappedField',
+    'SqlPredicate',
+    'TypedQuery',
+    'SqlOrdering'
   ];
   final imports = [...library.libraryImports]..sort(
       (a, b) => (a.prefix == null ? 1 : 0).compareTo(b.prefix == null ? 1 : 0));
@@ -795,6 +799,21 @@ String _emit(String input, String output, String prefix, String listName,
       }
       code.writeln('}');
     }
+    code.writeln('final class ${model.name}Fields {');
+    code.writeln('${model.name}Fields._();');
+    code.writeln('static final instance = ${model.name}Fields._();');
+    for (final field in model.fields) {
+      code.writeln(
+          'final ${field.name} = ${prefix}MappedField(${model.name}Columns.${field.name});');
+    }
+    code.writeln('}');
+    code.writeln(
+        'extension ${model.name}Query on ${prefix}TypedQuery<${model.name}> {');
+    code.writeln(
+        '${prefix}TypedQuery<${model.name}> filter(${prefix}SqlPredicate<${model.name}> Function(${model.name}Fields row) build) => where(build(${model.name}Fields.instance));');
+    code.writeln(
+        '${prefix}TypedQuery<${model.name}> orderByFields($listName<${prefix}SqlOrdering<${model.name}>> Function(${model.name}Fields row) build) => orderBy(build(${model.name}Fields.instance));');
+    code.writeln('}');
   }
   code.writeln('final ${prefix}DbModel generatedModel = ${prefix}DbModel(['
       '${models.map((model) => '${model.name}Mapping.instance').join(',')}],'

@@ -91,8 +91,7 @@ final class MutableSqliteDatabase {
             ]
           ]);
         }
-        final storage = MemoryStorageBackend();
-        await storage.write(0, _image);
+        final storage = ByteImageStorage(_image);
         final reader =
             await SqliteDatabase.openReadOnly(storage, functions: functions);
         try {

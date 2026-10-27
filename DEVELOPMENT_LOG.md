@@ -766,3 +766,20 @@
   codecs/composite relationships and unsupported generator model shapes use
   manual metadata. M8 extensions and M9 browser/platform/performance/release
   gates remain open; no all-milestones or release-ready claim is made.
+
+## 2026-10-27 — Shared query image and Dart field filters
+
+- Mutable queries read through `ByteImageStorage`, a read-only alias of the live
+  image. The view rejects writes and truncation, and close does not clear the
+  caller's buffer. Page reads still copy one page into the pager. This removes
+  the full-image copy on every query; it does not change the compact rebuild
+  used for writes, the 64 MiB cap, or full SQLite conformance.
+- `MappedField` exposes `equalTo`, `notEqualTo`, `oneOf`, null tests, and the
+  comparison operators. Generated `<Model>Fields`, `filter`, and `orderByFields`
+  let a closure name columns in Dart. `==` stays a bool operator, so equality
+  uses `equalTo`. Predicates still bind values and quote identifiers.
+- Verification on Dart 3.13.7/Linux x64: 9,640 engine tests, 158 ORM tests,
+  48 generator tests, formatting and fatal-info analysis pass. Native schema,
+  journal and WAL oracles were not re-run for this read-path change.
+- Full SQLite parity, native cost-model equivalence, M8 extensions, browser
+  durability, and the large-scale benchmark matrix remain open.

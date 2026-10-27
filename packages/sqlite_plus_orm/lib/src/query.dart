@@ -120,6 +120,26 @@ extension ColumnQueryExpressions<T, V> on Column<T, V> {
       SqlOrdering._(this, true, nullsFirst);
 }
 
+/// A mapped column used from a Dart closure. Equality is [equalTo] because
+/// Dart's `==` must return `bool` and cannot build a predicate. Parenthesize
+/// comparison operators before combining them with `&` or `|`.
+final class MappedField<T, V> {
+  const MappedField(this.column);
+  final Column<T, V> column;
+
+  SqlPredicate<T> equalTo(V value) => column.eq(value);
+  SqlPredicate<T> notEqualTo(V value) => column.notEq(value);
+  SqlPredicate<T> operator >(V value) => column.gt(value);
+  SqlPredicate<T> operator <(V value) => column.lt(value);
+  SqlPredicate<T> operator >=(V value) => column.gte(value);
+  SqlPredicate<T> operator <=(V value) => column.lte(value);
+  SqlPredicate<T> oneOf(Iterable<V> values) => column.inValues(values);
+  SqlPredicate<T> get isNull => column.isNull();
+  SqlPredicate<T> get isNotNull => column.isNotNull();
+  SqlOrdering<T> get ascending => column.asc();
+  SqlOrdering<T> get descending => column.desc();
+}
+
 /// Reviewable generated SQL. Bound blobs are copied on every ownership boundary.
 final class OrmQueryCommand {
   OrmQueryCommand._(this.sql, List<Object?> parameters)

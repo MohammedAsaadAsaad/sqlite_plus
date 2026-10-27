@@ -48,6 +48,23 @@ abstract final class CustomerMapping {
       EntityKey([CustomerColumns.id.codec.encode(value0)]);
 }
 
+final class CustomerFields {
+  CustomerFields._();
+  static final instance = CustomerFields._();
+  final id = MappedField(CustomerColumns.id);
+  final name = MappedField(CustomerColumns.name);
+  final revision = MappedField(CustomerColumns.revision);
+}
+
+extension CustomerQuery on TypedQuery<Customer> {
+  TypedQuery<Customer> filter(
+          SqlPredicate<Customer> Function(CustomerFields row) build) =>
+      where(build(CustomerFields.instance));
+  TypedQuery<Customer> orderByFields(
+          List<SqlOrdering<Customer>> Function(CustomerFields row) build) =>
+      orderBy(build(CustomerFields.instance));
+}
+
 abstract final class PurchaseColumns {
   static final Column<Purchase, BigInt?> id = Column<Purchase, BigInt?>(
     property: "id",
@@ -107,6 +124,23 @@ abstract final class PurchaseRelationships {
     targetColumns: [CustomerColumns.id],
     onDelete: ForeignKeyAction.noAction,
   );
+}
+
+final class PurchaseFields {
+  PurchaseFields._();
+  static final instance = PurchaseFields._();
+  final id = MappedField(PurchaseColumns.id);
+  final customerId = MappedField(PurchaseColumns.customerId);
+  final total = MappedField(PurchaseColumns.total);
+}
+
+extension PurchaseQuery on TypedQuery<Purchase> {
+  TypedQuery<Purchase> filter(
+          SqlPredicate<Purchase> Function(PurchaseFields row) build) =>
+      where(build(PurchaseFields.instance));
+  TypedQuery<Purchase> orderByFields(
+          List<SqlOrdering<Purchase>> Function(PurchaseFields row) build) =>
+      orderBy(build(PurchaseFields.instance));
 }
 
 final DbModel generatedModel = DbModel(

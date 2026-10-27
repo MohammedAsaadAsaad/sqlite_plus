@@ -17,6 +17,16 @@ final class _Item {
   final DateTime created;
 }
 
+final class _ItemFields {
+  _ItemFields(this.mapping);
+  final _Mapping mapping;
+  late final id = MappedField(mapping.id);
+  late final name = MappedField(mapping.name);
+  late final score = MappedField(mapping.score);
+  late final active = MappedField(mapping.active);
+  late final amount = MappedField(mapping.amount);
+}
+
 final class _Mapping {
   _Mapping() {
     id = Column(
@@ -399,6 +409,34 @@ void main() {
           expect(
               await query.where(mapping.id.eq(boundary)).count(), BigInt.one);
         }
+      });
+
+      test('Dart field closures bind the same SQL as column predicates',
+          () async {
+        final item = _ItemFields(mapping);
+        final dart = query.where(item.name.equalTo("x') OR 1=1 --") &
+            (item.score > 1) &
+            item.active.equalTo(false) &
+            (item.amount <= 4.0));
+        final direct = query
+            .where(mapping.name.eq("x') OR 1=1 --"))
+            .where(mapping.score.gt(1))
+            .where(mapping.active.eq(false))
+            .where(mapping.amount.lte(4));
+        expect(dart.toSql().sql, direct.toSql().sql);
+        expect(dart.toSql().parameters, direct.toSql().parameters);
+        expect(await _ids(dart.orderBy([item.name.ascending])),
+            await _ids(direct.orderBy([mapping.name.asc()])));
+        expect(
+            (await query
+                    .where(item.score.isNull | item.name.oneOf(['Ada']))
+                    .orderBy([item.id.descending]).toList())
+                .map((item) => item.name),
+            ['Bob', 'Ada']);
+        expect(
+            (await query.where(item.score.isNotNull.not()).toList())
+                .map((item) => item.name),
+            ['Bob']);
       });
     });
   }

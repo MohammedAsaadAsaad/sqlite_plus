@@ -36,6 +36,11 @@ final id = pending.entity.id!;
 final rows = await customers.query
     .where(CustomerColumns.name.eq('Ada'))
     .orderBy([CustomerColumns.id.asc()]).take(20).toList();
+final sameRows = await customers.query
+    .filter((row) => row.name.equalTo('Ada') & (row.revision > 0))
+    .orderByFields((row) => [row.name.ascending])
+    .take(20)
+    .toList();
 await context.close();
 await engine.close();
 ```

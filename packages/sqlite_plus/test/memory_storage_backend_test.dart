@@ -43,6 +43,28 @@ void main() {
       await expectLater(storage.sync(), throwsStateError);
     });
 
+    test('read-only image view aliases the caller buffer', () async {
+      final bytes = Uint8List.fromList([1, 2, 3, 4]);
+      final storage = ByteImageStorage(bytes);
+      final window = Uint8List(2);
+      expect(await storage.read(1, window), 2);
+      expect(window, [2, 3]);
+      bytes[1] = 9;
+      final all = Uint8List(4);
+      expect(await storage.read(0, all), 4);
+      expect(all, [1, 9, 3, 4]);
+      expect(await storage.length(), 4);
+      await storage.sync();
+      await expectLater(storage.write(0, Uint8List(1)), throwsStateError);
+      await expectLater(storage.truncate(1), throwsStateError);
+      await expectLater(storage.read(-1, Uint8List(1)), throwsRangeError);
+      await expectLater(storage.truncate(-1), throwsRangeError);
+      await storage.close();
+      await expectLater(storage.length(), throwsStateError);
+      await expectLater(storage.read(0, all), throwsStateError);
+      expect(bytes, [1, 9, 3, 4]);
+    });
+
     test('stores an independent copy of written bytes', () async {
       final storage = MemoryStorageBackend();
       final input = Uint8List.fromList([7, 8]);

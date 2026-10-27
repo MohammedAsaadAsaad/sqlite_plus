@@ -68,3 +68,61 @@ final class MemoryStorageBackend implements StorageBackend {
     _bytes = Uint8List(0);
   }
 }
+
+/// Read-only view of an existing image. Reads alias [bytes]; close does not
+/// release or clear that buffer. Writes and truncation fail.
+final class ByteImageStorage implements StorageBackend {
+  ByteImageStorage(this.bytes);
+  final Uint8List bytes;
+  bool _closed = false;
+
+  void _ensureOpen() {
+    if (_closed) throw StateError('Storage is closed');
+  }
+
+  void _checkOffset(int offset) {
+    if (offset < 0) throw RangeError.value(offset, 'offset');
+  }
+
+  @override
+  Future<int> read(int offset, Uint8List buffer) async {
+    _ensureOpen();
+    _checkOffset(offset);
+    if (offset >= bytes.length) return 0;
+    final count = buffer.length < bytes.length - offset
+        ? buffer.length
+        : bytes.length - offset;
+    buffer.setRange(0, count, bytes, offset);
+    return count;
+  }
+
+  @override
+  Future<void> write(int offset, Uint8List bytes) async {
+    _ensureOpen();
+    _checkOffset(offset);
+    throw StateError('Read-only image view');
+  }
+
+  @override
+  Future<void> truncate(int size) async {
+    _ensureOpen();
+    if (size < 0) throw RangeError.value(size, 'size');
+    throw StateError('Read-only image view');
+  }
+
+  @override
+  Future<int> length() async {
+    _ensureOpen();
+    return bytes.length;
+  }
+
+  @override
+  Future<void> sync() async {
+    _ensureOpen();
+  }
+
+  @override
+  Future<void> close() async {
+    _closed = true;
+  }
+}

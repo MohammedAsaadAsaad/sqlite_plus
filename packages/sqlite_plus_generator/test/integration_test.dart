@@ -73,6 +73,8 @@ Future<void> main() async {
       purchase.entity, 'collection loading');
   check((await purchases.query.where(PurchaseColumns.total.gt(20.0)).toList()).single ==
       purchase.entity, 'typed query');
+  check((await purchases.query.filter((row) => row.total > 20.0).orderByFields((row) => [row.total.ascending]).toList()).single ==
+      purchase.entity, 'dart field filter');
   assigned.add(Assigned('assigned-key', 'kept'));
   check(await context.saveChanges() == 1, 'nullable assigned key');
   var refusedNull = false;
