@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import '../btree/btree_reader.dart';
 import '../btree/database_image_builder.dart';
+import '../btree/page_patch.dart';
 import '../btree/table_image_writer.dart';
 import '../format/database_header.dart';
 import '../pager/read_only_pager.dart';
@@ -96,6 +97,7 @@ final class ImageMutations {
   final List<ImageObject> other = [];
   bool schemaChanged = false;
   final Map<String, BigInt> _sequences = {};
+  final Map<String, List<TableRow>> _loadedRows = {};
   static Future<ImageMutations> load(Uint8List image) async {
     final header = DatabaseHeader.decode(image);
     final result = ImageMutations._(image, header.textEncoding);
@@ -216,6 +218,11 @@ final class ImageMutations {
                 values['seq'] as BigInt;
           }
         }
+      }
+      for (final entry in result._tables.entries) {
+        result._loadedRows[entry.key] = [
+          for (final row in entry.value.rows) TableRow(row.rowId, row.values)
+        ];
       }
       return result;
     } finally {
@@ -3649,11 +3656,150 @@ final class ImageMutations {
       return MutationImage(original, 0, null, returned());
     }
     return MutationImage(
-        serialize(
+        await commit(
             foreignKeys: foreignKeys && _executionDepth == 1,
             includeDeferred: !inTransaction),
         changes,
         insert ? last : null,
         returned());
+  }
+
+  /// Ordinary single-table DML may rewrite one rowid tree or patch one overflow
+  /// page. Every other shape, including schema changes, falls back to the
+  /// compact rebuild.
+  Future<Uint8List> commit(
+      {required bool foreignKeys, required bool includeDeferred}) async {
+    final incremental = await _tryIncremental(
+        foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+    if (incremental != null) return incremental;
+    return serialize(
+        foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+  }
+
+  Future<Uint8List?> _tryIncremental(
+      {required bool foreignKeys, required bool includeDeferred}) async {
+    if (schemaChanged || other.isNotEmpty) return null;
+    if (foreignKeys || includeDeferred) {
+      _validate(foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+    }
+    final changed = <String>[];
+    for (final entry in _tables.entries) {
+      final before = _loadedRows[entry.key] ?? const <TableRow>[];
+      if (_sameRows(before, entry.value.rows)) continue;
+      if (entry.key.startsWith('sqlite_') || entry.value.view) return null;
+      changed.add(entry.key);
+    }
+    if (changed.length != 1) return null;
+    final table = _tables[changed.single]!;
+    if (table.schema.withoutRowid || table.schema.virtual) return null;
+    if (table.schema.columns
+        .any((column) => column.generatedExpression != null || column.strict)) {
+      return null;
+    }
+    final indexes = _indexes
+        .where((index) => asciiLower(index.table) == changed.single)
+        .toList();
+    final keysSame = indexes.isEmpty ||
+        _indexKeysSame(table, _loadedRows[changed.single] ?? const [],
+            table.rows, indexes);
+    if (indexes.isNotEmpty && !keysSame) return null;
+    if (keysSame) {
+      final patched =
+          _onePayloadChange(table, _loadedRows[changed.single] ?? const []);
+      if (patched != null) {
+        try {
+          final image = await patchTableOverflow(
+              original, table.schema.name, patched.$1, patched.$2);
+          if (image != null) return image;
+        } on FormatException {
+          // Compact rebuild remains available.
+        }
+      }
+    }
+    if (!keysSame) return null;
+    try {
+      return await TableImageWriter.replace(
+          original, table.schema.name, table.rows,
+          preserveIndexes: indexes.isNotEmpty);
+    } on UnsupportedError {
+      return null;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  (BigInt, List<Object?>)? _onePayloadChange(
+      _Table table, List<TableRow> before) {
+    if (before.length != table.rows.length) return null;
+    final previous = {for (final row in before) row.rowId: row};
+    (BigInt, List<Object?>)? found;
+    for (final row in table.rows) {
+      final old = previous[row.rowId];
+      if (old == null) return null;
+      if (_sameValues(old.values, row.values)) continue;
+      if (found != null) return null;
+      found = (row.rowId, row.values);
+    }
+    return found;
+  }
+
+  bool _indexKeysSame(_Table table, List<TableRow> before, List<TableRow> after,
+      List<_Index> indexes) {
+    if (before.length != after.length) return false;
+    final previous = {for (final row in before) row.rowId: row};
+    for (final row in after) {
+      final old = previous[row.rowId];
+      if (old == null) return false;
+      for (final index in indexes) {
+        for (final column in index.referencedColumns) {
+          if (!_sameValue(_columnValue(table, old, column),
+              _columnValue(table, row, column))) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  Object? _columnValue(_Table table, TableRow row, String column) {
+    if (table.schema.rowidAlias != null &&
+        asciiLower(table.schema.rowidAlias!) == column) {
+      return row.rowId;
+    }
+    final index = table.schema.columns
+        .indexWhere((candidate) => asciiLower(candidate.name) == column);
+    if (index < 0 || index >= row.values.length) return null;
+    return row.values[index];
+  }
+
+  bool _sameRows(List<TableRow> before, List<TableRow> after) {
+    if (before.length != after.length) return false;
+    final previous = {for (final row in before) row.rowId: row};
+    if (previous.length != before.length) return false;
+    for (final row in after) {
+      final old = previous[row.rowId];
+      if (old == null || !_sameValues(old.values, row.values)) return false;
+    }
+    return true;
+  }
+
+  bool _sameValues(List<Object?> before, List<Object?> after) {
+    if (before.length != after.length) return false;
+    for (var i = 0; i < before.length; i++) {
+      if (!_sameValue(before[i], after[i])) return false;
+    }
+    return true;
+  }
+
+  bool _sameValue(Object? before, Object? after) {
+    if (before is Uint8List && after is Uint8List) {
+      if (before.length != after.length) return false;
+      for (var i = 0; i < before.length; i++) {
+        if (before[i] != after[i]) return false;
+      }
+      return true;
+    }
+    return before == after;
   }
 }

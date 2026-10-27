@@ -400,19 +400,25 @@ content comparison; FOREIGN_KEY_CHECK reports violating rows independently of
 foreign_keys enable state. Error wording is not native SQLite's exact wording.
 
 The verified engine baseline and remaining SQLite targets are distinguished in
-[the engine support contract](docs/ENGINE_SUPPORT.md). TEMP/ATTACH, PRAGMAs beyond
-the listed subset, native EXPLAIN/cost-model equivalence, custom collations and
-other documented exclusions remain unsupported. Full SQLite compatibility is
-not claimed. M7's ORM/generator baseline has passed its gate; M8/M9 have separate gates.
+[the engine support contract](docs/ENGINE_SUPPORT.md). Items 51–76 add TEMP
+objects, one attached database, the connection pragmas named in the matrix,
+one custom collation, this engine's EXPLAIN QUERY PLAN text, a bounded join
+reorder, covering-index reads, and incremental page writes for the tested
+shapes. DQS stays off. Native EXPLAIN bytecode, STAT4, auto-vacuum, and a
+cross-database write stay rejected. Full SQLite compatibility is not claimed.
+M7 and the verified M8 subset have passed their gates. M9 has not.
 
 Real AOT benchmark samples are saved under `benchmark_results`. The index
 benchmark builds a 10,000-row memory image and measures five batches of 100
-queries. These small Linux workloads do not satisfy M9's full scale/platform
-matrix. Reproduce with:
+queries. The page-write sample measures this revision's batch inserts of
+10,000 and 100,000 rows and is not a before/after delta. These Linux
+workloads do not satisfy M9's full scale/platform matrix. Reproduce with:
 
 ```sh
 (cd packages/sqlite_plus && dart compile exe benchmark/planner.dart -o /tmp/sqlite-plus-index-benchmark)
 (cd packages/sqlite_plus && /tmp/sqlite-plus-index-benchmark)
+(cd packages/sqlite_plus && dart compile exe benchmark/page_writes.dart -o /tmp/sqlite-plus-page-writes)
+(cd packages/sqlite_plus && /tmp/sqlite-plus-page-writes)
 ```
 
 Generated columns support VIRTUAL/STORED expressions, deterministic scalar
@@ -507,7 +513,9 @@ Explicit `main` schema qualification bypasses CTE shadows. INDEXED BY validates
 its named index and compatible partial predicate; the single-table planner uses
 that index. NOT INDEXED suppresses secondary-index plans while preserving rowid
 lookup. Relational joins still materialize complete input relations after hint
-validation. Attached databases and TEMP schema behavior are not implemented.
+validation. TEMP objects are connection-local and disappear on reopen. One
+extra database can be attached within 64 MiB. A statement that mutates two
+schemas is rejected.
 
 Table PRIMARY KEY/UNIQUE constraints retain COLLATE and ASC/DESC ordering,
 including implicit-index metadata and WITHOUT ROWID storage. Repeated primary-key

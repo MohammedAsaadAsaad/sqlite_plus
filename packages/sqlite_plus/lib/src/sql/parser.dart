@@ -666,7 +666,7 @@ final class SqlParser {
     if (!allowQualified) {
       throw const SqlException('Qualified target prohibited in trigger body');
     }
-    if (asciiLower(first) != 'main') {
+    if (!activeSchemaNames().contains(asciiLower(first))) {
       throw SqlException('Unknown database: $first');
     }
     return identifier();
@@ -1138,7 +1138,9 @@ final class SqlParser {
       table = identifier();
       if (take('.')) {
         schema = asciiLower(table);
-        if (schema != 'main') throw SqlException('Unknown database: $table');
+        if (!activeSchemaNames().contains(schema)) {
+          throw SqlException('Unknown database: $table');
+        }
         tableOffset = current.offset;
         table = identifier();
       }
@@ -1423,13 +1425,14 @@ final class SqlParser {
             final second = take('*') ? '*' : identifier();
             name += '.$second';
             if (take('.')) {
-              if (asciiLower(token.text) != 'main' || second == '*') {
+              final database = asciiLower(token.text);
+              if (!activeSchemaNames().contains(database) || second == '*') {
                 throw SqlException('Unknown database: ${token.text}');
               }
               referenceOffset = columnOffset;
-              qualifier = 'main.$second';
+              qualifier = '$database.$second';
               columnOffset = current.offset;
-              name = 'main.$second.${identifier()}';
+              name = '$database.$second.${identifier()}';
             }
           }
           left = ColumnExpr(name,
@@ -1496,7 +1499,7 @@ final class SqlParser {
             String? schema;
             if (take('.')) {
               schema = asciiLower(name);
-              if (schema != 'main') {
+              if (!activeSchemaNames().contains(schema)) {
                 throw SqlException('Unknown database: $name');
               }
               tableOffset = current.offset;

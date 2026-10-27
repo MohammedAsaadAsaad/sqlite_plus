@@ -45,6 +45,7 @@ jobs:
           python3 tool/generate_numeric_text_oracle.py --verify
           python3 tool/generate_json_oracle.py --verify
           python3 tool/generate_search_oracle.py --verify
+          python3 tool/generate_gap_oracle.py --verify
       - name: Install dependencies
         run: dart pub get --enforce-lockfile
       - name: Format

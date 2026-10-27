@@ -218,7 +218,7 @@ final class BoolNameExpr extends ColumnExpr {
 
 final class CollateExpr extends Expr {
   CollateExpr(this.operand, String name) : name = asciiLower(name) {
-    if (!['binary', 'nocase', 'rtrim'].contains(this.name)) {
+    if (!knownCollation(this.name)) {
       throw SqlException('No such collation: $name');
     }
   }

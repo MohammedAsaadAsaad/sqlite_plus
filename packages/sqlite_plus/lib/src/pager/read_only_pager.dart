@@ -11,11 +11,15 @@ final class ReadOnlyPager {
   final StorageBackend _storage;
   final DatabaseHeader header;
   final int pageCount;
+  int pagesRead = 0;
   bool _closed = false;
 
   static Future<ReadOnlyPager> open(StorageBackend storage) async {
     final bytes = await _readExact(storage, 0, 100);
     final header = DatabaseHeader.decode(bytes);
+    if (header.largestRootPage != 0) {
+      throw UnsupportedError('auto_vacuum databases are not supported');
+    }
     if (header.readVersion != 1 || header.writeVersion != 1) {
       throw UnsupportedError(
           'WAL databases require checkpointing to rollback format');
@@ -28,6 +32,7 @@ final class ReadOnlyPager {
 
   Future<Uint8List> readPage(int pageNumber) async {
     if (_closed) throw StateError('Pager is closed');
+    pagesRead++;
     if (pageNumber < 1 || pageNumber > pageCount) {
       throw const FormatException('Page reference outside database');
     }

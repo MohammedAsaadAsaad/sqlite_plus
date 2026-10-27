@@ -1,0 +1,27 @@
+{
+  "workload": "This revision only: one batch INSERT of 10000 rows (three fresh databases) and one batch INSERT of 100000 rows (one fresh database) into a rowid table, plus 200 single-row inserts. No pre-change binary was measured, so this file is not a before/after delta.",
+  "sdk": "3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "os": "linux",
+  "runtime": "AOT executable",
+  "microseconds": {
+    "batch_insert_10000": [
+      268581,
+      275709,
+      288941
+    ],
+    "count_after_10000": [
+      37662,
+      38107,
+      43315
+    ],
+    "batch_insert_100000": [
+      2686614
+    ],
+    "count_after_100000": [
+      376886
+    ],
+    "single_row_inserts_200": 296606
+  },
+  "peak_process_rss_bytes": 214040576,
+  "limitations": "One Linux x64 AOT process. Each sample includes parsing and the image write. RSS is the whole process. 100000 single-row inserts were not run because each insert rewrites the tree. No earlier sample exists, so no speedup is claimed. This is not an M9 scale, platform, or native-SQLite comparison."
+}

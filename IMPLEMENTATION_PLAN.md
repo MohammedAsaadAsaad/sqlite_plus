@@ -36,9 +36,10 @@
   default signature preparation; ASCII/NUL numeric coercion and signed64 affinity.
   Gate: 9,632 tests, all-package format/fatal-info analysis, 23 fixture checksum
   tools and pinned native schema/storage/SQL comparisons pass on Dart 3.13.7/Linux.
-  Remaining SQLite targets, including TEMP/ATTACH, unlisted PRAGMA state and
-  broader native planner/collation/SQL compatibility, are explicitly retained in
-  `docs/ENGINE_SUPPORT.md`; this checkbox does not claim complete SQLite support.
+  At the M6 gate, TEMP/ATTACH, unlisted PRAGMA state, and broader native
+  planner/collation/SQL compatibility stayed open. Items 51–76 later record a
+  tested subset in the compatibility matrix. This checkbox does not claim
+  complete SQLite support.
 - [x] M7: ORM metadata/codecs, resolved convention/annotation generator, typed queries, DbContext/CRUD, snapshot tracking, explicit relationships and safe migrations (155 ORM and 48 generator tests; native cross-open/query/migration gates and JavaScript memory smoke verified).
 - [x] M8: Advanced extensions for the verified JSON, virtual-table, FTS, and R-tree subset.
   Verified: connection-local virtual tables and `generate_series`; JSON/JSONB
@@ -52,5 +53,6 @@
   native schema, journal, and WAL oracles were not re-run. This checkbox does
   not claim complete FTS5, FTS3/4 writes, `json_pretty`, or any M9 platform.
 - [ ] M9: Browser adapters, platform matrix, AOT benchmarks, hardening and release gates.
+  Items 51–76, including one Linux page-write sample at 10,000 and 100,000 rows, stay outside this checkbox.
 
 Every milestone must include `dart format`, `dart analyze`, tests, documented discrepancies and a compatibility matrix update. ORM metadata can be developed in parallel after the engine API contract is stable.

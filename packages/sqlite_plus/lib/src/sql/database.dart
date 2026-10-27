@@ -27,6 +27,13 @@ part 'lazy_views.dart';
 part 'query_execution.dart';
 part 'pragma_tables.dart';
 
+/// Header write version 1 is rollback. Version 2 is wal. Other values throw.
+String sqlJournalMode(int writeVersion) {
+  if (writeVersion == 1) return 'rollback';
+  if (writeVersion == 2) return 'wal';
+  throw ArgumentError('Unsupported journal write version');
+}
+
 final class QueryResult implements SqlRows {
   QueryResult(List<String> columns, List<List<Object?>> rows,
       [List<String>? affinities,
@@ -52,10 +59,16 @@ final class QueryResult implements SqlRows {
 }
 
 final class QueryPlan {
-  const QueryPlan(this.access, this.rootPage, this.rowid) : _index = null;
-  const QueryPlan._indexed(this.rootPage, this._index, this.access)
+  const QueryPlan(this.access, this.rootPage, this.rowid)
+      : _index = null,
+        covering = false,
+        coveredColumns = const [];
+  const QueryPlan._indexed(this.rootPage, this._index, this.access,
+      {this.covering = false, this.coveredColumns = const []})
       : rowid = null;
   final _IndexAccess? _index;
+  final bool covering;
+  final List<String> coveredColumns;
   String? get indexName => _index?.table == false ? _index?.name : null;
   final String access;
   final int? rootPage;
@@ -150,6 +163,72 @@ final class SqliteDatabase {
       throw const SqlException('No query solution for required index');
     }
     return entry;
+  }
+
+  bool _coveredByIndex(SelectStatement statement, CatalogTable table,
+      List<String> indexColumns) {
+    if (statement.items.any((item) => item.expression == null)) return false;
+    if (table.columns.any((column) => column.generatedExpression != null)) {
+      return false;
+    }
+    final available = indexColumns.toSet();
+    final referenced = <String>{};
+    void walk(Expr? expression) {
+      if (expression == null) return;
+      if (expression is ColumnExpr) {
+        final key = expression.key;
+        referenced.add(key.contains('.') ? key.split('.').last : key);
+        return;
+      }
+      for (final child in expression.children) {
+        walk(child);
+      }
+    }
+
+    for (final item in statement.items) {
+      walk(item.expression);
+    }
+    walk(statement.where);
+    final rowids = {
+      'rowid',
+      '_rowid_',
+      'oid',
+      if (table.rowidAlias != null) asciiLower(table.rowidAlias!)
+    };
+    for (final name in referenced) {
+      if (!available.contains(name) && !rowids.contains(name)) return false;
+    }
+    return true;
+  }
+
+  List<QuerySource> _orderedJoinSources(SelectStatement statement) {
+    final sources = [...statement.normalizedSources];
+    if (statement.order.isEmpty || sources.length < 2 || sources.length > 3) {
+      return sources;
+    }
+    if (sources.any((source) =>
+        source.on != null ||
+        source.using.isNotEmpty ||
+        source.natural ||
+        source.query != null ||
+        source.group.isNotEmpty ||
+        source.table == null)) {
+      return sources;
+    }
+    if (sources.skip(1).any((source) => source.join != 'CROSS')) {
+      return sources;
+    }
+    final counts = [
+      for (final source in sources) _statistics.rowCount(source.table!)
+    ];
+    if (counts.any((count) => count == null)) return sources;
+    final best = counts.reduce((a, b) => a! <= b! ? a : b);
+    if (counts.first == best) return sources;
+    final ordered = [...sources];
+    ordered.sort((a, b) => _statistics
+        .rowCount(a.table!)!
+        .compareTo(_statistics.rowCount(b.table!)!));
+    return ordered;
   }
 
   QueryPlan _plan(
@@ -372,8 +451,14 @@ final class SqliteDatabase {
                   score > bestScore) {
             bestScore = score;
             bestEstimate = estimate;
+            final names = [
+              for (final column in definition.$1) asciiLower(column)
+            ];
+            final covered = names.every((name) => name.isNotEmpty) &&
+                _coveredByIndex(statement, table, names);
             best = QueryPlan._indexed(entry.rootPage, access,
-                range ? 'secondary-index-range' : 'secondary-index-lookup');
+                range ? 'secondary-index-range' : 'secondary-index-lookup',
+                covering: covered, coveredColumns: covered ? names : const []);
           }
         } on Exception {
           continue;
@@ -457,6 +542,26 @@ final class SqliteDatabase {
           plan.rootPage!, (rowid) => access.compare([rowid]));
       return;
     }
+    if (!table.withoutRowid && plan.covering) {
+      final stored = table.storageColumns;
+      await for (final entry
+          in reader.seekIndex(plan.rootPage!, access.compare)) {
+        final rowid = entry.values.last;
+        if (rowid is! BigInt) {
+          throw const FormatException('Secondary index rowid missing');
+        }
+        final values = List<Object?>.filled(stored.length, null);
+        for (var i = 0;
+            i < plan.coveredColumns.length && i < entry.values.length - 1;
+            i++) {
+          final position = stored.indexWhere(
+              (column) => asciiLower(column.name) == plan.coveredColumns[i]);
+          if (position >= 0) values[position] = entry.values[i];
+        }
+        yield BtreeRecord.synthetic(rowid, values);
+      }
+      return;
+    }
     if (!table.withoutRowid) {
       await for (final entry
           in reader.seekIndex(plan.rootPage!, access.compare)) {
@@ -529,8 +634,33 @@ final class SqliteDatabase {
     }
   }
 
+  int get pagesRead => _pager.pagesRead;
+
+  /// This engine's plan text. It is not SQLite bytecode and not SQLite's
+  /// EXPLAIN QUERY PLAN detail strings.
+  List<String> describeQueryPlan(String sql) =>
+      functions.run(() => _describeQueryPlan(sql));
+
   QueryPlan explain(String sql, [List<Object?> parameters = const []]) =>
       functions.run(() => _explain(sql, parameters));
+  List<String> _describeQueryPlan(String sql) {
+    final statement = SqlParser(sql).select();
+    final sources = _orderedJoinSources(statement);
+    if (sources.length <= 1) {
+      final table =
+          statement.table == null ? null : catalog.table(statement.table!);
+      final plan = _plan(statement, table, const []);
+      final index =
+          plan.indexName == null ? '' : ' USING INDEX ${plan.indexName}';
+      final covered = plan.covering ? ' COVERING' : '';
+      return ['${plan.access}$index$covered ${statement.table ?? ""}'.trim()];
+    }
+    return [
+      for (final source in sources)
+        'SCAN ${source.table} (${_statistics.rowCount(source.table!)?.toInt() ?? 0} rows)'
+    ];
+  }
+
   QueryPlan _explain(String sql, List<Object?> parameters) {
     if (_closed) throw StateError('Database is closed');
     final statement = SqlParser(sql).select();
@@ -2143,6 +2273,8 @@ final class SqliteDatabase {
         'UTF-16le',
         'UTF-16be'
       ][header.textEncoding],
+      'journal_mode': sqlJournalMode(header.writeVersion),
+      'auto_vacuum': BigInt.zero,
     };
     if (values.containsKey(name) && argument == null) {
       return QueryResult([

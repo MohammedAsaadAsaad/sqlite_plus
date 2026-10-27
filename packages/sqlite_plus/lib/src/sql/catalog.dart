@@ -279,7 +279,7 @@ final class DatabaseCatalog {
         String? collation;
         if (modifiers && parser.take('COLLATE')) {
           collation = asciiLower(parser.identifier());
-          if (!['binary', 'nocase', 'rtrim'].contains(collation)) {
+          if (!knownCollation(collation)) {
             throw const SqlException('Unknown collation');
           }
         }
@@ -526,7 +526,7 @@ final class DatabaseCatalog {
             if (!generatedStored) parser.take('VIRTUAL');
           } else if (parser.take('COLLATE')) {
             collation = asciiLower(parser.identifier());
-            if (!['binary', 'nocase', 'rtrim'].contains(collation)) {
+            if (!knownCollation(collation)) {
               throw const SqlException('Unknown collation');
             }
           } else {

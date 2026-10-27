@@ -586,7 +586,7 @@ extension _RelationalQueries on SqliteDatabase {
         if (!progressed) throw const SqlException('Circular CTE definition');
       }
     }
-    final sources = s.normalizedSources;
+    final sources = _orderedJoinSources(s);
     final consumedPragmaConditions = <Expr>{};
     final inaccessibleGroupQualifiers = {
       for (final source in sources.where((source) => source.group.isNotEmpty))

@@ -29,7 +29,8 @@ final class _Node {
 abstract final class TableImageWriter {
   static Future<Uint8List> replace(
       Uint8List image, String tableName, List<TableRow> rows,
-      {int maxImageBytes = 64 * 1024 * 1024}) async {
+      {int maxImageBytes = 64 * 1024 * 1024,
+      bool preserveIndexes = false}) async {
     if (image.length > maxImageBytes) {
       throw const FormatException('Image limit exceeded');
     }
@@ -61,9 +62,10 @@ abstract final class TableImageWriter {
 
       if (table.rootPage == 1 ||
           table.withoutRowid ||
-          catalog.entries.any((e) =>
-              e.tableName.toLowerCase() == tableName.toLowerCase() &&
-              e.type != 'table')) {
+          (!preserveIndexes &&
+              catalog.entries.any((e) =>
+                  e.tableName.toLowerCase() == tableName.toLowerCase() &&
+                  e.type != 'table'))) {
         throw UnsupportedError(
             'Only ordinary rowid tables without indexes/triggers are writable');
       }
@@ -90,6 +92,7 @@ abstract final class TableImageWriter {
       }
       var freePage = header.firstFreelistTrunk;
       var freeCount = 0;
+      final pooled = <int>[];
       while (freePage != 0) {
         if (freePage == 1 || !owned.add(freePage)) {
           throw const FormatException('Invalid freelist trunk');
@@ -101,12 +104,14 @@ abstract final class TableImageWriter {
           throw const FormatException('Invalid freelist count');
         }
         freeCount++;
+        pooled.add(freePage);
         for (var i = 0; i < count; i++) {
           final number = data.getUint32(8 + 4 * i);
           if (number < 2 || number > pager.pageCount || !owned.add(number)) {
             throw const FormatException('Invalid freelist leaf');
           }
           freeCount++;
+          pooled.add(number);
         }
         freePage = data.getUint32(0);
       }
@@ -116,6 +121,7 @@ abstract final class TableImageWriter {
             'Freelist count mismatch or unowned database pages');
       }
       oldPages.remove(table.rootPage);
+      final reusable = [...oldPages, ...pooled];
       final sorted = rows.toList()..sort((a, b) => a.rowId.compareTo(b.rowId));
       BigInt? previous;
       for (final row in sorted) {
@@ -140,6 +146,7 @@ abstract final class TableImageWriter {
           Uint8List.fromList(original.sublist(i, i + header.pageSize))
       ];
       int allocate() {
+        if (reusable.isNotEmpty) return reusable.removeLast();
         if ((pages.length + 1) * header.pageSize > maxImageBytes) {
           throw const FormatException('Image limit exceeded');
         }
@@ -169,7 +176,9 @@ abstract final class TableImageWriter {
           final count = payload.length - offset < size - 4
               ? payload.length - offset
               : size - 4;
-          pages[number - 1].setRange(4, 4 + count, payload, offset);
+          final overflow = Uint8List(size);
+          overflow.setRange(4, 4 + count, payload, offset);
+          pages[number - 1] = overflow;
           last = number;
         }
         final prefix = [
@@ -257,9 +266,10 @@ abstract final class TableImageWriter {
           nodes = next;
         }
       }
-      // Reclaim old tree and overflow pages without disturbing existing freelists.
-      var trunk = header.firstFreelistTrunk;
-      final free = oldPages.toList();
+      // Reclaim unused former tree and freelist pages as one new freelist.
+      var trunk = 0;
+      final free = reusable;
+      final freed = free.length;
       while (free.isNotEmpty) {
         final number = free.removeLast();
         final page = Uint8List(size);
@@ -279,7 +289,7 @@ abstract final class TableImageWriter {
       fields.setUint32(92, counter);
       fields.setUint32(28, pages.length);
       fields.setUint32(32, trunk);
-      fields.setUint32(36, header.freelistPages + oldPages.length);
+      fields.setUint32(36, freed);
       return Uint8List.fromList(pages.expand((p) => p).toList());
     } finally {
       await pager.close();

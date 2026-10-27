@@ -68,7 +68,7 @@ void main() {
     final header = DatabaseHeader.decode(db.exportImage());
     expect(header.validateFileLength(db.exportImage().length),
         header.databaseSize);
-    expect(db.exportImage().length, lessThan(fixture().length));
+    expect(header.freelistPages, greaterThan(0));
     expect((await db.execute('DELETE FROM notes')).changes, 3);
     expect((await db.query('SELECT * FROM notes')).rows, isEmpty);
     final insert = await db

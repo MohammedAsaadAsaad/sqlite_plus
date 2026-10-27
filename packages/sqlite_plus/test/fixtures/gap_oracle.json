@@ -1,0 +1,377 @@
+{
+  "source_id": "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+  "encoding": "UTF-8",
+  "compiler_note": "CLI reports COMPILER=gcc-13.3.0. manifest.json records COMPILER=clang-22.1.3. The manifest was not rewritten.",
+  "cases": [
+    {
+      "id": "arithmetic",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "SELECT (1+2)*3, 7-1",
+      "sqlite_text": "9,6",
+      "rows": [
+        [
+          {
+            "integer": "9"
+          },
+          {
+            "integer": "6"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "storage-types",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "SELECT typeof(1), typeof(1.5), typeof('a'), typeof(NULL), typeof(x'61')",
+      "sqlite_text": "'integer','real','text','null','blob'",
+      "rows": [
+        [
+          "integer",
+          "real",
+          "text",
+          "null",
+          "blob"
+        ]
+      ]
+    },
+    {
+      "id": "string-literal",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "SELECT 'title'",
+      "sqlite_text": "'title'",
+      "rows": [
+        [
+          "title"
+        ]
+      ]
+    },
+    {
+      "id": "quoted-column",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "SELECT \"title\" FROM t",
+      "setup": "CREATE TABLE t(title TEXT); INSERT INTO t VALUES ('value')",
+      "sqlite_text": "'value'",
+      "rows": [
+        [
+          "value"
+        ]
+      ]
+    },
+    {
+      "id": "primary-key-order",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "SELECT id, v FROM n ORDER BY id",
+      "setup": "CREATE TABLE n(id INTEGER PRIMARY KEY, v TEXT); INSERT INTO n(v) VALUES ('a'),('b')",
+      "sqlite_text": "1,'a'\n2,'b'",
+      "rows": [
+        [
+          {
+            "integer": "1"
+          },
+          "a"
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "b"
+        ]
+      ]
+    },
+    {
+      "id": "json-object",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "SELECT json('{\"a\":1}')",
+      "sqlite_text": "'{\"a\":1}'",
+      "rows": [
+        [
+          "{\"a\":1}"
+        ]
+      ]
+    },
+    {
+      "id": "cte-sum",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "WITH c(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM c WHERE n<3) SELECT sum(n) FROM c",
+      "sqlite_text": "6",
+      "rows": [
+        [
+          {
+            "integer": "6"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "case-when",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "SELECT CASE WHEN NULL THEN 'a' WHEN 1 THEN 'b' ELSE 'c' END",
+      "sqlite_text": "'b'",
+      "rows": [
+        [
+          "b"
+        ]
+      ]
+    },
+    {
+      "id": "functions",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "SELECT abs(-3), length('ab'), upper('Ab'), 'Ab' LIKE 'a%'",
+      "sqlite_text": "3,2,'AB',1",
+      "rows": [
+        [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "2"
+          },
+          "AB",
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "null-row",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "SELECT NULL, 0, ''",
+      "sqlite_text": "NULL,0,''",
+      "rows": [
+        [
+          null,
+          {
+            "integer": "0"
+          },
+          ""
+        ]
+      ]
+    },
+    {
+      "id": "user-version",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "PRAGMA user_version",
+      "setup": "PRAGMA user_version=7",
+      "sqlite_text": "7",
+      "rows": [
+        [
+          {
+            "integer": "7"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "cache-size",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "PRAGMA cache_size",
+      "sqlite_text": "-2000",
+      "rows": [
+        [
+          {
+            "integer": "-2000"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "busy-timeout",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "PRAGMA busy_timeout",
+      "sqlite_text": "0",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "synchronous",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "PRAGMA synchronous",
+      "sqlite_text": "2",
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "id": "encoding",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "PRAGMA encoding",
+      "sqlite_text": "'UTF-8'",
+      "rows": [
+        [
+          "UTF-8"
+        ]
+      ]
+    },
+    {
+      "id": "cross-select",
+      "disposition": "match",
+      "kind": "query",
+      "sql": "SELECT main.t.v, aux.u.v FROM main.t, aux.u",
+      "setup": "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); INSERT INTO aux.u VALUES ('a')",
+      "sqlite_text": "'m','a'",
+      "rows": [
+        [
+          "m",
+          "a"
+        ]
+      ]
+    },
+    {
+      "id": "dqs-fallback",
+      "disposition": "rejected",
+      "kind": "query",
+      "sql": "SELECT \"missing\"",
+      "reason": "DQS stays off. A double-quoted token that is not a column is an identifier. Pinned SQLite 3.53.1 returns the string missing.",
+      "engine_message": "No such column: missing",
+      "sqlite_text": "'missing'",
+      "rows": [
+        [
+          "missing"
+        ]
+      ]
+    },
+    {
+      "id": "json-pretty",
+      "disposition": "rejected",
+      "kind": "query",
+      "sql": "SELECT json_pretty('{\"a\":1}')",
+      "reason": "json_pretty is not implemented. The pinned CLI formats the object.",
+      "engine_message": "No such function: json_pretty",
+      "sqlite_text": "unistr('{\\u000a    \"a\": 1\\u000a}')",
+      "parse_error": "quote-mode row was not parsed"
+    },
+    {
+      "id": "explain-bytecode",
+      "disposition": "rejected",
+      "kind": "query",
+      "sql": "EXPLAIN SELECT 1",
+      "reason": "EXPLAIN bytecode is not implemented. The statement is rejected. EXPLAIN QUERY PLAN prints this engine's plan text, which is not SQLite bytecode.",
+      "engine_message": "EXPLAIN bytecode is not implemented",
+      "sqlite_text": "addr  opcode         p1    p2    p3    p4             p5  comment      \n----  -------------  ----  ----  ----  -------------  --  -------------\n0     Init           0     4     0                    0   \n1     Integer        1     1     0                    0   \n2     ResultRow      1     1     0                    0   \n3     Halt           0     0     0                    0   \n4     Goto           0     1     0                    0   ",
+      "parse_error": "quote-mode row was not parsed"
+    },
+    {
+      "id": "journal-mode-memory",
+      "disposition": "rejected",
+      "kind": "execute",
+      "sql": "PRAGMA journal_mode=memory",
+      "reason": "journal_mode memory is not implemented. Writing a mode other than the current header mode is rejected before the image changes.",
+      "engine_message": "journal_mode memory is not implemented",
+      "sqlite_text": "'memory'",
+      "rows": [
+        [
+          "memory"
+        ]
+      ]
+    },
+    {
+      "id": "journal-mode-off",
+      "disposition": "rejected",
+      "kind": "execute",
+      "sql": "PRAGMA journal_mode=off",
+      "reason": "Pinned SQLite :memory: stays on memory when asked for off. This engine rejects journal_mode off before the rollback image changes.",
+      "engine_message": "journal_mode off is not implemented",
+      "sqlite_text": "'memory'",
+      "rows": [
+        [
+          "memory"
+        ]
+      ]
+    },
+    {
+      "id": "auto-vacuum-full",
+      "disposition": "rejected",
+      "kind": "execute",
+      "sql": "PRAGMA auto_vacuum=FULL",
+      "reason": "auto_vacuum is not implemented. A write is rejected. An image with a non-zero largest root page is not opened as success.",
+      "engine_message": "auto_vacuum is not implemented",
+      "sqlite_text": "",
+      "rows": []
+    },
+    {
+      "id": "cross-insert",
+      "disposition": "rejected",
+      "kind": "execute",
+      "sql": "INSERT INTO aux.u SELECT v FROM t",
+      "setup": "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v)",
+      "reason": "One statement cannot mutate two schemas. The insert is rejected, so aux.u stays empty.",
+      "engine_message": "cross-database statement is not supported",
+      "unchanged_sql": "SELECT count(*) FROM aux.u",
+      "unchanged_rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ],
+      "sqlite_text": "",
+      "rows": []
+    },
+    {
+      "id": "journal-mode-read",
+      "disposition": "differs",
+      "kind": "query",
+      "sql": "PRAGMA journal_mode",
+      "reason": "A fresh image reports rollback from header byte 18. Pinned SQLite :memory: reports memory. memory mode is not implemented.",
+      "engine_rows": [
+        [
+          "rollback"
+        ]
+      ],
+      "sqlite_text": "'memory'",
+      "rows": [
+        [
+          "memory"
+        ]
+      ]
+    },
+    {
+      "id": "explain-query-plan",
+      "disposition": "differs",
+      "kind": "query",
+      "sql": "EXPLAIN QUERY PLAN SELECT a FROM t WHERE a=1",
+      "setup": "CREATE TABLE t(a INTEGER PRIMARY KEY)",
+      "reason": "EXPLAIN QUERY PLAN prints this engine's plan. It is not SQLite's plan text or bytecode.",
+      "engine_detail": {
+        "contains": [
+          "t"
+        ],
+        "excludes": [
+          "Opcode",
+          "INTEGER PRIMARY KEY",
+          "QUERY PLAN"
+        ]
+      },
+      "sqlite_text_contains": [
+        "INTEGER PRIMARY KEY"
+      ],
+      "sqlite_text": "QUERY PLAN\n`--SEARCH t USING INTEGER PRIMARY KEY (rowid=?)",
+      "parse_error": "quote-mode row was not parsed"
+    }
+  ]
+}

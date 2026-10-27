@@ -1,11 +1,61 @@
+import 'dart:async';
+
+/// Stable classes for callers. The message text is not SQLite's text.
+enum SqlErrorCode { constraint, syntax, missingTable }
+
 /// SQL input errors carry their byte-independent Dart string offset.
 final class SqlException implements Exception {
-  const SqlException(this.message, [this.offset]);
+  const SqlException(this.message, [this.offset, this.code]);
   final String message;
   final int? offset;
+  final SqlErrorCode? code;
+
+  SqlErrorCode? get errorCode => code ?? inferSqlErrorCode(message);
+
   @override
   String toString() =>
       'SqlException: $message${offset == null ? '' : ' at $offset'}';
+}
+
+SqlErrorCode? inferSqlErrorCode(String message) {
+  final text = message.toLowerCase();
+  if (text.contains('no such table')) return SqlErrorCode.missingTable;
+  if (text.contains('constraint')) return SqlErrorCode.constraint;
+  if (text.startsWith('expected ') ||
+      text.contains('syntax error') ||
+      text.contains('unsupported or trailing')) {
+    return SqlErrorCode.syntax;
+  }
+  return null;
+}
+
+/// Schemas the current connection accepts in qualified names.
+final schemaNamesKey = Object();
+
+/// Collation callbacks for the current connection.
+final collationKey = Object();
+
+Set<String> activeSchemaNames() {
+  final names = Zone.current[schemaNamesKey];
+  if (names is Set<String> && names.isNotEmpty) return names;
+  return const {'main'};
+}
+
+String _lower(String value) => String.fromCharCodes(
+    value.codeUnits.map((unit) => unit >= 65 && unit <= 90 ? unit + 32 : unit));
+
+bool knownCollation(String name) {
+  final key = _lower(name);
+  if (const {'binary', 'nocase', 'rtrim'}.contains(key)) return true;
+  final map = Zone.current[collationKey];
+  return map is Map<String, int Function(String, String)> &&
+      map.containsKey(key);
+}
+
+int? compareRegisteredCollation(String name, String a, String b) {
+  final map = Zone.current[collationKey];
+  if (map is! Map<String, int Function(String, String)>) return null;
+  return map[_lower(name)]?.call(a, b);
 }
 
 /// A constraint failure eligible for an SQL conflict policy. Evaluation and
@@ -14,6 +64,8 @@ final class SqlConstraintException extends SqlException {
   const SqlConstraintException(super.message,
       [super.offset, this.conflictPolicy = 'ABORT']);
   final String conflictPolicy;
+  @override
+  SqlErrorCode? get errorCode => SqlErrorCode.constraint;
 }
 
 /// STRICT datatype violations always abort, even with OR IGNORE/FAIL.

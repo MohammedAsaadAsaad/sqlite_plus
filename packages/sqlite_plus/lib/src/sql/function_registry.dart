@@ -39,6 +39,7 @@ final class RegisteredSqlFunction {
 final class SqlFunctionRegistry {
   static final Object _zoneKey = Object();
   final Map<String, Map<int, RegisteredSqlFunction>> _functions = {};
+  final Map<String, int Function(String, String)> collations = {};
   final SqlConnectionState connectionState = SqlConnectionState();
   final VirtualTableRegistry virtualTables = VirtualTableRegistry();
 
@@ -72,6 +73,18 @@ final class SqlFunctionRegistry {
 
   void unregister(String name, int argumentCount) =>
       _functions[asciiLower(name)]?.remove(argumentCount);
+
+  /// Registers a text collation. BINARY, NOCASE and RTRIM stay built in.
+  void createCollation(String name, int Function(String, String) compare) {
+    final key = asciiLower(name);
+    if (key.isEmpty ||
+        key.contains('\u0000') ||
+        const {'binary', 'nocase', 'rtrim'}.contains(key)) {
+      throw ArgumentError('Invalid collation name');
+    }
+    collations[key] = compare;
+  }
+
   static SqlFunctionRegistry? get current =>
       Zone.current[_zoneKey] as SqlFunctionRegistry?;
   T run<T>(T Function() action) => VirtualTableRegistry.run(
@@ -81,6 +94,7 @@ final class SqlFunctionRegistry {
                 ? Zone.current[sqlStatementTimeKey] ?? DateTime.now().toUtc()
                 : DateTime.now().toUtc(),
             _zoneKey: this,
+            collationKey: collations,
           }));
   static RegisteredSqlFunction? resolve(String name, int count) {
     final overloads = current?._functions[asciiLower(name)];

@@ -189,6 +189,14 @@ int compareValues(Object? a, Object? b, [int encoding = 1, String? collation]) {
   if (a is double && b is BigInt) return -mixed(b, a);
   if (a is double && b is double) return a == b ? 0 : a.compareTo(b);
   if (a is String && b is String) {
+    if (collation != null &&
+        collation != 'binary' &&
+        collation != 'nocase' &&
+        collation != 'rtrim') {
+      final custom = compareRegisteredCollation(collation, a, b);
+      if (custom == null) throw SqlException('no such collation: $collation');
+      return custom;
+    }
     if (collation == 'nocase') {
       a = asciiLower(a).split('\u0000').first;
       b = asciiLower(b).split('\u0000').first;
