@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:sqlite_plus/sqlite_plus.dart';
 
 /// One in-memory library.
@@ -112,14 +110,4 @@ Future<LibraryTour> runLibraryTour() async {
   } finally {
     await db.close();
   }
-}
-
-Future<void> main() async {
-  final tour = await runLibraryTour();
-  stdout.writeln('${tour.title} (${tour.pages} pages) | ${tour.highlighted} '
-      '| ${tour.arabicTitle} x${tour.arabicMatches} '
-      '| place ${tour.placeId} | cards ${tour.keptCards} '
-      '| version ${tour.userVersion} '
-      '| reopen ${tour.reopenedTitle} v${tour.reopenedVersion} '
-      '| ${tour.imageBytes} bytes');
 }

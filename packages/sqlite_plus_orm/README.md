@@ -17,7 +17,7 @@ dependencies:
 
 ## Reading log
 
-`example/reading_log.dart` opens an in-memory database through `MutableDatabaseConnection.openMemory`. It saves two books, renames one, and reads that book by title and by `MappedField.at` on the JSON shelf. The untouched book stays at revision 0. A following save with no edits reports zero rows. The example names columns. It does not write SQL.
+`example/` is a separate Dart project. `example/lib/reading_log.dart` opens an in-memory database through `MutableDatabaseConnection.openMemory`. It saves two books, renames one, and reads that book by title and by `MappedField.at` on the JSON shelf. The untouched book stays at revision 0. A following save with no edits reports zero rows. The example names columns. It does not write SQL.
 
 ```dart
 final connection = await MutableDatabaseConnection.openMemory();
@@ -28,10 +28,11 @@ books.add(Book(BigInt.one, 'Kept Garden', '{"shelf":"north"}', 0));
 await context.saveChanges();
 ```
 
-From this package:
+From a checkout, after `dart pub get` at the repository root:
 
 ```sh
-dart run example/reading_log.dart
+cd example
+dart run bin/main.dart
 ```
 
 The test expects `Kept Garden Revised` on shelf `north` at revision `1`, `Other Atlas` still at revision `0`, one matching row, an idle save of `0`, and an empty second migration plan.

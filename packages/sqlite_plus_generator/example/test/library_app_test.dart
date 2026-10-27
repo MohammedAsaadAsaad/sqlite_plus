@@ -1,6 +1,6 @@
 import 'package:test/test.dart';
 
-import '../example/library_app.dart';
+import 'package:sqlite_plus_generator_example/library_app.dart';
 
 void main() {
   test(

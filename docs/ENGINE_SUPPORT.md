@@ -151,7 +151,7 @@ virtual SQL still matches.
 The compiled consumer imports `sqlite_plus_orm` and the generated model. It
 does not import `sqlite_plus` and its source has no SQL text. It saves six
 rows, reads the JSON note whose title is `kept`, the FTS article matching
-`kept`, and the R-tree place inside the unit box. `example/models.dart` passes
+`kept`, and the R-tree place inside the unit box. `example/lib/models.dart` passes
 generator `--check`.
 
 The repository root `LICENSE` is the MIT license. Every package version stays
@@ -160,10 +160,10 @@ limits. The Linux CI job fails when a fixture checksum does not match. That
 check does not execute SQLite. macOS and Windows CI do not run it.
 
 On Linux x64, Dart 3.13.7, this revision passed format, fatal-info analysis,
-10,497 engine tests, 170 ORM tests, and 54 generator tests. The pinned SQLite
+10,496 engine tests, 169 ORM tests, and 53 generator tests. The pinned SQLite
 CLI was present, so the native integrity tests ran. Those counts are Linux
-only. The three packages are prepared for pub.dev at `0.0.1-dev.1` and are
-not published.
+only. Each example project passed its own test. The three packages are
+prepared for pub.dev at `0.0.1-dev.1` and are not published.
 
 Items 91–98 are `benchmark_results/scenarios_10k_linux_x64.json`: Linux x64
 AOT, 10000 rows, three samples. Memory SQL insert microseconds are
@@ -187,7 +187,7 @@ not implemented by closing a bounded engine milestone.
 | Table functions | General virtual-table modules; metadata PRAGMA sources have explicit join-order and hidden-argument limits |
 | Windows | Bounded execution; callback-bearing WHERE filtering can be buffered before window output, and native planner/coroutine equivalence is not general |
 | Extensions | `json_pretty`, correlated `json_each`, FTS5 multi-page leaves, porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes remain unimplemented. The verified JSON, FTS, and R-tree subset is in the compatibility matrix |
-| Platforms and release | Items 91–98 are the 10000-row Linux x64 AOT file `benchmark_results/scenarios_10k_linux_x64.json`. 100000 and 1000000 were not run. Item 108 and M9 stay open. Linux x64 and one Chrome page on Linux are recorded. macOS CI passed for commit `e320528` in run 40494640309. Windows CI for that commit passed the ORM and generator and failed one engine tearDown with `PathAccessException` errno 32. A Windows pass is not recorded. Android was not run. iOS was not run because this machine has no Mac. Power loss is not claimed |
+| Platforms and release | Items 91–98 are the 10000-row Linux x64 AOT file `benchmark_results/scenarios_10k_linux_x64.json`. 100000 and 1000000 were not run. Item 108 and M9 stay open. Linux x64 and one Chrome page on Linux are recorded. macOS and Windows CI passed for commit `7afaaba` in run 40538509306: 10490 engine tests with 6 skipped, 169 ORM tests, and 53 generator tests on each OS. The six skips are the pinned CLI checks. The Windows stale-sidecar test passed. That run is not a result for later heads. Android was not run. iOS was not run because this machine has no Mac. Power loss is not claimed |
 
 Binary extension loading and the native SQLite C ABI are outside the Pure Dart
 runtime target. Existing durability and resource bounds remain in the

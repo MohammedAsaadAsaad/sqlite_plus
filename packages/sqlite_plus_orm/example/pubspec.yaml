@@ -1,0 +1,11 @@
+name: sqlite_plus_orm_example
+description: Runnable reading log for sqlite_plus_orm change tracking.
+publish_to: none
+resolution: workspace
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+dependencies:
+  sqlite_plus_orm: ^0.0.1-dev.1
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0

@@ -58,6 +58,12 @@ jobs:
         run: dart analyze --fatal-infos
       - name: Test packages
         run: dart test
+      - name: Check the example project
+        working-directory: packages/${{ matrix.package }}/example
+        run: |
+          dart analyze --fatal-infos
+          dart test
+          dart run bin/main.dart
       - name: Compile browser storage JavaScript
         if: matrix.package == 'sqlite_plus'
         run: dart compile js tool/browser_storage_compile.dart -o /tmp/sqlite_plus_browser_storage.js
@@ -92,3 +98,9 @@ jobs:
         run: dart analyze --fatal-infos
       - name: Test packages
         run: dart test
+      - name: Check the example project
+        working-directory: packages/${{ matrix.package }}/example
+        run: |
+          dart analyze --fatal-infos
+          dart test
+          dart run bin/main.dart

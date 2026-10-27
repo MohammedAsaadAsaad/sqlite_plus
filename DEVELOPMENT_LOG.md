@@ -1225,3 +1225,40 @@ result=pass
   `analyzer` 6.4.1 and `dart_style` 2.3.6 stay exact. Nothing was uploaded.
 - M9 stays unchecked. Item 108 stays open. This preparation is not a 1.0
   release and it is not a pub.dev upload.
+
+## 2026-10-27 — Desktop CI for the failed-open fix
+
+- GitHub Actions run 40538509306, head `7afaaba`, completed on the push to
+  `cursor/sqlite-conformance-orm-31c1`. The same commit also had pull-request
+  run 40538517281. The counts below are from the push run's own jobs.
+- `ubuntu-latest`: engine 10490 passed and 6 skipped, ORM 169 passed,
+  generator 53 passed. The six skips are the pinned CLI integrity tests.
+  The GitHub runner does not have that CLI. This is separate from the local
+  Linux run that had the CLI and printed 10496 engine tests for that commit.
+- `macos-latest`: engine 10490 passed and 6 skipped, ORM 169 passed,
+  generator 53 passed. The six skips are the same pinned CLI tests.
+- `windows-latest`: engine 10490 passed and 6 skipped, ORM 169 passed,
+  generator 53 passed. The six skips are the same pinned CLI tests.
+  `database_owner_test.dart` "stale shared-memory and missing sidecars fail
+  without creation" passed. The Windows engine summary was logged at
+  2026-10-27 18:15 Asia/Gaza.
+- These counts are for `7afaaba` only. They are not counts for later heads.
+  M9 stays unchecked. Item 108 stays open.
+
+## 2026-10-27 — An example project for each package
+
+- `packages/sqlite_plus/example`, `packages/sqlite_plus_orm/example`, and
+  `packages/sqlite_plus_generator/example` are workspace members. Each has
+  `publish_to: none`, `pubspec.yaml`, `lib/`, `bin/main.dart`, `test/`, and
+  `README.md`. They are not published.
+- The engine tour, the ORM reading log, and the generated library app moved
+  into those projects. The package test that used to import each file moved
+  with it. `example/lib/models.dart` is the generator input that passes
+  `--check`.
+- Linux Dart 3.13.7: format and fatal-info analysis passed for the three
+  packages and the three examples. Package `dart test` printed 10496 engine
+  tests, 169 ORM tests, and 53 generator tests. The pinned SQLite CLI was
+  present. Each example printed 1 test passed, and `dart run bin/main.dart`
+  printed the tour, the reading log, and the generated library. These counts
+  are Linux x64 only.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.

@@ -1,6 +1,6 @@
 import 'package:test/test.dart';
 
-import '../example/reading_log.dart';
+import 'package:sqlite_plus_orm_example/reading_log.dart';
 
 void main() {
   test('the reading log tracks one rename and leaves the other book', () async {

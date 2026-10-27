@@ -8,8 +8,8 @@ import 'support.dart';
 void main() {
   test('compiled consumer saves, searches, and reads through the ORM only',
       () async {
-    final fixture =
-        await Consumer.create(await File('example/models.dart').readAsString());
+    final fixture = await Consumer.create(
+        await File('example/lib/models.dart').readAsString());
     addTearDown(fixture.close);
     await writeGenerated(await generateLibrary(fixture.input));
     const app = r'''

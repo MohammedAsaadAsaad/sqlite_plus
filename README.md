@@ -14,7 +14,7 @@ Version `0.0.1-dev.1` is a pre-release. The packages are prepared for pub.dev an
 
 ## One generated query
 
-This is the call in `packages/sqlite_plus_generator/example/library_app.dart`:
+This is the call in `packages/sqlite_plus_generator/example/lib/library_app.dart`:
 
 ```dart
 final rows = await purchases.query
@@ -23,17 +23,15 @@ final rows = await purchases.query
     .toList();
 ```
 
-The same program stores three purchases and keeps the two above 20, ordered by total. It also stores a second JSON note, a second article, and a second place, then reads only the kept note, the FTS match, and the intersecting place. The application imports `sqlite_plus_orm` only. Run it from the generator package:
+The same program stores three purchases and keeps the two above 20, ordered by total. It also stores a second JSON note, a second article, and a second place, then reads only the kept note, the FTS match, and the intersecting place. The application imports `sqlite_plus_orm` only.
+
+Each package has an example project under `example/` with its own `pubspec.yaml`, `lib/`, `bin/main.dart`, and `test/`. The examples are workspace members and are not published. From a checkout:
 
 ```sh
-dart run example/library_app.dart
-```
-
-The engine tour and the ORM reading log are the same kind of program:
-
-```sh
-(cd packages/sqlite_plus && dart run example/library_tour.dart)
-(cd packages/sqlite_plus_orm && dart run example/reading_log.dart)
+dart pub get
+(cd packages/sqlite_plus/example && dart run bin/main.dart)
+(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)
+(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)
 ```
 
 ## Honest boundary
@@ -50,9 +48,10 @@ dart format .
 python3 tool/generate_fixtures.py --verify
 for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator; do
   (cd packages/$package && dart analyze --fatal-infos && dart test) || exit
+  (cd packages/$package/example && dart analyze --fatal-infos && dart test && dart run bin/main.dart) || exit
 done
 ```
 
-The Linux GitHub job runs every `tool/generate_*.py --verify` script. A checksum mismatch fails that job. Those scripts do not execute SQLite in `--verify` mode. The macOS and Windows jobs run format, fatal-info analysis, and `dart test` only.
+The Linux GitHub job runs every `tool/generate_*.py --verify` script. A checksum mismatch fails that job. Those scripts do not execute SQLite in `--verify` mode. The macOS and Windows jobs run format, fatal-info analysis, package tests, and the example project check.
 
 `docs/REFERENCE.md` is the format and SQL reference. `docs/ENGINE_SUPPORT.md` is the support contract. `CHANGELOG.md` separates the verified subset from the open limits.

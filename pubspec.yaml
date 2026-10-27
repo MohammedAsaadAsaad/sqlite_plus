@@ -5,5 +5,8 @@ environment:
   sdk: '>=3.6.0 <4.0.0'
 workspace:
   - packages/sqlite_plus
+  - packages/sqlite_plus/example
   - packages/sqlite_plus_orm
+  - packages/sqlite_plus_orm/example
   - packages/sqlite_plus_generator
+  - packages/sqlite_plus_generator/example

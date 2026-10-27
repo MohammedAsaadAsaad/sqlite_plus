@@ -22,7 +22,7 @@ dart run sqlite_plus_generator --input lib/models.dart --check
 
 ## Generated library
 
-`example/models.dart` declares a customer, a purchase, a JSON note, an FTS5 article, and an R-tree place. `example/library_app.dart` saves three purchases, two notes, two articles, and two places through `generatedModel`. The filter keeps totals above 20 and orders them. The JSON path, FTS search, and R-tree bounds each return one row:
+`example/` is a separate Dart project. `example/lib/models.dart` declares a customer, a purchase, a JSON note, an FTS5 article, and an R-tree place. `example/lib/library_app.dart` saves three purchases, two notes, two articles, and two places through `generatedModel`. The filter keeps totals above 20 and orders them. The JSON path, FTS search, and R-tree bounds each return one row:
 
 ```dart
 final rows = await purchases.query
@@ -37,13 +37,15 @@ final article =
     (await ArticleQuery(articles.query).search('kept').toList()).single;
 ```
 
-From this package:
+From a checkout, after `dart pub get` at the repository root:
 
 ```sh
-dart run example/library_app.dart
+cd example
+dart run sqlite_plus_generator --input lib/models.dart --check
+dart run bin/main.dart
 ```
 
-The test expects customer `Ada`, totals `22.5` then `30.0`, note `{"title":"kept"}`, article `alpha kept`, place id `1` of two stored places, and an empty second migration plan. `example/models.dart` passes `--check`.
+The example test expects customer `Ada`, totals `22.5` then `30.0`, note `{"title":"kept"}`, article `alpha kept`, place id `1` of two stored places, and an empty second migration plan. `example/lib/models.dart` passes `--check`.
 
 ## Conventions
 
@@ -52,7 +54,7 @@ Use repeated `--class Name` options to select classes, and `--output` for a
 matching alternative part path. The repository example is reproducible with:
 
 ```sh
-dart run bin/sqlite_plus_generator.dart --input example/models.dart --check
+dart run bin/sqlite_plus_generator.dart --input example/lib/models.dart --check
 ```
 
 Conventions select concrete public classes with `id`/`<ClassName>Id`. SQL names

@@ -17,21 +17,21 @@ void main() {
   }
 
   test('example output is a deterministic golden', () async {
-    final fixture =
-        await Consumer.create(await File('example/models.dart').readAsString());
+    final fixture = await Consumer.create(
+        await File('example/lib/models.dart').readAsString());
     addTearDown(fixture.close);
     final result = await generateLibrary(fixture.input);
     expect(
         normalizeNewlines(result.code),
         normalizeNewlines(
-            await File('example/models.orm.g.dart').readAsString()));
+            await File('example/lib/models.orm.g.dart').readAsString()));
     expect(result.code, contains('JsonPathField<Note> path'));
     expect(result.code, contains('virtualModule: "fts5"'));
     expect(result.code, contains('virtualModule: "rtree"'));
     expect(result.code, contains('Bounds<Place>'));
     expect(result.code, contains('search(String text)'));
     final checked =
-        await fixture.cli(['--input', 'example/models.dart', '--check']);
+        await fixture.cli(['--input', 'example/lib/models.dart', '--check']);
     expect(checked.exitCode, 0, reason: '${checked.stdout}\n${checked.stderr}');
     await writeGenerated(result);
     expect((await generateLibrary(fixture.input)).code, result.code);

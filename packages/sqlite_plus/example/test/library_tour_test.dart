@@ -1,6 +1,6 @@
 import 'package:test/test.dart';
 
-import '../example/library_tour.dart';
+import 'package:sqlite_plus_example/library_tour.dart';
 
 void main() {
   test('the library tour keeps JSON, FTS, R-tree, rollback, and the image',

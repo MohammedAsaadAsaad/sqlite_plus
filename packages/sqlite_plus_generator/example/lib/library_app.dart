@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
 import 'models.dart';
@@ -89,11 +87,4 @@ Future<LibraryApp> runLibraryApp() async {
   } finally {
     await context.close();
   }
-}
-
-Future<void> main() async {
-  final library = await runLibraryApp();
-  stdout.writeln('${library.customer} bought ${library.totals}; '
-      '${library.note}; ${library.article}; place ${library.placeId} '
-      'of ${library.storedPlaces}');
 }

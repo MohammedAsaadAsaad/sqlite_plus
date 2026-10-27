@@ -17,7 +17,7 @@ dependencies:
 
 ## Library tour
 
-`example/library_tour.dart` builds one in-memory library with bound `json_object` values. It rolls back a third card, highlights an FTS5 match, matches the Arabic token `مرحبا`, finds the R-tree shelf inside the unit box, sets `user_version` to 7, and reopens the exported image with the same title and version.
+`example/` is a separate Dart project. `example/lib/library_tour.dart` builds one in-memory library with bound `json_object` values. It rolls back a third card, highlights an FTS5 match, matches the Arabic token `مرحبا`, finds the R-tree shelf inside the unit box, sets `user_version` to 7, and reopens the exported image with the same title and version.
 
 ```dart
 final db = await MutableSqliteDatabase.create();
@@ -34,10 +34,11 @@ final text = await db.query(
     "SELECT highlight(book_text, 1, '[', ']') FROM book_text WHERE book_text MATCH 'kept'");
 ```
 
-From this package:
+From a checkout, after `dart pub get` at the repository root:
 
 ```sh
-dart run example/library_tour.dart
+cd example
+dart run bin/main.dart
 ```
 
 The tour test checks `Kept Garden`, 320 pages, `a garden [kept] in the margin`, `Arabic Shelf`, two cards after rollback, shelf id `1`, version `7` before and after `exportImage`.
