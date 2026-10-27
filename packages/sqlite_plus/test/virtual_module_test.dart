@@ -330,7 +330,7 @@ final class _CountModule extends VirtualTableModule {
   VirtualTableCursor xOpen(String table) => _CountCursor(events);
 }
 
-final class _CountCursor implements VirtualTableCursor {
+final class _CountCursor extends VirtualTableCursor {
   _CountCursor(this.events);
   final List<String> events;
   var current = 0;

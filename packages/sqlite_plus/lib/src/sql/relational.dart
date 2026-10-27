@@ -51,14 +51,17 @@ extension _RelationalQueries on SqliteDatabase {
 
   Future<void> _loadRelations(SelectStatement s,
       Map<String, (CatalogTable, List<RowValues>)> cache, Set<String> loading,
-      [Set<String> cteNames = const {}]) async {
+      [Set<String> cteNames = const {},
+      List<Object?> parameters = const []]) async {
     final cteScope = {...cteNames, ...s.ctes.keys};
     for (final name in _usedCteNames(s)) {
-      await _loadRelations(s.ctes[name]!.$2, cache, loading, cteScope);
+      await _loadRelations(
+          s.ctes[name]!.$2, cache, loading, cteScope, parameters);
     }
     for (final source in s.leafSources) {
       if (source.query != null) {
-        await _loadRelations(source.query!, cache, loading, cteScope);
+        await _loadRelations(
+            source.query!, cache, loading, cteScope, parameters);
         continue;
       }
       final name = source.table!;
@@ -109,7 +112,7 @@ extension _RelationalQueries on SqliteDatabase {
           parser.require('AS');
           final query =
               SqlParser(entry.sql!.substring(parser.current.offset)).select();
-          await _loadRelations(query, cache, loading, cteScope);
+          await _loadRelations(query, cache, loading, cteScope, parameters);
           prepareSubqueryWidths(query, {
             for (final relation in cache.entries)
               for (final name in {
@@ -153,12 +156,18 @@ extension _RelationalQueries on SqliteDatabase {
                 describe: (query) => _pragmaColumnMetadata(query, cache))
           );
         } else {
-          final table = catalog.table(name);
+          final table = _resolveTable(name, source, parameters);
           final rows = <RowValues>[];
           final reader = BtreeReader(_pager);
           final records = table.virtual
-              ? Stream<BtreeRecord>.fromIterable(
-                  VirtualTableRows.records(table))
+              ? Stream<BtreeRecord>.fromIterable(VirtualTableRows.records(table,
+                  where: s.where,
+                  parameters: parameters,
+                  allowUnqualified: s.leafSources
+                          .where((item) => item.query == null)
+                          .length ==
+                      1,
+                  alias: source.alias))
               : table.withoutRowid
                   ? reader.scanIndex(table.rootPage)
                   : reader.scanTable(table.rootPage);
@@ -202,11 +211,11 @@ extension _RelationalQueries on SqliteDatabase {
     }
     for (final expr in _expressions(s)) {
       for (final nested in _nested(expr)) {
-        await _loadRelations(nested, cache, loading, cteScope);
+        await _loadRelations(nested, cache, loading, cteScope, parameters);
       }
     }
     for (final part in s.compounds) {
-      await _loadRelations(part.$2, cache, loading, cteScope);
+      await _loadRelations(part.$2, cache, loading, cteScope, parameters);
     }
   }
 

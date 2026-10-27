@@ -830,3 +830,28 @@
   are still absent.
 - Verification on Dart 3.13.7/Linux x64: format, fatal-info analysis, and 9,645
   engine tests pass. ORM, generator, and native oracles were not re-run.
+
+## 2026-10-27 — M8 items 4–12: constraints, hidden columns, series
+
+- `bestIndex` receives equality and range comparisons. A module marks the ones
+  it consumes. `LIKE` and any comparison the module does not mark stay on a
+  full scan, and SQL still applies every predicate.
+- Hidden columns are absent from `SELECT *` and readable by name. A declared
+  column list must match the module, including `HIDDEN`. `CREATE` arguments are
+  delivered to the cursor.
+- `SELECT ... FROM module(args)` opens an eponymous module. A real table, a
+  named virtual table, or a module that is not eponymous rejects that call.
+- `xBegin`, `xCommit`, and `xRollback` follow the image transaction. Rollback
+  removes the virtual schema row and the ordinary insert together. `DROP TABLE`
+  on a virtual table leaves a neighbor table and its index. A missing module
+  does not change the image. Reopen sees the virtual table; a `sqlite_` name is
+  rejected.
+- `generate_series` implements the documented start/stop/step rules: omitted
+  start is 0, omitted stop is 4294967295, omitted step is 1, a zero step yields
+  no rows, NULL converts as integer zero, and int64 addition stops on overflow.
+  Python's sqlite3 here is 3.45.1 and was built without `generate_series`. The
+  pinned 3.53.1 library is not installed, so no new pinned oracle was generated.
+- A closed cursor and an out-of-range column raise `SqlException` and leave the
+  connection usable. A thrown `xCommit` marks the connection failed.
+- Verification on Dart 3.13.7/Linux x64: format, fatal-info analysis, and 9,654
+  engine tests pass. ORM, generator, and native oracles were not re-run.

@@ -941,6 +941,7 @@ final class ImageMutations {
     if (module == null) {
       throw SqlException('No such module: ${declaration.module}');
     }
+    validateVirtualColumns(module, declaration.declaredColumns);
     invokeVirtualTableCallback('xCreate',
         () => module.xCreate(declaration.name, declaration.arguments));
     other.add(ImageObject('table', declaration.name, declaration.name, sql,

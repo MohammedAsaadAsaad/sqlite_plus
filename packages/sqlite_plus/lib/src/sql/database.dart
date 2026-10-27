@@ -386,9 +386,50 @@ final class SqliteDatabase {
         table.rootPage, null);
   }
 
-  Stream<BtreeRecord> _planRecords(CatalogTable table, QueryPlan plan) async* {
+  CatalogTable _resolveTable(
+      String name, QuerySource? source, List<Object?> parameters) {
+    final key = asciiLower(name);
+    final physical = catalog.entries.any(
+        (entry) => entry.type != 'trigger' && asciiLower(entry.name) == key);
+    final arguments = source?.pragmaArguments;
+    if (arguments != null) {
+      if (physical) {
+        throw SqlException('$name is not a table-valued function');
+      }
+      final module = VirtualTableRegistry.current?.find(name);
+      if (module == null || !module.eponymous) {
+        throw SqlException('$name is not a table-valued function');
+      }
+      final values = [
+        for (final argument in arguments)
+          evaluateVirtualArgument(argument, parameters)
+      ];
+      if (values.length > module.hiddenColumns.length) {
+        throw SqlException('Too many arguments for $name');
+      }
+      return virtualCatalogTable(module, source!.table ?? name,
+          positionals: values);
+    }
+    if (!physical) {
+      final module = VirtualTableRegistry.current?.find(name);
+      if (module != null && module.eponymous) {
+        return virtualCatalogTable(module, name);
+      }
+    }
+    return catalog.table(name);
+  }
+
+  Stream<BtreeRecord> _planRecords(CatalogTable table, QueryPlan plan,
+      {Expr? where,
+      List<Object?> parameters = const [],
+      bool allowUnqualified = false,
+      String? alias}) async* {
     if (plan.access == 'virtual-table-scan') {
-      yield* Stream<BtreeRecord>.fromIterable(VirtualTableRows.records(table));
+      yield* Stream<BtreeRecord>.fromIterable(VirtualTableRows.records(table,
+          where: where,
+          parameters: parameters,
+          allowUnqualified: allowUnqualified,
+          alias: alias));
       return;
     }
     final reader = BtreeReader(_pager);
@@ -538,7 +579,7 @@ final class SqliteDatabase {
     final bound = parameters.map(sqlValue).toList();
     if (outer != null || _needsRelational(statement)) {
       final cache = <String, (CatalogTable, List<RowValues>)>{};
-      await _loadRelations(statement, cache, <String>{});
+      await _loadRelations(statement, cache, <String>{}, const {}, bound);
       prepareSubqueryWidths(statement, {
         for (final entry in cache.entries)
           for (final name in {
@@ -566,15 +607,21 @@ final class SqliteDatabase {
       }
       return _relationalExecution(statement, bound, cache, outer);
     }
-    final table =
-        statement.table == null ? null : catalog.table(statement.table!);
+    final table = statement.table == null
+        ? null
+        : _resolveTable(
+            statement.table!, statement.sources.singleOrNull, bound);
     final columns = table?.columns ?? <CatalogColumn>[];
     final input = <RowValues>[];
     if (table == null) {
       input.add({});
     } else {
       final plan = _plan(statement, table, bound);
-      final stream = _planRecords(table, plan);
+      final stream = _planRecords(table, plan,
+          where: statement.where,
+          parameters: bound,
+          allowUnqualified: true,
+          alias: statement.sources.singleOrNull?.alias);
       final stored = table.storageColumns;
       await for (final record in stream) {
         if (record.values.length > stored.length) {
@@ -761,8 +808,9 @@ final class SqliteDatabase {
         if (table == null) {
           throw const SqlException('SELECT * requires a table');
         }
-        items
-            .addAll(columns.map((c) => SelectItem(ColumnExpr(c.name), c.name)));
+        items.addAll(columns
+            .where((column) => !column.hidden)
+            .map((c) => SelectItem(ColumnExpr(c.name), c.name)));
       } else {
         items.add(item);
       }

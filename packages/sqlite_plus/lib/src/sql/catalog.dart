@@ -55,7 +55,8 @@ final class CatalogTable {
       {this.withoutRowid = false,
       this.rowidAlias,
       this.virtualModule,
-      this.virtualArguments = const []})
+      this.virtualArguments = const [],
+      this.virtualPositionals})
       : columns = List.unmodifiable(columns);
   final String name;
   final int rootPage;
@@ -64,6 +65,7 @@ final class CatalogTable {
   final String? rowidAlias;
   final String? virtualModule;
   final List<String> virtualArguments;
+  final List<Object?>? virtualPositionals;
   bool get virtual => virtualModule != null;
   final List<List<String>> uniqueKeys = [];
   final List<List<String>> autoIndexKeys = [];
@@ -212,10 +214,9 @@ final class DatabaseCatalog {
       if (module == null) {
         throw SqlException('No such module: ${declaration.module}');
       }
-      return CatalogTable(matches.single.name, 0,
-          [for (final column in module.columns) CatalogColumn(column, '')],
-          virtualModule: declaration.module,
-          virtualArguments: declaration.arguments);
+      validateVirtualColumns(module, declaration.declaredColumns);
+      return virtualCatalogTable(module, matches.single.name,
+          arguments: declaration.arguments);
     }
     if (['sqlite_schema', 'sqlite_master'].contains(asciiLower(name))) {
       return CatalogTable('sqlite_schema', 1, [

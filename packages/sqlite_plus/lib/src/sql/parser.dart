@@ -1139,9 +1139,7 @@ final class SqlParser {
         table = identifier();
       }
       if (take('(')) {
-        if (!pragmaTableColumns.containsKey(asciiLower(table))) {
-          throw SqlException('Unsupported table-valued function: $table');
-        }
+        final knownPragma = pragmaTableColumns.containsKey(asciiLower(table));
         pragmaArguments = [];
         if (!take(')')) {
           do {
@@ -1149,7 +1147,11 @@ final class SqlParser {
           } while (take(','));
           require(')');
         }
-        final maximum = pragmaTableHasArgument(table) ? 2 : 0;
+        final maximum = knownPragma
+            ? pragmaTableHasArgument(table)
+                ? 2
+                : 0
+            : 16;
         if (pragmaArguments.length > maximum) {
           throw SqlException('Too many arguments on $table()');
         }

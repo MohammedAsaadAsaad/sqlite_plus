@@ -9,6 +9,7 @@ import 'parser.dart';
 import 'tokenizer.dart';
 import 'values.dart';
 import 'function_registry.dart';
+import 'virtual_table.dart';
 
 final class MutationResult {
   const MutationResult(this.changes, this.lastInsertRowid, [this.returning]);
@@ -260,6 +261,12 @@ final class MutableSqliteDatabase {
       if (inTransaction) throw const SqlException('Transaction already active');
       _transactionStart = Uint8List.fromList(_image);
       _explicitTransaction = true;
+      try {
+        _virtualTransaction('xBegin');
+      } catch (error) {
+        _clearTransaction();
+        rethrow;
+      }
     } else if (op == 'SAVEPOINT') {
       final name = asciiLower(parser.identifier());
       parser.finish();
@@ -291,6 +298,7 @@ final class MutableSqliteDatabase {
         if (!inTransaction) throw const SqlException('No active transaction');
         _image = _transactionStart!;
         _clearTransaction();
+        _virtualTransaction('xRollback');
       }
     } else {
       parser.take('TRANSACTION');
@@ -307,8 +315,30 @@ final class MutableSqliteDatabase {
     _savepoints.clear();
   }
 
+  void _virtualTransaction(String action) {
+    for (final module in functions.virtualTables.modules) {
+      invokeVirtualTableCallback(action, () {
+        switch (action) {
+          case 'xBegin':
+            module.xBegin();
+          case 'xCommit':
+            module.xCommit();
+          case 'xRollback':
+            module.xRollback();
+        }
+      });
+    }
+  }
+
   Future<void> _commitTransaction() async {
     if (_foreignKeys) (await ImageMutations.load(_image)).validateForeignKeys();
+    try {
+      _virtualTransaction('xCommit');
+    } catch (error) {
+      _failed = true;
+      _clearTransaction();
+      rethrow;
+    }
     if (_journal != null) {
       try {
         await _journal.commitImage(_image);
