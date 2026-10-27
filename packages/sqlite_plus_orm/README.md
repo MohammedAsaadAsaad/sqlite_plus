@@ -1,7 +1,5 @@
 # sqlite_plus_orm
 
-ORM فوق sqlite_plus: استعلامات مكتوبة بأسماء الحقول، وتتبع للتعديلات، وهجرات تُراجع قبل التطبيق. وقت التشغيل Pure Dart ومن غير analyzer.
-
 Typed queries, change tracking, and reviewed migrations for `sqlite_plus`. Runtime code has no analyzer, reflection, native database, or `dart:io` dependency.
 
 Version `0.0.1-dev.1` is a pre-release. It is prepared for pub.dev and is not published. Until both packages are published, depend on the git repository:

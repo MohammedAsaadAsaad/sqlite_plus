@@ -1,6 +1,6 @@
 # generated library
 
-مشروع صغير يستهلك الخرائط المولَّدة: مرشح مشتريات، ومسار JSON، وبحث FTS، وحدود R-tree. التطبيق يستدعي ORM فقط.
+A small project for the generated mappings: a purchase filter, a JSON path, an FTS search, and R-tree bounds. The application calls the ORM only.
 
 This example is its own Dart project. It is a workspace member and is not published. `lib/models.orm.g.dart` is checked in.
 

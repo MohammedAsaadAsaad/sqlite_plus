@@ -1,8 +1,6 @@
 # sqlite_plus
 
-محرك SQLite، وORM، ومولّد خرائط. الثلاثة Pure Dart: وقت التشغيل من غير FFI، ومن غير SQLite أصلي، ومن غير WASM.
-
-Pure Dart database stack in three packages.
+A Pure Dart SQLite engine, ORM, and mapping generator. The production runtime has no FFI, native SQLite, or WASM.
 
 | Package | What it shows |
 |---|---|

@@ -1,7 +1,5 @@
 # sqlite_plus
 
-محرك SQLite بأسلوب Pure Dart: SQL، وJSON، وFTS5، وR-tree، من غير FFI ومن غير SQLite أصلي في وقت التشغيل.
-
 A Pure Dart database engine. SQL, JSON, FTS5, and R-tree run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
 Version `0.0.1-dev.1` is a pre-release. It is prepared for pub.dev and is not published. Until it is published, depend on the git repository:
@@ -17,7 +15,7 @@ dependencies:
 
 ## Library tour
 
-`example/` is a separate Dart project. `example/lib/library_tour.dart` builds one in-memory library with bound `json_object` values. It rolls back a third card, highlights an FTS5 match, matches the Arabic token `مرحبا`, finds the R-tree shelf inside the unit box, sets `user_version` to 7, and reopens the exported image with the same title and version.
+`example/` is a separate Dart project. `example/lib/library_tour.dart` builds one in-memory library with bound `json_object` values. It rolls back a third card, highlights an FTS5 match, matches an Arabic token, finds the R-tree shelf inside the unit box, sets `user_version` to 7, and reopens the exported image with the same title and version.
 
 ```dart
 final db = await MutableSqliteDatabase.create();

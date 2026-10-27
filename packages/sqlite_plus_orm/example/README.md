@@ -1,6 +1,6 @@
 # reading log
 
-مشروع صغير يشغّل sqlite_plus_orm بأسماء الحقول: كتابان، ومراجعة، ورف JSON، من غير نص SQL.
+A small project for sqlite_plus_orm. It names fields, saves two books, bumps one revision, and reads a JSON shelf. The application code does not write SQL.
 
 This example is its own Dart project. It is a workspace member and is not published.
 

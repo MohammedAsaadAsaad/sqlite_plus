@@ -1,6 +1,6 @@
 # library tour
 
-مشروع صغير يشغّل محرك sqlite_plus: JSON مربوط، وتراجع معاملة، وFTS5، ورمز عربي، وR-tree، ثم إعادة فتح الصورة.
+A small project for the sqlite_plus engine: bound JSON, a rolled-back transaction, FTS5, an Arabic token, an R-tree query, and reopening the exported image.
 
 This example is its own Dart project. It is a workspace member and is not published.
 

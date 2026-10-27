@@ -1,8 +1,6 @@
 # sqlite_plus_generator
 
-مولّد خرائط لـ sqlite_plus_orm: يقرأ أصناف Dart ويكتب `path` لـ JSON، و`search` لـ FTS5، و`bounds` لـ R-tree. التطبيق الناتج يستدعي ORM من غير نص SQL.
-
-A development-time generator for `sqlite_plus_orm`. It reads Dart classes and writes runtime mappings. The generated application does not depend on the analyzer.
+A development-time generator for `sqlite_plus_orm`. It reads Dart classes and writes runtime mappings, including JSON `path`, FTS5 `search`, and R-tree `bounds`. The generated application does not depend on the analyzer.
 
 Version `0.0.1-dev.1` is a pre-release. It is prepared for pub.dev and is not published. Until the packages are published:
 
