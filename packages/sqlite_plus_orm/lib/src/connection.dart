@@ -89,3 +89,83 @@ final class MutableDatabaseConnection extends OrmConnection {
     _closed = true;
   }
 }
+
+/// ORM connection over a browser or memory [OpenedStorage].
+///
+/// Save and query use [MutableSqliteDatabase]. Close writes the image through
+/// the public storage backend. [StorageCapabilities.durabilityPromised] stays
+/// false for this path, including after a successful reopen.
+final class BrowserDatabaseConnection extends OrmConnection {
+  BrowserDatabaseConnection._(this.storage, this.capabilities, this.database);
+  final StorageBackend storage;
+  final StorageCapabilities capabilities;
+  final MutableSqliteDatabase database;
+  bool _closed = false;
+
+  static Future<BrowserDatabaseConnection> open(OpenedStorage opened) async {
+    requireWritable(opened.capabilities);
+    final length = await opened.storage.length();
+    final MutableSqliteDatabase database;
+    if (length == 0) {
+      database = await MutableSqliteDatabase.create();
+    } else {
+      final bytes = Uint8List(length);
+      final read = await opened.storage.read(0, bytes);
+      if (read != length) {
+        throw const OrmStateException('Browser image read was short');
+      }
+      database = await MutableSqliteDatabase.fromImage(bytes);
+    }
+    return BrowserDatabaseConnection._(
+        opened.storage, opened.capabilities, database);
+  }
+
+  void _check() {
+    if (_closed) throw const OrmStateException('Connection is closed');
+  }
+
+  Future<void> flush() async {
+    _check();
+    requireWritable(capabilities);
+    if (database.inTransaction) {
+      throw const OrmStateException(
+          'Commit or roll back before flushing browser storage');
+    }
+    final image = database.exportImage();
+    await storage.truncate(0);
+    await storage.write(0, image);
+    await storage.sync();
+  }
+
+  @override
+  bool get inTransaction {
+    _check();
+    return database.inTransaction;
+  }
+
+  @override
+  Future<QueryResult> query(String sql, [List<Object?> parameters = const []]) {
+    _check();
+    return database.query(sql, parameters);
+  }
+
+  @override
+  Future<MutationResult> execute(String sql,
+      [List<Object?> parameters = const []]) {
+    _check();
+    return database.execute(sql, parameters);
+  }
+
+  @override
+  Future<void> close() async {
+    if (_closed) return;
+    if (_owner != null) {
+      throw const OrmStateException(
+          'Release the context before closing its connection');
+    }
+    await flush();
+    await database.close();
+    await storage.close();
+    _closed = true;
+  }
+}

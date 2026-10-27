@@ -54,6 +54,9 @@ jobs:
         run: dart analyze --fatal-infos
       - name: Test packages
         run: dart test
+      - name: Compile browser storage JavaScript
+        if: matrix.package == 'sqlite_plus'
+        run: dart compile js tool/browser_storage_compile.dart -o /tmp/sqlite_plus_browser_storage.js
       - name: Compile and run ORM JavaScript smoke
         if: matrix.package == 'sqlite_plus_orm'
         run: |

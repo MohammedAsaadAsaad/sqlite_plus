@@ -43,7 +43,8 @@ development reference tools. Production engine code is Pure Dart.
 | Connection pragmas | Items 56–59 verified subset | `journal_mode` reads header byte 18 (`rollback` or `wal`). Writing the current mode is a no-op. `memory`, `off`, `delete`, `persist`, `truncate`, and a rollback/wal switch throw before any byte change. A write-version 2 image is not opened for query. `cache_size` defaults to -2000, `busy_timeout` to 0, and `synchronous` to 2, and none of the three changes `exportImage`. `auto_vacuum` reads 0. A write throws. A non-zero largest root page fails at open |
 | Plans, DQS, and errors | Items 60–68 verified subset | One custom collation. EXPLAIN QUERY PLAN returns this engine's `detail` text. EXPLAIN bytecode throws. A 2–3 table comma join with ORDER BY and stat1 can be reordered; the test compares rows. A covering index reads fewer pages than a query that needs the table. `sqlite_stat4` throws at open. Double quotes are identifiers. The gap ledger has 25 UTF-8 cases from the SQLite 3.53.1 CLI (`COMPILER=gcc-13.3.0`; `manifest.json` records clang-22.1.3). CI checks the checksum only. Recorded differences include DQS, `json_pretty`, EXPLAIN bytecode, journal modes, `auto_vacuum`, and a cross-database insert. `SqlErrorCode` is `constraint`, `syntax`, or `missingTable`. Record decoding rejects UTF-8 0xFF, an unpaired UTF-16 surrogate, and an odd UTF-16 length |
 | Incremental page writes | Items 69–76 verified subset | A splitting insert, an emptying delete, and a same-length overflow update pass the pinned CLI `integrity_check`. The file does not shrink; freelist pages are reused, so page count stays level after a same-size delete and insert. A non-key update leaves an expression index and a partial index byte-identical. A key change uses the compact rebuild. Journal and WAL crash recovery match the current contract for those steps. WITHOUT ROWID, views, and triggers keep their existing writers. An auto-vacuum file is rejected. `benchmark_results/page_writes_linux_x64.json` is this revision's AOT sample only: batch inserts of 10,000 rows took 268581, 275709, and 288941 microseconds; one batch of 100,000 rows took 2686614 microseconds; 200 single-row inserts took 296606 microseconds; peak RSS was 214040576 bytes. No earlier binary was measured, so no delta is claimed. 100,000 single-row inserts were not run |
-| Linux x64 | Development verified | Dart 3.13.7; 10,488 engine and 163 ORM tests on this change; 48 generator tests remain the last run; format and fatal-info analysis pass |
+| Browser storage | Items 77–82 verified subset | `openBrowserStorage` tries OPFS, then IndexedDB database `sqlite_plus` version 1 object store `files`, through `dart:js_interop`. Production dependencies include neither WASM nor native SQLite. The caller reads `canRead`, `canWrite`, `durabilityPromised`, and `placement`. Memory and browser placements both set `durabilityPromised` to false, and a browser flag with that field true is rejected. A missing interface, including the Linux stub and a null probe, returns a new empty `MemoryStorageBackend`. A throwing probe propagates. The round trip is `MemoryBrowserByteStore`: close then open returns the saved row. That store is an in-process map, not OPFS, and power loss is not claimed. `dart compile js tool/browser_storage_compile.dart` compiles the web file; the JavaScript was not executed and Chrome was not run. `BrowserDatabaseConnection` saves through the public ORM API, and `where(MappedField.equalTo(...))` returns the row after close and reopen |
+| Linux x64 | Development verified | Dart 3.13.7; 10,488 engine and 163 ORM tests on the previous change; 48 generator tests remain the last run; format and fatal-info analysis pass. This revision's full-suite reprint is recorded in the development log |
 | Windows/macOS/Android/iOS/Web | Unverified, M9 pending | Core has no dart:io dependency; optional file/owner adapter does; no execution claim |
 
 ## Query and format limits
@@ -122,8 +123,11 @@ two-database commit stay unsupported. M7's ORM/generator gate passes for
 the documented runtime/generator contract. M8 passes for the verified JSON,
 virtual-table, FTS, and R-tree subset recorded above. The omissions in that
 subset, including `json_pretty`, correlated `json_each`, multi-page FTS5 leaves,
-porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes, stay open. M9
-browser/platform/release work has not passed its gate. Saved AOT benchmarks contain real raw samples
+porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes, stay open. Items
+77–82 record an unpromised browser-storage subset above. The round trip is an
+in-process simulation, the OPFS/IndexedDB file was compiled and not run, and
+power loss is not claimed. That subset does not check M9. Items 83–108 and the
+rest of the M9 browser/platform/release gate have not passed. Saved AOT benchmarks contain real raw samples
 for small Linux memory workloads, including this revision's 10,000 and 100,000
 row batch inserts. They are not a before/after delta and they are not the
 required 1k/1m scale and platform/ORM/native-engine comparison matrix. No
@@ -189,4 +193,6 @@ transaction; unmanaged objects remain, destructive/ambiguous changes require
 explicit operations, and indeterminate outcomes poison the affected context.
 JavaScript compilation and a Node memory smoke cover codecs, full signed64 keys,
 linked CRUD, tracking/revisions and relationship loads. This verifies browser-safe
-runtime imports/execution, not browser storage durability or mobile platforms.
+runtime imports/execution. Items 77–82 add a separate unpromised image round
+trip in an in-process store and a compiled `dart:js_interop` file. They do not
+establish power-loss durability, and they do not run Chrome or mobile platforms.

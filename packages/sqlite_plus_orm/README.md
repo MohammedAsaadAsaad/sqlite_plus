@@ -141,6 +141,11 @@ comparisons; native SQLite is never a runtime dependency.
 
 The JavaScript smoke compiles and runs the engine/ORM in memory with full BigInt
 keys and relationships. It does not establish browser storage durability.
-Current built-in connection support is MutableDatabaseConnection; additional
-adapters must honor OrmConnection ownership and transaction semantics. Engine
+`BrowserDatabaseConnection` opens an `OpenedStorage`, and `close` writes the
+exported image through the public storage API. The verified path is an
+in-process `MemoryBrowserByteStore`: save two notes, filter with
+`where(MappedField.equalTo(...))`, close, reopen, and filter again.
+`durabilityPromised` stays false. Power loss is not claimed, and Chrome was
+not run. `MutableDatabaseConnection` remains the file and memory connection.
+Adapters must honor OrmConnection ownership and transaction semantics. Engine
 capabilities and exclusions remain in the repository compatibility matrix.

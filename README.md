@@ -28,7 +28,7 @@ or model reflection is needed by the database application.
 
 ## Development checks
 
-CI uses Dart 3.13.7. Run from the repository root:
+CI uses Dart 3.13.7. Packages require Dart >=3.4.0. Run from the repository root:
 
 ```sh
 dart format .
@@ -405,8 +405,16 @@ objects, one attached database, the connection pragmas named in the matrix,
 one custom collation, this engine's EXPLAIN QUERY PLAN text, a bounded join
 reorder, covering-index reads, and incremental page writes for the tested
 shapes. DQS stays off. Native EXPLAIN bytecode, STAT4, auto-vacuum, and a
-cross-database write stay rejected. Full SQLite compatibility is not claimed.
-M7 and the verified M8 subset have passed their gates. M9 has not.
+cross-database write stay rejected. Items 77–82 add `openBrowserStorage` and
+`BrowserDatabaseConnection`. The caller reads `canRead`, `canWrite`,
+`durabilityPromised`, and `placement`. Both placements leave
+`durabilityPromised` false. A missing browser interface falls back to memory.
+The verified round trip uses an in-process `MemoryBrowserByteStore`: close,
+then open, returns the row. The OPFS/IndexedDB file compiles with
+`dart compile js`. That JavaScript was not executed. Chrome was not run, and
+power loss is not claimed. Full SQLite compatibility is not claimed.
+M7 and the verified M8 subset have passed their gates. M9 has not. Items
+83–108 remain open.
 
 Real AOT benchmark samples are saved under `benchmark_results`. The index
 benchmark builds a 10,000-row memory image and measures five batches of 100

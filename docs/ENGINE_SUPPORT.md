@@ -86,6 +86,34 @@ rows, and 200 single-row inserts. No earlier binary was measured, so the file
 is not a before/after delta. One hundred thousand single-row inserts were not
 run.
 
+## Items 77–82
+
+These additions are a tested subset. They do not close M9.
+
+`openBrowserStorage` looks up OPFS, then IndexedDB, through `dart:js_interop`.
+The IndexedDB database is `sqlite_plus` version 1 and the object store is
+`files`. The production packages do not depend on WASM or native SQLite. The
+package SDK floor is 3.4.0 because that file uses `JSAny.isA`. On this Linux
+VM the conditional import selects the stub, which returns null. `dart compile
+js tool/browser_storage_compile.dart` compiles the web file. That JavaScript
+was not executed, and Chrome was not run.
+
+`OpenedStorage.capabilities` is what the caller reads: `canRead`, `canWrite`,
+`durabilityPromised`, and `placement`. Memory and browser placements both set
+`durabilityPromised` to false. `requireWritable` rejects a read-only flag and
+a browser flag that claims power-loss durability. A missing interface,
+including the stub and a null probe, returns a new `MemoryStorageBackend`
+with `StoragePlacement.memory`. A later open is empty. A probe that throws is
+not turned into a successful open.
+
+The round trip uses `MemoryBrowserByteStore`, an in-process map. Close, then
+open, returns the saved row. Bytes stay local until `sync`, and the store
+keeps its own copy. This is not OPFS and it is not a power-loss promise.
+`BrowserStorageBackend` does not implement `DurableStorageBackend`, so it is
+not passed to the rollback or WAL pager. `BrowserDatabaseConnection` uses the
+public engine API only. The ORM test saves two notes, filters with
+`where(MappedField.equalTo(...))`, closes, reopens, and filters again.
+
 ## Remaining SQLite targets
 
 These omissions remain project requirements or compatibility limits. They are
@@ -101,13 +129,16 @@ not implemented by closing a bounded engine milestone.
 | Table functions | General virtual-table modules; metadata PRAGMA sources have explicit join-order and hidden-argument limits |
 | Windows | Bounded execution; callback-bearing WHERE filtering can be buffered before window output, and native planner/coroutine equivalence is not general |
 | Extensions | `json_pretty`, correlated `json_each`, FTS5 multi-page leaves, porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes remain unimplemented. The verified JSON, FTS, and R-tree subset is in the compatibility matrix |
-| Platforms and release | Browser storage, non-Linux execution, the full M9 benchmark matrix, and release qualification. Items 77–108 are open |
+| Platforms and release | Non-Linux execution, the full M9 benchmark matrix, and release qualification. Items 83–108 are open. Items 77–82 cover an unpromised browser image only: the round trip is an in-process simulation, and the OPFS/IndexedDB file was compiled, not run in Chrome |
 
 Binary extension loading and the native SQLite C ABI are outside the Pure Dart
 runtime target. Existing durability and resource bounds remain in the
 compatibility matrix: exclusive ownership, pre-provisioned durable entries,
 bounded full-image writes, and no external concurrent SQLite/shared wal-index
-mode. Browser-safe imports alone do not establish browser durability.
+mode. Browser-safe imports alone do not establish browser durability. The
+items 77–82 round trip is an in-process simulation plus a compiled
+`dart:js_interop` file. `durabilityPromised` stays false. Power loss is not
+claimed, and Chrome was not run.
 
 ## Verification gate
 

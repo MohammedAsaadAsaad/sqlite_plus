@@ -1,5 +1,9 @@
 export 'src/storage/storage_backend.dart';
+export 'src/storage/storage_capabilities.dart';
 export 'src/storage/memory_storage_backend.dart';
+export 'src/storage/browser_byte_store.dart';
+export 'src/storage/browser_storage_backend.dart';
+export 'src/storage/browser_storage.dart';
 export 'src/format/database_header.dart';
 export 'src/format/btree_page_header.dart';
 export 'src/format/record_codec.dart' show RecordCodec, SqliteByteReader;

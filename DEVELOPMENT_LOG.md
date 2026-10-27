@@ -999,3 +999,45 @@
   10,488 engine tests, and 163 ORM tests pass. Generator
   tests were not re-run. Native schema, journal, and WAL oracles were not
   re-run. macOS, Windows, Android, iOS, and the browser were not run.
+
+## 2026-10-27 — Items 77–82: unpromised browser storage
+
+- `openBrowserStorage` looks up OPFS, then IndexedDB, through
+  `dart:js_interop`. The IndexedDB database is `sqlite_plus` version 1 and
+  the object store is `files`. Production dependencies do not include WASM or
+  native SQLite. The package SDK floor is 3.4.0 because `JSAny.isA` requires
+  it. CI still runs Dart 3.13.7. On this Linux VM the conditional import
+  selects the stub and returns null.
+- `OpenedStorage.capabilities` exposes `canRead`, `canWrite`,
+  `durabilityPromised`, and `placement`. Memory and browser placements both
+  set `durabilityPromised` to false. `requireWritable` rejects a read-only
+  flag and a browser flag that claims power-loss durability. The caller reads
+  the flag. It does not infer durability from the class.
+- A missing interface, including the stub and a null probe, returns a new
+  `MemoryStorageBackend` with `StoragePlacement.memory`. Close, then open,
+  has length 0. A probe that throws propagates.
+- The round trip uses `MemoryBrowserByteStore`. That store is an in-process
+  map. It is not OPFS and it is not durable. Close, then open, returns
+  `SELECT body` equal to `kept`. Bytes stay local until `sync`, and the store
+  keeps its own copy. Empty names and names containing `/`, `\`, or NUL are
+  rejected. `BrowserStorageBackend` does not implement
+  `DurableStorageBackend`. Power loss is not claimed.
+- `dart compile js tool/browser_storage_compile.dart` compiles the web file.
+  The compiled JavaScript was not executed. Chrome was not run. CI compiles
+  that file and does not run it.
+- `BrowserDatabaseConnection` uses the public engine API only. The ORM test
+  saves notes 1 `kept` and 2 `other`, filters with
+  `where(MappedField.equalTo('kept'))`, closes, reopens, and filters again.
+  A missing probe leaves the next memory open at length 0. The test file
+  contains no SQL string.
+- `json_pretty`, correlated `json_each`, the FTS/R-tree limits, and the
+  items 51–76 contracts are unchanged. M8 stays checked for its earlier
+  subset only. M9 stays open. Items 83–108 were not started. macOS, Windows,
+  Android, iOS, and Chrome were not run.
+- Verification on Dart 3.13.7/Linux x64 before the full-suite reprint:
+  format and fatal-info analysis on the changed packages, 8 tests in
+  `browser_storage_test`, 2 tests in `browser_connection_test`, and a
+  successful compile of `tool/browser_storage_compile.dart`. The previous
+  full-suite counts remain 10,488 engine and 163 ORM tests until this
+  revision reprints them. Generator tests were not re-run. Native schema,
+  journal, and WAL oracles were not re-run.
