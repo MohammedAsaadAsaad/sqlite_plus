@@ -9,10 +9,27 @@ import 'tokenizer.dart';
 
 /// A Pure Dart virtual-table module. There is no C ABI and no native entry
 /// points. [read] returns one list per row, in [columns] order.
-abstract interface class VirtualTableModule {
+///
+/// [xCreate] runs for `CREATE VIRTUAL TABLE`. [xConnect] and [xDisconnect]
+/// bracket each statement that reads the table. [xDestroy] runs for `DROP TABLE`.
+abstract class VirtualTableModule {
   String get name;
   List<String> get columns;
   List<List<Object?>> read(String table, List<String> arguments);
+  void xCreate(String table, List<String> arguments) {}
+  void xConnect(String table, List<String> arguments) {}
+  void xDisconnect(String table) {}
+  void xDestroy(String table) {}
+}
+
+void invokeVirtualTableCallback(String action, void Function() body) {
+  try {
+    body();
+  } on SqlException {
+    rethrow;
+  } catch (_) {
+    throw SqlException('Virtual table $action failed');
+  }
 }
 
 /// Connection-local modules. Published on the function-registry zone while a
@@ -127,14 +144,28 @@ abstract final class VirtualTableRows {
     if (module == null) {
       throw SqlException('No such module: $moduleName');
     }
-    final List<List<Object?>> produced;
+    invokeVirtualTableCallback(
+        'xConnect', () => module.xConnect(table.name, table.virtualArguments));
+    List<List<Object?>> produced = const [];
+    Object? failure;
     try {
-      produced = module.read(table.name, table.virtualArguments);
-    } on SqlException {
-      rethrow;
-    } catch (_) {
-      throw SqlException('Virtual table module $moduleName failed');
+      try {
+        produced = module.read(table.name, table.virtualArguments);
+      } on SqlException catch (error) {
+        failure = error;
+      } catch (_) {
+        failure = SqlException('Virtual table module $moduleName failed');
+      }
+    } finally {
+      try {
+        module.xDisconnect(table.name);
+      } on SqlException catch (error) {
+        failure ??= error;
+      } catch (_) {
+        failure ??= SqlException('Virtual table xDisconnect failed');
+      }
     }
+    if (failure != null) throw failure;
     if (produced.length > maximumRows) {
       throw const SqlException('Virtual table row limit exceeded');
     }

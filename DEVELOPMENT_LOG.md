@@ -803,3 +803,17 @@
   `dart analyze --fatal-infos` on `sqlite_plus`, and 9,643 engine tests pass.
   ORM and generator suites were not re-run; this change does not touch them.
   Native oracles were not re-run.
+
+## 2026-10-27 — M8 item 2: virtual table lifecycle
+
+- `xCreate` runs once for `CREATE VIRTUAL TABLE` and can reject the statement
+  before any schema row is written. `xConnect` and `xDisconnect` bracket each
+  read, including a read whose module throws. `xDisconnect` does not remove the
+  schema row. `xDestroy` runs for `DROP TABLE` and removes only that virtual
+  table; a real neighbor table and a second virtual table stay readable.
+- Dropping a virtual table whose module is not registered on that connection
+  fails and leaves the schema row. A thrown `xDestroy` also leaves the row.
+- Column declarations, constraint translation, hidden columns, transaction hooks,
+  and `generate_series` are still absent.
+- Verification on Dart 3.13.7/Linux x64: format, fatal-info analysis, and 9,644
+  engine tests pass. ORM, generator, and native oracles were not re-run.

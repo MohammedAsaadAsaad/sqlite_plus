@@ -941,6 +941,8 @@ final class ImageMutations {
     if (module == null) {
       throw SqlException('No such module: ${declaration.module}');
     }
+    invokeVirtualTableCallback('xCreate',
+        () => module.xCreate(declaration.name, declaration.arguments));
     other.add(ImageObject('table', declaration.name, declaration.name, sql,
         virtualTable: true));
     schemaChanged = true;
@@ -2227,6 +2229,14 @@ final class ImageMutations {
                 asciiLower(object.name) == asciiLower(name))
             .toList();
         if (virtual.isNotEmpty) {
+          final declaration =
+              VirtualTableDeclaration.parse(virtual.single.sql!);
+          final module = VirtualTableRegistry.current?.find(declaration.module);
+          if (module == null) {
+            throw SqlException('No such module: ${declaration.module}');
+          }
+          invokeVirtualTableCallback(
+              'xDestroy', () => module.xDestroy(declaration.name));
           other.removeWhere(virtual.contains);
           schemaChanged = true;
           return MutationImage(serialize(), 0, null);

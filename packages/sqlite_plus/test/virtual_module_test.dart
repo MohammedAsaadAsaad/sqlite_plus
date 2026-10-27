@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
 
-final class _EchoModule implements VirtualTableModule {
+final class _EchoModule extends VirtualTableModule {
   @override
   String get name => 'Echo';
   @override
@@ -14,7 +14,7 @@ final class _EchoModule implements VirtualTableModule {
       ];
 }
 
-final class _PairModule implements VirtualTableModule {
+final class _PairModule extends VirtualTableModule {
   @override
   String get name => 'pair';
   @override
@@ -29,7 +29,7 @@ final class _PairModule implements VirtualTableModule {
       ];
 }
 
-final class _BrokenModule implements VirtualTableModule {
+final class _BrokenModule extends VirtualTableModule {
   _BrokenModule(this.mode);
   final String mode;
   @override
@@ -157,4 +157,126 @@ void main() {
         throwsArgumentError);
     expect((await database.query('SELECT id FROM kept')).rows, isEmpty);
   });
+
+  test('connect leaves the schema and destroy removes only that table',
+      () async {
+    final module = _LifeModule();
+    final database = await MutableSqliteDatabase.create();
+    addTearDown(database.close);
+    database.functions.virtualTables.register(module);
+    await database.execute('CREATE TABLE kept(id INT)');
+    await database.execute('INSERT INTO kept VALUES (4)');
+    final before = database.exportImage();
+    await expectLater(
+        database.execute("CREATE VIRTUAL TABLE rejected USING life('reject')"),
+        throwsA(isA<SqlException>()));
+    expect(database.exportImage(), before);
+    expect(module.events, ['create rejected']);
+    module.events.clear();
+    await database.execute("CREATE VIRTUAL TABLE words USING life('alpha')");
+    await database.execute("CREATE VIRTUAL TABLE other USING life('beta')");
+    expect((await database.query('SELECT value FROM words')).rows, [
+      ['alpha']
+    ]);
+    expect(module.events, [
+      'create words',
+      'create other',
+      'connect words',
+      'read words',
+      'disconnect words'
+    ]);
+    final present = await database.query(
+        "SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name");
+    expect(present.rows, [
+      ['kept'],
+      ['other'],
+      ['words']
+    ]);
+    module.events.clear();
+    await database.execute("CREATE VIRTUAL TABLE fail USING life('fail')");
+    await expectLater(
+        database.query('SELECT value FROM fail'), throwsA(isA<SqlException>()));
+    expect(module.events,
+        ['create fail', 'connect fail', 'read fail', 'disconnect fail']);
+    expect(
+        (await database.query(
+                "SELECT count(*) FROM sqlite_schema WHERE name = 'fail'"))
+            .rows,
+        [
+          [BigInt.one]
+        ]);
+    await database.execute('DROP TABLE words');
+    expect(module.events.last, 'destroy words');
+    expect((await database.query('SELECT value FROM other')).rows, [
+      ['beta']
+    ]);
+    expect((await database.query('SELECT id FROM kept')).rows, [
+      [BigInt.from(4)]
+    ]);
+    expect(
+        (await database.query(
+                "SELECT count(*) FROM sqlite_schema WHERE name = 'words'"))
+            .rows,
+        [
+          [BigInt.zero]
+        ]);
+    final stuckImage = database.exportImage();
+    await database.execute("CREATE VIRTUAL TABLE stuck USING life('gamma')");
+    await expectLater(
+        database.execute('DROP TABLE stuck'), throwsA(isA<SqlException>()));
+    expect(
+        (await database.query(
+                "SELECT count(*) FROM sqlite_schema WHERE name = 'stuck'"))
+            .rows,
+        [
+          [BigInt.one]
+        ]);
+    expect((await database.query('SELECT id FROM kept')).rows, [
+      [BigInt.from(4)]
+    ]);
+    final bare = await MutableSqliteDatabase.fromImage(stuckImage);
+    addTearDown(bare.close);
+    await expectLater(
+        bare.execute('DROP TABLE other'), throwsA(isA<SqlException>()));
+    expect(
+        (await bare
+                .query("SELECT name FROM sqlite_schema WHERE name = 'other'"))
+            .rows,
+        [
+          ['other']
+        ]);
+  });
+}
+
+final class _LifeModule extends VirtualTableModule {
+  final events = <String>[];
+  @override
+  String get name => 'life';
+  @override
+  List<String> get columns => ['value'];
+  @override
+  List<List<Object?>> read(String table, List<String> arguments) {
+    events.add('read $table');
+    if (arguments.contains('fail')) throw StateError('read failed');
+    return [
+      for (final argument in arguments) [argument]
+    ];
+  }
+
+  @override
+  void xCreate(String table, List<String> arguments) {
+    events.add('create $table');
+    if (arguments.contains('reject')) throw StateError('create rejected');
+  }
+
+  @override
+  void xConnect(String table, List<String> arguments) =>
+      events.add('connect $table');
+  @override
+  void xDisconnect(String table) => events.add('disconnect $table');
+  @override
+  void xDestroy(String table) {
+    events.add('destroy $table');
+    if (table == 'stuck') throw StateError('destroy rejected');
+  }
 }
