@@ -160,14 +160,19 @@ extension _RelationalQueries on SqliteDatabase {
           final rows = <RowValues>[];
           final reader = BtreeReader(_pager);
           final records = table.virtual
-              ? Stream<BtreeRecord>.fromIterable(VirtualTableRows.records(table,
-                  where: s.where,
-                  parameters: parameters,
-                  allowUnqualified: s.leafSources
-                          .where((item) => item.query == null)
-                          .length ==
-                      1,
-                  alias: source.alias))
+              ? Stream<BtreeRecord>.fromIterable(runZoned(
+                  () => VirtualTableRows.records(table,
+                      where: s.where,
+                      parameters: parameters,
+                      allowUnqualified: s.leafSources
+                              .where((item) => item.query == null)
+                              .length ==
+                          1,
+                      alias: source.alias),
+                  zoneValues: {
+                      searchSnapshotKey:
+                          await readSearchShadows(_pager, catalog, table)
+                    }))
               : table.withoutRowid
                   ? reader.scanIndex(table.rootPage)
                   : reader.scanTable(table.rootPage);

@@ -21,9 +21,15 @@ import 'expressions.dart';
 import 'connection_state.dart';
 import 'functions.dart';
 import 'windows.dart';
+import 'fts5_format.dart';
+import 'fts_text.dart';
+import 'geopoly.dart';
+import 'search_modules.dart';
+import 'search_runtime.dart';
 import 'virtual_table.dart';
 
 part 'image_maintenance.dart';
+part 'search_mutations.dart';
 
 final class MutationImage {
   MutationImage(this.image, this.changes, this.lastRowid, [this.returning]);
@@ -941,9 +947,11 @@ final class ImageMutations {
     if (module == null) {
       throw SqlException('No such module: ${declaration.module}');
     }
-    validateVirtualColumns(module, declaration.declaredColumns);
+    validateVirtualColumns(module, declaration.name, declaration.arguments,
+        declaration.declaredColumns);
     invokeVirtualTableCallback('xCreate',
         () => module.xCreate(declaration.name, declaration.arguments));
+    await _installSearchShadows(module, declaration);
     other.add(ImageObject('table', declaration.name, declaration.name, sql,
         virtualTable: true));
     schemaChanged = true;
@@ -2238,6 +2246,7 @@ final class ImageMutations {
           }
           invokeVirtualTableCallback(
               'xDestroy', () => module.xDestroy(declaration.name));
+          _dropSearchShadows(module, declaration);
           other.removeWhere(virtual.contains);
           schemaChanged = true;
           return MutationImage(serialize(), 0, null);
@@ -2325,6 +2334,9 @@ final class ImageMutations {
         }
         p.require('INDEXED');
       }
+    }
+    if (_searchTarget(name) != null) {
+      return _searchWrite(sql, parameters, compileOnly: compileOnly);
     }
     _targetAliases.last[asciiLower(name)] = asciiLower(alias);
     final table = await _target(name);

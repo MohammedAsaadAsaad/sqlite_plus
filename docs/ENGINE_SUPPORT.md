@@ -41,7 +41,7 @@ not implemented by closing a bounded engine milestone.
 | Grammar and errors | SQL beyond the documented grammar, DQS fallback, exact native error text and permissive malformed-text decoding |
 | Table functions | General virtual-table modules; metadata PRAGMA sources have explicit join-order and hidden-argument limits |
 | Windows | Bounded execution; callback-bearing WHERE filtering can be buffered before window output, and native planner/coroutine equivalence is not general |
-| Extensions | JSON/JSONB, FTS, R-tree and applicable virtual-table behavior belong to M8 |
+| Extensions | `json_pretty`, correlated `json_each`, FTS5 multi-page leaves, porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes remain unimplemented. The verified JSON, FTS, and R-tree subset is in the compatibility matrix |
 | Platforms and release | Browser storage, non-Linux execution, full-scale benchmark evidence and release qualification belong to M9 |
 
 Binary extension loading and the native SQLite C ABI are outside the Pure Dart

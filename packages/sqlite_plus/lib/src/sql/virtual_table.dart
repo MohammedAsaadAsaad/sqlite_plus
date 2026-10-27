@@ -19,6 +19,22 @@ abstract class VirtualTableModule {
   /// Columns omitted from `SELECT *`. They remain readable by name.
   List<String> get hiddenColumns => const [];
 
+  /// Table-specific columns. The registration lists stay non-empty defaults.
+  List<String> columnsFor(String table, List<String> arguments) => columns;
+
+  List<String> hiddenFor(String table, List<String> arguments) => hiddenColumns;
+
+  /// Shadow tables to preload before a synchronous scan. Missing names are
+  /// skipped, so contentless tables can omit a content shadow.
+  List<String> shadowNames(String table, List<String> arguments) => const [];
+
+  /// Shadows removed by DROP. External content tables stay out of this list.
+  List<String> ownedShadows(String table, List<String> arguments) =>
+      shadowNames(table, arguments);
+
+  /// The scan is synchronous. Callers publish the WHERE clause here first.
+  void prepareScan(CatalogTable table, Expr? where, List<Object?> parameters) {}
+
   /// When true, `SELECT * FROM name(...)` opens this module without CREATE.
   bool get eponymous => false;
 
@@ -252,14 +268,34 @@ final class VirtualTableDeclaration {
   }
 
   static String _argument(SqlParser parser) {
-    final token = parser.current;
-    if (token.kind == SqlTokenKind.string ||
-        token.kind == SqlTokenKind.identifier ||
-        token.kind == SqlTokenKind.number) {
+    final start = parser.position;
+    final startOffset = parser.current.offset;
+    var depth = 0;
+    while (parser.current.kind != SqlTokenKind.end) {
+      final token = parser.current;
+      final symbol = token.kind == SqlTokenKind.symbol;
+      if (depth == 0 && symbol && (token.text == ',' || token.text == ')')) {
+        break;
+      }
+      if (symbol && token.text == '(') depth++;
+      if (symbol && token.text == ')') {
+        if (depth == 0) break;
+        depth--;
+      }
       parser.position++;
-      return token.text;
     }
-    throw SqlException('Unsupported virtual table argument', token.offset);
+    if (parser.position == start) {
+      throw SqlException('Unsupported virtual table argument', startOffset);
+    }
+    if (parser.position == start + 1) return parser.tokens[start].text;
+    final source = parser.source;
+    if (source == null) {
+      return parser.tokens
+          .sublist(start, parser.position)
+          .map((token) => token.text)
+          .join(' ');
+    }
+    return source.substring(startOffset, parser.current.offset).trim();
   }
 }
 
@@ -283,6 +319,7 @@ abstract final class VirtualTableRows {
     }
     invokeVirtualTableCallback(
         'xConnect', () => module.xConnect(table.name, table.virtualArguments));
+    module.prepareScan(table, where, parameters);
     final cursor = module.xOpen(table.name);
     final records = <BtreeRecord>[];
     Object? failure;
@@ -360,8 +397,9 @@ CatalogTable virtualCatalogTable(VirtualTableModule module, String name,
       name,
       0,
       [
-        for (final column in module.columns) CatalogColumn(column, ''),
-        for (final column in module.hiddenColumns)
+        for (final column in module.columnsFor(name, arguments))
+          CatalogColumn(column, ''),
+        for (final column in module.hiddenFor(name, arguments))
           CatalogColumn(column, '', hidden: true)
       ],
       virtualModule: module.name,
@@ -465,12 +503,14 @@ int? _columnIndex(ColumnExpr column, CatalogTable table, bool allowUnqualified,
   return index < 0 ? null : index;
 }
 
-void validateVirtualColumns(
-    VirtualTableModule module, List<(String, bool)>? declared) {
+void validateVirtualColumns(VirtualTableModule module, String name,
+    List<String> arguments, List<(String, bool)>? declared) {
   if (declared == null) return;
   final expected = [
-    for (final column in module.columns) (asciiLower(column), false),
-    for (final column in module.hiddenColumns) (asciiLower(column), true)
+    for (final column in module.columnsFor(name, arguments))
+      (asciiLower(column), false),
+    for (final column in module.hiddenFor(name, arguments))
+      (asciiLower(column), true)
   ];
   final actual = [
     for (final column in declared) (asciiLower(column.$1), column.$2)

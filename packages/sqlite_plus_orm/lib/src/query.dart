@@ -75,6 +75,62 @@ final class _LogicalPredicate<T> extends SqlPredicate<T> {
       '(${left._sql(parameters)} $operator ${right._sql(parameters)})';
 }
 
+final class _MatchPredicate<T> extends SqlPredicate<T> {
+  _MatchPredicate(this.table, this.text);
+  final String table;
+  final String text;
+
+  @override
+  Iterable<Column<T, dynamic>> get _columns => const [];
+  @override
+  String _sql(List<Object?> parameters) {
+    parameters.add(text);
+    return '${quoteIdentifier(table)} MATCH ?';
+  }
+}
+
+/// A rectangle in the same coordinate space as an rtree table.
+final class Rect {
+  const Rect(
+      {required this.minX,
+      required this.minY,
+      required this.maxX,
+      required this.maxY});
+  final double minX;
+  final double minY;
+  final double maxX;
+  final double maxY;
+}
+
+/// Bound comparisons for an rtree. The caller does not write the SQL.
+final class Bounds<T> {
+  const Bounds(
+      {required this.minX,
+      required this.maxX,
+      required this.minY,
+      required this.maxY});
+  final Column<T, double> minX;
+  final Column<T, double> maxX;
+  final Column<T, double> minY;
+  final Column<T, double> maxY;
+
+  SqlPredicate<T> intersects(Rect rect) =>
+      minX.lte(rect.maxX) &
+      maxX.gte(rect.minX) &
+      minY.lte(rect.maxY) &
+      maxY.gte(rect.minY);
+}
+
+/// A mapped table whose [search] stays in Dart.
+final class MappedTable<T> {
+  MappedTable(this.type, this.connection);
+  final EntityType<T> type;
+  final OrmConnection connection;
+
+  TypedQuery<T> search(String text) =>
+      TypedQuery(type: type, connection: connection).search(text);
+}
+
 final class _NotPredicate<T> extends SqlPredicate<T> {
   const _NotPredicate(this.predicate);
   final SqlPredicate<T> predicate;
@@ -211,7 +267,8 @@ final class TypedQuery<T> {
         _ordering = const [],
         _offset = 0,
         _limit = null,
-        _noTracking = false;
+        _noTracking = false,
+        _rank = false;
 
   TypedQuery._(
       this.type,
@@ -222,7 +279,8 @@ final class TypedQuery<T> {
       this._ordering,
       this._offset,
       this._limit,
-      this._noTracking);
+      this._noTracking,
+      this._rank);
 
   final EntityType<T> type;
   final OrmConnection connection;
@@ -233,13 +291,15 @@ final class TypedQuery<T> {
   final int _offset;
   final int? _limit;
   final bool _noTracking;
+  final bool _rank;
 
   TypedQuery<T> _copy(
           {SqlPredicate<T>? predicate,
           List<SqlOrdering<T>>? ordering,
           int? offset,
           int? limit,
-          bool? noTracking}) =>
+          bool? noTracking,
+          bool? rank}) =>
       TypedQuery._(
           type,
           connection,
@@ -249,7 +309,8 @@ final class TypedQuery<T> {
           ordering ?? _ordering,
           offset ?? _offset,
           limit ?? _limit,
-          noTracking ?? _noTracking);
+          noTracking ?? _noTracking,
+          rank ?? _rank);
 
   void _validateColumns(Iterable<Column<T, dynamic>> columns) {
     if (columns.any((candidate) =>
@@ -263,6 +324,14 @@ final class TypedQuery<T> {
     _validateColumns(predicate._columns);
     return _copy(
         predicate: _predicate == null ? predicate : _predicate & predicate);
+  }
+
+  /// Binds [text] to `table MATCH ?` and orders by FTS rank first.
+  TypedQuery<T> search(String text) {
+    final predicate = _MatchPredicate<T>(type.tableName, text);
+    return _copy(
+        predicate: _predicate == null ? predicate : _predicate & predicate,
+        rank: true);
   }
 
   /// Replaces ordering; supply all ordering terms in their priority order.
@@ -310,8 +379,10 @@ final class TypedQuery<T> {
     if (_predicate != null) {
       sql.write(' WHERE ${_predicate._sql(parameters)}');
     }
-    if (_ordering.isNotEmpty) {
-      sql.write(' ORDER BY ${_ordering.map((term) => term._sql).join(', ')}');
+    if (_rank || _ordering.isNotEmpty) {
+      sql.write(' ORDER BY ');
+      sql.write([if (_rank) 'rank', ..._ordering.map((term) => term._sql)]
+          .join(', '));
     }
     if (_limit != null || _offset != 0) {
       sql.write(' LIMIT ?');

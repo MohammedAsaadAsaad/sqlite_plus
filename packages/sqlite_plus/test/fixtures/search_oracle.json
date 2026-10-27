@@ -1,0 +1,756 @@
+{
+  "replay": [
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('hello world', 'sqlite'), ('hello', 'there')"
+      ],
+      "sql": "SELECT title FROM t WHERE t MATCH 'hello' ORDER BY rank, title",
+      "rows": [
+        [
+          "hello"
+        ],
+        [
+          "hello world"
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('Hello World', 'sqlite database')"
+      ],
+      "sql": "SELECT highlight(t, 0, '<', '>'), snippet(t, 0, '<', '>', '...', 4) FROM t WHERE t MATCH 'hello'",
+      "rows": [
+        [
+          "<Hello> World",
+          "<Hello> World"
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body, prefix='2')",
+        "INSERT INTO t(title, body) VALUES('hello', 'there'), ('world', 'hello')"
+      ],
+      "sql": "SELECT title FROM t WHERE t MATCH 'title : hel*' ORDER BY title",
+      "rows": [
+        [
+          "hello"
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(body, tokenize='unicode61')",
+        "INSERT INTO t(body) VALUES('مرحبا بالعالم'), ('hello مرحبا')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'مرحبا'",
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(body, tokenize='ascii')",
+        "INSERT INTO t(body) VALUES('مرحبا بالعالم'), ('hello مرحبا')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'مرحبا'",
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('hello world', 'sqlite')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'NEAR(hello world, 0)'",
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('hello world', 'sqlite')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'hello NOT world'",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE c USING fts5(body, content='', contentless_delete=1)",
+        "INSERT INTO c(rowid, body) VALUES(5, 'hello')",
+        "DELETE FROM c WHERE rowid = 5"
+      ],
+      "sql": "SELECT count(*) FROM c",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE TABLE src(id INTEGER PRIMARY KEY, body TEXT)",
+        "CREATE VIRTUAL TABLE e USING fts5(body, content='src', content_rowid='id')",
+        "INSERT INTO src(id, body) VALUES(1, 'hello')",
+        "INSERT INTO e(e) VALUES('rebuild')"
+      ],
+      "sql": "SELECT body FROM e WHERE e MATCH 'hello'",
+      "rows": [
+        [
+          "hello"
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE rt USING rtree(id, minX, maxX, minY, maxY, +value)",
+        "INSERT INTO rt VALUES(1, 0, 1, 0, 1, 'aux'), (2, 5, 6, 5, 6, 'far')"
+      ],
+      "sql": "SELECT id, value FROM rt WHERE minX <= 1 AND maxX >= 0 AND minY <= 1 AND maxY >= 0 ORDER BY id",
+      "rows": [
+        [
+          {
+            "integer": "1"
+          },
+          "aux"
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE rt USING rtree(id, minX, maxX, minY, maxY)",
+        "INSERT INTO rt VALUES(1, 0, 1, 0, 1)"
+      ],
+      "sql": "SELECT count(*) FROM rt WHERE minX <= -2 AND maxX >= -3",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE rt USING rtree(id, a, b, c)"
+      ],
+      "sql": "SELECT 1",
+      "error": true
+    },
+    {
+      "encoding": 1,
+      "setup": [
+        "CREATE VIRTUAL TABLE g USING geopoly(id)",
+        "INSERT INTO g(_shape, id) VALUES('[[0,0],[1,0],[1,1],[0,1],[0,0]]', 7)"
+      ],
+      "sql": "SELECT id, geopoly_area(_shape), geopoly_json(_shape) FROM g",
+      "rows": [
+        [
+          {
+            "integer": "7"
+          },
+          {
+            "float": "1"
+          },
+          "[[0.0,0.0],[1.0,0.0],[1.0,1.0],[0.0,1.0],[0.0,0.0]]"
+        ]
+      ]
+    },
+    {
+      "encoding": 1,
+      "setup": [],
+      "sql": "SELECT geopoly_overlap('[[0,0],[2,0],[2,2],[0,2],[0,0]]','[[0.5,0.5],[1.5,0.5],[1.5,1.5],[0.5,1.5],[0.5,0.5]]'), geopoly_within('[[0.5,0.5],[1,0.5],[1,1],[0.5,1],[0.5,0.5]]','[[0,0],[2,0],[2,2],[0,2],[0,0]]'), geopoly_json('nope')",
+      "rows": [
+        [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "1"
+          },
+          null
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('hello world', 'sqlite'), ('hello', 'there')"
+      ],
+      "sql": "SELECT title FROM t WHERE t MATCH 'hello' ORDER BY rank, title",
+      "rows": [
+        [
+          "hello"
+        ],
+        [
+          "hello world"
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('Hello World', 'sqlite database')"
+      ],
+      "sql": "SELECT highlight(t, 0, '<', '>'), snippet(t, 0, '<', '>', '...', 4) FROM t WHERE t MATCH 'hello'",
+      "rows": [
+        [
+          "<Hello> World",
+          "<Hello> World"
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body, prefix='2')",
+        "INSERT INTO t(title, body) VALUES('hello', 'there'), ('world', 'hello')"
+      ],
+      "sql": "SELECT title FROM t WHERE t MATCH 'title : hel*' ORDER BY title",
+      "rows": [
+        [
+          "hello"
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(body, tokenize='unicode61')",
+        "INSERT INTO t(body) VALUES('مرحبا بالعالم'), ('hello مرحبا')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'مرحبا'",
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(body, tokenize='ascii')",
+        "INSERT INTO t(body) VALUES('مرحبا بالعالم'), ('hello مرحبا')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'مرحبا'",
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('hello world', 'sqlite')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'NEAR(hello world, 0)'",
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('hello world', 'sqlite')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'hello NOT world'",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE c USING fts5(body, content='', contentless_delete=1)",
+        "INSERT INTO c(rowid, body) VALUES(5, 'hello')",
+        "DELETE FROM c WHERE rowid = 5"
+      ],
+      "sql": "SELECT count(*) FROM c",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE TABLE src(id INTEGER PRIMARY KEY, body TEXT)",
+        "CREATE VIRTUAL TABLE e USING fts5(body, content='src', content_rowid='id')",
+        "INSERT INTO src(id, body) VALUES(1, 'hello')",
+        "INSERT INTO e(e) VALUES('rebuild')"
+      ],
+      "sql": "SELECT body FROM e WHERE e MATCH 'hello'",
+      "rows": [
+        [
+          "hello"
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE rt USING rtree(id, minX, maxX, minY, maxY, +value)",
+        "INSERT INTO rt VALUES(1, 0, 1, 0, 1, 'aux'), (2, 5, 6, 5, 6, 'far')"
+      ],
+      "sql": "SELECT id, value FROM rt WHERE minX <= 1 AND maxX >= 0 AND minY <= 1 AND maxY >= 0 ORDER BY id",
+      "rows": [
+        [
+          {
+            "integer": "1"
+          },
+          "aux"
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE rt USING rtree(id, minX, maxX, minY, maxY)",
+        "INSERT INTO rt VALUES(1, 0, 1, 0, 1)"
+      ],
+      "sql": "SELECT count(*) FROM rt WHERE minX <= -2 AND maxX >= -3",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE rt USING rtree(id, a, b, c)"
+      ],
+      "sql": "SELECT 1",
+      "error": true
+    },
+    {
+      "encoding": 2,
+      "setup": [
+        "CREATE VIRTUAL TABLE g USING geopoly(id)",
+        "INSERT INTO g(_shape, id) VALUES('[[0,0],[1,0],[1,1],[0,1],[0,0]]', 7)"
+      ],
+      "sql": "SELECT id, geopoly_area(_shape), geopoly_json(_shape) FROM g",
+      "rows": [
+        [
+          {
+            "integer": "7"
+          },
+          {
+            "float": "1"
+          },
+          "[[0.0,0.0],[1.0,0.0],[1.0,1.0],[0.0,1.0],[0.0,0.0]]"
+        ]
+      ]
+    },
+    {
+      "encoding": 2,
+      "setup": [],
+      "sql": "SELECT geopoly_overlap('[[0,0],[2,0],[2,2],[0,2],[0,0]]','[[0.5,0.5],[1.5,0.5],[1.5,1.5],[0.5,1.5],[0.5,0.5]]'), geopoly_within('[[0.5,0.5],[1,0.5],[1,1],[0.5,1],[0.5,0.5]]','[[0,0],[2,0],[2,2],[0,2],[0,0]]'), geopoly_json('nope')",
+      "rows": [
+        [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "1"
+          },
+          null
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('hello world', 'sqlite'), ('hello', 'there')"
+      ],
+      "sql": "SELECT title FROM t WHERE t MATCH 'hello' ORDER BY rank, title",
+      "rows": [
+        [
+          "hello"
+        ],
+        [
+          "hello world"
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('Hello World', 'sqlite database')"
+      ],
+      "sql": "SELECT highlight(t, 0, '<', '>'), snippet(t, 0, '<', '>', '...', 4) FROM t WHERE t MATCH 'hello'",
+      "rows": [
+        [
+          "<Hello> World",
+          "<Hello> World"
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body, prefix='2')",
+        "INSERT INTO t(title, body) VALUES('hello', 'there'), ('world', 'hello')"
+      ],
+      "sql": "SELECT title FROM t WHERE t MATCH 'title : hel*' ORDER BY title",
+      "rows": [
+        [
+          "hello"
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(body, tokenize='unicode61')",
+        "INSERT INTO t(body) VALUES('مرحبا بالعالم'), ('hello مرحبا')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'مرحبا'",
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(body, tokenize='ascii')",
+        "INSERT INTO t(body) VALUES('مرحبا بالعالم'), ('hello مرحبا')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'مرحبا'",
+      "rows": [
+        [
+          {
+            "integer": "2"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('hello world', 'sqlite')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'NEAR(hello world, 0)'",
+      "rows": [
+        [
+          {
+            "integer": "1"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE t USING fts5(title, body)",
+        "INSERT INTO t(title, body) VALUES('hello world', 'sqlite')"
+      ],
+      "sql": "SELECT count(*) FROM t WHERE t MATCH 'hello NOT world'",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE c USING fts5(body, content='', contentless_delete=1)",
+        "INSERT INTO c(rowid, body) VALUES(5, 'hello')",
+        "DELETE FROM c WHERE rowid = 5"
+      ],
+      "sql": "SELECT count(*) FROM c",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE TABLE src(id INTEGER PRIMARY KEY, body TEXT)",
+        "CREATE VIRTUAL TABLE e USING fts5(body, content='src', content_rowid='id')",
+        "INSERT INTO src(id, body) VALUES(1, 'hello')",
+        "INSERT INTO e(e) VALUES('rebuild')"
+      ],
+      "sql": "SELECT body FROM e WHERE e MATCH 'hello'",
+      "rows": [
+        [
+          "hello"
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE rt USING rtree(id, minX, maxX, minY, maxY, +value)",
+        "INSERT INTO rt VALUES(1, 0, 1, 0, 1, 'aux'), (2, 5, 6, 5, 6, 'far')"
+      ],
+      "sql": "SELECT id, value FROM rt WHERE minX <= 1 AND maxX >= 0 AND minY <= 1 AND maxY >= 0 ORDER BY id",
+      "rows": [
+        [
+          {
+            "integer": "1"
+          },
+          "aux"
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE rt USING rtree(id, minX, maxX, minY, maxY)",
+        "INSERT INTO rt VALUES(1, 0, 1, 0, 1)"
+      ],
+      "sql": "SELECT count(*) FROM rt WHERE minX <= -2 AND maxX >= -3",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          }
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE rt USING rtree(id, a, b, c)"
+      ],
+      "sql": "SELECT 1",
+      "error": true
+    },
+    {
+      "encoding": 3,
+      "setup": [
+        "CREATE VIRTUAL TABLE g USING geopoly(id)",
+        "INSERT INTO g(_shape, id) VALUES('[[0,0],[1,0],[1,1],[0,1],[0,0]]', 7)"
+      ],
+      "sql": "SELECT id, geopoly_area(_shape), geopoly_json(_shape) FROM g",
+      "rows": [
+        [
+          {
+            "integer": "7"
+          },
+          {
+            "float": "1"
+          },
+          "[[0.0,0.0],[1.0,0.0],[1.0,1.0],[0.0,1.0],[0.0,0.0]]"
+        ]
+      ]
+    },
+    {
+      "encoding": 3,
+      "setup": [],
+      "sql": "SELECT geopoly_overlap('[[0,0],[2,0],[2,2],[0,2],[0,0]]','[[0.5,0.5],[1.5,0.5],[1.5,1.5],[0.5,1.5],[0.5,0.5]]'), geopoly_within('[[0.5,0.5],[1,0.5],[1,1],[0.5,1],[0.5,0.5]]','[[0,0],[2,0],[2,2],[0,2],[0,0]]'), geopoly_json('nope')",
+      "rows": [
+        [
+          {
+            "integer": "3"
+          },
+          {
+            "integer": "1"
+          },
+          null
+        ]
+      ]
+    }
+  ],
+  "images": [
+    {
+      "encoding": 1,
+      "module": "fts4",
+      "file": "search-fts4-1.db",
+      "sha256": "4d526d45e90bb814005b34013c8068c266f985deb39e1dc173e1dc9295208f59",
+      "queries": [
+        {
+          "sql": "SELECT title FROM t WHERE t MATCH '(hello AND world) OR missing' ORDER BY rowid",
+          "rows": [
+            [
+              "hello world"
+            ]
+          ]
+        },
+        {
+          "sql": "SELECT count(*) FROM t WHERE t MATCH 'hello'",
+          "rows": [
+            [
+              {
+                "integer": "2"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": 1,
+      "module": "fts3",
+      "file": "search-fts3-1.db",
+      "sha256": "1b1c3de595c16f6c353f922c7b3c90f69d3926ca1230da1b0c31bde66e24ba65",
+      "queries": [
+        {
+          "sql": "SELECT title FROM t WHERE t MATCH 'hello AND world'",
+          "rows": [
+            [
+              "hello world"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": 2,
+      "module": "fts4",
+      "file": "search-fts4-2.db",
+      "sha256": "e0f27d8b7ca8413ab1806f91799648115b05dd1d790f01bff207e61c8caa2070",
+      "queries": [
+        {
+          "sql": "SELECT title FROM t WHERE t MATCH '(hello AND world) OR missing' ORDER BY rowid",
+          "rows": [
+            [
+              "hello world"
+            ]
+          ]
+        },
+        {
+          "sql": "SELECT count(*) FROM t WHERE t MATCH 'hello'",
+          "rows": [
+            [
+              {
+                "integer": "2"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": 2,
+      "module": "fts3",
+      "file": "search-fts3-2.db",
+      "sha256": "b1cbc0560a8acee0b81f3734e5cbabec26c871164510c5022900aa827f98b0bb",
+      "queries": [
+        {
+          "sql": "SELECT title FROM t WHERE t MATCH 'hello AND world'",
+          "rows": [
+            [
+              "hello world"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": 3,
+      "module": "fts4",
+      "file": "search-fts4-3.db",
+      "sha256": "8a64b166f870759e1a7bec2d269798815aff5779afa210960710b168195f38ee",
+      "queries": [
+        {
+          "sql": "SELECT title FROM t WHERE t MATCH '(hello AND world) OR missing' ORDER BY rowid",
+          "rows": [
+            [
+              "hello world"
+            ]
+          ]
+        },
+        {
+          "sql": "SELECT count(*) FROM t WHERE t MATCH 'hello'",
+          "rows": [
+            [
+              {
+                "integer": "2"
+              }
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "encoding": 3,
+      "module": "fts3",
+      "file": "search-fts3-3.db",
+      "sha256": "55f1f0aaa23a3ddf94b080ee5f423e7626de9df08a72d3f802c92e3e0d910b4a",
+      "queries": [
+        {
+          "sql": "SELECT title FROM t WHERE t MATCH 'hello AND world'",
+          "rows": [
+            [
+              "hello world"
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

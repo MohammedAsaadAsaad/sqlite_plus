@@ -4,6 +4,7 @@ import 'values.dart';
 import 'date_functions.dart';
 import 'connection_state.dart';
 import 'json_tables.dart';
+import 'search_modules.dart';
 import 'virtual_table.dart';
 
 /// A fresh aggregate instance is created for each SQL group/frame.
@@ -43,6 +44,7 @@ final class SqlFunctionRegistry {
 
   SqlFunctionRegistry() {
     registerJsonTableFunctions(virtualTables);
+    registerSearchModules(virtualTables);
   }
 
   /// Registered overloads for connection metadata; callbacks are not invoked.

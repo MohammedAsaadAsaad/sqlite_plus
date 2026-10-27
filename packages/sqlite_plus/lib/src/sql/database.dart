@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'dart:typed_data';
 import '../btree/btree_reader.dart';
@@ -15,6 +16,8 @@ import 'image_mutations.dart';
 import 'index_definition.dart';
 import 'planner_statistics.dart';
 import 'windows.dart';
+import 'search_modules.dart';
+import 'search_runtime.dart';
 import 'virtual_table.dart';
 
 part 'relational.dart';
@@ -425,11 +428,14 @@ final class SqliteDatabase {
       bool allowUnqualified = false,
       String? alias}) async* {
     if (plan.access == 'virtual-table-scan') {
-      yield* Stream<BtreeRecord>.fromIterable(VirtualTableRows.records(table,
-          where: where,
-          parameters: parameters,
-          allowUnqualified: allowUnqualified,
-          alias: alias));
+      final snapshot = await readSearchShadows(_pager, catalog, table);
+      yield* Stream<BtreeRecord>.fromIterable(runZoned(
+          () => VirtualTableRows.records(table,
+              where: where,
+              parameters: parameters,
+              allowUnqualified: allowUnqualified,
+              alias: alias),
+          zoneValues: {searchSnapshotKey: snapshot}));
       return;
     }
     final reader = BtreeReader(_pager);

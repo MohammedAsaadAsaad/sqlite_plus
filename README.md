@@ -161,6 +161,13 @@ using the pinned SQLite source/build, across all three database encodings.
 `python3 tool/generate_sql_oracle.py --verify` checks its committed SHA-256.
 The Dart tests use only the committed JSON and never execute native SQLite.
 
+`python3 tool/generate_search_oracle.py` regenerates 42 FTS, R-tree, and geopoly
+replay cases plus six FTS3/FTS4 images across the three encodings.
+`python3 tool/generate_search_oracle.py --verify` checks the JSON checksum and
+each image checksum. CI runs that check and does not execute SQLite. Dart tests
+open the committed fixtures. A live integrity check against the pinned CLI runs
+only when that binary is installed.
+
 ## M4 writes (limited subset)
 
 `MutableSqliteDatabase.create(pageSize: 4096, encoding: 1)` creates an empty

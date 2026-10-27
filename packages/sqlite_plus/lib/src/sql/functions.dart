@@ -10,7 +10,9 @@ import 'index_definition.dart' show sameExpression;
 import 'expressions.dart';
 import 'printf_functions.dart';
 import 'percentile_functions.dart';
+import 'geopoly.dart';
 import 'json_functions.dart';
+import 'search_runtime.dart';
 
 final class FunctionExpr extends Expr {
   FunctionExpr(this.name, this.arguments,
@@ -35,6 +37,12 @@ final class FunctionExpr extends Expr {
             ? (0, 1000)
             : (registered!.argumentCount, registered!.argumentCount));
     if (range == null) throw SqlException('No such function: $name');
+    if (registered == null && (key == 'highlight' || key == 'snippet')) {
+      final expected = key == 'highlight' ? 4 : 6;
+      if (arguments.length != expected) {
+        throw SqlException('wrong number of arguments to function $key()');
+      }
+    }
     if (arguments.length < range.$1 ||
         arguments.length > range.$2 ||
         distinct && star ||
@@ -134,6 +142,14 @@ final class FunctionExpr extends Expr {
     'like': (2, 3),
     'glob': (2, 2),
     'match': (2, 2),
+    'bm25': (1, 1000),
+    'highlight': (4, 4),
+    'snippet': (6, 6),
+    'geopoly_json': (1, 1),
+    'geopoly_blob': (1, 1),
+    'geopoly_area': (1, 1),
+    'geopoly_overlap': (2, 2),
+    'geopoly_within': (2, 2),
     'row_number': (0, 0),
     'rank': (0, 0),
     'dense_rank': (0, 0),
@@ -259,6 +275,30 @@ final class FunctionExpr extends Expr {
     if (['likely', 'unlikely', 'likelihood'].contains(key)) {
       return arguments.first.evaluate(context);
     }
+    if (key == 'bm25' || key == 'highlight' || key == 'snippet') {
+      final table = arguments.first is ColumnExpr
+          ? (arguments.first as ColumnExpr).name
+          : null;
+      final rest = [
+        for (final argument in arguments.skip(1)) argument.evaluate(context)
+      ];
+      return ftsAuxiliary(key, table, rest, context.row['rowid']);
+    }
+    if (key == 'match') {
+      // The pattern operator evaluates both sides before the FTS stub
+      // reports that no FTS5 table is in scope. The right-hand pattern is
+      // the first argument.
+      final pattern = arguments[0].evaluate(context);
+      if (arguments.length > 1) arguments[1].evaluate(context);
+      if (arguments.length > 2) arguments[2].evaluate(context);
+      if (ftsSession().tables.isEmpty) {
+        throw const SqlException(
+            'Unable to use function MATCH in the requested context');
+      }
+      final column =
+          arguments[1] is ColumnExpr ? (arguments[1] as ColumnExpr).name : null;
+      return ftsMatchValue(column, pattern, context.row['rowid']);
+    }
     final collation = arguments
         .map((arg) => arg.collation(context))
         .whereType<String>()
@@ -280,9 +320,14 @@ final class FunctionExpr extends Expr {
               glob: key == 'glob')
           .evaluate(context);
     }
-    if (key == 'match') {
-      throw const SqlException(
-          'Unable to use function MATCH in the requested context');
+    if (key == 'geopoly_json') return geopolyJson(args[0]);
+    if (key == 'geopoly_blob') return encodeGeopoly(args[0]);
+    if (key == 'geopoly_area') return geopolyArea(args[0]);
+    if (key == 'geopoly_overlap' || key == 'geopoly_within') {
+      final value = key == 'geopoly_overlap'
+          ? geopolyOverlap(args[0], args[1])
+          : geopolyWithin(args[0], args[1]);
+      return value == null ? null : BigInt.from(value);
     }
     if (dateFunctionArities.containsKey(key)) {
       final timeArgs = key == 'strftime' ? args.skip(1).toList() : args;

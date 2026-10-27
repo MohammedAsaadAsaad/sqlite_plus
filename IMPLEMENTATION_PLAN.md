@@ -40,7 +40,17 @@
   broader native planner/collation/SQL compatibility, are explicitly retained in
   `docs/ENGINE_SUPPORT.md`; this checkbox does not claim complete SQLite support.
 - [x] M7: ORM metadata/codecs, resolved convention/annotation generator, typed queries, DbContext/CRUD, snapshot tracking, explicit relationships and safe migrations (155 ORM and 48 generator tests; native cross-open/query/migration gates and JavaScript memory smoke verified).
-- [ ] M8: Advanced extensions, JSON/JSONB, FTS, R-tree, virtual tables.
+- [x] M8: Advanced extensions for the verified JSON, virtual-table, FTS, and R-tree subset.
+  Verified: connection-local virtual tables and `generate_series`; JSON/JSONB
+  scalars, aggregates, and constant `json_each`/`json_tree`; FTS5 unicode61/ascii
+  read and write, including `MATCH`, rank, highlight/snippet, prefix indexes,
+  content modes, and external content that needs an explicit rebuild; FTS3/FTS4
+  reads, including parentheses, with writes rejected; R-tree rectangles and
+  geopoly for the pinned polygons; ORM `search` and `Bounds.intersects`.
+  Gate: 10,438 engine and 163 ORM tests, format, fatal-info analysis, and the
+  pinned JSON and search checksums on Dart 3.13.7/Linux x64. Generator tests and
+  native schema, journal, and WAL oracles were not re-run. This checkbox does
+  not claim complete FTS5, FTS3/4 writes, `json_pretty`, or any M9 platform.
 - [ ] M9: Browser adapters, platform matrix, AOT benchmarks, hardening and release gates.
 
 Every milestone must include `dart format`, `dart analyze`, tests, documented discrepancies and a compatibility matrix update. ORM metadata can be developed in parallel after the engine API contract is stable.

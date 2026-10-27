@@ -214,7 +214,8 @@ final class DatabaseCatalog {
       if (module == null) {
         throw SqlException('No such module: ${declaration.module}');
       }
-      validateVirtualColumns(module, declaration.declaredColumns);
+      validateVirtualColumns(module, matches.single.name, declaration.arguments,
+          declaration.declaredColumns);
       return virtualCatalogTable(module, matches.single.name,
           arguments: declaration.arguments);
     }
@@ -243,8 +244,20 @@ final class DatabaseCatalog {
       parser.require('NOT');
       parser.require('EXISTS');
     }
-    final name = parser.qualifiedIdentifier();
+    final name = parser.current.kind == SqlTokenKind.string
+        ? parser.tokens[parser.position++].text
+        : parser.qualifiedIdentifier();
     parser.require('(');
+    String schemaName() {
+      final token = parser.current;
+      if (token.kind == SqlTokenKind.string ||
+          token.kind == SqlTokenKind.identifier) {
+        parser.position++;
+        return token.text;
+      }
+      throw SqlException('Expected identifier', token.offset);
+    }
+
     final columns = <CatalogColumn>[];
     final primary = <String>[];
     String? alias;
@@ -262,7 +275,7 @@ final class DatabaseCatalog {
       parser.require('(');
       final names = <String>[];
       do {
-        names.add(parser.identifier());
+        names.add(schemaName());
         String? collation;
         if (modifiers && parser.take('COLLATE')) {
           collation = asciiLower(parser.identifier());
@@ -376,7 +389,7 @@ final class DatabaseCatalog {
             (true, List.of(primary), primaryPolicy, descending, collations));
       } else {
         final columnToken = parser.current;
-        final columnName = parser.identifier();
+        final columnName = schemaName();
         if (!columnToken.quoted &&
             ['CONSTRAINT', 'FOREIGN', 'UNIQUE', 'CHECK']
                 .contains(columnName.toUpperCase())) {
