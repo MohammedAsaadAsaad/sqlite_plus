@@ -1,74 +1,49 @@
 # sqlite_plus_orm
 
-A Pure Dart, metadata-driven ORM over the public sqlite_plus API. Runtime code
-has no analyzer, reflection, native database or `dart:io` dependency. Metadata
-can be written manually or emitted by sqlite_plus_generator.
+ORM فوق sqlite_plus: استعلامات مكتوبة بأسماء الحقول، وتتبع للتعديلات، وهجرات تُراجع قبل التطبيق. وقت التشغيل Pure Dart ومن غير analyzer.
 
-## Generated mappings
+Typed queries, change tracking, and reviewed migrations for `sqlite_plus`. Runtime code has no analyzer, reflection, native database, or `dart:io` dependency.
 
-An ordinary class with an `id` or `<ClassName>Id` field uses conventions. Table
-and column names default to the Dart class and property names. The source needs
-the runtime import and generated part declaration:
+Version `0.0.1-dev.1` is a pre-release. It is prepared for pub.dev and is not published. Until both packages are published, depend on the git repository:
 
-```dart
-import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
-part 'models.orm.g.dart';
-
-class Customer {
-  Customer({this.id, required this.name});
-  final BigInt? id;
-  final String name;
-}
+```yaml
+dependencies:
+  sqlite_plus_orm:
+    git:
+      url: https://github.com/MohammedAsaadAsaad/sqlite_plus
+      path: packages/sqlite_plus_orm
+      ref: main
 ```
 
-The generator emits `CustomerColumns`, `CustomerMapping` and `generatedModel`.
-Nullable int/BigInt conventional keys are generated when null. Zero is an
-explicit key. Assigned and composite keys require nonnull values at runtime.
+## Reading log
+
+`example/reading_log.dart` opens an in-memory database through `MutableDatabaseConnection.openMemory`. It saves two books, renames one, and reads that book by title and by `MappedField.at` on the JSON shelf. The untouched book stays at revision 0. A following save with no edits reports zero rows. The example names columns. It does not write SQL.
 
 ```dart
-final engine = await MutableSqliteDatabase.create();
-final context = DbContext(MutableDatabaseConnection(engine), generatedModel);
+final connection = await MutableDatabaseConnection.openMemory();
+final context = DbContext(connection, DbModel([bookType]));
 await context.migrations.ensureCreated();
-final customers = context.set(CustomerMapping.instance);
-final pending = customers.add(Customer(name: 'Ada'));
+final books = context.set(bookType);
+books.add(Book(BigInt.one, 'Kept Garden', '{"shelf":"north"}', 0));
 await context.saveChanges();
-final id = pending.entity.id!;
-final rows = await customers.query
-    .where(CustomerColumns.name.eq('Ada'))
-    .orderBy([CustomerColumns.id.asc()]).take(20).toList();
-final sameRows = await customers.query
-    .filter((row) => row.name.equalTo('Ada') & (row.revision > 0))
-    .orderByFields((row) => [row.name.ascending])
-    .take(20)
-    .toList();
-await context.close();
-await engine.close();
 ```
 
-`MutableDatabaseConnection.openMemory` opens an in-memory database and closes
-it with the connection. A generated `@DbJson` field exposes `path`. An `fts5`
-query extension exposes `search`. An `rtree` field helper exposes `bounds`.
-The compiled consumer calls those three and does not write SQL:
+From this package:
+
+```sh
+dart run example/reading_log.dart
+```
+
+The test expects `Kept Garden Revised` on shelf `north` at revision `1`, `Other Atlas` still at revision `0`, one matching row, an idle save of `0`, and an empty second migration plan.
+
+Generated applications use `sqlite_plus_generator`. A generated filter stays in Dart:
 
 ```dart
-final note = (await NoteQuery(notes.query)
-        .filter((row) => row.path(r'$.title').equalTo('kept'))
-        .toList())
-    .single;
-final article =
-    (await ArticleQuery(articles.query).search('kept').toList()).single;
-final place = (await PlaceQuery(places.query)
-        .filter((row) => row.bounds
-            .intersects(const Rect(minX: 0, minY: 0, maxX: 1, maxY: 1)))
-        .toList())
-    .single;
+final rows = await purchases.query
+    .filter((row) => row.total > 20.0)
+    .orderByFields((row) => [row.total.ascending])
+    .toList();
 ```
-
-Import `MutableSqliteDatabase` from sqlite_plus when the application opens the
-engine itself. `openMemory` stays inside the ORM import. For immutable
-models the returned entry owns the reconstructed entity; the original object's
-final key stays unchanged. `customers.replace(previous, replacement)` records
-immutable updates and rejects primary-key changes.
 
 ## Values, queries and tracking
 

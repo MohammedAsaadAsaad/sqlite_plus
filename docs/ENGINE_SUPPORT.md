@@ -160,9 +160,10 @@ limits. The Linux CI job fails when a fixture checksum does not match. That
 check does not execute SQLite. macOS and Windows CI do not run it.
 
 On Linux x64, Dart 3.13.7, this revision passed format, fatal-info analysis,
-10,496 engine tests, 167 ORM tests, and 53 generator tests. The pinned SQLite
+10,497 engine tests, 170 ORM tests, and 54 generator tests. The pinned SQLite
 CLI was present, so the native integrity tests ran. Those counts are Linux
-only.
+only. The three packages are prepared for pub.dev at `0.0.1-dev.1` and are
+not published.
 
 Items 91–98 are `benchmark_results/scenarios_10k_linux_x64.json`: Linux x64
 AOT, 10000 rows, three samples. Memory SQL insert microseconds are

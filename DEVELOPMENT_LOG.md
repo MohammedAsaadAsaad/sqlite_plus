@@ -1182,3 +1182,43 @@ result=pass
   was present, so the native integrity tests ran. A Windows pass is not
   recorded until the next `windows-latest` job for this head.
 - M9 stays unchecked. Item 108 stays open.
+
+## 2026-10-27 — Publish preparation, not a publication
+
+- The repository is a Dart workspace. The root `pubspec.yaml` is
+  `sqlite_plus_workspace` with `publish_to: none`. The three packages use
+  `resolution: workspace`. The ORM depends on `sqlite_plus: ^0.0.1-dev.1` and
+  the generator depends on `sqlite_plus_orm: ^0.0.1-dev.1`. Analyzer `6.4.1`
+  and `dart_style` `2.3.6` stay exact. The lockfile is
+  the root `pubspec.lock`. Package lockfiles are removed. The SDK constraint
+  is `>=3.6.0 <4.0.0`. Workspace resolution requires language version 3.5 or
+  newer, and this tree uses 3.6. CI `dart pub get --enforce-lockfile` runs
+  from the repository root.
+- Each package has `LICENSE`, `CHANGELOG.md`, `README.md`, and an `example/`.
+  `publish_to: none` is absent from the three packages. The root workspace
+  stays unpublished. Version stays `0.0.1-dev.1`. Nothing was uploaded to
+  pub.dev.
+- `packages/sqlite_plus/example/library_tour.dart` binds `json_object`, rolls
+  back a third card, highlights an FTS5 match, matches `مرحبا`, selects the
+  R-tree shelf inside the unit box, sets `user_version` to 7, and reopens
+  the exported image. The program printed `Kept Garden`, 320 pages,
+  `a garden [kept] in the margin`, `Arabic Shelf`, two cards, place 1,
+  version 7, and 40960 image bytes.
+- `packages/sqlite_plus_orm/example/reading_log.dart` saves two books, renames
+  one, and reads the JSON shelf through `MappedField.at`. The renamed book is
+  revision 1. `Other Atlas` stays at revision 0. The idle save reports 0.
+  The application does not write SQL.
+- `packages/sqlite_plus_generator/example/library_app.dart` saves ten rows
+  through `generatedModel`: one customer, three purchases, two notes, two
+  articles, and two places. The filter keeps totals `22.5` and `30.0`. The
+  JSON path, FTS search, and R-tree bounds each return one row. The
+  application imports `sqlite_plus_orm` only.
+- Generator tests locate `.dart_tool/package_config.json` by walking up to
+  the workspace root.
+- Linux Dart 3.13.7: format and fatal-info analysis passed. `dart test`
+  printed 10497 engine tests, 170 ORM tests, and 54 generator tests. The
+  pinned SQLite CLI was present, so the native integrity tests ran. These
+  counts are Linux x64 only. macOS and Windows results for this head are not
+  recorded. The Windows file-lock fix still waits for a `windows-latest` job.
+- M9 stays unchecked. Item 108 stays open. This preparation is not a 1.0
+  release and it is not a pub.dev upload.

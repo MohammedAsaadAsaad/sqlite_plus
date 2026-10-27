@@ -1,0 +1,9 @@
+name: sqlite_plus_workspace
+description: Workspace for the sqlite_plus engine, ORM, and generator. Not published.
+publish_to: none
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+workspace:
+  - packages/sqlite_plus
+  - packages/sqlite_plus_orm
+  - packages/sqlite_plus_generator

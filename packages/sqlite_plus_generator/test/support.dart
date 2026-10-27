@@ -21,7 +21,7 @@ final class Consumer {
     await Directory(p.join(directory.path, 'lib')).create();
     await Directory(p.join(directory.path, 'bin')).create();
     await Directory(p.join(directory.path, '.dart_tool')).create();
-    final configFile = File('.dart_tool/package_config.json').absolute;
+    final configFile = hostPackageConfig();
     final config = jsonDecode(await configFile.readAsString()) as Map;
     final packages = (config['packages'] as List).map((raw) {
       final item = Map<String, Object?>.from(raw as Map);
@@ -60,12 +60,29 @@ environment:
 
   Future<ProcessResult> cli(List<String> arguments) =>
       Process.run(dartExecutable, [
-        '--packages=${File('.dart_tool/package_config.json').absolute.path}',
+        '--packages=${hostPackageConfig().path}',
         File('bin/sqlite_plus_generator.dart').absolute.path,
         ...arguments
       ]);
 
   Future<void> close() => directory.delete(recursive: true);
+}
+
+/// Workspace `pub get` writes this file at the workspace root. A package
+/// directory no longer has its own copy.
+File hostPackageConfig() {
+  var directory = Directory.current.absolute;
+  while (true) {
+    final candidate =
+        File(p.join(directory.path, '.dart_tool', 'package_config.json'));
+    if (candidate.existsSync()) return candidate;
+    final parent = directory.parent;
+    if (parent.path == directory.path) {
+      throw StateError(
+          'No .dart_tool/package_config.json above ${Directory.current.path}');
+    }
+    directory = parent;
+  }
 }
 
 String modelSource(String body,

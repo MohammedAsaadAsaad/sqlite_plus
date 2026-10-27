@@ -50,6 +50,7 @@ jobs:
           python3 tool/generate_search_oracle.py --verify
           python3 tool/generate_gap_oracle.py --verify
       - name: Install dependencies
+        working-directory: ${{ github.workspace }}
         run: dart pub get --enforce-lockfile
       - name: Format
         run: dart format --output=none --set-exit-if-changed .
@@ -83,6 +84,7 @@ jobs:
         with:
           sdk: 3.13.7
       - name: Install dependencies
+        working-directory: ${{ github.workspace }}
         run: dart pub get --enforce-lockfile
       - name: Format
         run: dart format --output=none --set-exit-if-changed .

@@ -3,16 +3,19 @@
 ## 0.0.1-dev.1
 
 This version stays `0.0.1-dev.1` in `sqlite_plus`, `sqlite_plus_orm`, and
-`sqlite_plus_generator`. It is not a 1.0 release. M9 stays unchecked.
+`sqlite_plus_generator`. It is not a 1.0 release. M9 stays unchecked. The
+three packages are prepared for pub.dev and are not published.
 
 ### Verified in this tree
 
 - Pure Dart engine, ORM, and generator for the subsets named in
   `COMPATIBILITY_MATRIX.md`. Production runtime has no FFI, native SQLite, or
   WASM SQLite.
-- Linux x64 on Dart 3.13.7: the engine suite was re-run after the failed-open
-  change and passed 10496 tests. The pinned SQLite CLI was present. The ORM
-  suite passed 169 tests. Generator 53 was not repeated.
+- Linux x64 on Dart 3.13.7: this revision passed 10497 engine tests, 170 ORM
+  tests, and 54 generator tests. The pinned SQLite CLI was present. The three
+  example programs ran: the engine tour, the ORM reading log, and the
+  generated library. `dart pub publish --dry-run` is the publish check.
+  Nothing was uploaded.
 - `benchmark_results/scenarios_10k_linux_x64.json` is the Linux x64 AOT
   measurement for 10000 rows and three samples. 100000 and 1000000 were not
   run. The file records SDK `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`,

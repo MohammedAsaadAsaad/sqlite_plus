@@ -1,12 +1,17 @@
 name: sqlite_plus_orm
-description: Convention-first ORM for sqlite_plus (under development).
+description: Typed queries, change tracking, and migrations for the sqlite_plus engine.
 version: 0.0.1-dev.1
-publish_to: none
+repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus_orm
+issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
+topics:
+  - sqlite
+  - database
+  - orm
+resolution: workspace
 environment:
-  sdk: '>=3.4.0 <4.0.0'
+  sdk: '>=3.6.0 <4.0.0'
 dependencies:
-  sqlite_plus:
-    path: ../sqlite_plus
+  sqlite_plus: ^0.0.1-dev.1
 dev_dependencies:
   test: ^1.25.0
-  lints: ^4.0.0
+  lints: ^5.0.0
