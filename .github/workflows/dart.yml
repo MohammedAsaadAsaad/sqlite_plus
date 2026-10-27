@@ -20,6 +20,8 @@ jobs:
       - name: Verify binary fixtures
         if: matrix.package == 'sqlite_plus'
         working-directory: .
+        # --verify compares recorded checksums. It does not execute SQLite.
+        # A mismatch fails this Linux job. The desktop job does not run it.
         run: |
           python3 tool/generate_fixtures.py --verify
           python3 tool/generate_sql_oracle.py --verify

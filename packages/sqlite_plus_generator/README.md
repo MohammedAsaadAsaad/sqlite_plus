@@ -19,9 +19,13 @@ dart run bin/sqlite_plus_generator.dart --input example/models.dart --check
 
 Conventions select concrete public classes with `id`/`<ClassName>Id`. SQL names
 default to exact Dart names. Optional DbEntity, DbColumn, DbIgnore, DbKey,
-DbVersion and DbReference annotations override conventions, using resolved type
-identity and supporting import prefixes. DbReference.column names a target Dart
-property; absent that, the target needs one primary key.
+DbVersion, DbJson and DbReference annotations override conventions, using
+resolved type identity and supporting import prefixes. DbReference.column names
+a target Dart property; absent that, the target needs one primary key.
+`@DbJson()` on one String field emits `path`. `@DbEntity(module: 'fts5')`
+needs a `rowid` key and String content columns, and emits `search`.
+`@DbEntity(module: 'rtree')` needs an integer key first and double `minX`,
+`maxX`, `minY`, and `maxY`, and emits `bounds`.
 
 Supported fields are int, BigInt, double, bool, String, Uint8List, DateTime and
 nullable aliases of those types. Constructors must map persisted state; mutable

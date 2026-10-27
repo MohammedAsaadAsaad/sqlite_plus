@@ -118,7 +118,7 @@ public engine API only. The ORM test saves two notes, filters with
 
 The Linux x64 gate was reprinted on Dart 3.13.7: 10,496 engine tests, 165 ORM
 tests, and 48 generator tests. Format and fatal-info analysis passed. Those
-counts belong to Linux x64.
+counts belong to Linux x64. The later reprint is in items 99–107.
 
 Chrome on this Linux host opened `openBrowserStorage`, saved two notes, and
 filtered with `where(MappedField.equalTo('kept'))`. Close, then open, returned
@@ -129,11 +129,42 @@ is not claimed. The browser was Google Chrome 156.0.8078.47.
 GitHub Actions job `desktop` runs format, fatal-info analysis, and `dart test`
 for the three packages on `macos-latest` and `windows-latest`. The pinned
 SQLite CLI is not installed on those runners, so the six native integrity
-tests skip. Their pass or fail is not taken from the Linux counts.
+tests skip. Their pass or fail is not taken from the Linux counts. Run
+40487224654 passed all three packages on macOS and failed Windows: one engine
+tearDown lock and three generator CR LF comparisons. This revision changes
+those two sites. The next desktop jobs are the result for this revision.
 
 Android was not run. This machine has no Android SDK, emulator, or device.
 iOS was not run. This machine is Linux and has no Mac. A macOS Dart VM run is
 not an iOS run.
+
+## Items 99–107
+
+`@DbJson` on one String field emits `path(String path)`. An `fts5` model emits
+`search(String text)` on its query extension. The created table lists the
+content columns and keeps `rowid` as the key. An `rtree` model emits `bounds`
+for `minX`, `maxX`, `minY`, and `maxY`, with the integer key first. FTS and
+R-tree writes in this engine reject `RETURNING`, so a tracked save inserts or
+updates and then reads the row. A second migration plan is empty when that
+virtual SQL still matches.
+
+The compiled consumer imports `sqlite_plus_orm` and the generated model. It
+does not import `sqlite_plus` and its source has no SQL text. It saves six
+rows, reads the JSON note whose title is `kept`, the FTS article matching
+`kept`, and the R-tree place inside the unit box. `example/models.dart` passes
+generator `--check`.
+
+The repository root `LICENSE` is the MIT license. Every package version stays
+`0.0.1-dev.1`. `CHANGELOG.md` separates the verified subset from the open
+limits. The Linux CI job fails when a fixture checksum does not match. That
+check does not execute SQLite. macOS and Windows CI do not run it.
+
+On Linux x64, Dart 3.13.7, this revision passed format, fatal-info analysis,
+10,496 engine tests, 167 ORM tests, and 53 generator tests. The pinned SQLite
+CLI was present, so the native integrity tests ran. Those counts are Linux
+only.
+
+Items 91–98 stay deferred. M9 stays unchecked.
 
 ## Remaining SQLite targets
 
@@ -150,7 +181,7 @@ not implemented by closing a bounded engine milestone.
 | Table functions | General virtual-table modules; metadata PRAGMA sources have explicit join-order and hidden-argument limits |
 | Windows | Bounded execution; callback-bearing WHERE filtering can be buffered before window output, and native planner/coroutine equivalence is not general |
 | Extensions | `json_pretty`, correlated `json_each`, FTS5 multi-page leaves, porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes remain unimplemented. The verified JSON, FTS, and R-tree subset is in the compatibility matrix |
-| Platforms and release | The full M9 benchmark matrix and release qualification. Items 91–108 are open. Linux x64 and one Chrome page on Linux are recorded. macOS and Windows have CI jobs whose results are not the Linux counts. Android was not run. iOS was not run because this machine has no Mac |
+| Platforms and release | Items 91–98 stay deferred. Item 108 and M9 stay open. Linux x64 and one Chrome page on Linux are recorded. macOS CI passed for commit `9989846`. Windows CI failed for that commit. Android was not run. iOS was not run because this machine has no Mac. Power loss is not claimed |
 
 Binary extension loading and the native SQLite C ABI are outside the Pure Dart
 runtime target. Existing durability and resource bounds remain in the

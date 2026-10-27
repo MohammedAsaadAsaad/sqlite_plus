@@ -690,20 +690,51 @@ final class DbContext {
           sql += _matchOriginal(type, plan.original, bound);
         }
         final mutation = await connection.execute(
-            '$sql RETURNING ${_columnList(type)}', bound);
-        final returned = mutation.returning;
-        if (mutation.changes != 1 ||
-            returned == null ||
-            returned.rows.length != 1) {
-          throw const OptimisticConcurrencyException(
-              'Tracked write did not affect exactly one row');
-        }
-        final returnedValues =
-            _storedValues(type, _reader(returned, returned.rows.single));
-        final persisted = await _readStored(type, returnedValues);
-        if (persisted == null) {
-          throw const OrmStateException(
-              'A trigger deleted the row or changed its primary key');
+            type.virtualModule == null
+                ? '$sql RETURNING ${_columnList(type)}'
+                : sql,
+            bound);
+        final Map<String, Object?> persisted;
+        if (type.virtualModule == null) {
+          final returned = mutation.returning;
+          if (mutation.changes != 1 ||
+              returned == null ||
+              returned.rows.length != 1) {
+            throw const OptimisticConcurrencyException(
+                'Tracked write did not affect exactly one row');
+          }
+          final returnedValues =
+              _storedValues(type, _reader(returned, returned.rows.single));
+          final read = await _readStored(type, returnedValues);
+          if (read == null) {
+            throw const OrmStateException(
+                'A trigger deleted the row or changed its primary key');
+          }
+          persisted = read;
+        } else {
+          // FTS and R-tree writes reject RETURNING. Read the saved row back.
+          if (mutation.changes != 1) {
+            throw const OptimisticConcurrencyException(
+                'Tracked write did not affect exactly one row');
+          }
+          final generated = type.generatedKey;
+          if (plan.state == EntityState.added &&
+              generated != null &&
+              values[generated.sqlName] == null) {
+            final id = mutation.lastInsertRowid;
+            if (id == null) {
+              throw const OrmStateException(
+                  'Virtual table insert did not return a row id');
+            }
+            values[generated.sqlName] =
+                generated.encodeValue(generated.decodeValue(id));
+          }
+          final read = await _readStored(type, values);
+          if (read == null) {
+            throw const OrmStateException(
+                'A trigger deleted the row or changed its primary key');
+          }
+          persisted = read;
         }
         // Validate factories before committing, without mutating tracked objects.
         type.create(RowReader(persisted));

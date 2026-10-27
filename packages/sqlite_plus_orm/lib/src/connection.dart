@@ -32,6 +32,11 @@ abstract class OrmConnection {
 
 final class MutableDatabaseConnection extends OrmConnection {
   MutableDatabaseConnection(this.database, {this.closeDatabase = false});
+
+  /// Opens an in-memory engine database and closes it with this connection.
+  static Future<MutableDatabaseConnection> openMemory() async =>
+      MutableDatabaseConnection(await MutableSqliteDatabase.create(),
+          closeDatabase: true);
   final MutableSqliteDatabase database;
   final bool closeDatabase;
   bool _closed = false;

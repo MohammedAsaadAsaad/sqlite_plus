@@ -10,8 +10,20 @@ void main() {
   setUp(() {
     directory = Directory.systemTemp.createTempSync('sqlite-plus-owner-');
   });
-  tearDown(() {
-    directory.deleteSync(recursive: true);
+  tearDown(() async {
+    // A failed open kills its isolate, but Windows can keep the file lock
+    // for a short time after Isolate.kill. Retry only that sharing error.
+    for (var attempt = 0; attempt < 20; attempt++) {
+      try {
+        if (directory.existsSync()) {
+          directory.deleteSync(recursive: true);
+        }
+        return;
+      } on PathAccessException {
+        if (attempt == 19) rethrow;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+    }
   });
   String provision({bool wal = true}) {
     final path = '${directory.path}/data.db';

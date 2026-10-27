@@ -21,7 +21,18 @@ void main() {
         await Consumer.create(await File('example/models.dart').readAsString());
     addTearDown(fixture.close);
     final result = await generateLibrary(fixture.input);
-    expect(result.code, await File('example/models.orm.g.dart').readAsString());
+    expect(
+        normalizeNewlines(result.code),
+        normalizeNewlines(
+            await File('example/models.orm.g.dart').readAsString()));
+    expect(result.code, contains('JsonPathField<Note> path'));
+    expect(result.code, contains('virtualModule: "fts5"'));
+    expect(result.code, contains('virtualModule: "rtree"'));
+    expect(result.code, contains('Bounds<Place>'));
+    expect(result.code, contains('search(String text)'));
+    final checked =
+        await fixture.cli(['--input', 'example/models.dart', '--check']);
+    expect(checked.exitCode, 0, reason: '${checked.stdout}\n${checked.stderr}');
     await writeGenerated(result);
     expect((await generateLibrary(fixture.input)).code, result.code);
   });
@@ -73,7 +84,7 @@ void main() {
 }
 ''');
     expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-    expect(run.stdout, 'generated metadata works\n');
+    expect(normalizeNewlines(run.stdout), 'generated metadata works\n');
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test(
@@ -463,6 +474,26 @@ class Customer {
       'invalid null action',
       'class Parent { Parent(this.id); final int id; } class Bad { Bad(this.id,this.owner); final int id; @DbReference(Parent,onDelete:ForeignKeyAction.setNull) int owner; }',
       'G012'
+    ),
+    (
+      'json on a number',
+      'class Bad { Bad(this.id, this.n); final int id; @DbJson() int n; }',
+      'G013'
+    ),
+    (
+      'unknown virtual module',
+      '@DbEntity(module: "fts4") class Bad { Bad({this.rowid, required this.body}); @DbKey(generated: true) final BigInt? rowid; final String body; }',
+      'G013'
+    ),
+    (
+      'fts without rowid',
+      '@DbEntity(module: "fts5") class Bad { Bad(this.id, this.body); final BigInt? id; final String body; }',
+      'G013'
+    ),
+    (
+      'rtree without bounds',
+      '@DbEntity(module: "rtree") class Bad { Bad(this.id); final BigInt id; }',
+      'G013'
     ),
   ];
   for (final (name, source, code) in negative) {

@@ -545,6 +545,16 @@ bool _migrationColumnNullable(Column<dynamic, dynamic> column) =>
     column.nullable && (column.keyOrder == null || column.generated);
 
 String _createTableSql(EntityType<dynamic> entity, DbModel model) {
+  if (entity.virtualModule == 'fts5') {
+    final columns =
+        entity.columns.where((column) => column.keyOrder == null).toList();
+    return 'CREATE VIRTUAL TABLE ${quoteIdentifier(entity.tableName)} '
+        'USING fts5(${columns.map((column) => quoteIdentifier(column.sqlName)).join(', ')})';
+  }
+  if (entity.virtualModule == 'rtree') {
+    return 'CREATE VIRTUAL TABLE ${quoteIdentifier(entity.tableName)} '
+        'USING rtree(${entity.columns.map((column) => quoteIdentifier(column.sqlName)).join(', ')})';
+  }
   final inlineKey = entity.keys.length == 1;
   final definitions = [
     for (final column in entity.columns)
@@ -588,6 +598,14 @@ List<MigrationOperation> _tableDifferences(
     EntityType<dynamic> entity, _MigrationTable actual, DbModel model,
     {bool allowSafeAdditions = false}) {
   final problems = <MigrationOperation>[];
+  if (entity.virtualModule != null) {
+    if (_migrationCanonicalSql(actual.sql) !=
+        _migrationCanonicalSql(_createTableSql(entity, model))) {
+      problems.add(_migrationRequired(
+          'Virtual table ${entity.tableName} does not match ${entity.virtualModule}'));
+    }
+    return problems;
+  }
   final columns = {
     for (final row in actual.columns) _ormAsciiLower(row[1] as String): row
   };
@@ -685,6 +703,7 @@ String _modelSchema(DbModel model) => jsonEncode({
                 .compareTo(_ormAsciiLower(right.tableName))))
           {
             'name': entity.tableName,
+            if (entity.virtualModule != null) 'module': entity.virtualModule,
             'columns': [
               for (final column in entity.columns)
                 {

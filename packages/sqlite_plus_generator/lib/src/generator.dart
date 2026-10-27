@@ -127,6 +127,15 @@ Future<GenerationResult> generateLibrary(String inputPath,
   if (inspector.diagnostics.isNotEmpty) {
     throw GenerationException(inspector.diagnostics);
   }
+  _requireRuntimeNames(
+      library,
+      prefix,
+      [
+        if (models.any((model) => model.fields.any((field) => field.json)))
+          'JsonPathField',
+        if (models.any((model) => model.module == 'rtree')) 'Bounds',
+      ],
+      input);
   final emitted = _emit(input, output, prefix, listName, models, relationships);
   return GenerationResult(input, output, DartFormatter().format(emitted),
       models.map((model) => model.name));
@@ -277,6 +286,32 @@ String _listName(LibraryElement library, String input) {
       input);
 }
 
+void _requireRuntimeNames(
+    LibraryElement library, String prefix, List<String> names, String input) {
+  for (final name in names) {
+    var found = false;
+    for (final import in library.libraryImports) {
+      if (import.prefix is DeferredImportElementPrefix) continue;
+      final importPrefix =
+          import.prefix == null ? '' : '${import.prefix!.element.name}.';
+      if (importPrefix != prefix) continue;
+      final element = import.namespace
+          .get(prefix.isEmpty ? name : '${import.prefix!.element.name}.$name');
+      if (element is InterfaceElement &&
+          element.library.source.uri.toString() == _ormUri) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      _fail(
+          'G002',
+          'Import $name from sqlite_plus_orm. The generated mapping uses it.',
+          input);
+    }
+  }
+}
+
 bool _visibleUnprefixed(
         LibraryElement library, String name, Element expected) =>
     !library.topLevelElements.any((element) => element.name == name) &&
@@ -366,6 +401,7 @@ final class _Inspector {
           generated: key?.getField('generated')?.toBoolValue() ?? false,
           explicitKey: key != null,
           version: _annotation(field, 'DbVersion') != null,
+          json: _annotation(field, 'DbJson') != null,
           reference: _annotation(field, 'DbReference')));
     }
     final names = <String>{};
@@ -422,6 +458,9 @@ final class _Inspector {
     if (columns.where((field) => field.version).length > 1) {
       invalid('G009', 'A model can have only one version field.', element);
     }
+    final module =
+        _annotation(element, 'DbEntity')?.getField('module')?.toStringValue();
+    _checkVirtual(element, columns, module);
     final constructors =
         element.constructors.where((ctor) => !ctor.isFactory).toList();
     bool usable(ConstructorElement ctor) {
@@ -474,7 +513,80 @@ final class _Inspector {
           'Table names must be nonempty, contain no NUL and avoid sqlite_.',
           element);
     }
-    return _Model(element, table, columns, keys, constructor);
+    return _Model(element, table, columns, keys, constructor, module);
+  }
+
+  void _checkVirtual(
+      ClassElement element, List<_Field> columns, String? module) {
+    if (module == null) {
+      final json = columns.where((field) => field.json).toList();
+      if (json.any((field) => field.kind != 'text')) {
+        invalid('G013', '@DbJson needs a String column.', element);
+      }
+      if (json.length == 1 &&
+          (json.single.name == 'path' ||
+              columns.any((field) => field.name == 'path'))) {
+        invalid(
+            'G011',
+            'The property path conflicts with the JSON helper. '
+                'Use manual metadata for this property.',
+            element);
+      }
+      if (json.length > 1 &&
+          json.any((field) =>
+              columns.any((other) => other.name == '${field.name}Path'))) {
+        invalid('G011', 'A JSON helper name conflicts with a mapped property.',
+            element);
+      }
+      return;
+    }
+    if (module != 'fts5' && module != 'rtree') {
+      invalid('G013', 'DbEntity.module must be fts5 or rtree.', element);
+    }
+    if (columns.any((field) =>
+        field.json ||
+        field.version ||
+        field.unique ||
+        field.defaultSql != null ||
+        field.reference != null)) {
+      invalid(
+          'G013',
+          'A virtual table cannot map JSON, version, unique, default, '
+              'or reference columns.',
+          element);
+    }
+    if (module == 'fts5') {
+      final content = columns.where((field) => field.keyOrder == null);
+      if (columns.where((field) => field.keyOrder != null).length != 1 ||
+          _lower(columns
+                  .firstWhere((field) => field.keyOrder != null)
+                  .sqlName) !=
+              'rowid' ||
+          content.isEmpty ||
+          content.any((field) => field.kind != 'text')) {
+        invalid(
+            'G013',
+            'fts5 needs one rowid key and one or more String columns.',
+            element);
+      }
+      return;
+    }
+    const bounds = ['minX', 'maxX', 'minY', 'maxY'];
+    final coordinates = columns.where((field) => field.keyOrder == null);
+    final key = columns.where((field) => field.keyOrder != null).toList();
+    if (columns.first.keyOrder == null ||
+        key.length != 1 ||
+        key.single.generated ||
+        !const {'integer', 'bigInt'}.contains(key.single.kind) ||
+        coordinates.length != bounds.length ||
+        !bounds.every((name) => coordinates
+            .any((field) => field.name == name && field.kind == 'real')) ||
+        columns.any((field) => field.name == 'bounds')) {
+      invalid(
+          'G013',
+          'rtree needs an integer key first, then double minX, maxX, minY, and maxY.',
+          element);
+    }
   }
 
   bool directlyInitializes(ConstructorElement constructor, FieldElement field) {
@@ -626,6 +738,11 @@ final class _Inspector {
           }
         }
         if (parent == null) continue;
+        if (child.module != null || parent.module != null) {
+          error('G013', 'Virtual tables cannot own or target a foreign key.',
+              field.element);
+          continue;
+        }
         if (target == null ||
             !(parent.keys.length == 1 && target == parent.keys.single ||
                 target.unique) ||
@@ -690,12 +807,13 @@ final class _Field {
       required this.explicitKey,
       required this.generated,
       required this.version,
+      required this.json,
       this.keyOrder,
       this.defaultSql,
       this.reference});
   final FieldElement element;
   final String kind, sqlName, dartType, keyType;
-  final bool nullable, unique, explicitKey, version;
+  final bool nullable, unique, explicitKey, version, json;
   bool generated;
   int? keyOrder;
   final String? defaultSql;
@@ -708,11 +826,13 @@ final class _Field {
 }
 
 final class _Model {
-  _Model(this.element, this.table, this.fields, this.keys, this.constructor);
+  _Model(this.element, this.table, this.fields, this.keys, this.constructor,
+      this.module);
   final ClassElement element;
   final String table;
   final List<_Field> fields, keys;
   final ConstructorElement constructor;
+  final String? module;
   String get name => element.name;
 }
 
@@ -753,6 +873,7 @@ String _emit(String input, String output, String prefix, String listName,
     code.writeln('static final ${prefix}EntityType<${model.name}> instance = '
         '${prefix}EntityType<${model.name}>(tableName: ${_string(model.table)},'
         'columns: ${model.name}Columns.all, create: _create,'
+        '${model.module == null ? '' : 'virtualModule: ${_string(model.module!)},'}'
         '${model.fields.any((field) => !field.writable) ? 'applyStoreValues: (entity, row) => _create(row),' : ''}'
         ');');
     code.writeln('static ${model.name} _create(${prefix}RowReader row) {');
@@ -806,6 +927,21 @@ String _emit(String input, String output, String prefix, String listName,
       code.writeln(
           'final ${field.name} = ${prefix}MappedField(${model.name}Columns.${field.name});');
     }
+    final json = model.fields.where((field) => field.json).toList();
+    if (json.length == 1) {
+      code.writeln(
+          '${prefix}JsonPathField<${model.name}> path(String path) => ${json.single.name}.at(path);');
+    } else {
+      for (final field in json) {
+        code.writeln(
+            '${prefix}JsonPathField<${model.name}> ${field.name}Path(String path) => ${field.name}.at(path);');
+      }
+    }
+    if (model.module == 'rtree') {
+      code.writeln('final bounds = ${prefix}Bounds<${model.name}>('
+          'minX: ${model.name}Columns.minX, maxX: ${model.name}Columns.maxX, '
+          'minY: ${model.name}Columns.minY, maxY: ${model.name}Columns.maxY,);');
+    }
     code.writeln('}');
     code.writeln(
         'extension ${model.name}Query on ${prefix}TypedQuery<${model.name}> {');
@@ -813,6 +949,10 @@ String _emit(String input, String output, String prefix, String listName,
         '${prefix}TypedQuery<${model.name}> filter(${prefix}SqlPredicate<${model.name}> Function(${model.name}Fields row) build) => where(build(${model.name}Fields.instance));');
     code.writeln(
         '${prefix}TypedQuery<${model.name}> orderByFields($listName<${prefix}SqlOrdering<${model.name}>> Function(${model.name}Fields row) build) => orderBy(build(${model.name}Fields.instance));');
+    if (model.module == 'fts5') {
+      code.writeln(
+          '${prefix}TypedQuery<${model.name}> search(String text) => ${prefix}TypedQuery<${model.name}>(type: type, connection: connection).search(text);');
+    }
     code.writeln('}');
   }
   code.writeln('final ${prefix}DbModel generatedModel = ${prefix}DbModel(['

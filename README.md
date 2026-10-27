@@ -26,6 +26,27 @@ conventions, annotations, supported model shapes and CLI check mode. The
 checked-in generator example compiles into public runtime metadata; no analyzer
 or model reflection is needed by the database application.
 
+A generated query filter stays in Dart. This is the call covered by
+`packages/sqlite_plus_generator/test/integration_test.dart`:
+
+```dart
+final rows = await purchases.query
+    .filter((row) => row.total > 20.0)
+    .orderByFields((row) => [row.total.ascending])
+    .toList();
+```
+
+`packages/sqlite_plus_generator/test/search_consumer_test.dart` saves a JSON
+note, an FTS article, and an R-tree place through `sqlite_plus_orm` only. That
+file's application source has no SQL text. `MutableDatabaseConnection.openMemory`
+opens the in-memory engine.
+
+The verified surface is the subset in `COMPATIBILITY_MATRIX.md`. DQS,
+`json_pretty`, EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable two-database
+commit, journal-mode switches, power loss, Android, iOS, and the deferred
+performance matrix remain open. Version `0.0.1-dev.1` stays until that gate
+closes. See `CHANGELOG.md`.
+
 ## Development checks
 
 CI uses Dart 3.13.7. Packages require Dart >=3.4.0. Run from the repository root:
@@ -34,14 +55,16 @@ CI uses Dart 3.13.7. Packages require Dart >=3.4.0. Run from the repository root
 dart format .
 python3 tool/generate_fixtures.py --verify
 for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator; do
-  (cd packages/$package && dart pub get --enforce-lockfile && dart analyze --fatal-infos) || exit
+  (cd packages/$package && dart pub get --enforce-lockfile && dart analyze --fatal-infos && dart test) || exit
 done
-(cd packages/sqlite_plus && dart test)
 ```
 
-The ORM and generator are placeholders with no test suites. In the cloud setup,
-source `/workspace/toolchains/env.sh` and add `--suppress-analytics` after `dart`
-to avoid writing analytics files into the read-only home directory.
+The Linux GitHub job runs every `tool/generate_*.py --verify` script. A checksum
+mismatch fails that job. Those scripts do not execute SQLite in `--verify`
+mode. The macOS and Windows jobs run format, fatal-info analysis, and
+`dart test` only. In the cloud setup, source `/workspace/toolchains/env.sh` and
+add `--suppress-analytics` after `dart` to avoid writing analytics files into
+the read-only home directory.
 
 ## Format API
 

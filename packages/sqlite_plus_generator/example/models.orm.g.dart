@@ -143,6 +143,203 @@ extension PurchaseQuery on TypedQuery<Purchase> {
       orderBy(build(PurchaseFields.instance));
 }
 
-final DbModel generatedModel = DbModel(
-    [CustomerMapping.instance, PurchaseMapping.instance],
-    foreignKeys: [PurchaseRelationships.customer]);
+abstract final class NoteColumns {
+  static final Column<Note, BigInt?> id = Column<Note, BigInt?>(
+    property: "id",
+    name: "id",
+    codec: Codecs.nullable(Codecs.bigInt),
+    read: (entity) => entity.id,
+    keyOrder: 0,
+    generated: true,
+  );
+  static final Column<Note, String> document = Column<Note, String>(
+    property: "document",
+    name: "document",
+    codec: Codecs.text,
+    read: (entity) => entity.document,
+  );
+  static final List<Column<Note, dynamic>> all =
+      List.unmodifiable([id, document]);
+}
+
+abstract final class NoteMapping {
+  static final EntityType<Note> instance = EntityType<Note>(
+    tableName: "Note",
+    columns: NoteColumns.all,
+    create: _create,
+    applyStoreValues: (entity, row) => _create(row),
+  );
+  static Note _create(RowReader row) {
+    final entity = Note(
+        id: row.read(NoteColumns.id), document: row.read(NoteColumns.document));
+    return entity;
+  }
+
+  static EntityKey key(BigInt value0) =>
+      EntityKey([NoteColumns.id.codec.encode(value0)]);
+}
+
+final class NoteFields {
+  NoteFields._();
+  static final instance = NoteFields._();
+  final id = MappedField(NoteColumns.id);
+  final document = MappedField(NoteColumns.document);
+  JsonPathField<Note> path(String path) => document.at(path);
+}
+
+extension NoteQuery on TypedQuery<Note> {
+  TypedQuery<Note> filter(SqlPredicate<Note> Function(NoteFields row) build) =>
+      where(build(NoteFields.instance));
+  TypedQuery<Note> orderByFields(
+          List<SqlOrdering<Note>> Function(NoteFields row) build) =>
+      orderBy(build(NoteFields.instance));
+}
+
+abstract final class ArticleColumns {
+  static final Column<Article, BigInt?> rowid = Column<Article, BigInt?>(
+    property: "rowid",
+    name: "rowid",
+    codec: Codecs.nullable(Codecs.bigInt),
+    read: (entity) => entity.rowid,
+    keyOrder: 0,
+    generated: true,
+  );
+  static final Column<Article, String> body = Column<Article, String>(
+    property: "body",
+    name: "body",
+    codec: Codecs.text,
+    read: (entity) => entity.body,
+  );
+  static final List<Column<Article, dynamic>> all =
+      List.unmodifiable([rowid, body]);
+}
+
+abstract final class ArticleMapping {
+  static final EntityType<Article> instance = EntityType<Article>(
+    tableName: "Article",
+    columns: ArticleColumns.all,
+    create: _create,
+    virtualModule: "fts5",
+    applyStoreValues: (entity, row) => _create(row),
+  );
+  static Article _create(RowReader row) {
+    final entity = Article(
+        rowid: row.read(ArticleColumns.rowid),
+        body: row.read(ArticleColumns.body));
+    return entity;
+  }
+
+  static EntityKey key(BigInt value0) =>
+      EntityKey([ArticleColumns.rowid.codec.encode(value0)]);
+}
+
+final class ArticleFields {
+  ArticleFields._();
+  static final instance = ArticleFields._();
+  final rowid = MappedField(ArticleColumns.rowid);
+  final body = MappedField(ArticleColumns.body);
+}
+
+extension ArticleQuery on TypedQuery<Article> {
+  TypedQuery<Article> filter(
+          SqlPredicate<Article> Function(ArticleFields row) build) =>
+      where(build(ArticleFields.instance));
+  TypedQuery<Article> orderByFields(
+          List<SqlOrdering<Article>> Function(ArticleFields row) build) =>
+      orderBy(build(ArticleFields.instance));
+  TypedQuery<Article> search(String text) =>
+      TypedQuery<Article>(type: type, connection: connection).search(text);
+}
+
+abstract final class PlaceColumns {
+  static final Column<Place, BigInt> id = Column<Place, BigInt>(
+    property: "id",
+    name: "id",
+    codec: Codecs.bigInt,
+    read: (entity) => entity.id,
+    keyOrder: 0,
+  );
+  static final Column<Place, double> minX = Column<Place, double>(
+    property: "minX",
+    name: "minX",
+    codec: Codecs.real,
+    read: (entity) => entity.minX,
+  );
+  static final Column<Place, double> maxX = Column<Place, double>(
+    property: "maxX",
+    name: "maxX",
+    codec: Codecs.real,
+    read: (entity) => entity.maxX,
+  );
+  static final Column<Place, double> minY = Column<Place, double>(
+    property: "minY",
+    name: "minY",
+    codec: Codecs.real,
+    read: (entity) => entity.minY,
+  );
+  static final Column<Place, double> maxY = Column<Place, double>(
+    property: "maxY",
+    name: "maxY",
+    codec: Codecs.real,
+    read: (entity) => entity.maxY,
+  );
+  static final List<Column<Place, dynamic>> all =
+      List.unmodifiable([id, minX, maxX, minY, maxY]);
+}
+
+abstract final class PlaceMapping {
+  static final EntityType<Place> instance = EntityType<Place>(
+    tableName: "Place",
+    columns: PlaceColumns.all,
+    create: _create,
+    virtualModule: "rtree",
+    applyStoreValues: (entity, row) => _create(row),
+  );
+  static Place _create(RowReader row) {
+    final entity = Place(
+        id: row.read(PlaceColumns.id),
+        minX: row.read(PlaceColumns.minX),
+        maxX: row.read(PlaceColumns.maxX),
+        minY: row.read(PlaceColumns.minY),
+        maxY: row.read(PlaceColumns.maxY));
+    return entity;
+  }
+
+  static EntityKey key(BigInt value0) =>
+      EntityKey([PlaceColumns.id.codec.encode(value0)]);
+}
+
+final class PlaceFields {
+  PlaceFields._();
+  static final instance = PlaceFields._();
+  final id = MappedField(PlaceColumns.id);
+  final minX = MappedField(PlaceColumns.minX);
+  final maxX = MappedField(PlaceColumns.maxX);
+  final minY = MappedField(PlaceColumns.minY);
+  final maxY = MappedField(PlaceColumns.maxY);
+  final bounds = Bounds<Place>(
+    minX: PlaceColumns.minX,
+    maxX: PlaceColumns.maxX,
+    minY: PlaceColumns.minY,
+    maxY: PlaceColumns.maxY,
+  );
+}
+
+extension PlaceQuery on TypedQuery<Place> {
+  TypedQuery<Place> filter(
+          SqlPredicate<Place> Function(PlaceFields row) build) =>
+      where(build(PlaceFields.instance));
+  TypedQuery<Place> orderByFields(
+          List<SqlOrdering<Place>> Function(PlaceFields row) build) =>
+      orderBy(build(PlaceFields.instance));
+}
+
+final DbModel generatedModel = DbModel([
+  CustomerMapping.instance,
+  PurchaseMapping.instance,
+  NoteMapping.instance,
+  ArticleMapping.instance,
+  PlaceMapping.instance
+], foreignKeys: [
+  PurchaseRelationships.customer
+]);

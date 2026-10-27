@@ -72,3 +72,7 @@ String modelSource(String body,
         {String import =
             "import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';"}) =>
     "$import\npart 'models.orm.g.dart';\n$body";
+
+/// Windows checkouts and `Process.run` can use CR LF. Comparisons use LF.
+String normalizeNewlines(String value) =>
+    value.replaceAll('\r\n', '\n').replaceAll('\r', '\n');

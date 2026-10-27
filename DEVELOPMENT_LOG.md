@@ -1082,3 +1082,36 @@ result=pass
   a macOS Dart VM, not an iOS device or simulator.
 - M8 stays checked for its earlier subset only. M9 stays open. Items 91–108
   were not started. `json_pretty` and the other recorded limits are unchanged.
+
+## 2026-10-27 — Items 99–107, with performance tests deferred
+
+- Items 91–98 stay deferred. No scale-benchmark numbers were recorded.
+- GitHub Actions run 40487224654, head `9989846`, passed all three packages on
+  `macos-latest`. The six pinned-CLI integrity tests skip there. The same run
+  failed `windows-latest` for `sqlite_plus` and `sqlite_plus_generator`.
+  `sqlite_plus_orm` passed. The engine failure was `PathAccessException` errno
+  32 in `database_owner` tearDown. The generator failures compared LF output
+  with CR LF golden text and process stdout. This revision retries that delete
+  and compares LF. Linux `database_owner_test.dart` passed 9 tests. A Windows
+  pass is not recorded. Linux counts are not copied to either desktop OS.
+- `@DbEntity(module:)` accepts `fts5` or `rtree`. `@DbJson()` emits `path`.
+  The FTS query extension emits `search`. The R-tree field helper emits
+  `bounds`. `ensureCreated` writes `CREATE VIRTUAL TABLE`. FTS and R-tree
+  writers reject `RETURNING`, so a tracked save reads the row back. A second
+  `plan()` is empty when that SQL still matches.
+- `example/models.dart` passes generator `--check`. The compiled consumer in
+  `packages/sqlite_plus_generator/test/search_consumer_test.dart` imports only
+  `sqlite_plus_orm`, contains no SQL text, and saves, searches, and reads one
+  JSON note, one FTS article, and one R-tree place.
+- Linux Dart 3.13.7: format and fatal-info analysis passed for the three
+  packages. `dart test` printed 10,496 engine tests, 167 ORM tests, and 53
+  generator tests. The pinned SQLite CLI was present, so the native integrity
+  tests ran. Native schema, journal, and WAL generators were not re-run.
+  Linux CI `--verify` still checks those checksums and fails the job on a
+  mismatch. It does not execute SQLite. The desktop jobs do not run it.
+- Root `LICENSE` is MIT. Package versions stay `0.0.1-dev.1`. `CHANGELOG.md`
+  lists the verified subset and the open limits, including DQS, `json_pretty`,
+  EXPLAIN bytecode, STAT4, `auto_vacuum`, cross-database writes, journal-mode
+  switches, power loss, Android, iOS, and the deferred performance items.
+- M8 stays checked for its earlier subset only. M9 stays unchecked. Item 108
+  stays open.

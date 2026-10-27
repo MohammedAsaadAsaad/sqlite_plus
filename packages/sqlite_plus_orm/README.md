@@ -45,7 +45,27 @@ await context.close();
 await engine.close();
 ```
 
-Import `MutableSqliteDatabase` from sqlite_plus in the application. For immutable
+`MutableDatabaseConnection.openMemory` opens an in-memory database and closes
+it with the connection. A generated `@DbJson` field exposes `path`. An `fts5`
+query extension exposes `search`. An `rtree` field helper exposes `bounds`.
+The compiled consumer calls those three and does not write SQL:
+
+```dart
+final note = (await NoteQuery(notes.query)
+        .filter((row) => row.path(r'$.title').equalTo('kept'))
+        .toList())
+    .single;
+final article =
+    (await ArticleQuery(articles.query).search('kept').toList()).single;
+final place = (await PlaceQuery(places.query)
+        .filter((row) => row.bounds
+            .intersects(const Rect(minX: 0, minY: 0, maxX: 1, maxY: 1)))
+        .toList())
+    .single;
+```
+
+Import `MutableSqliteDatabase` from sqlite_plus when the application opens the
+engine itself. `openMemory` stays inside the ORM import. For immutable
 models the returned entry owns the reconstructed entity; the original object's
 final key stays unchanged. `customers.replace(previous, replacement)` records
 immutable updates and rejects primary-key changes.

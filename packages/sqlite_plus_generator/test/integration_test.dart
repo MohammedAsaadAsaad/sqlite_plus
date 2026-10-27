@@ -106,6 +106,6 @@ Future<void> main() async {
 }
 ''');
     expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-    expect(run.stdout, 'generated ORM integration passed\n');
+    expect(normalizeNewlines(run.stdout), 'generated ORM integration passed\n');
   }, timeout: const Timeout(Duration(minutes: 2)));
 }

@@ -1,8 +1,16 @@
 part of '../sqlite_plus_orm.dart';
 
 class DbEntity {
-  const DbEntity({this.table});
+  const DbEntity({this.table, this.module});
   final String? table;
+
+  /// `fts5` or `rtree`. Omitted models stay ordinary tables.
+  final String? module;
+}
+
+/// Marks one TEXT column for a generated JSON path helper.
+class DbJson {
+  const DbJson();
 }
 
 class DbColumn {

@@ -142,6 +142,7 @@ final class EntityType<T> {
       required List<Column<T, dynamic>> columns,
       required this.create,
       this.applyStoreValues,
+      this.virtualModule,
       List<OrmIndex<T>> indexes = const []})
       : columns = List.unmodifiable(columns),
         indexes = List.unmodifiable(indexes) {
@@ -197,8 +198,10 @@ final class EntityType<T> {
         throw const OrmMappingException('Invalid or duplicate mapped index');
       }
     }
+    _validateVirtualModule();
   }
   final String tableName;
+  final String? virtualModule;
   final List<Column<T, dynamic>> columns;
   final T Function(RowReader) create;
   final T Function(T, RowReader)? applyStoreValues;
@@ -221,6 +224,45 @@ final class EntityType<T> {
   Map<String, Object?> encode(T entity) => {
         for (final column in columns) column.sqlName: column.readEncoded(entity)
       };
+
+  void _validateVirtualModule() {
+    final module = virtualModule;
+    if (module == null) return;
+    if (module != 'fts5' && module != 'rtree') {
+      throw const OrmMappingException('Virtual module must be fts5 or rtree');
+    }
+    if (indexes.isNotEmpty || versionColumn != null) {
+      throw const OrmMappingException(
+          'A virtual table cannot map indexes or a version column');
+    }
+    if (columns.any((column) => column.unique || column.defaultSql != null)) {
+      throw const OrmMappingException(
+          'A virtual table cannot map unique or default constraints');
+    }
+    if (module == 'fts5') {
+      final content = columns.where((column) => column.keyOrder == null);
+      if (keys.length != 1 ||
+          _ormAsciiLower(keys.single.sqlName) != 'rowid' ||
+          content.isEmpty ||
+          content.any((column) => column.codec.sqlType != 'TEXT')) {
+        throw const OrmMappingException(
+            'fts5 needs one rowid key and one or more TEXT columns');
+      }
+      return;
+    }
+    final coordinates = columns.skip(1).toList();
+    if (generatedKey != null ||
+        keys.length != 1 ||
+        !identical(columns.first, keys.single) ||
+        keys.single.codec.sqlType != 'INTEGER' ||
+        coordinates.length < 2 ||
+        coordinates.length.isOdd ||
+        coordinates.length > 10 ||
+        coordinates.any((column) => column.codec.sqlType != 'REAL')) {
+      throw const OrmMappingException(
+          'rtree needs an integer key first and an even number of REAL coordinates');
+    }
+  }
 }
 
 enum ForeignKeyAction { noAction, restrict, cascade, setNull, setDefault }
@@ -309,6 +351,10 @@ final class DbModel {
           !(relationNames[key.child] ??= {}).add(_ormAsciiLower(key.name))) {
         throw const OrmMappingException(
             'Foreign key entities must be registered and names unique per child');
+      }
+      if (key.child.virtualModule != null || key.parent.virtualModule != null) {
+        throw const OrmMappingException(
+            'Virtual tables cannot be foreign key endpoints');
       }
     }
   }
