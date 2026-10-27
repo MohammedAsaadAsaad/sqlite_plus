@@ -1271,3 +1271,14 @@ result=pass
   power-loss durability, larger benchmarks, and publication as planned work.
 - The compatibility matrix and this log keep the test record. Publication
   still waits for an explicit request. M9 stays unchecked. Item 108 stays open.
+
+## 2026-10-27 — README pages lead with the working examples
+
+- The repository README, the three package READMEs, and the three example
+  READMEs now lead with the SQL surface, the reading log, and the generated
+  library. The code blocks follow `library_tour.dart`, `reading_log.dart`,
+  `models.dart`, and `library_app.dart`, including the lines those programs
+  print. Follow-up work stays in a Planned section.
+- This is a documentation change. No package test was re-run for it. The
+  compatibility matrix is unchanged. Publication still waits for an explicit
+  request. M9 stays unchecked. Item 108 stays open.
