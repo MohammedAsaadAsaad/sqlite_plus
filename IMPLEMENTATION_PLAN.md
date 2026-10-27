@@ -39,7 +39,7 @@
   Remaining SQLite targets, including TEMP/ATTACH, unlisted PRAGMA state and
   broader native planner/collation/SQL compatibility, are explicitly retained in
   `docs/ENGINE_SUPPORT.md`; this checkbox does not claim complete SQLite support.
-- [ ] M7: ORM metadata, generator, DbContext, CRUD, change tracking and safe migrations.
+- [x] M7: ORM metadata/codecs, resolved convention/annotation generator, typed queries, DbContext/CRUD, snapshot tracking, explicit relationships and safe migrations (155 ORM and 48 generator tests; native cross-open/query/migration gates and JavaScript memory smoke verified).
 - [ ] M8: Advanced extensions, JSON/JSONB, FTS, R-tree, virtual tables.
 - [ ] M9: Browser adapters, platform matrix, AOT benchmarks, hardening and release gates.
 

@@ -354,9 +354,11 @@ final class DatabaseCatalog {
         autoKeys.add(
             (true, List.of(primary), primaryPolicy, descending, collations));
       } else {
+        final columnToken = parser.current;
         final columnName = parser.identifier();
-        if (['CONSTRAINT', 'FOREIGN', 'UNIQUE', 'CHECK']
-            .contains(columnName.toUpperCase())) {
+        if (!columnToken.quoted &&
+            ['CONSTRAINT', 'FOREIGN', 'UNIQUE', 'CHECK']
+                .contains(columnName.toUpperCase())) {
           throw const SqlException('Unsupported table constraint');
         }
         if (columns.any((c) => asciiLower(c.name) == asciiLower(columnName))) {

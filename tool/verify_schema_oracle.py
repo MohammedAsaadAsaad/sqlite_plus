@@ -414,6 +414,27 @@ def main():
       "INSERT INTO vector_events VALUES(1)", "SELECT * FROM vector_named ORDER BY id",
       "UPDATE vector_named SET (value,b)=(1,2,3)", "PRAGMA integrity_check"
     ]
+    statements += [
+      'PRAGMA foreign_keys=OFF',
+      'CREATE TABLE add_parent(a,b,PRIMARY KEY(a,b))',
+      'INSERT INTO add_parent VALUES(1,2)',
+      'CREATE TABLE add_constraints("CONSTRAINT" TEXT,a,b,CONSTRAINT fk FOREIGN KEY(a,b) REFERENCES add_parent(a,b),UNIQUE("CONSTRAINT"),CHECK(a>0))',
+      "INSERT INTO add_constraints VALUES('original',1,2)",
+      "ALTER TABLE add_constraints ADD note TEXT DEFAULT 'x)'",
+      'ALTER TABLE add_constraints ADD virtual INT AS(a+b)',
+      'SELECT * FROM add_constraints',
+      "SELECT sql FROM sqlite_schema WHERE name='add_constraints'",
+      'ALTER TABLE add_constraints ADD bad INT NOT NULL',
+      'CREATE TABLE add_wr(k TEXT,n INT,PRIMARY KEY(k),CHECK(n>0)) WITHOUT ROWID',
+      "INSERT INTO add_wr VALUES('key',7)",
+      'ALTER TABLE add_wr ADD extra TEXT',
+      'SELECT * FROM add_wr',
+      "CREATE TABLE add_punct(a TEXT /*tail*/, /*head*/ CHECK(a<>')'))",
+      "INSERT INTO add_punct VALUES('old')",
+      'ALTER TABLE add_punct ADD b INT',
+      "SELECT sql FROM sqlite_schema WHERE name='add_punct'",
+      'PRAGMA integrity_check',
+    ]
     bound_parameters = {
       "INSERT INTO named_rows VALUES(:id,:v) RETURNING :id,id,:v,v": [1,7],
       "UPDATE named_rows SET v=:v WHERE id=:id RETURNING :v,v,:id": [8,1],

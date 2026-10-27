@@ -4,7 +4,8 @@ Pure Dart SQLite-compatible engine and convention-based ORM under development.
 The engine provides byte storage, SQLite format decoding, table/index traversal,
 schema/index mutations and exclusive-owner WAL/rollback transactions. M6 adds
 relational queries, constraints, functions, window frames and index planning.
-Full SQLite SQL semantics and ORM behavior remain unfinished. Production runtime
+Full SQLite compatibility and the remaining extension/platform gates are still
+targets. Production runtime
 code uses Pure Dart, without native SQLite, FFI or WASM.
 
 Read `MASTER_SPEC.md`, `AGENTS.md`, `IMPLEMENTATION_PLAN.md` and
@@ -13,8 +14,17 @@ Read `MASTER_SPEC.md`, `AGENTS.md`, `IMPLEMENTATION_PLAN.md` and
 ## Packages
 
 - `packages/sqlite_plus`: memory storage, SQLite format decoders, read-only pager and B-tree reader
-- `packages/sqlite_plus_orm`: planned ORM
-- `packages/sqlite_plus_generator`: planned metadata generator
+- `packages/sqlite_plus_orm`: browser-safe metadata, codecs, typed queries,
+  DbContext, CRUD/change tracking, relationships and safe migrations
+- `packages/sqlite_plus_generator`: resolved convention/annotation metadata
+  generator and CLI; see its checked-in example and package README
+
+The [ORM guide](packages/sqlite_plus_orm/README.md) covers generated/manual
+metadata, typed queries, tracking, relationships and reviewed migrations.
+The [generator guide](packages/sqlite_plus_generator/README.md) explains
+conventions, annotations, supported model shapes and CLI check mode. The
+checked-in generator example compiles into public runtime metadata; no analyzer
+or model reflection is needed by the database application.
 
 ## Development checks
 
@@ -386,7 +396,7 @@ The verified engine baseline and remaining SQLite targets are distinguished in
 [the engine support contract](docs/ENGINE_SUPPORT.md). TEMP/ATTACH, PRAGMAs beyond
 the listed subset, native EXPLAIN/cost-model equivalence, custom collations and
 other documented exclusions remain unsupported. Full SQLite compatibility is
-not claimed. M7–M9 have separate verification gates.
+not claimed. M7's ORM/generator baseline has passed its gate; M8/M9 have separate gates.
 
 Real AOT benchmark samples are saved under `benchmark_results`. The index
 benchmark builds a 10,000-row memory image and measures five batches of 100

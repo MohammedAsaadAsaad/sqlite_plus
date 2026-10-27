@@ -20,7 +20,7 @@ development reference tools. Production engine code is Pure Dart.
 | Scalar / aggregate functions | Verified subset | Core/string/math/ROUND/variadic IF/IIF, PRINTF/FORMAT, UNISTR and aggregates; MEDIAN/PERCENTILE variants with 1,323 pinned aggregate/window cases; STRING_AGG, aggregate ORDER BY with FILTER/DISTINCT/collations; connection-local scalar/aggregate callbacks; DATE/TIME/DATETIME/JULIANDAY/UNIXEPOCH/STRFTIME/TIMEDIFF and dynamic defaults; broader edge cases remain |
 | GROUP BY / HAVING | Verified subset | Expressions/ordinals/aliases, HAVING aliases, distinct aggregates, empty inputs and bare-column MIN/MAX selection in differential cases |
 | Window functions | Verified bounded subset | Ranking, NTILE, LAG/LEAD, first/last/nth values, aggregate ROWS/GROUPS/RANGE frames/offsets, EXCLUDE, FILTER, named/inherited windows and NULLS FIRST/LAST; max 10,000 rows; grouped aggregates and HAVING feed windows |
-| Schema creation / index maintenance | Verified subset | CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, CREATE TABLE AS, ADD/RENAME/DROP COLUMN and table rename with resolved view/trigger references, ordinary and WITHOUT ROWID B-trees, auto/secondary indexes, overflow; 828 SQLite cross-open/integrity snapshots per encoding (2,484 total across UTF-8/UTF-16le/UTF-16be) |
+| Schema creation / index maintenance | Verified subset | CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, CREATE TABLE AS, ADD/RENAME/DROP COLUMN and table rename with resolved view/trigger references, ordinary and WITHOUT ROWID B-trees, auto/secondary indexes, overflow; 847 SQLite cross-open/integrity snapshots per encoding (2,541 total across UTF-8/UTF-16le/UTF-16be); ADD places columns before table constraints |
 | Generated columns | Verified subset | VIRTUAL/STORED, deterministic expressions, dependency order/cycle rejection, affinity, constraints/indexes, ADD virtual and guarded rename/drop; native fixtures in all encodings |
 | Constraints | Verified subset | Defaults, NOT NULL/UNIQUE/CHECK, STRICT, AUTOINCREMENT, FK enable state/actions/deferral, OR IGNORE/REPLACE/FAIL/ROLLBACK, partial/expression unique keys; schema PRIMARY KEY/UNIQUE/NOT NULL conflict policies and recursive REPLACE delete triggers; evaluation errors are not ignored as constraints; broader edge-case conformance pending |
 | Views / row triggers | Verified subset | Read views; BEFORE/AFTER INSERT/UPDATE/DELETE, FK-action child row triggers, UPDATE OF, WHEN, OLD/NEW, DML/SELECT/WITH/VALUES bodies, WHEN subqueries, RAISE ABORT/FAIL/ROLLBACK/IGNORE, recursive_triggers state/1,000-depth bound, typed OLD/NEW and automatic rowid timing; INSTEAD OF INSERT/UPDATE/DELETE view triggers, zero direct change counts and RETURNING |
@@ -34,9 +34,10 @@ development reference tools. Production engine code is Pure Dart.
 | Rollback journal | Conditional durable contract | PERSIST before-images, every-operation/torn-write crash tests, recovery injection; native byte-exact hot-journal recovery |
 | WAL writes / checkpoint / recovery | Exclusive-owner subset | Both checksum endians, three native cross-open commits, native continuation, torn frames/pages and every-operation growth/shrink checkpoint recovery |
 | Isolate ownership / file lease | Single-owner architecture | Serialized SendPort requests, client-owned transactions, loopback duplicate-owner guard, native SQLite lock-byte exclusion and handoff |
-| ORM / generator | Placeholders, M7 pending | No behavior or tests yet |
+| ORM runtime | Verified M7 baseline | Public engine APIs only; typed codecs/queries, BigInt keys, identity/snapshot tracking, atomic CRUD/revisions, immutable values, explicit batched relationships and safe reviewed migrations; 155 real-engine/fault tests |
+| Metadata generator | Verified M7 baseline | Resolved conventions/annotations, constructors/aliases, mutable/immutable mappings, deterministic owned output and CLI; 48 tests including compiled generated end-to-end consumers; unsupported model shapes/custom codecs use manual metadata |
 | JSON/JSONB / FTS / R-tree / virtual tables | M8 pending | No implementation claim |
-| Linux x64 | Development verified | Dart 3.13.7; 9,632 engine tests, format, fatal-info analysis and locked dependencies pass |
+| Linux x64 | Development verified | Dart 3.13.7; 9,638 engine, 155 ORM and 48 generator tests; format, fatal-info analysis and locked dependencies pass |
 | Windows/macOS/Android/iOS/Web | Unverified, M9 pending | Core has no dart:io dependency; optional file/owner adapter does; no execution claim |
 
 ## Query and format limits
@@ -101,8 +102,9 @@ Multi-database atomic transactions and other journal modes remain unsupported.
 M6's bounded main-schema engine baseline is defined separately from the remaining
 SQLite targets in [ENGINE_SUPPORT.md](docs/ENGINE_SUPPORT.md). TEMP/ATTACH,
 unlisted PRAGMA state, native EXPLAIN/cost-model equivalence, custom collations
-and broader conformance remain unsupported. M7 ORM/generator, M8 extensions and M9 browser/platform/release
-work have not passed their gates. Saved AOT benchmarks contain real raw samples
+and broader conformance remain unsupported. M7's ORM/generator gate passes for
+the documented runtime/generator contract. M8 extensions and M9 browser/platform/
+release work have not passed their gates. Saved AOT benchmarks contain real raw samples
 for small Linux memory workloads, not the required 1k/10k/100k/1m scale and
 platform/ORM/native-engine comparison matrix. No release-ready or all-milestones
 completion claim is made.
@@ -158,3 +160,13 @@ ASCII/Unicode whitespace, NUL, integer prefixes and storage-class boundaries.
 Table-valued metadata PRAGMAs have 576 comparisons including ALTER dependencies;
 forward-source/reordered correlation, correlated RIGHT/FULL sources and hidden
 argument IN subqueries remain explicit limits.
+
+ORM native checks include 672 generated bound-query comparisons, 27 CRUD/schema
+comparisons with three encoding cross-opens/native write continuations, and 123
+migration operations with 21 cross-open snapshots and three continuations.
+Migration plans bind exact approval and recheck schema inside an owned
+transaction; unmanaged objects remain, destructive/ambiguous changes require
+explicit operations, and indeterminate outcomes poison the affected context.
+JavaScript compilation and a Node memory smoke cover codecs, full signed64 keys,
+linked CRUD, tracking/revisions and relationship loads. This verifies browser-safe
+runtime imports/execution, not browser storage durability or mobile platforms.

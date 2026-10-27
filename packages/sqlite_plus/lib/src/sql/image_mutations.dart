@@ -2098,7 +2098,20 @@ final class ImageMutations {
           .substring(p.current.offset)
           .trim()
           .replaceFirst(RegExp(r';\s*$'), '');
-      final end = table.sql.lastIndexOf(')');
+      final parts = _tableParts(table.sql);
+      final constraint = parts.$4
+          .where((part) => const {
+                'CONSTRAINT',
+                'PRIMARY',
+                'UNIQUE',
+                'CHECK',
+                'FOREIGN'
+              }.contains(parts.$1[part.$1].keyword))
+          .firstOrNull;
+      // Column declarations must precede table constraints. Keep the original
+      // delimiter and comments after the inserted declaration, as SQLite does.
+      final end =
+          parts.$1[constraint == null ? parts.$3 : constraint.$1 - 1].offset;
       final changed =
           '${table.sql.substring(0, end)}, $declaration${table.sql.substring(end)}';
       final definition = DatabaseCatalog.parseTable(changed, 0);

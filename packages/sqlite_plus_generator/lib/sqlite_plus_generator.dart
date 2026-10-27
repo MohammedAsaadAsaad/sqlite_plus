@@ -1,3 +1,5 @@
-/// Dart metadata generator for sqlite_plus (under development).
-/// No production API is implemented yet.
+/// Resolved Dart model generation for sqlite_plus_orm.
 library;
+
+export 'src/diagnostics.dart';
+export 'src/generator.dart' show generateLibrary, writeGenerated;

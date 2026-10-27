@@ -720,3 +720,49 @@
   custom collations and other exclusions are retained in ENGINE_SUPPORT.md and
   the matrix. This is not a full SQLite compatibility or release-ready claim.
   M7 now consumes the verified public API; M8/M9 retain separate gates.
+
+## 2026-10-27 — M7 ORM, generator and safe migration gate
+
+- Add browser-safe immutable metadata, annotations, checked scalar/nullable
+  codecs and connection ownership over public engine APIs. BigInt preserves
+  signed64; int uses portable53 bounds; bool/date/blob conversions are explicit.
+  Typed predicates bind values, quote identifiers, validate column identity and
+  support composition, NULL/IN, ordering, pagination and query terminals.
+- Implement DbContext identity maps, copied encoded snapshots, mutable/immutable
+  CRUD, generated keys, revision concurrency and atomic SaveChanges. Freeze
+  intended values synchronously, refresh store/trigger values inside the
+  transaction, and publish keys/snapshots after commit while retaining later
+  local edits. Cover BEGIN-after-open failures, deferred commit constraints,
+  rollback failure and indeterminate migration/save poisoning.
+- Add explicit reference/collection loading and bounded batches, composite/blob
+  keys, provisional generated parent links, dependency ordering/deferred cycles,
+  and tracked CASCADE/SET NULL refreshes. Loads preserve canonical identity and
+  perform no implicit getter I/O.
+- Add immutable schema plans, exact per-plan approval, live baseline rechecks,
+  protected model/version metadata and post-change schema/FK validation. Safe
+  additions preserve unmanaged objects. Destructive/ambiguous changes need
+  explicit reviewed SQL/mappings; no guessed migration or broad approval flag.
+- Add resolved convention/annotation generation, typed columns/mapping/key and
+  relationship helpers, mutable/immutable constructors, located diagnostics,
+  owned atomic output and CLI check mode. Analyzer/dart_style remain development
+  dependencies. Generated consumers execute migrations, linked CRUD, revisions,
+  queries, relationships, nullable assigned keys and export/reopen flows.
+- Native migration cross-open exposed invalid engine ADD COLUMN SQL after table
+  constraints. Insert new declarations before the first table constraint using
+  parsed delimiter offsets; preserve comments/quoted punctuation and accept
+  quoted keyword column names. Six regressions and the expanded native schema
+  corpus verify physical images and errors in all three encodings.
+- Verification: 9,638 engine, 155 ORM and 48 generator tests pass. All-package
+  locked installs, formatting (160 Dart files), fatal-info analysis and all 23
+  existing fixture checksums pass. CI now tests every package and compiles/runs
+  the ORM JavaScript smoke. Current local JavaScript execution uses Node 24.19.0;
+  browser storage/platform durability remains M9.
+- Pinned native gates pass 847 schema snapshots per encoding (2,541 total), 672
+  bound ORM query comparisons, 27 ORM CRUD/schema comparisons with three native
+  write continuations, and 123 migration operations/21 cross-open snapshots with
+  three additional continuations. Compiled JavaScript exercises full signed64
+  keys, linked CRUD, blob tracking/revisions and relationship loads in memory.
+- M7 closes for the documented API and supported generator shapes. Custom
+  codecs/composite relationships and unsupported generator model shapes use
+  manual metadata. M8 extensions and M9 browser/platform/performance/release
+  gates remain open; no all-milestones or release-ready claim is made.
