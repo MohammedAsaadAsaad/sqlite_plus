@@ -1282,3 +1282,20 @@ result=pass
 - This is a documentation change. No package test was re-run for it. The
   compatibility matrix is unchanged. Publication still waits for an explicit
   request. M9 stays unchecked. Item 108 stays open.
+
+## 2026-10-27 — README tables and an Android emulator probe
+
+- The repository README, the three package READMEs, and the three example
+  READMEs were reorganized around tables: package roles, example output, SQL
+  surface, ORM calls, generator mappings, and the planned follow-up.
+- Flutter 3.47.8 (Dart 3.13.7) built a debug APK that imports `sqlite_plus`
+  and `sqlite_plus_orm`. It ran on emulator 37.2.12.0, image
+  `system-images;android-35;aosp_atd;x86_64`, Android 15, ABI `x86_64`.
+  Nested KVM raised `kvm_arch_vcpu_create`, so the emulator used `-accel off`.
+- The logcat line at 2026-10-27 18:04:23.330 is stored in
+  `packages/sqlite_plus/tool/android_probe_api35_x86_64.log`. Memory SQL,
+  the ORM revision save, and `DatabaseOwner` on the app cache path all
+  returned the values in that file.
+- `flutter build ios` is not a subcommand of Flutter 3.47.8 on this Linux
+  host. No iOS simulator ran. M9 stays unchecked. Item 108 stays open.
+  Nothing was uploaded to pub.dev.

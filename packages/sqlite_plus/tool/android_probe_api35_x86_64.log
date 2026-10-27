@@ -1,0 +1,15 @@
+host=linux_x64
+flutter=3.47.8
+flutter_revision=737ba8f885dc774b53b442759999a312c9461e4e
+dart=3.13.7
+emulator=37.2.12.0
+image=system-images;android-35;aosp_atd;x86_64
+accel=off
+sdk=35
+release=15
+abi=x86_64
+model=Android ATD built for x86_64
+fingerprint=Android/sdk_slim_x86_64/emu64x:15/AE3A.240806.019/12368160:userdebug/test-keys
+apk=debug
+logcat_time=2026-10-27 18:04:23.330
+SQLITE_PLUS_ANDROID memory cards=1 title=Kept Garden pages=320 highlight=a garden [kept] in the margin rankFinite=true place=1 version=7 reopen=7 bytes=40960 | orm insert=2 update=1 idle=0 title=Kept Garden Revised revision=1 | file version=7 title=Kept Garden path=/data/user/0/com.example.sqlite_plus_android_probe/code_cache/sqlite-plus-android-IUFUWD/library.db

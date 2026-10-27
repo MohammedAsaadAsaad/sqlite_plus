@@ -1,8 +1,10 @@
 # sqlite_plus_generator
 
-A development-time generator for `sqlite_plus_orm`. It reads Dart classes and writes the runtime mappings: columns, codecs, keys, revisions, relationships, JSON `path`, FTS5 `search`, and R-tree `bounds`. The generated application depends on `sqlite_plus_orm`. The analyzer stays in this development tool.
+A development-time generator for `sqlite_plus_orm`. It reads Dart classes and writes columns, codecs, keys, revisions, relationships, JSON `path`, FTS5 `search`, and R-tree `bounds`. The generated application depends on `sqlite_plus_orm`. The analyzer stays in this development tool.
 
-Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request. Until then:
+Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request.
+
+## Install
 
 ```yaml
 dev_dependencies:
@@ -13,37 +15,53 @@ dev_dependencies:
       ref: main
 ```
 
+The source file imports `sqlite_plus_orm` and declares `part 'models.orm.g.dart';`.
+
+| Command | Effect |
+|---|---|
+| `dart run sqlite_plus_generator --input lib/models.dart` | Write the part |
+| `--class Customer --class Purchase` | Map only those classes |
+| `--output lib/models.orm.g.dart` | Set the part path |
+| `--check` | Compare the part with the file on disk |
+
+From this package directory:
+
 ```sh
-dart run sqlite_plus_generator --input lib/models.dart
-dart run sqlite_plus_generator --input lib/models.dart --check
+dart run bin/sqlite_plus_generator.dart --input example/lib/models.dart --check
 ```
 
-## What one run writes
+## What one class becomes
 
-From a concrete public class the generator writes:
+| You write | The part contains |
+|---|---|
+| A concrete public class | `EntityType`, columns, `filter`, `orderByFields` |
+| `id` or `<ClassName>Id` | The primary key |
+| `@DbColumn` | The SQL name |
+| `@DbIgnore` | The field left out of the table |
+| `@DbKey` | Key order, or `generated: true` |
+| `@DbVersion()` | The revision column |
+| `<Parent>Id` or `@DbReference` | `reference` and `collection` |
+| `@DbJson()` on one `String` | `path(String path)` |
+| `@DbEntity(module: 'fts5')` | `USING fts5` and `search(String text)` |
+| `@DbEntity(module: 'rtree')` | `USING rtree` and `bounds` |
 
-- an `EntityType` and a column list, with SQL names taken from the Dart names unless `@DbColumn` says otherwise
-- a constructor call that rebuilds the object from a row, and an `applyStoreValues` path for tracked updates
-- `filter` and `orderByFields` on the query, so comparisons stay in Dart
-- a relationship when a field is `<Parent>Id` or carries `@DbReference`
-- `path(String path)` when one `String` field carries `@DbJson`
-- `search(String text)` when `@DbEntity(module: 'fts5')` marks the class
-- `bounds` when `@DbEntity(module: 'rtree')` marks the class
+SQL names default to the exact Dart names. Annotations resolve by type identity and accept an import prefix. The write is deterministic, formatted, and replaced through a unique temporary file. Hand-written files and symbolic links stay in place.
 
-`--check` compares that output with the file on disk and writes nothing. The write itself is deterministic, formatted, and replaced through a unique temporary file.
+## The library
 
-## The model
+`example/lib/models.dart` is the checked-in input. `example/lib/models.orm.g.dart` is the checked-in part.
 
-`example/lib/models.dart` is a complete library: a customer with a generated key and a revision, a purchase that points at the customer, a JSON note, an FTS5 article, and an R-tree place.
+| Class | Shape | Generated read |
+|---|---|---|
+| `Customer` | Generated `BigInt? id`, `name`, `@DbVersion() revision` | Relationship target |
+| `Purchase` | Mutable `id`, `customerId`, `total` | `filter((row) => row.total > 20.0)` |
+| `Note` | `@DbJson() document` | `path(r'$.title')` |
+| `Article` | `@DbEntity(module: 'fts5')`, `@DbKey(generated: true) rowid`, `body` | `search('kept')` |
+| `Place` | `@DbEntity(module: 'rtree')`, integer `id`, four doubles | `bounds.intersects` |
 
 ```dart
-import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
-
-part 'models.orm.g.dart';
-
 class Customer {
   Customer({this.id, required this.name, this.revision = 0});
-
   final BigInt? id;
   final String name;
   @DbVersion()
@@ -52,7 +70,6 @@ class Customer {
 
 class Purchase {
   Purchase({this.id, this.customerId, required this.total});
-
   BigInt? id;
   BigInt? customerId;
   double total;
@@ -60,7 +77,6 @@ class Purchase {
 
 class Note {
   Note({this.id, required this.document});
-
   final BigInt? id;
   @DbJson()
   final String document;
@@ -69,7 +85,6 @@ class Note {
 @DbEntity(module: 'fts5')
 class Article {
   Article({this.rowid, required this.body});
-
   @DbKey(generated: true)
   final BigInt? rowid;
   final String body;
@@ -84,72 +99,44 @@ class Place {
     required this.minY,
     required this.maxY,
   });
-
   final BigInt id;
-  final double minX;
-  final double maxX;
-  final double minY;
-  final double maxY;
+  final double minX, maxX, minY, maxY;
 }
 ```
 
-`Customer.id` follows the `id` convention and is a generated `BigInt` key. `Purchase.customerId` is the customer relationship. `Note.document` emits `path`. The article key is `rowid`, which FTS5 requires, and the content column is `body`. The place key is the integer `id`, followed by the four doubles the R-tree module stores.
+`Purchase.customerId` becomes `PurchaseRelationships.customer`. The FTS key is `rowid`. The R-tree key is the integer `id`, followed by `minX`, `maxX`, `minY`, and `maxY`.
 
-## The application
+## Ten rows, four reads
 
-`example/lib/library_app.dart` imports `sqlite_plus_orm` and `models.dart`. It opens memory, ensures the schema, and saves ten rows: one customer, three purchases, two notes, two articles, and two places. The purchase is linked before the save, so the foreign key is written with the row.
+`example/lib/library_app.dart` imports the ORM and `models.dart`. It opens memory, calls `ensureCreated`, and saves one customer, three purchases, two notes, two articles, and two places.
+
+| Read | Stored values | Result |
+|---|---|---|
+| `filter((row) => row.total > 20.0)` then `orderByFields` | `22.5`, `4`, `30` | `[22.5, 30.0]`, count `2` |
+| `path(r'$.title').equalTo('kept')` | `kept`, `other` | `{"title":"kept"}` |
+| `search('kept')` | `alpha kept`, `beta lost` | `alpha kept` |
+| `bounds.intersects` on the unit box | place `1` and place `2` | place `1` of `2` |
+| `reference(...).load()` | purchase linked to `Ada` | `Ada` |
+| Second `migrations.plan()` | schema matches `generatedModel` | empty |
+
+`saveChanges` returns `10`.
 
 ```dart
-final connection = await MutableDatabaseConnection.openMemory();
-final context = DbContext(connection, generatedModel);
-await context.migrations.ensureCreated();
-
-final customers = context.set(CustomerMapping.instance);
-final purchases = context.set(PurchaseMapping.instance);
-final notes = context.set(NoteMapping.instance);
-final articles = context.set(ArticleMapping.instance);
-final places = context.set(PlaceMapping.instance);
-
-final customer = customers.add(Customer(name: 'Ada'));
-final purchase = purchases.add(Purchase(total: 22.5));
-purchases.add(Purchase(total: 4));
-purchases.add(Purchase(total: 30));
-purchase.reference(PurchaseRelationships.customer).set(customer);
-notes.add(Note(document: '{"title":"kept"}'));
-notes.add(Note(document: '{"title":"other"}'));
-articles.add(Article(body: 'alpha kept'));
-articles.add(Article(body: 'beta lost'));
-places.add(Place(id: BigInt.one, minX: 0, maxX: 1, minY: 0, maxY: 1));
-places.add(Place(id: BigInt.two, minX: 5, maxX: 6, minY: 5, maxY: 6));
-await context.saveChanges(); // 10
-
 final matched = purchases.query
     .filter((row) => row.total > 20.0)
     .orderByFields((row) => [row.total.ascending]);
-final rows = await matched.toList(); // totals 22.5, then 30.0
-final matchCount = await matched.count(); // BigInt.two
-
 final note = (await NoteQuery(notes.query)
         .filter((row) => row.path(r'$.title').equalTo('kept'))
         .toList())
     .single;
-// note.document == '{"title":"kept"}'
-
 final article =
     (await ArticleQuery(articles.query).search('kept').toList()).single;
-// article.body == 'alpha kept'
-
 final inside = await PlaceQuery(places.query)
     .filter((row) => row.bounds.intersects(
         const Rect(minX: 0, minY: 0, maxX: 1, maxY: 1)))
     .toList();
-// inside.single.id == BigInt.one, and places.query.count() == BigInt.two
-
 final buyer = await purchase.reference(PurchaseRelationships.customer).load();
-// buyer?.name == 'Ada'
 ```
-
-`filter((row) => row.total > 20.0)` is a generated predicate. The comparison is SQL, and `20.0` is a bound parameter. `path(r'$.title')` is `json_extract` with the path bound. `search('kept')` is `MATCH` ordered by rank. `bounds.intersects` is the four R-tree comparisons. `load()` returns the tracked customer.
 
 From a checkout, after `dart pub get` at the repository root:
 
@@ -159,45 +146,38 @@ dart run sqlite_plus_generator --input lib/models.dart --check
 dart run bin/main.dart
 ```
 
-The program prints:
-
 ```text
 Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2
 ```
 
-`example/test/library_app_test.dart` expects customer `Ada`, totals `22.5` then `30.0`, note `{"title":"kept"}`, article `alpha kept`, place id `1` of two stored places, and an empty second migration plan. `example/lib/models.dart` passes `--check`. `models.orm.g.dart` is checked in.
+## Field rules
 
-## Command line
+| Field | Accepted |
+|---|---|
+| `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, `DateTime` | Yes, including nullable aliases |
+| Constructor | Must be able to rebuild persisted state |
+| Mutable field | Assigned after construction |
+| Immutable generated key | Reconstructed after save |
+| Nullable assigned key | A non-null value when the entity is tracked |
+| Composite key | Yes |
+| Composite relationship, custom codec, index | Manual metadata on `sqlite_plus_orm` |
 
-The executable name is `sqlite_plus_generator`.
+| Diagnostic | Examples |
+|---|---|
+| Located, before any write | Generic, inherited, or mixin storage |
+| Located, before any write | Collection fields, unsupported types, ambiguous constructors, unmappable final state |
 
-```sh
-dart run sqlite_plus_generator --input lib/models.dart
-dart run sqlite_plus_generator --input lib/models.dart --class Customer --class Purchase
-dart run sqlite_plus_generator --input lib/models.dart --output lib/models.orm.g.dart
-dart run sqlite_plus_generator --input lib/models.dart --check
-```
+Tests cover golden output, conventions, annotations, aliases, constructors, diagnostics, CLI ownership, and compiled consumers. Those consumers run migrations, linked CRUD, revisions, queries, relationships, and a reopen. Analyzer `6.4.1` and `dart_style` `2.3.6` are pinned. The ORM runtime depends on `sqlite_plus`.
 
-Repeated `--class` selects classes. `--output` sets the part path. `--check` fails when the part would change. From this package directory the repository example is:
+## Where the generated code runs
 
-```sh
-dart run bin/sqlite_plus_generator.dart --input example/lib/models.dart --check
-```
-
-The source file imports `sqlite_plus_orm` and declares `part 'models.orm.g.dart';`.
-
-## Conventions
-
-Concrete public classes with `id` or `<ClassName>Id` are mapped. SQL names default to the exact Dart names. Optional `@DbEntity`, `@DbColumn`, `@DbIgnore`, `@DbKey`, `@DbVersion`, `@DbJson`, and `@DbReference` override those conventions. Annotations resolve by type identity and accept an import prefix.
-
-`@DbReference.column` names a target Dart property. Without it, the target needs one primary key. `@DbJson()` on one `String` field emits `path`. `@DbEntity(module: 'fts5')` needs a `rowid` key and `String` content columns, and emits `search`. `@DbEntity(module: 'rtree')` needs an integer key first and `double` `minX`, `maxX`, `minY`, and `maxY`, and emits `bounds`.
-
-Supported fields are `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, `DateTime`, and nullable aliases of those types. Constructors must map persisted state. Mutable fields can be assigned after construction. Immutable generated keys reconstruct the entry value after save. Nullable assigned keys still require a non-null value when an entity is tracked. Composite keys are supported. Composite relationships, custom codecs, indexes, and unsupported model shapes use manual metadata on `sqlite_plus_orm`.
-
-Generic storage, inherited storage, mixin storage, unsupported types, collection fields, ambiguous constructors, and unmappable final state produce located diagnostics. The generator validates every selected model before it writes. Hand-written files and symbolic links stay in place. `--check` compares the part with the file on disk.
-
-Tests cover golden output, conventions, annotations, aliases, constructors, negative diagnostics, CLI ownership and staleness, and compiled generated consumers. Those consumers run migrations, linked CRUD, revisions, queries, relationships, and a reopen. Analyzer `6.4.1` and `dart_style` `2.3.6` are pinned for the tested SDK. They are generator dependencies. The ORM runtime depends on `sqlite_plus`.
+The generator stays on the development machine. The ORM runtime it writes was executed on Android 15, API 35, `x86_64`: two inserts, one revision update, and an idle save of `0`. The line is `packages/sqlite_plus/tool/android_probe_api35_x86_64.log`. An iOS simulator run is planned.
 
 ## Planned
 
-The generator follows the engine and ORM plan: a durable browser store, Android, iOS, and the wider SQL surface of `json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable two-database commit, more journal modes, extended FTS, and ICU and locale collations. Benchmarks at 100000 and 1000000 rows are planned.
+| Area | Next |
+|---|---|
+| Storage | A durable browser store |
+| Platforms | iOS |
+| SQL | `json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable two-database commit, more journal modes, extended FTS, ICU and locale collations |
+| Scale | Benchmarks at 100000 and 1000000 rows |

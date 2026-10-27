@@ -2,178 +2,20 @@
 
 A Pure Dart SQLite engine, a typed ORM, and a mapping generator. SQL, JSON, FTS5, R-tree, change tracking, and generated filters run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request. Until then, each package README shows a git dependency.
+Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request.
 
-| Package | You write | You get |
+## Packages
+
+| Package | Import | What you get |
 |---|---|---|
-| [`sqlite_plus`](packages/sqlite_plus) | SQL, bound parameters, and Dart callbacks | Joins, CTEs, windows, UPSERT, triggers, JSON, FTS5, R-tree, geopoly, and a reopenable database image |
-| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Columns, predicates, and entity objects | Tracked saves, revisions, JSON paths, relationships, and reviewed migrations |
-| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Ordinary Dart classes | Mappings, `filter`, JSON `path`, FTS `search`, and R-tree `bounds` |
+| [`sqlite_plus`](packages/sqlite_plus) | `package:sqlite_plus/sqlite_plus.dart` | In-memory SQL, JSON, FTS5, R-tree, geopoly, and `exportImage` |
+| File adapter | `package:sqlite_plus/sqlite_plus_io.dart` | `DatabaseOwner` for a `dart:io` file |
+| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | `package:sqlite_plus_orm/sqlite_plus_orm.dart` | Tracked objects, bound predicates, relationships, reviewed migrations |
+| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | dev dependency `sqlite_plus_generator` | `filter`, JSON `path`, FTS `search`, R-tree `bounds` |
 
-Each package has an example project under `example/`. The examples are workspace members and stay in the repository.
+The file adapter imports `dart:io`. The other two libraries do not. The generator runs on the development machine. The application it writes depends on the ORM.
 
-## A generated library
-
-`sqlite_plus_generator` reads the classes in `packages/sqlite_plus_generator/example/lib/models.dart` and writes `models.orm.g.dart`. The application imports `sqlite_plus_orm` and the model. The runtime writes the SQL.
-
-```dart
-class Customer {
-  Customer({this.id, required this.name, this.revision = 0});
-
-  final BigInt? id;
-  final String name;
-  @DbVersion()
-  final int revision;
-}
-
-class Purchase {
-  Purchase({this.id, this.customerId, required this.total});
-
-  BigInt? id;
-  BigInt? customerId;
-  double total;
-}
-
-class Note {
-  Note({this.id, required this.document});
-
-  final BigInt? id;
-  @DbJson()
-  final String document;
-}
-
-@DbEntity(module: 'fts5')
-class Article {
-  Article({this.rowid, required this.body});
-
-  @DbKey(generated: true)
-  final BigInt? rowid;
-  final String body;
-}
-
-@DbEntity(module: 'rtree')
-class Place {
-  Place({
-    required this.id,
-    required this.minX,
-    required this.maxX,
-    required this.minY,
-    required this.maxY,
-  });
-
-  final BigInt id;
-  final double minX, maxX, minY, maxY;
-}
-```
-
-`packages/sqlite_plus_generator/example/lib/library_app.dart` saves one customer, three purchases, two notes, two articles, and two places. That is ten rows. It then keeps the purchases above 20, the JSON note whose title is `kept`, the FTS article matching `kept`, and the place that intersects the unit box. The purchase points at the customer, and the load returns that same object.
-
-```dart
-final customer = customers.add(Customer(name: 'Ada'));
-final purchase = purchases.add(Purchase(total: 22.5));
-purchases.add(Purchase(total: 4));
-purchases.add(Purchase(total: 30));
-purchase.reference(PurchaseRelationships.customer).set(customer);
-notes.add(Note(document: '{"title":"kept"}'));
-notes.add(Note(document: '{"title":"other"}'));
-articles.add(Article(body: 'alpha kept'));
-articles.add(Article(body: 'beta lost'));
-places.add(Place(id: BigInt.one, minX: 0, maxX: 1, minY: 0, maxY: 1));
-places.add(Place(id: BigInt.two, minX: 5, maxX: 6, minY: 5, maxY: 6));
-await context.saveChanges(); // 10
-
-final rows = await purchases.query
-    .filter((row) => row.total > 20.0)
-    .orderByFields((row) => [row.total.ascending])
-    .toList();
-final note = (await NoteQuery(notes.query)
-        .filter((row) => row.path(r'$.title').equalTo('kept'))
-        .toList())
-    .single;
-final article =
-    (await ArticleQuery(articles.query).search('kept').toList()).single;
-final inside = await PlaceQuery(places.query)
-    .filter((row) => row.bounds
-        .intersects(const Rect(minX: 0, minY: 0, maxX: 1, maxY: 1)))
-    .toList();
-final buyer = await purchase.reference(PurchaseRelationships.customer).load();
-```
-
-The example prints:
-
-```text
-Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2
-```
-
-The second migration plan is empty. The full classes, the save, and the checks live in the [generator package](packages/sqlite_plus_generator) and its [example](packages/sqlite_plus_generator/example).
-
-## SQL, JSON, FTS5, and R-tree in one image
-
-`sqlite_plus` is the engine those mappings call. `packages/sqlite_plus/example/lib/library_tour.dart` builds one in-memory library:
-
-- two cards inserted with bound `json_object` arguments
-- a third insert inside `BEGIN` … `ROLLBACK`, so `COUNT(*)` stays `2`
-- `json_extract` with a bound path, returning the title `Kept Garden` and the page count `320`
-- an FTS5 table, `highlight`, and `bm25` for the token `kept`
-- a second `MATCH` on an Arabic token, returning `Arabic Shelf` once
-- an R-tree query that returns shelf `1` from the unit box and leaves shelf `2` outside it
-- `PRAGMA user_version=7`, then `exportImage` and `fromImage`
-
-The reopened image still has the title `Kept Garden` and version `7`. The example prints:
-
-```text
-Kept Garden (320 pages) | a garden [kept] in the margin | Arabic Shelf x1 | place 1 | cards 2 | version 7 | reopen Kept Garden v7 | 40960 bytes
-```
-
-The same process can register a Dart function and call it from SQL:
-
-```dart
-final db = await MutableSqliteDatabase.create();
-db.functions.registerScalar('twice', 1,
-    (args) => args.single == null ? null : (args.single as BigInt) * BigInt.two);
-final result = await db.query('SELECT twice(?)', [21]);
-```
-
-`twice(21)` is `42`. Callbacks stay on that connection. The [engine README](packages/sqlite_plus) lists the SQL surface and walks through the tour.
-
-## Typed saves with no SQL in the application
-
-`sqlite_plus_orm` tracks objects you already hold. `packages/sqlite_plus_orm/example/lib/reading_log.dart` maps a `Book`, saves two of them, renames one, and reads it back by title and by a JSON shelf path. The renamed book moves to revision `1`. The other stays at revision `0`. A later save with no edits returns `0`.
-
-```dart
-book.title = 'Kept Garden Revised';
-await context.saveChanges(); // 1
-final kept = books.query.where(_bookTitle.eq('Kept Garden Revised') &
-    MappedField(_bookNote).at(r'$.shelf').equalTo('north'));
-final stored = await kept.orderBy([_bookTitle.asc()]).single();
-```
-
-The example prints:
-
-```text
-Kept Garden Revised on north, revision 1; Other Atlas stays at revision 0; 1 match; idle save 0
-```
-
-Codecs cover signed 64-bit `BigInt`, portable 53-bit `int`, finite `double`, `String`, `bool`, copied `Uint8List`, and canonical UTC `DateTime`. Relationships load explicitly. Migrations plan against the live schema, apply the safe subset, and require a reviewed statement for a rename. The [ORM README](packages/sqlite_plus_orm) has the mapping, the relationship, and the migration.
-
-## Run the three examples
-
-From a checkout:
-
-```sh
-dart pub get
-(cd packages/sqlite_plus/example && dart run bin/main.dart)
-(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)
-(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)
-```
-
-Regenerate and check the generated library from its example directory:
-
-```sh
-(cd packages/sqlite_plus_generator/example && dart run sqlite_plus_generator --input lib/models.dart --check)
-```
-
-## Depend on the git repository
+## Install
 
 ```yaml
 dependencies:
@@ -196,11 +38,124 @@ dev_dependencies:
       ref: main
 ```
 
-File databases use `package:sqlite_plus/sqlite_plus_io.dart`. That library imports `dart:io`. Browser storage is a separate path: `openBrowserStorage` reports `canRead`, `canWrite`, `durabilityPromised`, and `placement`.
+## Where to start
+
+| You want to | Open |
+|---|---|
+| Run SQL yourself | [`packages/sqlite_plus`](packages/sqlite_plus) |
+| Keep Dart objects and let the runtime write SQL | [`packages/sqlite_plus_orm`](packages/sqlite_plus_orm) |
+| Declare classes and generate the mapping | [`packages/sqlite_plus_generator`](packages/sqlite_plus_generator) |
+
+## Examples
+
+Each package has an example project under `example/`. From a checkout, after `dart pub get` at the repository root:
+
+| Example | Command | Printed line |
+|---|---|---|
+| Engine tour | `(cd packages/sqlite_plus/example && dart run bin/main.dart)` | `Kept Garden (320 pages) \| a garden [kept] in the margin \| Arabic Shelf x1 \| place 1 \| cards 2 \| version 7 \| reopen Kept Garden v7 \| 40960 bytes` |
+| Reading log | `(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)` | `Kept Garden Revised on north, revision 1; Other Atlas stays at revision 0; 1 match; idle save 0` |
+| Generated library | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` | `Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2` |
+
+Check the generated part before running the library:
+
+```sh
+(cd packages/sqlite_plus_generator/example && dart run sqlite_plus_generator --input lib/models.dart --check)
+```
+
+## Engine, in one image
+
+`packages/sqlite_plus/example/lib/library_tour.dart` builds one in-memory database. The same image is exported and opened again.
+
+| Step | Call | Result |
+|---|---|---|
+| Two JSON cards | `json_object` with bound arguments | `Kept Garden`, `320` pages |
+| Rolled-back insert | `BEGIN`, insert, `ROLLBACK` | `COUNT(*)` is `2` |
+| JSON path | `json_extract` with a bound path | title and page count from the card |
+| Full text | `fts5`, `highlight`, `bm25`, `MATCH 'kept'` | `a garden [kept] in the margin`, finite rank |
+| Unicode token | `MATCH` on an Arabic token | `Arabic Shelf`, count `1` |
+| Spatial | `rtree` unit box | shelf id `1` |
+| Reopen | `PRAGMA user_version=7`, `exportImage`, `fromImage` | title and version `7`, `40960` bytes |
+
+```dart
+final db = await MutableSqliteDatabase.create();
+db.functions.registerScalar('twice', 1,
+    (args) => args.single == null ? null : (args.single as BigInt) * BigInt.two);
+final doubled = await db.query('SELECT twice(?)', [21]);
+```
+
+`doubled` is `42`. The callback stays on that connection. The full tour is in the [engine README](packages/sqlite_plus).
+
+## ORM, with names instead of SQL
+
+`packages/sqlite_plus_orm/example/lib/reading_log.dart` maps a `Book`, saves two rows, renames one, and reads it by title and by a JSON shelf.
+
+| Step | Call | Result |
+|---|---|---|
+| Insert | `books.add` twice, `saveChanges` | `2` |
+| Rename | assign `title`, `saveChanges` | `1`, revision `1` |
+| Idle save | `saveChanges` | `0` |
+| Filter | `title.eq(...) & MappedField.at(r'$.shelf')` | `Kept Garden Revised` on `north` |
+| Other shelf | path `south` | `Other Atlas` at revision `0` |
+
+## Generated Dart
+
+`packages/sqlite_plus_generator/example/lib/models.dart` declares five classes. The application saves ten rows and reads four of them.
+
+| Class | Annotation | Generated call | Result |
+|---|---|---|---|
+| `Customer` | `@DbVersion()` | `reference(...).load()` | `Ada` |
+| `Purchase` | `customerId` | `filter((row) => row.total > 20)` | `22.5`, then `30.0` |
+| `Note` | `@DbJson()` | `path(r'$.title').equalTo('kept')` | `{"title":"kept"}` |
+| `Article` | `@DbEntity(module: 'fts5')` | `search('kept')` | `alpha kept` |
+| `Place` | `@DbEntity(module: 'rtree')` | `bounds.intersects(unit rect)` | place `1` of `2` |
+
+```dart
+final rows = await purchases.query
+    .filter((row) => row.total > 20.0)
+    .orderByFields((row) => [row.total.ascending])
+    .toList();
+```
+
+## SQL surface
+
+| Area | Available |
+|---|---|
+| Queries | `INNER` `LEFT` `RIGHT` `FULL` `CROSS` `NATURAL` joins, subqueries, `EXISTS`, `IN`, `UNION` `INTERSECT` `EXCEPT`, CTEs, `GROUP BY`, `HAVING` |
+| Windows | `ROW_NUMBER` `RANK` `DENSE_RANK` `PERCENT_RANK` `CUME_DIST` `NTILE` `LAG` `LEAD` `FIRST_VALUE` `LAST_VALUE` `NTH_VALUE` |
+| Writes | `INSERT` `UPDATE` `DELETE`, multi-row `VALUES`, `OR IGNORE` `REPLACE` `FAIL` `ROLLBACK`, `ON CONFLICT`, `RETURNING`, `BEGIN` `COMMIT` `ROLLBACK`, savepoints |
+| Schema | Tables, indexes, views, triggers, `ALTER TABLE`, `CHECK`, `STRICT`, foreign keys, expression and partial indexes, generated columns |
+| JSON | `json` `jsonb` `json_array` `json_extract` `json_object` `json_set` `json_patch` and the rest of that family, plus `->` and `->>` |
+| Search | FTS5 `MATCH` `highlight` `snippet` `bm25`, R-tree, geopoly, `generate_series` |
+| Values | `BigInt` integers, bound `?` `:name` `@name` `$name`, `DATE` `TIME` `DATETIME` `STRFTIME`, math, `median`, `percentile` |
+| Your code | `registerScalar`, `registerAggregate`, `createCollation` |
+
+`docs/REFERENCE.md` is the statement reference. `docs/ENGINE_SUPPORT.md` is the baseline behind this table.
+
+## Android
+
+A debug APK ran on an Android 15 emulator, API 35, `x86_64`, with Flutter 3.47.8 and Dart 3.13.7. The log is `packages/sqlite_plus/tool/android_probe_api35_x86_64.log`.
+
+| Check | Result |
+|---|---|
+| Memory SQL | JSON card `Kept Garden` / `320`, FTS5 highlight, finite `bm25`, R-tree id `1`, `user_version` `7` after reopen, `40960` bytes |
+| ORM | insert `2`, update `1`, idle `0`, title `Kept Garden Revised`, revision `1` |
+| File | `DatabaseOwner` in the app cache, version `7`, title `Kept Garden` |
+
+An iOS simulator run is planned.
 
 ## Planned
 
-The next engine work adds `json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable commit across two databases, and more journal modes. The FTS plan adds multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes. ICU and locale collations are planned. A durable browser store, Android, iOS, power-loss durability, and benchmarks at 100000 and 1000000 rows are planned. The Linux AOT file `benchmark_results/scenarios_10k_linux_x64.json` is the current 10000-row measurement. `COMPATIBILITY_MATRIX.md` is the test record.
+| Area | Next |
+|---|---|
+| JSON | `json_pretty`, correlated `json_each` |
+| Planner | EXPLAIN bytecode, STAT4, `auto_vacuum` |
+| Durability | A durable commit across two databases, more journal modes, power-loss durability, a durable browser store |
+| FTS | Multi-page leaves, porter, trigram, detail, tokendata, locale, FTS3/FTS4 writes |
+| Collations | ICU and locale collations |
+| Platforms | iOS |
+| Scale | Benchmarks at 100000 and 1000000 rows |
+
+The current measurement is the 10000-row Linux AOT file `benchmark_results/scenarios_10k_linux_x64.json`. `COMPATIBILITY_MATRIX.md` is the test record.
 
 ## Develop
 
@@ -216,6 +171,4 @@ for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator; do
 done
 ```
 
-The Linux GitHub job runs every `tool/generate_*.py --verify` script. A checksum mismatch fails that job. Those scripts do not execute SQLite in `--verify` mode. The macOS and Windows jobs run format, fatal-info analysis, package tests, and the example project check.
-
-`docs/REFERENCE.md` is the format and SQL reference. `docs/ENGINE_SUPPORT.md` is the current baseline and the planned follow-up. `CHANGELOG.md` records this version.
+The Linux GitHub job runs every `tool/generate_*.py --verify` script. A checksum mismatch fails that job. Those scripts compare fixture hashes. The macOS and Windows jobs run format, fatal-info analysis, package tests, and the example project check. `CHANGELOG.md` records this version.
