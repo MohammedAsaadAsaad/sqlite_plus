@@ -1034,10 +1034,10 @@
   items 51–76 contracts are unchanged. M8 stays checked for its earlier
   subset only. M9 stays open. Items 83–108 were not started. macOS, Windows,
   Android, iOS, and Chrome were not run.
-- Verification on Dart 3.13.7/Linux x64 before the full-suite reprint:
-  format and fatal-info analysis on the changed packages, 8 tests in
-  `browser_storage_test`, 2 tests in `browser_connection_test`, and a
-  successful compile of `tool/browser_storage_compile.dart`. The previous
-  full-suite counts remain 10,488 engine and 163 ORM tests until this
-  revision reprints them. Generator tests were not re-run. Native schema,
-  journal, and WAL oracles were not re-run.
+- Verification on Dart 3.13.7/Linux x64: format, fatal-info analysis,
+  10,496 engine tests, and 165 ORM tests pass. That includes 8 tests in
+  `browser_storage_test` and 2 tests in `browser_connection_test`.
+  `dart compile js tool/browser_storage_compile.dart` succeeded. The compiled
+  JavaScript was not executed. Generator tests were not re-run. Native
+  schema, journal, and WAL oracles were not re-run. Chrome, macOS, Windows,
+  Android, and iOS were not run.
