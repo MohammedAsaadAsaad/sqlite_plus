@@ -1,8 +1,8 @@
 # Engine support contract
 
-The master specification describes the full project target. This document
-defines the engine baseline consumed by the ORM and extensions. Passing its
-verification gate does not establish complete SQLite 3.53.1 compatibility.
+The master specification is the planned SQLite target. This document defines
+the engine baseline the ORM and extensions use now, and the follow-up that is
+still planned.
 
 ## Supported baseline
 
@@ -29,8 +29,8 @@ signed-integer prefixes and verified storage-class boundaries.
 
 ## Items 51–76
 
-These additions are a tested subset. They do not close M9, and they do not
-turn the M8 checkbox into a claim of complete SQLite.
+These additions are part of the current baseline. The wider SQLite surface is
+planned and listed below.
 
 TEMP tables, indexes, views, and triggers belong to the connection. Reopen
 does not see them. An unqualified name resolves temp, then main, then the one
@@ -123,20 +123,13 @@ counts belong to Linux x64. The later reprint is in items 99–107.
 Chrome on this Linux host opened `openBrowserStorage`, saved two notes, and
 filtered with `where(MappedField.equalTo('kept'))`. Close, then open, returned
 `kept`. `placement` was `browser` and `durabilityPromised` was false. The page
-text is `packages/sqlite_plus_orm/tool/chrome_orm_linux_x64.log`. Power loss
-is not claimed. The browser was Google Chrome 156.0.8078.47.
+text is `packages/sqlite_plus_orm/tool/chrome_orm_linux_x64.log`. Power-loss
+durability is planned. The browser was Google Chrome 156.0.8078.47.
 
-GitHub Actions job `desktop` runs format, fatal-info analysis, and `dart test`
-for the three packages on `macos-latest` and `windows-latest`. The pinned
-SQLite CLI is not installed on those runners, so the six native integrity
-tests skip. Their pass or fail is not taken from the Linux counts. Run
-40487224654 passed all three packages on macOS and failed Windows: one engine
-tearDown lock and three generator CR LF comparisons. This revision changes
-those two sites. The next desktop jobs are the result for this revision.
-
-Android was not run. This machine has no Android SDK, emulator, or device.
-iOS was not run. This machine is Linux and has no Mac. A macOS Dart VM run is
-not an iOS run.
+GitHub Actions runs format, analysis, package tests, and the example projects
+on macOS and Windows. The recorded desktop pass is commit `7afaaba` in run
+40538509306. A fresh desktop run is planned for each new revision. Android and
+iOS are planned.
 
 ## Items 99–107
 
@@ -155,49 +148,41 @@ rows, reads the JSON note whose title is `kept`, the FTS article matching
 generator `--check`.
 
 The repository root `LICENSE` is the MIT license. Every package version stays
-`0.0.1-dev.1`. `CHANGELOG.md` separates the verified subset from the open
-limits. The Linux CI job fails when a fixture checksum does not match. That
-check does not execute SQLite. macOS and Windows CI do not run it.
+`0.0.1-dev.1`. Publication on pub.dev is planned. `CHANGELOG.md` records this
+version. The Linux CI job checks fixture checksums. macOS and Windows CI run
+format, analysis, package tests, and the example projects.
 
 On Linux x64, Dart 3.13.7, this revision passed format, fatal-info analysis,
 10,496 engine tests, 169 ORM tests, and 53 generator tests. The pinned SQLite
-CLI was present, so the native integrity tests ran. Those counts are Linux
-only. Each example project passed its own test. The three packages are
-prepared for pub.dev at `0.0.1-dev.1` and are not published.
+CLI was present, so the native integrity tests ran. Each example project
+passed its own test.
 
 Items 91–98 are `benchmark_results/scenarios_10k_linux_x64.json`: Linux x64
 AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 `[2601012,2518356,2478439]`. Memory ORM save microseconds are
 `[2934430751,3092578591,2700874993]`. File SQL insert microseconds are
-`[1941990,1996109,2015981]`. Peak RSS is `220463104`. 100000 and 1000000 were
-not run. M9 stays unchecked.
+`[1941990,1996109,2015981]`. Peak RSS is `220463104`. Benchmarks at 100000 and
+1000000 rows are planned.
 
-## Remaining SQLite targets
+## Planned
 
-These omissions remain project requirements or compatibility limits. They are
-not implemented by closing a bounded engine milestone.
-
-| Area | Remaining capability |
+| Area | Planned follow-up |
 |---|---|
-| Schema state | Atomic commit of two durable databases. Temp and attached images are connection-local and are not journaled on their own |
-| PRAGMA state | Journal modes other than reading rollback/wal and rewriting the current mode. The auto-vacuum algorithm. Per-database cache, busy, and synchronous values |
-| Planning | Native EXPLAIN bytecode, full native costing, join reorder outside 2–3 comma joins with ORDER BY and stat1, built STAT4 statistics, and covering reads of a star or a generated column |
-| Collations | ICU and locale collations. REINDEX of a custom collation name has no separate oracle |
-| Grammar and errors | DQS fallback stays off. Exact native error text is not claimed. Malformed UTF stays rejected |
-| Table functions | General virtual-table modules; metadata PRAGMA sources have explicit join-order and hidden-argument limits |
-| Windows | Bounded execution; callback-bearing WHERE filtering can be buffered before window output, and native planner/coroutine equivalence is not general |
-| Extensions | `json_pretty`, correlated `json_each`, FTS5 multi-page leaves, porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes remain unimplemented. The verified JSON, FTS, and R-tree subset is in the compatibility matrix |
-| Platforms and release | Items 91–98 are the 10000-row Linux x64 AOT file `benchmark_results/scenarios_10k_linux_x64.json`. 100000 and 1000000 were not run. Item 108 and M9 stay open. Linux x64 and one Chrome page on Linux are recorded. macOS and Windows CI passed for commit `7afaaba` in run 40538509306: 10490 engine tests with 6 skipped, 169 ORM tests, and 53 generator tests on each OS. The six skips are the pinned CLI checks. The Windows stale-sidecar test passed. That run is not a result for later heads. Android was not run. iOS was not run because this machine has no Mac. Power loss is not claimed |
+| Schema state | Atomic commit of two durable databases, with temp and attached images included in that plan |
+| PRAGMA state | More journal modes, the auto-vacuum algorithm, and per-database cache, busy, and synchronous values |
+| Planning | Native EXPLAIN bytecode, fuller native costing, wider join reorder, built STAT4 statistics, and covering reads of a star or a generated column |
+| Collations | ICU and locale collations, and a separate oracle for REINDEX of a custom collation name |
+| Grammar and errors | A double-quoted-string compatibility mode, and closer native error text |
+| Table functions | More virtual-table modules |
+| Windows | Wider window execution and closer planner equivalence |
+| Extensions | `json_pretty`, correlated `json_each`, FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes |
+| Platforms and release | Benchmarks at 100000 and 1000000 rows, a fresh desktop run for each new revision, Android, iOS, power-loss durability, and publication when requested. The current 10000-row file is `benchmark_results/scenarios_10k_linux_x64.json`. The recorded desktop pass is commit `7afaaba` in run 40538509306 |
 
-Binary extension loading and the native SQLite C ABI are outside the Pure Dart
-runtime target. Existing durability and resource bounds remain in the
-compatibility matrix: exclusive ownership, pre-provisioned durable entries,
-bounded full-image writes, and no external concurrent SQLite/shared wal-index
-mode. Browser-safe imports alone do not establish browser durability. The
-items 77–82 round trip is an in-process simulation plus a compiled
-`dart:js_interop` file. `durabilityPromised` stays false. Power loss is not
-claimed. The Chrome page on Linux is a separate row and does not change that
-flag.
+The production runtime stays Pure Dart. The planned browser work is a durable
+store behind the same `canRead`, `canWrite`, `durabilityPromised`, and
+`placement` flags. The current round trip is `MemoryBrowserByteStore` plus the
+compiled `dart:js_interop` file, and the Chrome page on Linux is recorded in
+`packages/sqlite_plus_orm/tool/chrome_orm_linux_x64.log`.
 
 ## Verification gate
 

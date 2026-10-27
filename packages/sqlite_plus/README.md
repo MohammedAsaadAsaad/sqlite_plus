@@ -2,7 +2,7 @@
 
 A Pure Dart database engine. SQL, JSON, FTS5, and R-tree run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.0.1-dev.1` is a pre-release. It is prepared for pub.dev and is not published. Until it is published, depend on the git repository:
+Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request. Until then, depend on the git repository:
 
 ```yaml
 dependencies:
@@ -41,15 +41,10 @@ dart run bin/main.dart
 
 The tour test checks `Kept Garden`, 320 pages, `a garden [kept] in the margin`, `Arabic Shelf`, two cards after rollback, shelf id `1`, version `7` before and after `exportImage`.
 
-## Limits
+## Planned
 
-This is not a complete SQLite. The verified subset and the open limits are in the repository `COMPATIBILITY_MATRIX.md`. In particular:
+`json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable commit across two databases, and more journal modes are planned. The FTS plan adds multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes. ICU and locale collations, Android, iOS, power-loss durability, and benchmarks at 100000 and 1000000 rows are planned. The current Linux AOT file is `benchmark_results/scenarios_10k_linux_x64.json`, at 10000 rows.
 
-- DQS stays off. `json_pretty` is absent. EXPLAIN bytecode throws.
-- `auto_vacuum` writes are rejected. A statement cannot mutate two schemas.
-- Power loss is not claimed. Android and iOS were not run.
-- The 10000-row Linux AOT file is `benchmark_results/scenarios_10k_linux_x64.json` in the repository. 100000 and 1000000 rows were not run.
-
-File databases go through `package:sqlite_plus/sqlite_plus_io.dart`. That library uses `dart:io` and is not the browser import. Browser storage is a separate, unpromised surface: `durabilityPromised` stays false.
+File databases use `package:sqlite_plus/sqlite_plus_io.dart`. Browser storage reports `canRead`, `canWrite`, `durabilityPromised`, and `placement`. A durable browser store is planned.
 
 The format and SQL reference lives in the repository as `docs/REFERENCE.md`.

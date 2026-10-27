@@ -1262,3 +1262,12 @@ result=pass
   printed the tour, the reading log, and the generated library. These counts
   are Linux x64 only.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-27 — Public pages describe the follow-up as planned work
+
+- The repository README, package READMEs, example READMEs, changelogs,
+  `docs/REFERENCE.md`, and `docs/ENGINE_SUPPORT.md` describe the next SQL
+  surface, FTS extensions, collations, durable browser storage, Android, iOS,
+  power-loss durability, larger benchmarks, and publication as planned work.
+- The compatibility matrix and this log keep the test record. Publication
+  still waits for an explicit request. M9 stays unchecked. Item 108 stays open.

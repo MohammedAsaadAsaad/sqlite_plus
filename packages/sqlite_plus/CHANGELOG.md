@@ -2,8 +2,10 @@
 
 ## 0.0.1-dev.1
 
-Pre-release. This package is prepared for pub.dev and is not published.
+Pre-release `0.0.1-dev.1`. Publication on pub.dev is planned and waits for an explicit request.
 
-The engine is the Pure Dart subset recorded in the repository
-`COMPATIBILITY_MATRIX.md`. The repository `CHANGELOG.md` is the full ledger.
-M9 is open. This version is not a 1.0 release.
+The repository `CHANGELOG.md` is the full ledger. The planned follow-up is
+`json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`,
+a durable two-database commit, more journal modes, extended FTS, ICU and locale
+collations, Android, iOS, power-loss durability, and benchmarks at 100000 and
+1000000 rows.

@@ -2,7 +2,7 @@
 
 A small project for the sqlite_plus engine: bound JSON, a rolled-back transaction, FTS5, an Arabic token, an R-tree query, and reopening the exported image.
 
-This example is its own Dart project. It is a workspace member and is not published.
+This example is its own Dart project and a workspace member. It stays in the repository. Publication of the packages is planned.
 
 From a checkout, after `dart pub get` at the repository root:
 

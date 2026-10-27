@@ -2,9 +2,9 @@
 
 ## 0.0.1-dev.1
 
-Pre-release. This package is prepared for pub.dev and is not published.
+Pre-release `0.0.1-dev.1`. Publication on pub.dev is planned and waits for an explicit request.
 
-Typed queries, tracking, relationships, and reviewed migrations are the subset
-recorded in the repository `COMPATIBILITY_MATRIX.md`. The repository
-`CHANGELOG.md` is the full ledger. M9 is open. This version is not a 1.0
-release.
+Typed queries, tracking, relationships, and reviewed migrations are in this
+release. The repository `CHANGELOG.md` is the full ledger. The planned
+follow-up matches the engine plan: a durable browser store, Android, iOS, and
+the wider SQL surface.

@@ -7,9 +7,9 @@ Pure Dart SQLite-compatible engine and convention-based ORM under development.
 The engine provides byte storage, SQLite format decoding, table/index traversal,
 schema/index mutations and exclusive-owner WAL/rollback transactions. M6 adds
 relational queries, constraints, functions, window frames and index planning.
-Full SQLite compatibility and the remaining extension/platform gates are still
-targets. Production runtime
-code uses Pure Dart, without native SQLite, FFI or WASM.
+The planned target continues through the rest of the SQLite surface, the
+remaining extensions, and Android, iOS, and power-loss durability. Production
+runtime code uses Pure Dart, without native SQLite, FFI or WASM.
 
 Read `MASTER_SPEC.md`, `AGENTS.md`, `IMPLEMENTATION_PLAN.md` and
 `COMPATIBILITY_MATRIX.md` before developing.
@@ -44,12 +44,13 @@ note, an FTS article, and an R-tree place through `sqlite_plus_orm` only. That
 file's application source has no SQL text. `MutableDatabaseConnection.openMemory`
 opens the in-memory engine.
 
-The verified surface is the subset in `COMPATIBILITY_MATRIX.md`. DQS,
-`json_pretty`, EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable two-database
-commit, journal-mode switches, power loss, Android, and iOS remain open.
-`benchmark_results/scenarios_10k_linux_x64.json` measures 10000 rows on Linux
-x64. 100000 and 1000000 were not run. Version `0.0.1-dev.1` stays until M9
-closes. See `CHANGELOG.md`.
+`COMPATIBILITY_MATRIX.md` records the tested surface. Planned next are
+`json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`,
+a durable two-database commit, more journal modes, extended FTS, ICU and locale
+collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
+1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
+rows on Linux x64. Version `0.0.1-dev.1` is the current pre-release. See
+`CHANGELOG.md`.
 
 ## Development checks
 
@@ -418,43 +419,38 @@ Date/time support includes DATE/TIME/DATETIME/JULIANDAY/UNIXEPOCH/STRFTIME/TIMED
 CURRENT_DATE/TIME/TIMESTAMP and dynamic defaults. A statement shares one clock.
 Pinned cases cover time zones, fractional seconds, numeric epochs, calendar/
 clock shifts, start/weekday modifiers, floor/ceiling and ISO week formatting.
-Host local-time behavior, unsupported input/modifier edge cases and extreme
-floating precision are not full native-conformance claims.
+Closer host local-time behavior, more input modifiers, and extreme floating
+precision are planned.
 
 Integrity checks are bounded to complete supported images up to 64 MiB without
 auto-vacuum/reserved bytes. They verify tree/freelist ownership, constraints and
 persisted index contents against table data. QUICK_CHECK omits index/table
 content comparison; FOREIGN_KEY_CHECK reports violating rows independently of
-foreign_keys enable state. Error wording is not native SQLite's exact wording.
+foreign_keys enable state. Closer native error wording is planned.
 
-The verified engine baseline and remaining SQLite targets are distinguished in
+The current baseline and the planned follow-up are in
 [the engine support contract](ENGINE_SUPPORT.md). Items 51–76 add TEMP
 objects, one attached database, the connection pragmas named in the matrix,
 one custom collation, this engine's EXPLAIN QUERY PLAN text, a bounded join
 reorder, covering-index reads, and incremental page writes for the tested
-shapes. DQS stays off. Native EXPLAIN bytecode, STAT4, auto-vacuum, and a
-cross-database write stay rejected. Items 77–82 add `openBrowserStorage` and
+shapes. Planned next are native EXPLAIN bytecode, STAT4, auto-vacuum, and a
+durable cross-database write. Items 77–82 add `openBrowserStorage` and
 `BrowserDatabaseConnection`. The caller reads `canRead`, `canWrite`,
-`durabilityPromised`, and `placement`. Both placements leave
-`durabilityPromised` false. A missing browser interface falls back to memory.
-The verified round trip uses an in-process `MemoryBrowserByteStore`: close,
-then open, returns the row. The OPFS/IndexedDB compile-only entry is separate
-from the Chrome page. On Linux, Google Chrome 156.0.8078.47 opened the
-browser store, saved two notes, and the filter returned `kept` after close
-and open. `durabilityPromised` stayed false. Power loss is not claimed. The
-page text is `packages/sqlite_plus_orm/tool/chrome_orm_linux_x64.log`.
-The Linux test counts in the compatibility matrix are Linux x64 only. macOS
-and Windows have their own CI jobs. Android was not run. iOS was not run
-because this environment has no Mac. Full SQLite compatibility is not claimed.
-M7 and the verified M8 subset have passed their gates. M9 has not. Item 108
-remains open. Items 91–98 are `benchmark_results/scenarios_10k_linux_x64.json`
-only: 10000 rows on Linux x64. 100000 and 1000000 were not run.
+`durabilityPromised`, and `placement`. The current round trip uses an
+in-process `MemoryBrowserByteStore`: close, then open, returns the row. A
+durable browser store is planned. On Linux, Google Chrome 156.0.8078.47 opened
+the browser store, saved two notes, and the filter returned `kept` after close
+and open. The page text is
+`packages/sqlite_plus_orm/tool/chrome_orm_linux_x64.log`. Android, iOS, and
+power-loss durability are planned. Items 91–98 are
+`benchmark_results/scenarios_10k_linux_x64.json`: 10000 rows on Linux x64.
+Benchmarks at 100000 and 1000000 rows are planned.
 
 Real AOT benchmark samples are saved under `benchmark_results`. The index
 benchmark builds a 10,000-row memory image and measures five batches of 100
 queries. The page-write sample measures this revision's batch inserts of
-10,000 and 100,000 rows and is not a before/after delta. These Linux
-workloads do not satisfy M9's full scale/platform matrix. Reproduce with:
+10,000 and 100,000 rows. Larger scenarios and the remaining platforms are
+planned. Reproduce with:
 
 ```sh
 (cd packages/sqlite_plus && dart compile exe benchmark/planner.dart -o /tmp/sqlite-plus-index-benchmark)
@@ -468,7 +464,7 @@ workloads do not satisfy M9's full scale/platform matrix. Reproduce with:
 `scenarios_10k.dart` rejects a row count above 10000. The saved file is the
 AOT run at 10000 rows and three samples. Its cold query is the first measured
 SQL query after the fill in the same process, and its warm query is the next
-repetition. 100000 and 1000000 were not run. The numbers in the compatibility
+repetition. Benchmarks at 100000 and 1000000 rows are planned. The numbers in the compatibility
 matrix are copied from that file.
 
 Generated columns support VIRTUAL/STORED expressions, deterministic scalar

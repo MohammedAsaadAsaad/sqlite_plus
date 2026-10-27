@@ -2,7 +2,7 @@
 
 A small project for sqlite_plus_orm. It names fields, saves two books, bumps one revision, and reads a JSON shelf. The application code does not write SQL.
 
-This example is its own Dart project. It is a workspace member and is not published.
+This example is its own Dart project and a workspace member. It stays in the repository. Publication of the packages is planned.
 
 From a checkout, after `dart pub get` at the repository root:
 

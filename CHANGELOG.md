@@ -2,9 +2,9 @@
 
 ## 0.0.1-dev.1
 
-This version stays `0.0.1-dev.1` in `sqlite_plus`, `sqlite_plus_orm`, and
-`sqlite_plus_generator`. It is not a 1.0 release. M9 stays unchecked. The
-three packages are prepared for pub.dev and are not published.
+This version is `0.0.1-dev.1` in `sqlite_plus`, `sqlite_plus_orm`, and
+`sqlite_plus_generator`. Publication on pub.dev is planned and waits for an
+explicit request.
 
 ### Verified in this tree
 
@@ -44,31 +44,17 @@ three packages are prepared for pub.dev and are not published.
 - Linux CI runs `tool/generate_*.py --verify`. A checksum mismatch fails the
   job. Those steps do not execute SQLite.
 
-### Not done
+### Planned
 
-- Item 108 and the M9 checkbox are open. The 10000-row AOT file does not close
-  them. 100000 and 1000000 rows were not run.
-- Windows CI for the earlier commit `e320528` passed 167 ORM tests and 53
-  generator tests. The engine job passed 10489, failed 1, and skipped 6. The
-  failure was `database_owner` tearDown `PathAccessException` errno 32. Commit
-  `7afaaba` is the Windows pass recorded above. Heads after that commit wait
-  for their own jobs.
-- The macOS and Windows passes above are commit `7afaaba`, not every later
-  revision.
-- Android was not run. iOS was not run. A macOS Dart VM job is not iOS.
-- Power loss is not claimed. Browser storage does not promise durability.
-- DQS stays off.
-- `json_pretty` is not implemented. Correlated `json_each(other.column)` is
-  rejected. JSON text is capped at 1 MiB, depth at 1000, and function output
-  at 16 MiB.
-- EXPLAIN bytecode throws. STAT4 fails at open. `auto_vacuum` writes are
-  rejected. A non-zero largest root page fails at open.
-- A statement cannot mutate two schemas. A durable commit of two databases is
-  not implemented.
-- Journal modes other than reading rollback/wal and rewriting the current mode
-  are rejected.
-- FTS5 multi-page leaves, porter, trigram, detail, tokendata, and locale are
-  not implemented. FTS3 and FTS4 writes are rejected.
-- ICU and locale collations are absent.
-- General virtual-table modules beyond the verified subset are not claimed.
-- The macOS and Windows CI jobs do not run the Python checksum verifiers.
+- `json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, and
+  `auto_vacuum`.
+- A durable commit across two databases, and more journal modes.
+- FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and
+  FTS3/FTS4 writes.
+- ICU and locale collations, and further virtual-table modules.
+- A durable browser store, Android, and iOS.
+- Benchmarks at 100000 and 1000000 rows. The current AOT file measures 10000
+  rows.
+- A fresh macOS and Windows run for each new revision. The recorded desktop
+  pass is commit `7afaaba`.
+- Publication on pub.dev when requested.

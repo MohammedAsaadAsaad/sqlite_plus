@@ -8,7 +8,7 @@ A Pure Dart SQLite engine, ORM, and mapping generator. The production runtime ha
 | [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Two tracked books, a revision bump, an idle save, and a JSON shelf path |
 | [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Generated `filter` that drops a cheap purchase, JSON `path`, FTS `search`, and R-tree `bounds` |
 
-Version `0.0.1-dev.1` is a pre-release. The packages are prepared for pub.dev and are **not published**. Publication waits for an explicit request. Until then, the package READMEs show a git dependency.
+Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request. Until then, each package README shows a git dependency.
 
 ## One generated query
 
@@ -23,7 +23,7 @@ final rows = await purchases.query
 
 The same program stores three purchases and keeps the two above 20, ordered by total. It also stores a second JSON note, a second article, and a second place, then reads only the kept note, the FTS match, and the intersecting place. The application imports `sqlite_plus_orm` only.
 
-Each package has an example project under `example/` with its own `pubspec.yaml`, `lib/`, `bin/main.dart`, and `test/`. The examples are workspace members and are not published. From a checkout:
+Each package has an example project under `example/` with its own `pubspec.yaml`, `lib/`, `bin/main.dart`, and `test/`. The examples are workspace members and stay in the repository. From a checkout:
 
 ```sh
 dart pub get
@@ -32,9 +32,9 @@ dart pub get
 (cd packages/sqlite_plus_generator/example && dart run bin/main.dart)
 ```
 
-## Honest boundary
+## Planned
 
-The verified subset is `COMPATIBILITY_MATRIX.md`. This repository is not a complete SQLite. DQS stays off. `json_pretty` is absent. EXPLAIN bytecode throws. Power loss is not claimed. Android and iOS were not run. A Windows pass for the current head is not recorded. The Linux AOT file `benchmark_results/scenarios_10k_linux_x64.json` measures 10000 rows. 100000 and 1000000 rows were not run. M9 stays open.
+The next engine work adds `json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable commit across two databases, and more journal modes. The FTS plan adds multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes. ICU and locale collations are planned. Android, iOS, power-loss durability, and benchmarks at 100000 and 1000000 rows are planned. The Linux AOT file `benchmark_results/scenarios_10k_linux_x64.json` is the current 10000-row measurement. `COMPATIBILITY_MATRIX.md` is the test record for the surface available now.
 
 ## Develop
 
@@ -52,4 +52,4 @@ done
 
 The Linux GitHub job runs every `tool/generate_*.py --verify` script. A checksum mismatch fails that job. Those scripts do not execute SQLite in `--verify` mode. The macOS and Windows jobs run format, fatal-info analysis, package tests, and the example project check.
 
-`docs/REFERENCE.md` is the format and SQL reference. `docs/ENGINE_SUPPORT.md` is the support contract. `CHANGELOG.md` separates the verified subset from the open limits.
+`docs/REFERENCE.md` is the format and SQL reference. `docs/ENGINE_SUPPORT.md` is the current baseline and the planned follow-up. `CHANGELOG.md` records this version.

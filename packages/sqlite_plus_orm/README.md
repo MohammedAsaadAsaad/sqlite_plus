@@ -2,7 +2,7 @@
 
 Typed queries, change tracking, and reviewed migrations for `sqlite_plus`. Runtime code has no analyzer, reflection, native database, or `dart:io` dependency.
 
-Version `0.0.1-dev.1` is a pre-release. It is prepared for pub.dev and is not published. Until both packages are published, depend on the git repository:
+Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request. Until then, depend on the git repository:
 
 ```yaml
 dependencies:
@@ -126,22 +126,27 @@ rereads the baseline inside its transaction, validates the resulting schema/FKs
 and updates protected ownership/version metadata atomically. No reusable
 `allowDestructive` switch or inferred destructive migration exists.
 
-## Verification and limits
+## Verification
 
 Run `dart format .`, `dart analyze --fatal-infos` and `dart test`. Repository
 development tools `verify_orm.py`, `verify_orm_queries.py` and
 `verify_orm_migrations.py` pin native SQLite for cross-open, query and migration
 comparisons; native SQLite is never a runtime dependency.
 
-The JavaScript smoke compiles and runs the engine/ORM in memory with full BigInt
-keys and relationships. It does not establish browser storage durability.
-`BrowserDatabaseConnection` opens an `OpenedStorage`, and `close` writes the
-exported image through the public storage API. The verified path is an
-in-process `MemoryBrowserByteStore`: save two notes, filter with
-`where(MappedField.equalTo(...))`, close, reopen, and filter again.
-`durabilityPromised` stays false. Power loss is not claimed. The Chrome page
-on Linux is `tool/chrome_orm_linux_x64.log`: placement `browser`, two saved
-notes, and `reopenBody=kept`. That log is not a macOS, Windows, Android, or
-iOS result. `MutableDatabaseConnection` remains the file and memory connection.
-Adapters must honor OrmConnection ownership and transaction semantics. Engine
-capabilities and exclusions remain in the repository compatibility matrix.
+The JavaScript smoke compiles and runs the engine and ORM in memory with full
+BigInt keys and relationships. `BrowserDatabaseConnection` opens an
+`OpenedStorage`, and `close` writes the exported image through the public
+storage API. The current round trip uses an in-process `MemoryBrowserByteStore`:
+save two notes, filter with `where(MappedField.equalTo(...))`, close, reopen,
+and filter again. The Chrome session on Linux is
+`tool/chrome_orm_linux_x64.log`: placement `browser`, two saved notes, and
+`reopenBody=kept`. A durable browser store is planned, along with Android and
+iOS. `MutableDatabaseConnection` is the file and memory connection. Adapters
+honor OrmConnection ownership and transaction semantics.
+
+## Planned
+
+The ORM follows the engine plan: `json_pretty`, correlated `json_each`, EXPLAIN
+bytecode, STAT4, `auto_vacuum`, a durable two-database commit, more journal
+modes, the extended FTS surface, ICU and locale collations, and benchmarks at
+100000 and 1000000 rows.

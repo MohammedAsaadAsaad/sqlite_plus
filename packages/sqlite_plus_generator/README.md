@@ -2,7 +2,7 @@
 
 A development-time generator for `sqlite_plus_orm`. It reads Dart classes and writes runtime mappings, including JSON `path`, FTS5 `search`, and R-tree `bounds`. The generated application does not depend on the analyzer.
 
-Version `0.0.1-dev.1` is a pre-release. It is prepared for pub.dev and is not published. Until the packages are published:
+Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request. Until then:
 
 ```yaml
 dev_dependencies:
@@ -81,5 +81,13 @@ symbolic links are not overwritten. `--check` compares without writing.
 Tests cover golden output, conventions/annotations/aliases/constructors, negative
 diagnostics, CLI ownership/staleness, and compiled generated consumers performing
 migrations, linked CRUD, revisions, queries, relationships and reopen/read.
-Analyzer 6.4.1 and dart_style 2.3.6 are intentionally pinned for the tested SDK.
+Analyzer 6.4.1 and dart_style 2.3.6 are pinned for the tested SDK.
 They are generator dependencies; the ORM runtime does not depend on them.
+
+## Planned
+
+The generator follows the engine and ORM plan: a durable browser store, Android,
+iOS, and the wider SQL surface of `json_pretty`, correlated `json_each`,
+EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable two-database commit, more
+journal modes, extended FTS, and ICU and locale collations. Benchmarks at
+100000 and 1000000 rows are planned.

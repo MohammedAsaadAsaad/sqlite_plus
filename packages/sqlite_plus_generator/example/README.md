@@ -2,7 +2,7 @@
 
 A small project for the generated mappings: a purchase filter, a JSON path, an FTS search, and R-tree bounds. The application calls the ORM only.
 
-This example is its own Dart project. It is a workspace member and is not published. `lib/models.orm.g.dart` is checked in.
+This example is its own Dart project and a workspace member. It stays in the repository. Publication of the packages is planned. `lib/models.orm.g.dart` is checked in.
 
 From a checkout, after `dart pub get` at the repository root:
 
