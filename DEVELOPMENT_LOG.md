@@ -817,3 +817,16 @@
   and `generate_series` are still absent.
 - Verification on Dart 3.13.7/Linux x64: format, fatal-info analysis, and 9,644
   engine tests pass. ORM, generator, and native oracles were not re-run.
+
+## 2026-10-27 — M8 item 3: virtual table cursor
+
+- A module can override `xOpen` and return a `VirtualTableCursor`. The scan calls
+  `filter`, then `rowid` and `column` until `eof`, then `next`. `close` runs
+  even when `filter` throws, and it runs before `xDisconnect`.
+- Modules that only implement `read` keep working through the default cursor.
+  Custom rowids pass through to SQL. A cursor rejects `filter`, `next`, `eof`,
+  `column`, and `rowid` after `close`. An empty filter produces no rows.
+- Constraint arguments, hidden columns, transaction hooks, and `generate_series`
+  are still absent.
+- Verification on Dart 3.13.7/Linux x64: format, fatal-info analysis, and 9,645
+  engine tests pass. ORM, generator, and native oracles were not re-run.

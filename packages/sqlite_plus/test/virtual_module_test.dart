@@ -246,6 +246,44 @@ void main() {
           ['other']
         ]);
   });
+
+  test('a cursor reports rowid and columns and rejects use after close',
+      () async {
+    final events = <String>[];
+    final database = await MutableSqliteDatabase.create();
+    addTearDown(database.close);
+    database.functions.virtualTables.register(_CountModule(events));
+    await database.execute('CREATE VIRTUAL TABLE nums USING count(2)');
+    expect(
+        (await database.query('SELECT rowid, n FROM nums ORDER BY n')).rows, [
+      [BigInt.from(10), BigInt.one],
+      [BigInt.from(20), BigInt.two]
+    ]);
+    expect(events, ['filter', 'next', 'next', 'close']);
+    events.clear();
+    await database.execute('CREATE VIRTUAL TABLE none USING count(0)');
+    expect((await database.query('SELECT n FROM none')).rows, isEmpty);
+    expect(events, ['filter', 'close']);
+    events.clear();
+    await database.execute("CREATE VIRTUAL TABLE bad USING count('bad')");
+    final created = database.exportImage();
+    await expectLater(
+        database.query('SELECT n FROM bad'), throwsA(isA<SqlException>()));
+    expect(database.exportImage(), created);
+    expect(events, ['filter', 'close']);
+    final cursor = _CountCursor(events)..filter('direct', ['1']);
+    expect(cursor.eof, isFalse);
+    expect(cursor.column(0), BigInt.one);
+    expect(cursor.rowid, BigInt.from(10));
+    cursor.next();
+    expect(cursor.eof, isTrue);
+    expect(() => cursor.column(0), throwsA(isA<SqlException>()));
+    cursor.close();
+    expect(() => cursor.next(), throwsA(isA<SqlException>()));
+    expect(() => cursor.rowid, throwsA(isA<SqlException>()));
+    expect(() => cursor.filter('direct', ['1']), throwsA(isA<SqlException>()));
+    expect(() => cursor.eof, throwsA(isA<SqlException>()));
+  });
 }
 
 final class _LifeModule extends VirtualTableModule {
@@ -278,5 +316,73 @@ final class _LifeModule extends VirtualTableModule {
   void xDestroy(String table) {
     events.add('destroy $table');
     if (table == 'stuck') throw StateError('destroy rejected');
+  }
+}
+
+final class _CountModule extends VirtualTableModule {
+  _CountModule(this.events);
+  final List<String> events;
+  @override
+  String get name => 'count';
+  @override
+  List<String> get columns => ['n'];
+  @override
+  VirtualTableCursor xOpen(String table) => _CountCursor(events);
+}
+
+final class _CountCursor implements VirtualTableCursor {
+  _CountCursor(this.events);
+  final List<String> events;
+  var current = 0;
+  var limit = 0;
+  var closed = false;
+
+  void _live() {
+    if (closed) throw const SqlException('Virtual table cursor is closed');
+  }
+
+  @override
+  void filter(String table, List<String> arguments) {
+    _live();
+    events.add('filter');
+    limit = int.parse(arguments.single);
+    current = 1;
+  }
+
+  @override
+  void next() {
+    _live();
+    events.add('next');
+    current++;
+  }
+
+  @override
+  bool get eof {
+    _live();
+    return current > limit;
+  }
+
+  @override
+  Object? column(int index) {
+    _live();
+    if (index != 0 || eof) {
+      throw const SqlException('Virtual table column index out of range');
+    }
+    return BigInt.from(current);
+  }
+
+  @override
+  BigInt get rowid {
+    _live();
+    if (eof) {
+      throw const SqlException('Virtual table cursor is past the last row');
+    }
+    return BigInt.from(current * 10);
+  }
+
+  @override
+  void close() {
+    closed = true;
+    events.add('close');
   }
 }

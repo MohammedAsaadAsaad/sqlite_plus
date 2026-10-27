@@ -15,11 +15,87 @@ import 'tokenizer.dart';
 abstract class VirtualTableModule {
   String get name;
   List<String> get columns;
-  List<List<Object?>> read(String table, List<String> arguments);
+
+  /// Whole-result helper used by the default cursor. A module that overrides
+  /// [xOpen] does not need this.
+  List<List<Object?>> read(String table, List<String> arguments) {
+    throw const SqlException('Virtual table module did not implement read');
+  }
+
+  VirtualTableCursor xOpen(String table) => _MaterializedCursor(this);
   void xCreate(String table, List<String> arguments) {}
   void xConnect(String table, List<String> arguments) {}
   void xDisconnect(String table) {}
   void xDestroy(String table) {}
+}
+
+/// One scan position. Methods throw after [close].
+abstract class VirtualTableCursor {
+  void filter(String table, List<String> arguments);
+  void next();
+  bool get eof;
+  Object? column(int index);
+  BigInt get rowid;
+  void close();
+}
+
+final class _MaterializedCursor implements VirtualTableCursor {
+  _MaterializedCursor(this._module);
+  final VirtualTableModule _module;
+  var _closed = false;
+  var _index = 0;
+  List<List<Object?>> _rows = const [];
+
+  void _live() {
+    if (_closed) throw const SqlException('Virtual table cursor is closed');
+  }
+
+  @override
+  void filter(String table, List<String> arguments) {
+    _live();
+    _rows = _module.read(table, arguments);
+    _index = 0;
+  }
+
+  @override
+  void next() {
+    _live();
+    if (_index < _rows.length) _index++;
+  }
+
+  @override
+  bool get eof {
+    _live();
+    return _index >= _rows.length;
+  }
+
+  @override
+  Object? column(int index) {
+    _live();
+    if (eof) {
+      throw const SqlException('Virtual table cursor is past the last row');
+    }
+    final row = _rows[_index];
+    if (index < 0 || index >= row.length) {
+      throw const SqlException('Virtual table column index out of range');
+    }
+    return row[index];
+  }
+
+  @override
+  BigInt get rowid {
+    _live();
+    if (eof) {
+      throw const SqlException('Virtual table cursor is past the last row');
+    }
+    return BigInt.from(_index + 1);
+  }
+
+  @override
+  void close() {
+    _closed = true;
+    _rows = const [];
+  }
 }
 
 void invokeVirtualTableCallback(String action, void Function() body) {
@@ -146,11 +222,24 @@ abstract final class VirtualTableRows {
     }
     invokeVirtualTableCallback(
         'xConnect', () => module.xConnect(table.name, table.virtualArguments));
-    List<List<Object?>> produced = const [];
+    final cursor = module.xOpen(table.name);
+    final records = <BtreeRecord>[];
     Object? failure;
     try {
       try {
-        produced = module.read(table.name, table.virtualArguments);
+        cursor.filter(table.name, table.virtualArguments);
+        while (!cursor.eof) {
+          if (records.length >= maximumRows) {
+            throw const SqlException('Virtual table row limit exceeded');
+          }
+          final rowid = cursor.rowid;
+          final values = [
+            for (var index = 0; index < module.columns.length; index++)
+              _value(cursor.column(index))
+          ];
+          records.add(BtreeRecord.synthetic(rowid, values));
+          cursor.next();
+        }
       } on SqlException catch (error) {
         failure = error;
       } catch (_) {
@@ -158,26 +247,21 @@ abstract final class VirtualTableRows {
       }
     } finally {
       try {
+        cursor.close();
+      } on SqlException catch (error) {
+        failure ??= error;
+      } catch (_) {
+        failure ??= const SqlException('Virtual table cursor close failed');
+      }
+      try {
         module.xDisconnect(table.name);
       } on SqlException catch (error) {
         failure ??= error;
       } catch (_) {
-        failure ??= SqlException('Virtual table xDisconnect failed');
+        failure ??= const SqlException('Virtual table xDisconnect failed');
       }
     }
     if (failure != null) throw failure;
-    if (produced.length > maximumRows) {
-      throw const SqlException('Virtual table row limit exceeded');
-    }
-    final records = <BtreeRecord>[];
-    for (var index = 0; index < produced.length; index++) {
-      final row = produced[index];
-      if (row.length != module.columns.length) {
-        throw const SqlException('Virtual table row width mismatch');
-      }
-      records.add(BtreeRecord.synthetic(
-          BigInt.from(index + 1), [for (final value in row) _value(value)]));
-    }
     return records;
   }
 
