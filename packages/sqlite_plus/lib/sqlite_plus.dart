@@ -18,3 +18,5 @@ export 'src/pager/image_pager.dart';
 export 'src/pager/wal_pager.dart';
 
 export 'src/sql/function_registry.dart' show SqlFunctionRegistry, SqlAggregate;
+export 'src/sql/virtual_table.dart'
+    show VirtualTableModule, VirtualTableRegistry;

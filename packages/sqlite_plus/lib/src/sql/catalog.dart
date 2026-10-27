@@ -5,6 +5,7 @@ import 'tokenizer.dart';
 import 'values.dart';
 import 'expressions.dart';
 import 'schema_expressions.dart';
+import 'virtual_table.dart';
 
 final class CatalogColumn {
   CatalogColumn(this.name, this.declaredType,
@@ -51,13 +52,19 @@ final class CatalogColumn {
 
 final class CatalogTable {
   CatalogTable(this.name, this.rootPage, List<CatalogColumn> columns,
-      {this.withoutRowid = false, this.rowidAlias})
+      {this.withoutRowid = false,
+      this.rowidAlias,
+      this.virtualModule,
+      this.virtualArguments = const []})
       : columns = List.unmodifiable(columns);
   final String name;
   final int rootPage;
   final List<CatalogColumn> columns;
   final bool withoutRowid;
   final String? rowidAlias;
+  final String? virtualModule;
+  final List<String> virtualArguments;
+  bool get virtual => virtualModule != null;
   final List<List<String>> uniqueKeys = [];
   final List<List<String>> autoIndexKeys = [];
   final List<List<String>> autoIndexCollations = [];
@@ -195,6 +202,21 @@ final class DatabaseCatalog {
   }
 
   CatalogTable table(String name) {
+    final matches = entries.where(
+        (e) => e.type != 'trigger' && asciiLower(e.name) == asciiLower(name));
+    if (matches.length == 1 &&
+        matches.single.rootPage == 0 &&
+        VirtualTableDeclaration.isVirtual(matches.single.sql)) {
+      final declaration = VirtualTableDeclaration.parse(matches.single.sql!);
+      final module = VirtualTableRegistry.current?.find(declaration.module);
+      if (module == null) {
+        throw SqlException('No such module: ${declaration.module}');
+      }
+      return CatalogTable(matches.single.name, 0,
+          [for (final column in module.columns) CatalogColumn(column, '')],
+          virtualModule: declaration.module,
+          virtualArguments: declaration.arguments);
+    }
     if (['sqlite_schema', 'sqlite_master'].contains(asciiLower(name))) {
       return CatalogTable('sqlite_schema', 1, [
         CatalogColumn('type', 'TEXT'),
@@ -204,8 +226,6 @@ final class DatabaseCatalog {
         CatalogColumn('sql', 'TEXT'),
       ]);
     }
-    final matches = entries.where(
-        (e) => e.type != 'trigger' && asciiLower(e.name) == asciiLower(name));
     if (matches.isEmpty) throw SqlException('No such table: $name');
     final entry = matches.single;
     if (entry.type != 'table' || entry.sql == null || entry.rootPage == 0) {

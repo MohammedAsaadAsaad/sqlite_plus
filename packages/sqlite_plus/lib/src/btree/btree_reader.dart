@@ -11,6 +11,10 @@ final class BtreeRecord {
   BtreeRecord._(this.rowId, this.values);
   final BigInt? rowId;
   final List<Object?> values;
+
+  /// A logical row that did not come from a B-tree page.
+  static BtreeRecord synthetic(BigInt rowId, List<Object?> values) =>
+      BtreeRecord._(rowId, List<Object?>.unmodifiable(values));
 }
 
 final class _PageTask {

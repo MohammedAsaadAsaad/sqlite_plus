@@ -21,6 +21,7 @@ import 'expressions.dart';
 import 'connection_state.dart';
 import 'functions.dart';
 import 'windows.dart';
+import 'virtual_table.dart';
 
 part 'image_maintenance.dart';
 
@@ -148,6 +149,13 @@ final class ImageMutations {
       }
       for (final entry
           in catalog.entries.where((entry) => entry.type == 'table')) {
+        if (entry.rootPage == 0 &&
+            VirtualTableDeclaration.isVirtual(entry.sql)) {
+          result.other.add(ImageObject(
+              'table', entry.name, entry.tableName, entry.sql,
+              virtualTable: true));
+          continue;
+        }
         final table = catalog.table(entry.name);
         final rows = <TableRow>[];
         await for (final record in table.withoutRowid
@@ -912,6 +920,33 @@ final class ImageMutations {
     }
   }
 
+  Future<MutationImage> _createVirtualTable(
+      String sql, List<Object?> parameters) async {
+    if (parameters.isNotEmpty) {
+      throw const SqlException('Parameters prohibited in virtual table');
+    }
+    final declaration = VirtualTableDeclaration.parse(sql);
+    final key = asciiLower(declaration.name);
+    if (key.startsWith('sqlite_')) {
+      throw const SqlException('Reserved object name');
+    }
+    final exists = _tables.containsKey(key) ||
+        _indexes.any((index) => asciiLower(index.name) == key) ||
+        other.any((object) => asciiLower(object.name) == key);
+    if (exists) {
+      if (declaration.ifNotExists) return MutationImage(original, 0, null);
+      throw const SqlException('Object already exists');
+    }
+    final module = VirtualTableRegistry.current?.find(declaration.module);
+    if (module == null) {
+      throw SqlException('No such module: ${declaration.module}');
+    }
+    other.add(ImageObject('table', declaration.name, declaration.name, sql,
+        virtualTable: true));
+    schemaChanged = true;
+    return MutationImage(serialize(), 0, null);
+  }
+
   void validateForeignKeys() =>
       _validate(foreignKeys: true, includeDeferred: true);
   Uint8List serialize(
@@ -1595,6 +1630,9 @@ final class ImageMutations {
       return _vacuum(p, parameters, inTransaction: inTransaction);
     }
     if (p.take('CREATE')) {
+      if (p.take('VIRTUAL')) {
+        return _createVirtualTable(sql, parameters);
+      }
       final unique = p.take('UNIQUE');
       if (p.take('TRIGGER')) {
         if (unique || parameters.isNotEmpty) {
@@ -2183,6 +2221,16 @@ final class ImageMutations {
         return MutationImage(serialize(), 0, null);
       }
       if (table) {
+        final virtual = other
+            .where((object) =>
+                object.virtualTable &&
+                asciiLower(object.name) == asciiLower(name))
+            .toList();
+        if (virtual.isNotEmpty) {
+          other.removeWhere(virtual.contains);
+          schemaChanged = true;
+          return MutationImage(serialize(), 0, null);
+        }
         if (!_tables.containsKey(asciiLower(name))) {
           if (ifExists) return MutationImage(original, 0, null);
           throw const SqlException('No such table');

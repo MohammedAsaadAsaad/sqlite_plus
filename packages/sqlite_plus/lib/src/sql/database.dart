@@ -15,6 +15,7 @@ import 'image_mutations.dart';
 import 'index_definition.dart';
 import 'planner_statistics.dart';
 import 'windows.dart';
+import 'virtual_table.dart';
 
 part 'relational.dart';
 part 'join_groups.dart';
@@ -151,6 +152,7 @@ final class SqliteDatabase {
   QueryPlan _plan(
       SelectStatement statement, CatalogTable? table, List<Object?> bound) {
     if (table == null) return const QueryPlan('constant', null, null);
+    if (table.virtual) return const QueryPlan('virtual-table-scan', null, null);
     final source = statement.sources.firstOrNull;
     final forced = source == null ? null : _hintIndex(source, statement.where);
     final notIndexed = source?.notIndexed ?? false;
@@ -385,6 +387,10 @@ final class SqliteDatabase {
   }
 
   Stream<BtreeRecord> _planRecords(CatalogTable table, QueryPlan plan) async* {
+    if (plan.access == 'virtual-table-scan') {
+      yield* Stream<BtreeRecord>.fromIterable(VirtualTableRows.records(table));
+      return;
+    }
     final reader = BtreeReader(_pager);
     if (plan.access == 'rowid-lookup') {
       final record = await reader.findRowid(table.rootPage, plan.rowid!);

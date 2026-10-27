@@ -36,8 +36,9 @@ development reference tools. Production engine code is Pure Dart.
 | Isolate ownership / file lease | Single-owner architecture | Serialized SendPort requests, client-owned transactions, loopback duplicate-owner guard, native SQLite lock-byte exclusion and handoff |
 | ORM runtime | Verified M7 baseline | Public engine APIs only; typed codecs/queries, BigInt keys, identity/snapshot tracking, atomic CRUD/revisions, immutable values, explicit batched relationships and safe reviewed migrations; Dart `MappedField` closures (`equalTo`, comparison operators, `oneOf`, null tests) lower to the same bound SQL; 158 real-engine/fault tests |
 | Metadata generator | Verified M7 baseline | Resolved conventions/annotations, constructors/aliases, mutable/immutable mappings, deterministic owned output and CLI; 48 tests including compiled generated end-to-end consumers; unsupported model shapes/custom codecs use manual metadata |
-| JSON/JSONB / FTS / R-tree / virtual tables | M8 pending | No implementation claim |
-| Linux x64 | Development verified | Dart 3.13.7; 9,640 engine, 158 ORM and 48 generator tests; format, fatal-info analysis and locked dependencies pass |
+| Virtual table module registration | Item 1 verified | Connection-local Dart `VirtualTableModule`; `CREATE VIRTUAL TABLE name USING module(args)` writes a `table` row with root page 0; SELECT and joins read module rows (text, integer, blob, null). Unknown module, reserved name, duplicate name, and bad module output do not commit. Column lists, lifecycle hooks, constraints, hidden columns, transaction hooks, and `generate_series` are not claimed |
+| JSON/JSONB / FTS / R-tree | M8 pending | No implementation claim |
+| Linux x64 | Development verified | Dart 3.13.7; 9,643 engine, 158 ORM and 48 generator tests; format, fatal-info analysis and locked dependencies pass |
 | Windows/macOS/Android/iOS/Web | Unverified, M9 pending | Core has no dart:io dependency; optional file/owner adapter does; no execution claim |
 
 ## Query and format limits

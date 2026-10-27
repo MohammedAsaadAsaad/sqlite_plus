@@ -3,6 +3,7 @@ import 'tokenizer.dart';
 import 'values.dart';
 import 'date_functions.dart';
 import 'connection_state.dart';
+import 'virtual_table.dart';
 
 /// A fresh aggregate instance is created for each SQL group/frame.
 abstract class SqlAggregate {
@@ -37,6 +38,7 @@ final class SqlFunctionRegistry {
   static final Object _zoneKey = Object();
   final Map<String, Map<int, RegisteredSqlFunction>> _functions = {};
   final SqlConnectionState connectionState = SqlConnectionState();
+  final VirtualTableRegistry virtualTables = VirtualTableRegistry();
 
   /// Registered overloads for connection metadata; callbacks are not invoked.
   Iterable<RegisteredSqlFunction> get registeredFunctions =>
@@ -65,12 +67,14 @@ final class SqlFunctionRegistry {
       _functions[asciiLower(name)]?.remove(argumentCount);
   static SqlFunctionRegistry? get current =>
       Zone.current[_zoneKey] as SqlFunctionRegistry?;
-  T run<T>(T Function() action) => runZoned(action, zoneValues: {
-        sqlStatementTimeKey: identical(current, this)
-            ? Zone.current[sqlStatementTimeKey] ?? DateTime.now().toUtc()
-            : DateTime.now().toUtc(),
-        _zoneKey: this,
-      });
+  T run<T>(T Function() action) => VirtualTableRegistry.run(
+      virtualTables,
+      () => runZoned(action, zoneValues: {
+            sqlStatementTimeKey: identical(current, this)
+                ? Zone.current[sqlStatementTimeKey] ?? DateTime.now().toUtc()
+                : DateTime.now().toUtc(),
+            _zoneKey: this,
+          }));
   static RegisteredSqlFunction? resolve(String name, int count) {
     final overloads = current?._functions[asciiLower(name)];
     return overloads?[count] ?? overloads?[-1];

@@ -156,9 +156,13 @@ extension _RelationalQueries on SqliteDatabase {
           final table = catalog.table(name);
           final rows = <RowValues>[];
           final reader = BtreeReader(_pager);
-          await for (final record in table.withoutRowid
-              ? reader.scanIndex(table.rootPage)
-              : reader.scanTable(table.rootPage)) {
+          final records = table.virtual
+              ? Stream<BtreeRecord>.fromIterable(
+                  VirtualTableRows.records(table))
+              : table.withoutRowid
+                  ? reader.scanIndex(table.rootPage)
+                  : reader.scanTable(table.rootPage);
+          await for (final record in records) {
             final row = <String, Object?>{};
             final stored = table.storageColumns;
             if (record.values.length > stored.length) {

@@ -781,5 +781,25 @@
 - Verification on Dart 3.13.7/Linux x64: 9,640 engine tests, 158 ORM tests,
   48 generator tests, formatting and fatal-info analysis pass. Native schema,
   journal and WAL oracles were not re-run for this read-path change.
-- Full SQLite parity, native cost-model equivalence, M8 extensions, browser
+- Full SQLite parity, native cost-model equivalence, the rest of M8, browser
   durability, and the large-scale benchmark matrix remain open.
+
+## 2026-10-27 — M8 item 1: virtual table module registration
+
+- Added a Pure Dart `VirtualTableModule` registered on the connection through
+  `SqlFunctionRegistry.virtualTables`. There is no C module ABI.
+- `CREATE VIRTUAL TABLE name USING module(arguments)` stores the statement in
+  `sqlite_schema` as a table with root page 0. Arguments are strings, identifiers,
+  or numbers. The module supplies column names. `SELECT`, `rowid`, and joins read
+  the rows the module returns, with integers normalized to `BigInt` and blobs copied.
+- A missing module, a `sqlite_` table name, a duplicate name, a row-width mismatch,
+  an unsupported value, a thrown module error, and more than 100,000 rows fail
+  without changing the committed image. `IF NOT EXISTS` leaves the existing table.
+  Reopening the image reads the same rows after the module is registered again.
+- Column declarations, `xCreate`/`xConnect`/`xDisconnect`/`xDestroy`, constraint
+  translation, hidden columns, transaction hooks, and `generate_series` are not
+  implemented. JSON, FTS, and R-tree remain absent.
+- Verification on Dart 3.13.7/Linux x64: `dart format` for the touched files,
+  `dart analyze --fatal-infos` on `sqlite_plus`, and 9,643 engine tests pass.
+  ORM and generator suites were not re-run; this change does not touch them.
+  Native oracles were not re-run.

@@ -9,10 +9,12 @@ final class ImageObject {
   ImageObject(this.type, this.name, this.tableName, this.sql,
       {this.tableRows = const [],
       this.indexRows = const [],
-      this.indexTable = false});
+      this.indexTable = false,
+      this.virtualTable = false});
   final String type, name, tableName;
   final String? sql;
   final bool indexTable;
+  final bool virtualTable;
   final List<TableRow> tableRows;
   final List<List<Object?>> indexRows;
   int rootPage = 0;
@@ -75,7 +77,9 @@ abstract final class DatabaseImageBuilder {
           'Auto-vacuum/reserved-byte image rebuild is unsupported');
     }
     final roots = objects
-        .where((object) => object.type == 'table' || object.type == 'index')
+        .where((object) =>
+            !object.virtualTable &&
+            (object.type == 'table' || object.type == 'index'))
         .toList();
     final pages = <Uint8List>[
       Uint8List(size),
