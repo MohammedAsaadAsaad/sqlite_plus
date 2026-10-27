@@ -27,9 +27,29 @@ List<String> relationColumnNames(List<String> labels) {
 
 final _minInt = -(BigInt.one << 63);
 final _maxInt = (BigInt.one << 63) - BigInt.one;
+
+/// Text produced by a JSON function. Nested JSON calls treat it as JSON,
+/// matching SQLite's JSON subtype. Storage and ordinary functions see [text].
+final class JsonText {
+  const JsonText(this.text);
+  final String text;
+  @override
+  bool operator ==(Object other) =>
+      (other is JsonText && text == other.text) ||
+      (other is String && text == other);
+  @override
+  int get hashCode => text.hashCode;
+  @override
+  String toString() => text;
+}
+
+Object? publishSqlValue(Object? value) =>
+    value is JsonText ? value.text : value;
+
 Object narrowInteger(BigInt value) =>
     value < _minInt || value > _maxInt ? value.toDouble() : value;
 Object? sqlValue(Object? value) {
+  if (value is JsonText) return value.text;
   if (value is Uint8List) return Uint8List.fromList(value);
   if (value is BigInt && (value < _minInt || value > _maxInt)) {
     throw const SqlException('Integer binding outside signed 64-bit range');
@@ -46,6 +66,7 @@ Object? sqlValue(Object? value) {
 }
 
 Object? numeric(Object? value, {bool prefix = false, int encoding = 1}) {
+  if (value is JsonText) value = value.text;
   if (value is BigInt || value is double) return value;
   if (value is Uint8List) value = decodeSqlText(value, encoding);
   if (value is! String) return null;
@@ -114,6 +135,7 @@ bool? truth(Object? value, [int encoding = 1]) {
 
 BigInt boolean(bool value) => value ? BigInt.one : BigInt.zero;
 String stringify(Object value, [int encoding = 1]) {
+  if (value is JsonText) return value.text;
   if (value is Uint8List) return decodeSqlText(value, encoding);
   if (value is double) return sqlRealText(value);
   return value.toString();
@@ -139,6 +161,8 @@ String sqlRealText(double value, [int precision = 15]) {
 }
 
 int compareValues(Object? a, Object? b, [int encoding = 1, String? collation]) {
+  if (a is JsonText) a = a.text;
+  if (b is JsonText) b = b.text;
   if (a == null) return b == null ? 0 : -1;
   if (b == null) return 1;
   int rank(Object value) => value is BigInt || value is double

@@ -77,7 +77,8 @@ final class _QueryRelationRows extends ListBase<RowValues> {
     final labels = outputNames ?? names;
     for (final row in execution.rows) {
       yield {
-        for (var i = 0; i < labels.length; i++) asciiLower(labels[i]): row[i]
+        for (var i = 0; i < labels.length; i++)
+          asciiLower(labels[i]): publishSqlValue(row[i])
       };
     }
   }

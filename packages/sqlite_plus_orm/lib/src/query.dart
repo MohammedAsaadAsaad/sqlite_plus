@@ -138,6 +138,52 @@ final class MappedField<T, V> {
   SqlPredicate<T> get isNotNull => column.isNotNull();
   SqlOrdering<T> get ascending => column.asc();
   SqlOrdering<T> get descending => column.desc();
+
+  /// JSON path read through `json_extract`. The path is a bound parameter.
+  JsonPathField<T> at(String path) => JsonPathField(column, path);
+}
+
+/// A JSON path on a mapped column. Comparisons bind both the path and the value.
+final class JsonPathField<T> {
+  const JsonPathField(this.column, this.path);
+  final Column<T, dynamic> column;
+  final String path;
+
+  SqlPredicate<T> equalTo(Object? value) =>
+      _JsonExtractPredicate(column, path, '=', value);
+  SqlPredicate<T> notEqualTo(Object? value) =>
+      _JsonExtractPredicate(column, path, '<>', value);
+  SqlPredicate<T> operator >(Object? value) =>
+      _JsonExtractPredicate(column, path, '>', value);
+  SqlPredicate<T> operator <(Object? value) =>
+      _JsonExtractPredicate(column, path, '<', value);
+  SqlPredicate<T> operator >=(Object? value) =>
+      _JsonExtractPredicate(column, path, '>=', value);
+  SqlPredicate<T> operator <=(Object? value) =>
+      _JsonExtractPredicate(column, path, '<=', value);
+}
+
+final class _JsonExtractPredicate<T> extends SqlPredicate<T> {
+  _JsonExtractPredicate(this.column, this.path, this.operator, Object? value)
+      : value = copyOrmValue(value);
+  final Column<T, dynamic> column;
+  final String path;
+  final String operator;
+  final Object? value;
+
+  @override
+  Iterable<Column<T, dynamic>> get _columns => [column];
+
+  @override
+  String _sql(List<Object?> parameters) {
+    parameters.add(path);
+    final sqlName = quoteIdentifier(column.sqlName);
+    if (value == null && (operator == '=' || operator == '<>')) {
+      return 'json_extract($sqlName, ?) IS ${operator == '<>' ? 'NOT ' : ''}NULL';
+    }
+    parameters.add(copyOrmValue(value));
+    return 'json_extract($sqlName, ?) $operator ?';
+  }
 }
 
 /// Reviewable generated SQL. Bound blobs are copied on every ownership boundary.

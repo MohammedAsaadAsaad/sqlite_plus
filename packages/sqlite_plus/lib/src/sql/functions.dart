@@ -10,6 +10,7 @@ import 'index_definition.dart' show sameExpression;
 import 'expressions.dart';
 import 'printf_functions.dart';
 import 'percentile_functions.dart';
+import 'json_functions.dart';
 
 final class FunctionExpr extends Expr {
   FunctionExpr(this.name, this.arguments,
@@ -83,6 +84,10 @@ final class FunctionExpr extends Expr {
             'avg',
             'group_concat',
             'string_agg',
+            'json_group_array',
+            'jsonb_group_array',
+            'json_group_object',
+            'jsonb_group_object',
             ...percentileFunctionNames
           ].contains(key) ||
           ['min', 'max'].contains(key) && arguments.length == 1;
@@ -176,6 +181,7 @@ final class FunctionExpr extends Expr {
     'percentile': (2, 2),
     'percentile_cont': (2, 2),
     'percentile_disc': (2, 2),
+    ...jsonFunctionArities,
   };
   static Map<String, (int, int)> get builtinArities => _arities;
   @override
@@ -258,6 +264,13 @@ final class FunctionExpr extends Expr {
         .whereType<String>()
         .firstOrNull;
     final args = arguments.map((arg) => arg.evaluate(context)).toList();
+    if (isJsonFunction(key)) {
+      return evaluateJsonFunction(key, args, context.encoding);
+    }
+    for (var index = 0; index < args.length; index++) {
+      final value = args[index];
+      if (value is JsonText) args[index] = value.text;
+    }
     if (key == 'printf' || key == 'format') {
       return sqlitePrintf(args, context.encoding);
     }
@@ -506,6 +519,10 @@ final class FunctionExpr extends Expr {
         }
         return a.$3.compareTo(b.$3);
       });
+    }
+    if (isJsonAggregate(key)) {
+      return finishJsonAggregate(
+          key, [for (final entry in prepared) entry.$1], context.encoding);
     }
     if (registered != null) {
       try {

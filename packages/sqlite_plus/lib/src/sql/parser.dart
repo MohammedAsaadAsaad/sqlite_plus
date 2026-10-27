@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'tokenizer.dart';
 import 'values.dart';
 import 'functions.dart';
+import 'json_functions.dart';
 import 'core_functions.dart' show scalarInt64;
 import 'expressions.dart';
 import 'triggers.dart';
@@ -378,6 +379,9 @@ final class BinaryExpr extends Expr {
         '<=' => c <= 0,
         _ => c >= 0,
       });
+    }
+    if (op == '->' || op == '->>') {
+      return jsonArrow(a, b, asSql: op == '->>', encoding: context.encoding);
     }
     if (a == null || b == null) return null;
     if (op == '||') {
@@ -1458,6 +1462,8 @@ final class SqlParser {
       '*': 12,
       '/': 12,
       '%': 12,
+      '->': 12,
+      '->>': 12,
       '||': 13,
     };
     while (true) {

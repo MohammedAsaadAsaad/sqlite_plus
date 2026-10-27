@@ -175,8 +175,14 @@ abstract final class SqlTokenizer {
             SqlToken(SqlTokenKind.parameter, sql.substring(start, i), start));
         continue;
       }
+      if (i + 2 < sql.length && sql.startsWith('->>', i)) {
+        result.add(SqlToken(SqlTokenKind.symbol, '->>', start));
+        i += 3;
+        continue;
+      }
       final pair = i + 1 < sql.length ? sql.substring(i, i + 2) : '';
-      if (['<=', '>=', '!=', '<>', '==', '||', '<<', '>>'].contains(pair)) {
+      if (pair == '->' ||
+          ['<=', '>=', '!=', '<>', '==', '||', '<<', '>>'].contains(pair)) {
         result.add(SqlToken(SqlTokenKind.symbol, pair, start));
         i += 2;
       } else if ('(),;.*+-/%=<>~&|'.contains(sql[i])) {

@@ -1,0 +1,7172 @@
+[
+  {
+    "encoding": 1,
+    "sql": "SELECT json('{\"a\":1}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('  { \"a\" : 1, } ')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('{a:1}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('''a''')",
+    "rows": [
+      [
+        "\"a\""
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('1.0')",
+    "rows": [
+      [
+        "1.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(1.0)",
+    "rows": [
+      [
+        "1.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(10.0)",
+    "rows": [
+      [
+        "10.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(-0.0)",
+    "rows": [
+      [
+        "0.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(1e2)",
+    "rows": [
+      [
+        "100.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(1e20)",
+    "rows": [
+      [
+        "1.0e+20"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(1e-7)",
+    "rows": [
+      [
+        "1.0e-07"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(1e15)",
+    "rows": [
+      [
+        "1000000000000000.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(2.2250738585072014e-308)",
+    "rows": [
+      [
+        "2.2250738585072014e-308"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('+1')",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('1.')",
+    "rows": [
+      [
+        "1.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('.5')",
+    "rows": [
+      [
+        "0.5"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('0x10')",
+    "rows": [
+      [
+        "16"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('-0')",
+    "rows": [
+      [
+        "-0"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('01')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('nope')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json()",
+    "error": "Parse error near line 4: wrong number of arguments to function json()\n  SELECT json();\n         ^--- error here"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(1,2)",
+    "error": "Parse error near line 4: wrong number of arguments to function json()\n  SELECT json(1,2);\n         ^--- error here"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('Infinity'), json('-infinity'), json('+Infinity')",
+    "rows": [
+      [
+        "9e999",
+        "-9e999",
+        "9e999"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('1e'), json('1e+')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('[1,]')",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('{\"a\":1,}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('/*c*/1')",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('//c' || char(10) || '1')",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('1,')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid('{\"a\":1}')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid('{a:1}')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid('{a:1}', 1)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid('{a:1}', 2)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid('{a:1}', 3)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(1)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(1.5)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(x'00')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(x'7b7d')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(jsonb('null'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(jsonb('1'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(jsonb('null'), 4)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(jsonb('null'), 8)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(jsonb('null'), 12)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(x'ff', 8)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(x'ff', 4)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid('{}', 0)",
+    "error": "Error near line 4: FLAGS parameter to json_valid() must be between 1 and 15"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid('{}', 16)",
+    "error": "Error near line 4: FLAGS parameter to json_valid() must be between 1 and 15"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid('{}', 15)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid('{}', '2')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid('{}', 'no')",
+    "error": "Error near line 4: FLAGS parameter to json_valid() must be between 1 and 15"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_type('{\"a\":1}','$.a')",
+    "rows": [
+      [
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_type('1.0')",
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_type('1')",
+    "rows": [
+      [
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_type('1e2')",
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_type('{}','$.missing')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_type(NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_type(NULL,'$.a')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_type('nope')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_type('true'), json_type('false'), json_type('null'), json_type('[]'), json_type('{}'), json_type('\"a\"')",
+    "rows": [
+      [
+        "true",
+        "false",
+        "null",
+        "array",
+        "object",
+        "text"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_type('{\"a\":1}','')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_error_position('x'), json_error_position('{'), json_error_position(NULL), json_error_position('1'), json_error_position('')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a'), typeof(json_extract('{\"a\":1}','$.a'))",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('[1,2]','$[0]')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{\"a\":1}','$.b')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{\"a\":{\"b\":[1,2]}}','$.a.b[1]')",
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a','$.b')",
+    "rows": [
+      [
+        "[1,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('[1,2,3]','$[0]','$[2]','$[9]')",
+    "rows": [
+      [
+        "[1,3,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{\"a\":1}', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('nope','$')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{}','')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{}','a')",
+    "error": "Error near line 4: bad JSON path: 'a'"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{}', '')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{\"a\":1,\"a\":2}','$.a')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('[1,2]','$[01]')",
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('[1,2]','$[#]')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('[1,2]','$[#-1]')",
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('[1,2]','$[#-9]')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{\"a\":1}','$.')",
+    "error": "Error near line 4: bad JSON path: '$.'"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('[1]','$.a.')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{}','$[')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('[1]','$[')",
+    "error": "Error near line 4: bad JSON path: '$['"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a b')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('{\"a \":1}','$.a ')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('1.5','$'), typeof(json_extract('1.5','$'))",
+    "rows": [
+      [
+        {
+          "float": "1.5"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('1e2','$'), typeof(json_extract('1e2','$'))",
+    "rows": [
+      [
+        {
+          "float": "100"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('-0','$'), typeof(json_extract('-0','$'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('9223372036854775807','$')",
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('9223372036854775808','$'), typeof(json_extract('9223372036854775808','$'))",
+    "rows": [
+      [
+        {
+          "float": "9.2233720368547758e+18"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('-9223372036854775808','$')",
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_extract('-9223372036854775809','$'), typeof(json_extract('-9223372036854775809','$'))",
+    "rows": [
+      [
+        {
+          "float": "-9.2233720368547758e+18"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '[1,2]' -> 0, typeof('[1,2]' -> 0)",
+    "rows": [
+      [
+        "1",
+        "text"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '[1,2]' ->> 0, typeof('[1,2]' ->> 0)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '{\"a\":1}' -> 'a'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '{\"a\":1}' ->> 'a'",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '{\"a\":1}' ->> 0",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT NULL -> '$.a'",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '{\"a\":1}' -> NULL",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT 'nope' -> NULL",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '[1,2]' -> 0 + 10",
+    "rows": [
+      [
+        {
+          "integer": "11"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '1' || '[1,2]' -> 1",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT ' [1,2] ' -> 0",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '{\"a\":1}' -> '$.a'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '[1,2]' -> '[0]'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '[1,2]' -> '0'",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '{\"a b\":1}' -> 'a b'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '{}' -> 'bad path'",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT '{\"a\":1}' -> 'a' ->> 0",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array(1,NULL,'x')",
+    "rows": [
+      [
+        "[1,null,\"x\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array(1.0, 1e2)",
+    "rows": [
+      [
+        "[1.0,100.0]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array('{\"a\":1}')",
+    "rows": [
+      [
+        "[\"{\\\"a\\\":1}\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array(json('{\"a\":1}'))",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array((SELECT json('{\"a\":1}')))",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array(j) FROM (SELECT json('{\"a\":1}') AS j)",
+    "rows": [
+      [
+        "[\"{\\\"a\\\":1}\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array(json_quote('a'))",
+    "rows": [
+      [
+        "[\"a\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array()",
+    "rows": [
+      [
+        "[]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array(jsonb('{\"a\":1}'))",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_object('a',1,'b',NULL)",
+    "rows": [
+      [
+        "{\"a\":1,\"b\":null}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_object()",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_object('a')",
+    "error": "Error near line 4: json_object() requires an even number of arguments"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_object(1,2)",
+    "error": "Error near line 4: json_object() labels must be TEXT"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_object(NULL,1)",
+    "error": "Error near line 4: json_object() labels must be TEXT"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_object(x'61',2)",
+    "error": "Error near line 4: json_object() labels must be TEXT"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_object('a',1.0,'b',1e2)",
+    "rows": [
+      [
+        "{\"a\":1.0,\"b\":100.0}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_object('a', x'00')",
+    "rows": [
+      [
+        "{\"a\":null}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_object('a', x'ff')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array_length('[1,2,3]'), json_array_length('{\"a\":1}'), json_array_length(NULL), json_array_length('[1,2]','$[5]'), json_array_length('\"abc\"'), json_array_length('[1]','$[0]')",
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "0"
+        },
+        null,
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array_length('{}','$.a')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_array_length('[1,2]','')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_insert('{}','$.a.b',1)",
+    "rows": [
+      [
+        "{\"a\":{\"b\":1}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_insert('{\"a\":1}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_insert('{\"a\":1}','$.b.c.d',4)",
+    "rows": [
+      [
+        "{\"a\":1,\"b\":{\"c\":{\"d\":4}}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_insert('{}','$.a',1,'$.a.b',2)",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_insert('[1]','$[1]',9)",
+    "rows": [
+      [
+        "[1,9]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_insert('[1]','$[0]',9)",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_insert('5','$',9)",
+    "rows": [
+      [
+        "5"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_insert('[]','$[0].a',1)",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_replace('{\"a\":1}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":9}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_replace('{\"a\":1}','$.b',9)",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_replace('[1]','$[1]',9)",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_replace('5','$',9)",
+    "rows": [
+      [
+        "9"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{\"a\":1}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":9}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{}','$.b.c',1)",
+    "rows": [
+      [
+        "{\"b\":{\"c\":1}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('[1]','$[1]',9)",
+    "rows": [
+      [
+        "[1,9]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('[1]','$[5]',9)",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{}','$[0]',1)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('[]','$.a',1)",
+    "rows": [
+      [
+        "[]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('5','$.a',1)",
+    "rows": [
+      [
+        "5"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{}','$[#]',1)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{\"a\":1,\"a\":2}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":9,\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{\"a\":1}', NULL, 2, '$.a', 9)",
+    "rows": [
+      [
+        "{\"a\":9}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{}','$.a')",
+    "error": "Error near line 4: json_set() needs an odd number of arguments"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT jsonb_set('{}','$.a')",
+    "error": "Error near line 4: json_set() needs an odd number of arguments"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('[1,2]','$[0]',9,'$[0]',8)",
+    "rows": [
+      [
+        "[8,2]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{}','$.a[0]',1)",
+    "rows": [
+      [
+        "{\"a\":[1]}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('[]','$[0].a',1)",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('[]','$[0][0]',1)",
+    "rows": [
+      [
+        "[[1]]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{\"a\":1}','$',5)",
+    "rows": [
+      [
+        "5"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{\"a\":1}','$.a', json('{\"b\":2}'))",
+    "rows": [
+      [
+        "{\"a\":{\"b\":2}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{}','$.a', x'01')",
+    "rows": [
+      [
+        "{\"a\":true}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_set('{}','$.a', x'7b7d')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_remove('[1,2,3]','$[0]','$[0]')",
+    "rows": [
+      [
+        "[3]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_remove('[1,2,3]','$[1]')",
+    "rows": [
+      [
+        "[1,3]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_remove('{\"a\":1}','$')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_remove('{\"a\":1}', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_remove()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_remove('{\"a\":1}','$.b')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_remove('{\"a\":1,\"b\":2}','$.a','$.missing','$.b')",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_insert()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_patch('{\"a\":1,\"a\":2}','{\"a\":null}')",
+    "rows": [
+      [
+        "{\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_patch('{\"a\":{\"b\":1}}','{\"a\":{\"c\":2}}')",
+    "rows": [
+      [
+        "{\"a\":{\"b\":1,\"c\":2}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_patch('1','{\"a\":1}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_patch('{\"a\":1}', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_patch('nope','{}')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_patch('{\"a\":1,\"a\":2}','{\"a\":{\"b\":1}}')",
+    "rows": [
+      [
+        "{\"a\":{\"b\":1},\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_quote('a\"b'), json_quote(1), json_quote(NULL), json_quote(1.5), json_quote(-0.0)",
+    "rows": [
+      [
+        "\"a\\\"b\"",
+        "1",
+        "null",
+        "1.5",
+        "0.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_quote(1.0), json_quote(1e2), json_quote(10.0)",
+    "rows": [
+      [
+        "1.0",
+        "100.0",
+        "10.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_quote(x'00'), json_quote(x'01'), json_quote(x'1331'), json_quote(x'1761')",
+    "rows": [
+      [
+        "null",
+        "true",
+        "1",
+        "\"a\""
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_quote(x'ff')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_quote(x'7b7d')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_array(n) FROM (SELECT 1 AS n UNION ALL SELECT NULL UNION ALL SELECT 2)",
+    "rows": [
+      [
+        "[1,null,2]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_array(n) FROM (SELECT 1 AS n WHERE 0)",
+    "rows": [
+      [
+        "[]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_array(DISTINCT n) FROM (SELECT 1 AS n UNION ALL SELECT 1 UNION ALL SELECT NULL)",
+    "rows": [
+      [
+        "[1,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_array(n ORDER BY n DESC) FROM (SELECT 1 AS n UNION ALL SELECT 3 UNION ALL SELECT NULL)",
+    "rows": [
+      [
+        "[3,1,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_array(n) FILTER (WHERE n IS NOT NULL) FROM (SELECT 1 AS n UNION ALL SELECT NULL UNION ALL SELECT 2)",
+    "rows": [
+      [
+        "[1,2]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT 'a' AS k, 1 AS v UNION ALL SELECT 'b', NULL UNION ALL SELECT NULL, 3)",
+    "rows": [
+      [
+        "{\"a\":1,\"b\":null}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT 'a' AS k, 1 AS v WHERE 0)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT NULL AS k, 1 AS v)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT '' AS k, 1 AS v)",
+    "rows": [
+      [
+        "{\"\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT NULL AS k, 1 AS v UNION ALL SELECT 'a', 2)",
+    "rows": [
+      [
+        "{\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT x'61' AS k, 2 AS v)",
+    "rows": [
+      [
+        "{\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT 1 AS k, 2 AS v UNION ALL SELECT 1.5, 2)",
+    "rows": [
+      [
+        "{\"1\":2,\"1.5\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_group_object(DISTINCT k, v) FROM (SELECT 'a' AS k, 1 AS v)",
+    "error": "Parse error near line 4: DISTINCT aggregates must have exactly one argument"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT hex(jsonb('null')), hex(jsonb('true')), hex(jsonb('false')), hex(jsonb('0')), hex(jsonb('1')), hex(jsonb('-1')), hex(jsonb('12'))",
+    "rows": [
+      [
+        "00",
+        "01",
+        "02",
+        "1330",
+        "1331",
+        "232D31",
+        "233132"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT hex(jsonb('1.5')), hex(jsonb('1e2')), hex(jsonb('\"\"')), hex(jsonb('\"a\"')), hex(jsonb('\"ab\"')), hex(jsonb('\"a\\nb\"'))",
+    "rows": [
+      [
+        "35312E35",
+        "35316532",
+        "07",
+        "1761",
+        "276162",
+        "48615C6E62"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT hex(jsonb('[]')), hex(jsonb('[1]')), hex(jsonb('[1,2]')), hex(jsonb('{}')), hex(jsonb('{\"a\":1}'))",
+    "rows": [
+      [
+        "0B",
+        "2B1331",
+        "4B13311332",
+        "0C",
+        "4C17611331"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT hex(jsonb('{\"ab\":true}')), hex(jsonb('{\"a\":1,\"b\":2}')), hex(jsonb('[null,false,true]'))",
+    "rows": [
+      [
+        "4C27616201",
+        "8C1761133117621332",
+        "3B000201"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT hex(jsonb('\"\\u0041\"'))",
+    "rows": [
+      [
+        "685C7530303431"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT hex(jsonb('9223372036854775807'))",
+    "rows": [
+      [
+        "C31339323233333732303336383534373735383037"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT typeof(jsonb('1')), json(jsonb('{\"a\":1}'))",
+    "rows": [
+      [
+        "blob",
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT jsonb('null'), jsonb('true'), jsonb('1'), jsonb('\"a\"'), jsonb('[]'), jsonb('{}'), jsonb('{\"a\":1}')",
+    "rows": [
+      [
+        {
+          "blob": "00"
+        },
+        {
+          "blob": "01"
+        },
+        {
+          "blob": "1331"
+        },
+        {
+          "blob": "1761"
+        },
+        {
+          "blob": "0b"
+        },
+        {
+          "blob": "0c"
+        },
+        {
+          "blob": "4c17611331"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT hex(jsonb_extract(jsonb('{\"a\":[1]}'),'$.a'))",
+    "rows": [
+      [
+        "2B1331"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT jsonb_extract(jsonb('{\"a\":1}'),'$.a'), typeof(jsonb_extract(jsonb('{\"a\":1}'),'$.a'))",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT jsonb_extract()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(jsonb_array(1,NULL)), hex(jsonb_array(1,NULL))",
+    "rows": [
+      [
+        "[1,null]",
+        "3B133100"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(jsonb_object('a',1)), jsonb_object('a',1)",
+    "rows": [
+      [
+        "{\"a\":1}",
+        {
+          "blob": "4c17611331"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(x'00'), json(x'7b7d'), json(x'01')",
+    "rows": [
+      [
+        "null",
+        "{}",
+        "true"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT hex(jsonb('\"' || printf('%.*c',11,'a') || '\"'))",
+    "rows": [
+      [
+        "B76161616161616161616161"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT hex(substr(jsonb('\"' || printf('%.*c',12,'a') || '\"'),1,2))",
+    "rows": [
+      [
+        "C70C"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT hex(substr(jsonb('\"' || printf('%.*c',14,'a') || '\"'),1,2))",
+    "rows": [
+      [
+        "C70E"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('{\"a\":[1,true]}')",
+    "rows": [
+      [
+        "a",
+        "[1,true]",
+        "array",
+        null,
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('[10,true]')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "10"
+        },
+        "integer",
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$[0]",
+        "$"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "true",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        },
+        null,
+        "$[1]",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('5')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "5"
+        },
+        "integer",
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "0"
+        },
+        null,
+        "$",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('{\"a\":1}','$.a')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$.a"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('[10,{\"b\":2}]','$[0]')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "10"
+        },
+        "integer",
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$[0]",
+        "$[0]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_tree('[1,{\"b\":2}]')",
+    "rows": [
+      [
+        null,
+        "[1,{\"b\":2}]",
+        "array",
+        null,
+        {
+          "integer": "0"
+        },
+        null,
+        "$",
+        "$"
+      ],
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        },
+        "$[0]",
+        "$"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "{\"b\":2}",
+        "object",
+        null,
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "0"
+        },
+        "$[1]",
+        "$"
+      ],
+      [
+        "b",
+        {
+          "integer": "2"
+        },
+        "integer",
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        "$[1].b",
+        "$[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_tree('{\"a\":1}','$.a')",
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, id, parent, fullkey, path, value FROM json_each('{\"a\":1}','$')",
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, id, fullkey, path FROM json_tree('{\"a\":1}','$')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "0"
+        },
+        "$",
+        "$"
+      ],
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        "$.a",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT count(*) FROM json_each()",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT count(*) FROM json_each(NULL)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT count(*) FROM json_each('{\"a\":1}','$.z')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT * FROM json_each('{\"a\":1}','nope')",
+    "error": "Error near line 4: bad JSON path: 'nope'"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT count(*) FROM json_tree()",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT count(*) FROM json_tree('1','$.a')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, fullkey FROM json_each('{\"a_b\":1,\"_a\":1,\"\":1,\"01\":1,\"a b\":1}')",
+    "rows": [
+      [
+        "a_b",
+        "$.\"a_b\""
+      ],
+      [
+        "_a",
+        "$.\"_a\""
+      ],
+      [
+        "",
+        "$.\"\""
+      ],
+      [
+        "01",
+        "$.\"01\""
+      ],
+      [
+        "a b",
+        "$.\"a b\""
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT key, fullkey FROM json_each('{\"é\":1}')",
+    "rows": [
+      [
+        "é",
+        "$.\"é\""
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT d.id, e.value FROM (SELECT 1 AS id, 'a' AS k UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c') AS d JOIN json_each('{\"a\":10,\"b\":20}') AS e ON d.k = e.key ORDER BY d.id",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "10"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "20"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(printf('%.*c',1000,'[') || printf('%.*c',1000,']'))",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT length(json(printf('%.*c',1000,'[') || printf('%.*c',1000,']')))",
+    "rows": [
+      [
+        {
+          "integer": "2000"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json_valid(printf('%.*c',1001,'[') || printf('%.*c',1001,']'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(printf('%.*c',1001,'[') || printf('%.*c',1001,']'))",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json(char(0))",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 1,
+    "sql": "SELECT json('\"\\u0000\"')",
+    "rows": [
+      [
+        "\"\\u0000\""
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('{\"a\":1}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('  { \"a\" : 1, } ')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('{a:1}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('''a''')",
+    "rows": [
+      [
+        "\"a\""
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('1.0')",
+    "rows": [
+      [
+        "1.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(1.0)",
+    "rows": [
+      [
+        "1.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(10.0)",
+    "rows": [
+      [
+        "10.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(-0.0)",
+    "rows": [
+      [
+        "0.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(1e2)",
+    "rows": [
+      [
+        "100.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(1e20)",
+    "rows": [
+      [
+        "1.0e+20"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(1e-7)",
+    "rows": [
+      [
+        "1.0e-07"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(1e15)",
+    "rows": [
+      [
+        "1000000000000000.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(2.2250738585072014e-308)",
+    "rows": [
+      [
+        "2.2250738585072014e-308"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('+1')",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('1.')",
+    "rows": [
+      [
+        "1.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('.5')",
+    "rows": [
+      [
+        "0.5"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('0x10')",
+    "rows": [
+      [
+        "16"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('-0')",
+    "rows": [
+      [
+        "-0"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('01')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('nope')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json()",
+    "error": "Parse error near line 4: wrong number of arguments to function json()\n  SELECT json();\n         ^--- error here"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(1,2)",
+    "error": "Parse error near line 4: wrong number of arguments to function json()\n  SELECT json(1,2);\n         ^--- error here"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('Infinity'), json('-infinity'), json('+Infinity')",
+    "rows": [
+      [
+        "9e999",
+        "-9e999",
+        "9e999"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('1e'), json('1e+')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('[1,]')",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('{\"a\":1,}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('/*c*/1')",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('//c' || char(10) || '1')",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('1,')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid('{\"a\":1}')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid('{a:1}')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid('{a:1}', 1)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid('{a:1}', 2)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid('{a:1}', 3)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(1)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(1.5)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(x'00')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(x'7b7d')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(jsonb('null'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(jsonb('1'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(jsonb('null'), 4)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(jsonb('null'), 8)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(jsonb('null'), 12)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(x'ff', 8)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(x'ff', 4)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid('{}', 0)",
+    "error": "Error near line 4: FLAGS parameter to json_valid() must be between 1 and 15"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid('{}', 16)",
+    "error": "Error near line 4: FLAGS parameter to json_valid() must be between 1 and 15"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid('{}', 15)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid('{}', '2')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid('{}', 'no')",
+    "error": "Error near line 4: FLAGS parameter to json_valid() must be between 1 and 15"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_type('{\"a\":1}','$.a')",
+    "rows": [
+      [
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_type('1.0')",
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_type('1')",
+    "rows": [
+      [
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_type('1e2')",
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_type('{}','$.missing')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_type(NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_type(NULL,'$.a')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_type('nope')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_type('true'), json_type('false'), json_type('null'), json_type('[]'), json_type('{}'), json_type('\"a\"')",
+    "rows": [
+      [
+        "true",
+        "false",
+        "null",
+        "array",
+        "object",
+        "text"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_type('{\"a\":1}','')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_error_position('x'), json_error_position('{'), json_error_position(NULL), json_error_position('1'), json_error_position('')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a'), typeof(json_extract('{\"a\":1}','$.a'))",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('[1,2]','$[0]')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{\"a\":1}','$.b')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{\"a\":{\"b\":[1,2]}}','$.a.b[1]')",
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a','$.b')",
+    "rows": [
+      [
+        "[1,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('[1,2,3]','$[0]','$[2]','$[9]')",
+    "rows": [
+      [
+        "[1,3,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{\"a\":1}', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('nope','$')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{}','')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{}','a')",
+    "error": "Error near line 4: bad JSON path: 'a'"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{}', '')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{\"a\":1,\"a\":2}','$.a')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('[1,2]','$[01]')",
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('[1,2]','$[#]')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('[1,2]','$[#-1]')",
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('[1,2]','$[#-9]')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{\"a\":1}','$.')",
+    "error": "Error near line 4: bad JSON path: '$.'"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('[1]','$.a.')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{}','$[')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('[1]','$[')",
+    "error": "Error near line 4: bad JSON path: '$['"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a b')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('{\"a \":1}','$.a ')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('1.5','$'), typeof(json_extract('1.5','$'))",
+    "rows": [
+      [
+        {
+          "float": "1.5"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('1e2','$'), typeof(json_extract('1e2','$'))",
+    "rows": [
+      [
+        {
+          "float": "100"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('-0','$'), typeof(json_extract('-0','$'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('9223372036854775807','$')",
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('9223372036854775808','$'), typeof(json_extract('9223372036854775808','$'))",
+    "rows": [
+      [
+        {
+          "float": "9.2233720368547758e+18"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('-9223372036854775808','$')",
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_extract('-9223372036854775809','$'), typeof(json_extract('-9223372036854775809','$'))",
+    "rows": [
+      [
+        {
+          "float": "-9.2233720368547758e+18"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '[1,2]' -> 0, typeof('[1,2]' -> 0)",
+    "rows": [
+      [
+        "1",
+        "text"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '[1,2]' ->> 0, typeof('[1,2]' ->> 0)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '{\"a\":1}' -> 'a'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '{\"a\":1}' ->> 'a'",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '{\"a\":1}' ->> 0",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT NULL -> '$.a'",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '{\"a\":1}' -> NULL",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT 'nope' -> NULL",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '[1,2]' -> 0 + 10",
+    "rows": [
+      [
+        {
+          "integer": "11"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '1' || '[1,2]' -> 1",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT ' [1,2] ' -> 0",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '{\"a\":1}' -> '$.a'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '[1,2]' -> '[0]'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '[1,2]' -> '0'",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '{\"a b\":1}' -> 'a b'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '{}' -> 'bad path'",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT '{\"a\":1}' -> 'a' ->> 0",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array(1,NULL,'x')",
+    "rows": [
+      [
+        "[1,null,\"x\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array(1.0, 1e2)",
+    "rows": [
+      [
+        "[1.0,100.0]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array('{\"a\":1}')",
+    "rows": [
+      [
+        "[\"{\\\"a\\\":1}\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array(json('{\"a\":1}'))",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array((SELECT json('{\"a\":1}')))",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array(j) FROM (SELECT json('{\"a\":1}') AS j)",
+    "rows": [
+      [
+        "[\"{\\\"a\\\":1}\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array(json_quote('a'))",
+    "rows": [
+      [
+        "[\"a\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array()",
+    "rows": [
+      [
+        "[]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array(jsonb('{\"a\":1}'))",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_object('a',1,'b',NULL)",
+    "rows": [
+      [
+        "{\"a\":1,\"b\":null}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_object()",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_object('a')",
+    "error": "Error near line 4: json_object() requires an even number of arguments"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_object(1,2)",
+    "error": "Error near line 4: json_object() labels must be TEXT"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_object(NULL,1)",
+    "error": "Error near line 4: json_object() labels must be TEXT"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_object(x'61',2)",
+    "error": "Error near line 4: json_object() labels must be TEXT"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_object('a',1.0,'b',1e2)",
+    "rows": [
+      [
+        "{\"a\":1.0,\"b\":100.0}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_object('a', x'00')",
+    "rows": [
+      [
+        "{\"a\":null}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_object('a', x'ff')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array_length('[1,2,3]'), json_array_length('{\"a\":1}'), json_array_length(NULL), json_array_length('[1,2]','$[5]'), json_array_length('\"abc\"'), json_array_length('[1]','$[0]')",
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "0"
+        },
+        null,
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array_length('{}','$.a')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_array_length('[1,2]','')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_insert('{}','$.a.b',1)",
+    "rows": [
+      [
+        "{\"a\":{\"b\":1}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_insert('{\"a\":1}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_insert('{\"a\":1}','$.b.c.d',4)",
+    "rows": [
+      [
+        "{\"a\":1,\"b\":{\"c\":{\"d\":4}}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_insert('{}','$.a',1,'$.a.b',2)",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_insert('[1]','$[1]',9)",
+    "rows": [
+      [
+        "[1,9]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_insert('[1]','$[0]',9)",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_insert('5','$',9)",
+    "rows": [
+      [
+        "5"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_insert('[]','$[0].a',1)",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_replace('{\"a\":1}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":9}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_replace('{\"a\":1}','$.b',9)",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_replace('[1]','$[1]',9)",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_replace('5','$',9)",
+    "rows": [
+      [
+        "9"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{\"a\":1}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":9}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{}','$.b.c',1)",
+    "rows": [
+      [
+        "{\"b\":{\"c\":1}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('[1]','$[1]',9)",
+    "rows": [
+      [
+        "[1,9]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('[1]','$[5]',9)",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{}','$[0]',1)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('[]','$.a',1)",
+    "rows": [
+      [
+        "[]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('5','$.a',1)",
+    "rows": [
+      [
+        "5"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{}','$[#]',1)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{\"a\":1,\"a\":2}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":9,\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{\"a\":1}', NULL, 2, '$.a', 9)",
+    "rows": [
+      [
+        "{\"a\":9}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{}','$.a')",
+    "error": "Error near line 4: json_set() needs an odd number of arguments"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT jsonb_set('{}','$.a')",
+    "error": "Error near line 4: json_set() needs an odd number of arguments"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('[1,2]','$[0]',9,'$[0]',8)",
+    "rows": [
+      [
+        "[8,2]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{}','$.a[0]',1)",
+    "rows": [
+      [
+        "{\"a\":[1]}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('[]','$[0].a',1)",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('[]','$[0][0]',1)",
+    "rows": [
+      [
+        "[[1]]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{\"a\":1}','$',5)",
+    "rows": [
+      [
+        "5"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{\"a\":1}','$.a', json('{\"b\":2}'))",
+    "rows": [
+      [
+        "{\"a\":{\"b\":2}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{}','$.a', x'01')",
+    "rows": [
+      [
+        "{\"a\":true}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_set('{}','$.a', x'7b7d')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_remove('[1,2,3]','$[0]','$[0]')",
+    "rows": [
+      [
+        "[3]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_remove('[1,2,3]','$[1]')",
+    "rows": [
+      [
+        "[1,3]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_remove('{\"a\":1}','$')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_remove('{\"a\":1}', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_remove()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_remove('{\"a\":1}','$.b')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_remove('{\"a\":1,\"b\":2}','$.a','$.missing','$.b')",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_insert()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_patch('{\"a\":1,\"a\":2}','{\"a\":null}')",
+    "rows": [
+      [
+        "{\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_patch('{\"a\":{\"b\":1}}','{\"a\":{\"c\":2}}')",
+    "rows": [
+      [
+        "{\"a\":{\"b\":1,\"c\":2}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_patch('1','{\"a\":1}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_patch('{\"a\":1}', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_patch('nope','{}')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_patch('{\"a\":1,\"a\":2}','{\"a\":{\"b\":1}}')",
+    "rows": [
+      [
+        "{\"a\":{\"b\":1},\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_quote('a\"b'), json_quote(1), json_quote(NULL), json_quote(1.5), json_quote(-0.0)",
+    "rows": [
+      [
+        "\"a\\\"b\"",
+        "1",
+        "null",
+        "1.5",
+        "0.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_quote(1.0), json_quote(1e2), json_quote(10.0)",
+    "rows": [
+      [
+        "1.0",
+        "100.0",
+        "10.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_quote(x'00'), json_quote(x'01'), json_quote(x'1331'), json_quote(x'1761')",
+    "rows": [
+      [
+        "null",
+        "true",
+        "1",
+        "\"a\""
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_quote(x'ff')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_quote(x'7b7d')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_array(n) FROM (SELECT 1 AS n UNION ALL SELECT NULL UNION ALL SELECT 2)",
+    "rows": [
+      [
+        "[1,null,2]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_array(n) FROM (SELECT 1 AS n WHERE 0)",
+    "rows": [
+      [
+        "[]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_array(DISTINCT n) FROM (SELECT 1 AS n UNION ALL SELECT 1 UNION ALL SELECT NULL)",
+    "rows": [
+      [
+        "[1,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_array(n ORDER BY n DESC) FROM (SELECT 1 AS n UNION ALL SELECT 3 UNION ALL SELECT NULL)",
+    "rows": [
+      [
+        "[3,1,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_array(n) FILTER (WHERE n IS NOT NULL) FROM (SELECT 1 AS n UNION ALL SELECT NULL UNION ALL SELECT 2)",
+    "rows": [
+      [
+        "[1,2]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT 'a' AS k, 1 AS v UNION ALL SELECT 'b', NULL UNION ALL SELECT NULL, 3)",
+    "rows": [
+      [
+        "{\"a\":1,\"b\":null}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT 'a' AS k, 1 AS v WHERE 0)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT NULL AS k, 1 AS v)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT '' AS k, 1 AS v)",
+    "rows": [
+      [
+        "{\"\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT NULL AS k, 1 AS v UNION ALL SELECT 'a', 2)",
+    "rows": [
+      [
+        "{\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT x'61' AS k, 2 AS v)",
+    "rows": [
+      [
+        "{\"\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT 1 AS k, 2 AS v UNION ALL SELECT 1.5, 2)",
+    "rows": [
+      [
+        "{\"1\":2,\"1.5\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_group_object(DISTINCT k, v) FROM (SELECT 'a' AS k, 1 AS v)",
+    "error": "Parse error near line 4: DISTINCT aggregates must have exactly one argument"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT hex(jsonb('null')), hex(jsonb('true')), hex(jsonb('false')), hex(jsonb('0')), hex(jsonb('1')), hex(jsonb('-1')), hex(jsonb('12'))",
+    "rows": [
+      [
+        "00",
+        "01",
+        "02",
+        "1330",
+        "1331",
+        "232D31",
+        "233132"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT hex(jsonb('1.5')), hex(jsonb('1e2')), hex(jsonb('\"\"')), hex(jsonb('\"a\"')), hex(jsonb('\"ab\"')), hex(jsonb('\"a\\nb\"'))",
+    "rows": [
+      [
+        "35312E35",
+        "35316532",
+        "07",
+        "1761",
+        "276162",
+        "48615C6E62"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT hex(jsonb('[]')), hex(jsonb('[1]')), hex(jsonb('[1,2]')), hex(jsonb('{}')), hex(jsonb('{\"a\":1}'))",
+    "rows": [
+      [
+        "0B",
+        "2B1331",
+        "4B13311332",
+        "0C",
+        "4C17611331"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT hex(jsonb('{\"ab\":true}')), hex(jsonb('{\"a\":1,\"b\":2}')), hex(jsonb('[null,false,true]'))",
+    "rows": [
+      [
+        "4C27616201",
+        "8C1761133117621332",
+        "3B000201"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT hex(jsonb('\"\\u0041\"'))",
+    "rows": [
+      [
+        "685C7530303431"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT hex(jsonb('9223372036854775807'))",
+    "rows": [
+      [
+        "C31339323233333732303336383534373735383037"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT typeof(jsonb('1')), json(jsonb('{\"a\":1}'))",
+    "rows": [
+      [
+        "blob",
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT jsonb('null'), jsonb('true'), jsonb('1'), jsonb('\"a\"'), jsonb('[]'), jsonb('{}'), jsonb('{\"a\":1}')",
+    "rows": [
+      [
+        {
+          "blob": "00"
+        },
+        {
+          "blob": "01"
+        },
+        {
+          "blob": "1331"
+        },
+        {
+          "blob": "1761"
+        },
+        {
+          "blob": "0b"
+        },
+        {
+          "blob": "0c"
+        },
+        {
+          "blob": "4c17611331"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT hex(jsonb_extract(jsonb('{\"a\":[1]}'),'$.a'))",
+    "rows": [
+      [
+        "2B1331"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT jsonb_extract(jsonb('{\"a\":1}'),'$.a'), typeof(jsonb_extract(jsonb('{\"a\":1}'),'$.a'))",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT jsonb_extract()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(jsonb_array(1,NULL)), hex(jsonb_array(1,NULL))",
+    "rows": [
+      [
+        "[1,null]",
+        "3B133100"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(jsonb_object('a',1)), jsonb_object('a',1)",
+    "rows": [
+      [
+        "{\"a\":1}",
+        {
+          "blob": "4c17611331"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(x'00'), json(x'7b7d'), json(x'01')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT hex(jsonb('\"' || printf('%.*c',11,'a') || '\"'))",
+    "rows": [
+      [
+        "B76161616161616161616161"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT hex(substr(jsonb('\"' || printf('%.*c',12,'a') || '\"'),1,2))",
+    "rows": [
+      [
+        "C70C"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT hex(substr(jsonb('\"' || printf('%.*c',14,'a') || '\"'),1,2))",
+    "rows": [
+      [
+        "C70E"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('{\"a\":[1,true]}')",
+    "rows": [
+      [
+        "a",
+        "[1,true]",
+        "array",
+        null,
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('[10,true]')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "10"
+        },
+        "integer",
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$[0]",
+        "$"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "true",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        },
+        null,
+        "$[1]",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('5')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "5"
+        },
+        "integer",
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "0"
+        },
+        null,
+        "$",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('{\"a\":1}','$.a')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$.a"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('[10,{\"b\":2}]','$[0]')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "10"
+        },
+        "integer",
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$[0]",
+        "$[0]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_tree('[1,{\"b\":2}]')",
+    "rows": [
+      [
+        null,
+        "[1,{\"b\":2}]",
+        "array",
+        null,
+        {
+          "integer": "0"
+        },
+        null,
+        "$",
+        "$"
+      ],
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        },
+        "$[0]",
+        "$"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "{\"b\":2}",
+        "object",
+        null,
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "0"
+        },
+        "$[1]",
+        "$"
+      ],
+      [
+        "b",
+        {
+          "integer": "2"
+        },
+        "integer",
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        "$[1].b",
+        "$[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_tree('{\"a\":1}','$.a')",
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, id, parent, fullkey, path, value FROM json_each('{\"a\":1}','$')",
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, id, fullkey, path FROM json_tree('{\"a\":1}','$')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "0"
+        },
+        "$",
+        "$"
+      ],
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        "$.a",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT count(*) FROM json_each()",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT count(*) FROM json_each(NULL)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT count(*) FROM json_each('{\"a\":1}','$.z')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT * FROM json_each('{\"a\":1}','nope')",
+    "error": "Error near line 4: bad JSON path: 'nope'"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT count(*) FROM json_tree()",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT count(*) FROM json_tree('1','$.a')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, fullkey FROM json_each('{\"a_b\":1,\"_a\":1,\"\":1,\"01\":1,\"a b\":1}')",
+    "rows": [
+      [
+        "a_b",
+        "$.\"a_b\""
+      ],
+      [
+        "_a",
+        "$.\"_a\""
+      ],
+      [
+        "",
+        "$.\"\""
+      ],
+      [
+        "01",
+        "$.\"01\""
+      ],
+      [
+        "a b",
+        "$.\"a b\""
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT key, fullkey FROM json_each('{\"é\":1}')",
+    "rows": [
+      [
+        "é",
+        "$.\"é\""
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT d.id, e.value FROM (SELECT 1 AS id, 'a' AS k UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c') AS d JOIN json_each('{\"a\":10,\"b\":20}') AS e ON d.k = e.key ORDER BY d.id",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "10"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "20"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(printf('%.*c',1000,'[') || printf('%.*c',1000,']'))",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT length(json(printf('%.*c',1000,'[') || printf('%.*c',1000,']')))",
+    "rows": [
+      [
+        {
+          "integer": "2000"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json_valid(printf('%.*c',1001,'[') || printf('%.*c',1001,']'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(printf('%.*c',1001,'[') || printf('%.*c',1001,']'))",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json(char(0))",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 2,
+    "sql": "SELECT json('\"\\u0000\"')",
+    "rows": [
+      [
+        "\"\\u0000\""
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('{\"a\":1}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('  { \"a\" : 1, } ')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('{a:1}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('''a''')",
+    "rows": [
+      [
+        "\"a\""
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('1.0')",
+    "rows": [
+      [
+        "1.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(1.0)",
+    "rows": [
+      [
+        "1.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(10.0)",
+    "rows": [
+      [
+        "10.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(-0.0)",
+    "rows": [
+      [
+        "0.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(1e2)",
+    "rows": [
+      [
+        "100.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(1e20)",
+    "rows": [
+      [
+        "1.0e+20"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(1e-7)",
+    "rows": [
+      [
+        "1.0e-07"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(1e15)",
+    "rows": [
+      [
+        "1000000000000000.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(2.2250738585072014e-308)",
+    "rows": [
+      [
+        "2.2250738585072014e-308"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('+1')",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('1.')",
+    "rows": [
+      [
+        "1.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('.5')",
+    "rows": [
+      [
+        "0.5"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('0x10')",
+    "rows": [
+      [
+        "16"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('-0')",
+    "rows": [
+      [
+        "-0"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('01')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('nope')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json()",
+    "error": "Parse error near line 4: wrong number of arguments to function json()\n  SELECT json();\n         ^--- error here"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(1,2)",
+    "error": "Parse error near line 4: wrong number of arguments to function json()\n  SELECT json(1,2);\n         ^--- error here"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('Infinity'), json('-infinity'), json('+Infinity')",
+    "rows": [
+      [
+        "9e999",
+        "-9e999",
+        "9e999"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('1e'), json('1e+')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('[1,]')",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('{\"a\":1,}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('/*c*/1')",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('//c' || char(10) || '1')",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('1,')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid('{\"a\":1}')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid('{a:1}')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid('{a:1}', 1)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid('{a:1}', 2)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid('{a:1}', 3)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(1)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(1.5)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(x'00')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(x'7b7d')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(jsonb('null'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(jsonb('1'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(jsonb('null'), 4)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(jsonb('null'), 8)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(jsonb('null'), 12)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(x'ff', 8)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(x'ff', 4)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid('{}', 0)",
+    "error": "Error near line 4: FLAGS parameter to json_valid() must be between 1 and 15"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid('{}', 16)",
+    "error": "Error near line 4: FLAGS parameter to json_valid() must be between 1 and 15"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid('{}', 15)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid('{}', '2')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid('{}', 'no')",
+    "error": "Error near line 4: FLAGS parameter to json_valid() must be between 1 and 15"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_type('{\"a\":1}','$.a')",
+    "rows": [
+      [
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_type('1.0')",
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_type('1')",
+    "rows": [
+      [
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_type('1e2')",
+    "rows": [
+      [
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_type('{}','$.missing')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_type(NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_type(NULL,'$.a')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_type('nope')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_type('true'), json_type('false'), json_type('null'), json_type('[]'), json_type('{}'), json_type('\"a\"')",
+    "rows": [
+      [
+        "true",
+        "false",
+        "null",
+        "array",
+        "object",
+        "text"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_type('{\"a\":1}','')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_error_position('x'), json_error_position('{'), json_error_position(NULL), json_error_position('1'), json_error_position('')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "2"
+        },
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a'), typeof(json_extract('{\"a\":1}','$.a'))",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('[1,2]','$[0]')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{\"a\":1}','$.b')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{\"a\":{\"b\":[1,2]}}','$.a.b[1]')",
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a','$.b')",
+    "rows": [
+      [
+        "[1,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('[1,2,3]','$[0]','$[2]','$[9]')",
+    "rows": [
+      [
+        "[1,3,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{\"a\":1}', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('nope','$')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{}','')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{}','a')",
+    "error": "Error near line 4: bad JSON path: 'a'"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{}', '')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{\"a\":1,\"a\":2}','$.a')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('[1,2]','$[01]')",
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('[1,2]','$[#]')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('[1,2]','$[#-1]')",
+    "rows": [
+      [
+        {
+          "integer": "2"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('[1,2]','$[#-9]')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{\"a\":1}','$.')",
+    "error": "Error near line 4: bad JSON path: '$.'"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('[1]','$.a.')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{}','$[')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('[1]','$[')",
+    "error": "Error near line 4: bad JSON path: '$['"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{\"a\":1}','$.a b')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('{\"a \":1}','$.a ')",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('1.5','$'), typeof(json_extract('1.5','$'))",
+    "rows": [
+      [
+        {
+          "float": "1.5"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('1e2','$'), typeof(json_extract('1e2','$'))",
+    "rows": [
+      [
+        {
+          "float": "100"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('-0','$'), typeof(json_extract('-0','$'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('9223372036854775807','$')",
+    "rows": [
+      [
+        {
+          "integer": "9223372036854775807"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('9223372036854775808','$'), typeof(json_extract('9223372036854775808','$'))",
+    "rows": [
+      [
+        {
+          "float": "9.2233720368547758e+18"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('-9223372036854775808','$')",
+    "rows": [
+      [
+        {
+          "integer": "-9223372036854775808"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_extract('-9223372036854775809','$'), typeof(json_extract('-9223372036854775809','$'))",
+    "rows": [
+      [
+        {
+          "float": "-9.2233720368547758e+18"
+        },
+        "real"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '[1,2]' -> 0, typeof('[1,2]' -> 0)",
+    "rows": [
+      [
+        "1",
+        "text"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '[1,2]' ->> 0, typeof('[1,2]' ->> 0)",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '{\"a\":1}' -> 'a'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '{\"a\":1}' ->> 'a'",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '{\"a\":1}' ->> 0",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT NULL -> '$.a'",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '{\"a\":1}' -> NULL",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT 'nope' -> NULL",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '[1,2]' -> 0 + 10",
+    "rows": [
+      [
+        {
+          "integer": "11"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '1' || '[1,2]' -> 1",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT ' [1,2] ' -> 0",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '{\"a\":1}' -> '$.a'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '[1,2]' -> '[0]'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '[1,2]' -> '0'",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '{\"a b\":1}' -> 'a b'",
+    "rows": [
+      [
+        "1"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '{}' -> 'bad path'",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT '{\"a\":1}' -> 'a' ->> 0",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array(1,NULL,'x')",
+    "rows": [
+      [
+        "[1,null,\"x\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array(1.0, 1e2)",
+    "rows": [
+      [
+        "[1.0,100.0]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array('{\"a\":1}')",
+    "rows": [
+      [
+        "[\"{\\\"a\\\":1}\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array(json('{\"a\":1}'))",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array((SELECT json('{\"a\":1}')))",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array(j) FROM (SELECT json('{\"a\":1}') AS j)",
+    "rows": [
+      [
+        "[\"{\\\"a\\\":1}\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array(json_quote('a'))",
+    "rows": [
+      [
+        "[\"a\"]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array()",
+    "rows": [
+      [
+        "[]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array(jsonb('{\"a\":1}'))",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_object('a',1,'b',NULL)",
+    "rows": [
+      [
+        "{\"a\":1,\"b\":null}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_object()",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_object('a')",
+    "error": "Error near line 4: json_object() requires an even number of arguments"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_object(1,2)",
+    "error": "Error near line 4: json_object() labels must be TEXT"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_object(NULL,1)",
+    "error": "Error near line 4: json_object() labels must be TEXT"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_object(x'61',2)",
+    "error": "Error near line 4: json_object() labels must be TEXT"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_object('a',1.0,'b',1e2)",
+    "rows": [
+      [
+        "{\"a\":1.0,\"b\":100.0}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_object('a', x'00')",
+    "rows": [
+      [
+        "{\"a\":null}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_object('a', x'ff')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array_length('[1,2,3]'), json_array_length('{\"a\":1}'), json_array_length(NULL), json_array_length('[1,2]','$[5]'), json_array_length('\"abc\"'), json_array_length('[1]','$[0]')",
+    "rows": [
+      [
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "0"
+        },
+        null,
+        null,
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array_length('{}','$.a')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_array_length('[1,2]','')",
+    "error": "Error near line 4: bad JSON path: ''"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_insert('{}','$.a.b',1)",
+    "rows": [
+      [
+        "{\"a\":{\"b\":1}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_insert('{\"a\":1}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_insert('{\"a\":1}','$.b.c.d',4)",
+    "rows": [
+      [
+        "{\"a\":1,\"b\":{\"c\":{\"d\":4}}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_insert('{}','$.a',1,'$.a.b',2)",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_insert('[1]','$[1]',9)",
+    "rows": [
+      [
+        "[1,9]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_insert('[1]','$[0]',9)",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_insert('5','$',9)",
+    "rows": [
+      [
+        "5"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_insert('[]','$[0].a',1)",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_replace('{\"a\":1}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":9}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_replace('{\"a\":1}','$.b',9)",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_replace('[1]','$[1]',9)",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_replace('5','$',9)",
+    "rows": [
+      [
+        "9"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{\"a\":1}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":9}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{}','$.b.c',1)",
+    "rows": [
+      [
+        "{\"b\":{\"c\":1}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('[1]','$[1]',9)",
+    "rows": [
+      [
+        "[1,9]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('[1]','$[5]',9)",
+    "rows": [
+      [
+        "[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{}','$[0]',1)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('[]','$.a',1)",
+    "rows": [
+      [
+        "[]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('5','$.a',1)",
+    "rows": [
+      [
+        "5"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{}','$[#]',1)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{\"a\":1,\"a\":2}','$.a',9)",
+    "rows": [
+      [
+        "{\"a\":9,\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{\"a\":1}', NULL, 2, '$.a', 9)",
+    "rows": [
+      [
+        "{\"a\":9}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{}','$.a')",
+    "error": "Error near line 4: json_set() needs an odd number of arguments"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT jsonb_set('{}','$.a')",
+    "error": "Error near line 4: json_set() needs an odd number of arguments"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('[1,2]','$[0]',9,'$[0]',8)",
+    "rows": [
+      [
+        "[8,2]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{}','$.a[0]',1)",
+    "rows": [
+      [
+        "{\"a\":[1]}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('[]','$[0].a',1)",
+    "rows": [
+      [
+        "[{\"a\":1}]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('[]','$[0][0]',1)",
+    "rows": [
+      [
+        "[[1]]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{\"a\":1}','$',5)",
+    "rows": [
+      [
+        "5"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{\"a\":1}','$.a', json('{\"b\":2}'))",
+    "rows": [
+      [
+        "{\"a\":{\"b\":2}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{}','$.a', x'01')",
+    "rows": [
+      [
+        "{\"a\":true}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_set('{}','$.a', x'7b7d')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_remove('[1,2,3]','$[0]','$[0]')",
+    "rows": [
+      [
+        "[3]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_remove('[1,2,3]','$[1]')",
+    "rows": [
+      [
+        "[1,3]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_remove('{\"a\":1}','$')",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_remove('{\"a\":1}', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_remove()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_remove('{\"a\":1}','$.b')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_remove('{\"a\":1,\"b\":2}','$.a','$.missing','$.b')",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_insert()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_patch('{\"a\":1,\"a\":2}','{\"a\":null}')",
+    "rows": [
+      [
+        "{\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_patch('{\"a\":{\"b\":1}}','{\"a\":{\"c\":2}}')",
+    "rows": [
+      [
+        "{\"a\":{\"b\":1,\"c\":2}}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_patch('1','{\"a\":1}')",
+    "rows": [
+      [
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_patch('{\"a\":1}', NULL)",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_patch('nope','{}')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_patch('{\"a\":1,\"a\":2}','{\"a\":{\"b\":1}}')",
+    "rows": [
+      [
+        "{\"a\":{\"b\":1},\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_quote('a\"b'), json_quote(1), json_quote(NULL), json_quote(1.5), json_quote(-0.0)",
+    "rows": [
+      [
+        "\"a\\\"b\"",
+        "1",
+        "null",
+        "1.5",
+        "0.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_quote(1.0), json_quote(1e2), json_quote(10.0)",
+    "rows": [
+      [
+        "1.0",
+        "100.0",
+        "10.0"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_quote(x'00'), json_quote(x'01'), json_quote(x'1331'), json_quote(x'1761')",
+    "rows": [
+      [
+        "null",
+        "true",
+        "1",
+        "\"a\""
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_quote(x'ff')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_quote(x'7b7d')",
+    "error": "Error near line 4: JSON cannot hold BLOB values"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_array(n) FROM (SELECT 1 AS n UNION ALL SELECT NULL UNION ALL SELECT 2)",
+    "rows": [
+      [
+        "[1,null,2]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_array(n) FROM (SELECT 1 AS n WHERE 0)",
+    "rows": [
+      [
+        "[]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_array(DISTINCT n) FROM (SELECT 1 AS n UNION ALL SELECT 1 UNION ALL SELECT NULL)",
+    "rows": [
+      [
+        "[1,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_array(n ORDER BY n DESC) FROM (SELECT 1 AS n UNION ALL SELECT 3 UNION ALL SELECT NULL)",
+    "rows": [
+      [
+        "[3,1,null]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_array(n) FILTER (WHERE n IS NOT NULL) FROM (SELECT 1 AS n UNION ALL SELECT NULL UNION ALL SELECT 2)",
+    "rows": [
+      [
+        "[1,2]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT 'a' AS k, 1 AS v UNION ALL SELECT 'b', NULL UNION ALL SELECT NULL, 3)",
+    "rows": [
+      [
+        "{\"a\":1,\"b\":null}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT 'a' AS k, 1 AS v WHERE 0)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT NULL AS k, 1 AS v)",
+    "rows": [
+      [
+        "{}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT '' AS k, 1 AS v)",
+    "rows": [
+      [
+        "{\"\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT NULL AS k, 1 AS v UNION ALL SELECT 'a', 2)",
+    "rows": [
+      [
+        "{\"a\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT x'61' AS k, 2 AS v)",
+    "rows": [
+      [
+        "{\"\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_object(k,v) FROM (SELECT 1 AS k, 2 AS v UNION ALL SELECT 1.5, 2)",
+    "rows": [
+      [
+        "{\"1\":2,\"1.5\":2}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_group_object(DISTINCT k, v) FROM (SELECT 'a' AS k, 1 AS v)",
+    "error": "Parse error near line 4: DISTINCT aggregates must have exactly one argument"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT hex(jsonb('null')), hex(jsonb('true')), hex(jsonb('false')), hex(jsonb('0')), hex(jsonb('1')), hex(jsonb('-1')), hex(jsonb('12'))",
+    "rows": [
+      [
+        "00",
+        "01",
+        "02",
+        "1330",
+        "1331",
+        "232D31",
+        "233132"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT hex(jsonb('1.5')), hex(jsonb('1e2')), hex(jsonb('\"\"')), hex(jsonb('\"a\"')), hex(jsonb('\"ab\"')), hex(jsonb('\"a\\nb\"'))",
+    "rows": [
+      [
+        "35312E35",
+        "35316532",
+        "07",
+        "1761",
+        "276162",
+        "48615C6E62"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT hex(jsonb('[]')), hex(jsonb('[1]')), hex(jsonb('[1,2]')), hex(jsonb('{}')), hex(jsonb('{\"a\":1}'))",
+    "rows": [
+      [
+        "0B",
+        "2B1331",
+        "4B13311332",
+        "0C",
+        "4C17611331"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT hex(jsonb('{\"ab\":true}')), hex(jsonb('{\"a\":1,\"b\":2}')), hex(jsonb('[null,false,true]'))",
+    "rows": [
+      [
+        "4C27616201",
+        "8C1761133117621332",
+        "3B000201"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT hex(jsonb('\"\\u0041\"'))",
+    "rows": [
+      [
+        "685C7530303431"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT hex(jsonb('9223372036854775807'))",
+    "rows": [
+      [
+        "C31339323233333732303336383534373735383037"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT typeof(jsonb('1')), json(jsonb('{\"a\":1}'))",
+    "rows": [
+      [
+        "blob",
+        "{\"a\":1}"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT jsonb('null'), jsonb('true'), jsonb('1'), jsonb('\"a\"'), jsonb('[]'), jsonb('{}'), jsonb('{\"a\":1}')",
+    "rows": [
+      [
+        {
+          "blob": "00"
+        },
+        {
+          "blob": "01"
+        },
+        {
+          "blob": "1331"
+        },
+        {
+          "blob": "1761"
+        },
+        {
+          "blob": "0b"
+        },
+        {
+          "blob": "0c"
+        },
+        {
+          "blob": "4c17611331"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT hex(jsonb_extract(jsonb('{\"a\":[1]}'),'$.a'))",
+    "rows": [
+      [
+        "2B1331"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT jsonb_extract(jsonb('{\"a\":1}'),'$.a'), typeof(jsonb_extract(jsonb('{\"a\":1}'),'$.a'))",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        "integer"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT jsonb_extract()",
+    "rows": [
+      [
+        null
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(jsonb_array(1,NULL)), hex(jsonb_array(1,NULL))",
+    "rows": [
+      [
+        "[1,null]",
+        "3B133100"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(jsonb_object('a',1)), jsonb_object('a',1)",
+    "rows": [
+      [
+        "{\"a\":1}",
+        {
+          "blob": "4c17611331"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(x'00'), json(x'7b7d'), json(x'01')",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT hex(jsonb('\"' || printf('%.*c',11,'a') || '\"'))",
+    "rows": [
+      [
+        "B76161616161616161616161"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT hex(substr(jsonb('\"' || printf('%.*c',12,'a') || '\"'),1,2))",
+    "rows": [
+      [
+        "C70C"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT hex(substr(jsonb('\"' || printf('%.*c',14,'a') || '\"'),1,2))",
+    "rows": [
+      [
+        "C70E"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('{\"a\":[1,true]}')",
+    "rows": [
+      [
+        "a",
+        "[1,true]",
+        "array",
+        null,
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('[10,true]')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "10"
+        },
+        "integer",
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$[0]",
+        "$"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        "true",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "4"
+        },
+        null,
+        "$[1]",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('5')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "5"
+        },
+        "integer",
+        {
+          "integer": "5"
+        },
+        {
+          "integer": "0"
+        },
+        null,
+        "$",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('{\"a\":1}','$.a')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$.a"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_each('[10,{\"b\":2}]','$[0]')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "10"
+        },
+        "integer",
+        {
+          "integer": "10"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$[0]",
+        "$[0]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_tree('[1,{\"b\":2}]')",
+    "rows": [
+      [
+        null,
+        "[1,{\"b\":2}]",
+        "array",
+        null,
+        {
+          "integer": "0"
+        },
+        null,
+        "$",
+        "$"
+      ],
+      [
+        {
+          "integer": "0"
+        },
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "0"
+        },
+        "$[0]",
+        "$"
+      ],
+      [
+        {
+          "integer": "1"
+        },
+        "{\"b\":2}",
+        "object",
+        null,
+        {
+          "integer": "3"
+        },
+        {
+          "integer": "0"
+        },
+        "$[1]",
+        "$"
+      ],
+      [
+        "b",
+        {
+          "integer": "2"
+        },
+        "integer",
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "4"
+        },
+        {
+          "integer": "3"
+        },
+        "$[1].b",
+        "$[1]"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, value, type, atom, id, parent, fullkey, path FROM json_tree('{\"a\":1}','$.a')",
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        "integer",
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, id, parent, fullkey, path, value FROM json_each('{\"a\":1}','$')",
+    "rows": [
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        null,
+        "$.a",
+        "$",
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, id, fullkey, path FROM json_tree('{\"a\":1}','$')",
+    "rows": [
+      [
+        null,
+        {
+          "integer": "0"
+        },
+        "$",
+        "$"
+      ],
+      [
+        "a",
+        {
+          "integer": "1"
+        },
+        "$.a",
+        "$"
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT count(*) FROM json_each()",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT count(*) FROM json_each(NULL)",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT count(*) FROM json_each('{\"a\":1}','$.z')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT * FROM json_each('{\"a\":1}','nope')",
+    "error": "Error near line 4: bad JSON path: 'nope'"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT count(*) FROM json_tree()",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT count(*) FROM json_tree('1','$.a')",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, fullkey FROM json_each('{\"a_b\":1,\"_a\":1,\"\":1,\"01\":1,\"a b\":1}')",
+    "rows": [
+      [
+        "a_b",
+        "$.\"a_b\""
+      ],
+      [
+        "_a",
+        "$.\"_a\""
+      ],
+      [
+        "",
+        "$.\"\""
+      ],
+      [
+        "01",
+        "$.\"01\""
+      ],
+      [
+        "a b",
+        "$.\"a b\""
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT key, fullkey FROM json_each('{\"é\":1}')",
+    "rows": [
+      [
+        "é",
+        "$.\"é\""
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT d.id, e.value FROM (SELECT 1 AS id, 'a' AS k UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c') AS d JOIN json_each('{\"a\":10,\"b\":20}') AS e ON d.k = e.key ORDER BY d.id",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        },
+        {
+          "integer": "10"
+        }
+      ],
+      [
+        {
+          "integer": "2"
+        },
+        {
+          "integer": "20"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(printf('%.*c',1000,'[') || printf('%.*c',1000,']'))",
+    "rows": [
+      [
+        {
+          "integer": "1"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT length(json(printf('%.*c',1000,'[') || printf('%.*c',1000,']')))",
+    "rows": [
+      [
+        {
+          "integer": "2000"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json_valid(printf('%.*c',1001,'[') || printf('%.*c',1001,']'))",
+    "rows": [
+      [
+        {
+          "integer": "0"
+        }
+      ]
+    ]
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(printf('%.*c',1001,'[') || printf('%.*c',1001,']'))",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json(char(0))",
+    "error": "Error near line 4: malformed JSON"
+  },
+  {
+    "encoding": 3,
+    "sql": "SELECT json('\"\\u0000\"')",
+    "rows": [
+      [
+        "\"\\u0000\""
+      ]
+    ]
+  }
+]

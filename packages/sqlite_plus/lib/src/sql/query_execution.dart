@@ -33,7 +33,11 @@ final class _QueryExecution {
 
   QueryResult materialize({bool firstRowOnly = false}) => QueryResult(
       columns,
-      (firstRowOnly ? rows.take(1) : rows).toList(),
+      (firstRowOnly ? rows.take(1) : rows)
+          .map((row) => firstRowOnly
+              ? row.toList()
+              : [for (final cell in row) publishSqlValue(cell)])
+          .toList(),
       columnAffinities,
       columnDeclaredTypes,
       columnCollations);

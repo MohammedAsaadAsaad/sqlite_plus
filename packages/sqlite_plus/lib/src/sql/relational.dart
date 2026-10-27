@@ -434,7 +434,7 @@ extension _RelationalQueries on SqliteDatabase {
                   for (final row in rows)
                     {
                       for (var i = 0; i < columns.length; i++)
-                        asciiLower(columns[i]): row[i]
+                        asciiLower(columns[i]): publishSqlValue(row[i])
                     }
                 ]
               );
