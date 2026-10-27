@@ -222,6 +222,7 @@ void main() {
         '/tmp/sqlite-build/sqlite3';
     if (!File(cli).existsSync()) {
       markTestSkipped('pinned sqlite3 is not installed');
+      return;
     }
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
@@ -301,6 +302,7 @@ void main() {
         '/tmp/sqlite-build/sqlite3';
     if (!File(cli).existsSync()) {
       markTestSkipped('pinned sqlite3 is not installed');
+      return;
     }
     final file = File('${Directory.systemTemp.path}/sqlite_plus_fts5.db');
     if (file.existsSync()) file.deleteSync();
@@ -335,6 +337,7 @@ void main() {
         '/tmp/sqlite-build/sqlite3';
     if (!File(cli).existsSync()) {
       markTestSkipped('pinned sqlite3 is not installed');
+      return;
     }
     final file = File('${Directory.systemTemp.path}/sqlite_plus_fts4.db');
     if (file.existsSync()) file.deleteSync();

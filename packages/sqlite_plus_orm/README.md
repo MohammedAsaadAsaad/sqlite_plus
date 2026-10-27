@@ -145,7 +145,9 @@ keys and relationships. It does not establish browser storage durability.
 exported image through the public storage API. The verified path is an
 in-process `MemoryBrowserByteStore`: save two notes, filter with
 `where(MappedField.equalTo(...))`, close, reopen, and filter again.
-`durabilityPromised` stays false. Power loss is not claimed, and Chrome was
-not run. `MutableDatabaseConnection` remains the file and memory connection.
+`durabilityPromised` stays false. Power loss is not claimed. The Chrome page
+on Linux is `tool/chrome_orm_linux_x64.log`: placement `browser`, two saved
+notes, and `reopenBody=kept`. That log is not a macOS, Windows, Android, or
+iOS result. `MutableDatabaseConnection` remains the file and memory connection.
 Adapters must honor OrmConnection ownership and transaction semantics. Engine
 capabilities and exclusions remain in the repository compatibility matrix.

@@ -6,6 +6,7 @@ jobs:
   packages:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         package: [sqlite_plus, sqlite_plus_orm, sqlite_plus_generator]
     defaults:
@@ -62,3 +63,28 @@ jobs:
         run: |
           dart compile js tool/browser_smoke.dart -o /tmp/sqlite_plus_orm_smoke.js
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/sqlite_plus_orm_smoke.js
+  desktop:
+    name: Dart tests (${{ matrix.os }}, ${{ matrix.package }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        package: [sqlite_plus, sqlite_plus_orm, sqlite_plus_generator]
+    defaults:
+      run:
+        working-directory: packages/${{ matrix.package }}
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.7
+      - name: Install dependencies
+        run: dart pub get --enforce-lockfile
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed .
+      - name: Analyze
+        run: dart analyze --fatal-infos
+      - name: Test packages
+        run: dart test

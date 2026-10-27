@@ -410,11 +410,16 @@ cross-database write stay rejected. Items 77–82 add `openBrowserStorage` and
 `durabilityPromised`, and `placement`. Both placements leave
 `durabilityPromised` false. A missing browser interface falls back to memory.
 The verified round trip uses an in-process `MemoryBrowserByteStore`: close,
-then open, returns the row. The OPFS/IndexedDB file compiles with
-`dart compile js`. That JavaScript was not executed. Chrome was not run, and
-power loss is not claimed. Full SQLite compatibility is not claimed.
+then open, returns the row. The OPFS/IndexedDB compile-only entry is separate
+from the Chrome page. On Linux, Google Chrome 156.0.8078.47 opened the
+browser store, saved two notes, and the filter returned `kept` after close
+and open. `durabilityPromised` stayed false. Power loss is not claimed. The
+page text is `packages/sqlite_plus_orm/tool/chrome_orm_linux_x64.log`.
+The Linux test counts in the compatibility matrix are Linux x64 only. macOS
+and Windows have their own CI jobs. Android was not run. iOS was not run
+because this environment has no Mac. Full SQLite compatibility is not claimed.
 M7 and the verified M8 subset have passed their gates. M9 has not. Items
-83–108 remain open.
+91–108 remain open.
 
 Real AOT benchmark samples are saved under `benchmark_results`. The index
 benchmark builds a 10,000-row memory image and measures five batches of 100

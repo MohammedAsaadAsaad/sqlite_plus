@@ -17,6 +17,7 @@ void main() {
     final tool = cli();
     if (!File(tool).existsSync()) {
       markTestSkipped('pinned sqlite3 is not installed');
+      return;
     }
     final file = File(
         '${Directory.systemTemp.path}/sqlite_plus_page_${image.length}_${image.hashCode}.db');

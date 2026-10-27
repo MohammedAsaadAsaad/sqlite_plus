@@ -54,6 +54,7 @@
   not claim complete FTS5, FTS3/4 writes, `json_pretty`, or any M9 platform.
 - [ ] M9: Browser adapters, platform matrix, AOT benchmarks, hardening and release gates.
   Items 51–76, including one Linux page-write sample at 10,000 and 100,000 rows, stay outside this checkbox.
-  Items 77–82 add an unpromised browser-storage subset: capability flags, a memory fallback, an in-process image round trip, a compiled `dart:js_interop` OPFS/IndexedDB file, and an ORM save/filter reopen. They do not check this box. Chrome was not run. Power loss is not promised. Items 83–108 stay outside this checkbox.
+  Items 77–82 add an unpromised browser-storage subset: capability flags, a memory fallback, an in-process image round trip, a compiled `dart:js_interop` OPFS/IndexedDB file, and an ORM save/filter reopen. They do not check this box. Power loss is not promised.
+  Items 83–90 record a reprinted Linux x64 gate, one Chrome page on Linux, and separate macOS, Windows, Android, and iOS rows. They do not check this box. Android was not run. iOS was not run. Items 91–108 stay outside this checkbox.
 
 Every milestone must include `dart format`, `dart analyze`, tests, documented discrepancies and a compatibility matrix update. ORM metadata can be developed in parallel after the engine API contract is stable.

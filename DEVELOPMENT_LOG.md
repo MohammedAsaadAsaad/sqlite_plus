@@ -1041,3 +1041,44 @@
   JavaScript was not executed. Generator tests were not re-run. Native
   schema, journal, and WAL oracles were not re-run. Chrome, macOS, Windows,
   Android, and iOS were not run.
+
+## 2026-10-27 — Items 83–90: platform rows
+
+- The Linux x64 gate was reprinted on Dart 3.13.7. Format and fatal-info
+  analysis passed. `dart test` printed 10,496 engine tests, 165 ORM tests,
+  and 48 generator tests. The pinned SQLite CLI was present for the engine
+  run, so the native integrity tests ran. These counts are Linux x64 only.
+- `markTestSkipped` does not stop a test by itself. The six tests that need
+  `/tmp/sqlite-build/sqlite3` now return after the skip. With
+  `SQLITE_PLUS_SQLITE3` pointed at a missing path, those six skipped and the
+  other tests in the two files passed. GitHub runners do not have that CLI,
+  so those six skip there.
+- Chrome on this Linux machine ran the ORM page. The captured log is
+  `packages/sqlite_plus_orm/tool/chrome_orm_linux_x64.log`. Its page text is:
+
+```
+placement=browser
+canRead=true
+canWrite=true
+durabilityPromised=false
+saved=2
+before=kept
+reopenPlacement=browser
+reopenDurabilityPromised=false
+reopenBody=kept
+result=pass
+```
+
+  The browser line in that file is `Google Chrome 156.0.8078.47`. The Dart
+  line is `Dart SDK version: 3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`.
+  `durabilityPromised` stayed false. Power loss is not claimed.
+- GitHub Actions job `desktop` runs format, fatal-info analysis, and
+  `dart test` for the three packages on `macos-latest` and `windows-latest`
+  with Dart 3.13.7. The result of each job is that platform's result. It is
+  not copied from Linux.
+- Android was not run. `flutter` and `adb` are absent, and this machine has
+  no Android SDK, emulator, or device.
+- iOS was not run. This machine is Linux and has no Mac. The macOS CI job is
+  a macOS Dart VM, not an iOS device or simulator.
+- M8 stays checked for its earlier subset only. M9 stays open. Items 91–108
+  were not started. `json_pretty` and the other recorded limits are unchanged.

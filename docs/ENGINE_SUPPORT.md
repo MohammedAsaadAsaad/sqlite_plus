@@ -95,8 +95,8 @@ The IndexedDB database is `sqlite_plus` version 1 and the object store is
 `files`. The production packages do not depend on WASM or native SQLite. The
 package SDK floor is 3.4.0 because that file uses `JSAny.isA`. On this Linux
 VM the conditional import selects the stub, which returns null. `dart compile
-js tool/browser_storage_compile.dart` compiles the web file. That JavaScript
-was not executed, and Chrome was not run.
+js tool/browser_storage_compile.dart` compiles the web file. That compile-only
+entry is not a browser run. The Chrome page is recorded under items 83–90.
 
 `OpenedStorage.capabilities` is what the caller reads: `canRead`, `canWrite`,
 `durabilityPromised`, and `placement`. Memory and browser placements both set
@@ -114,6 +114,27 @@ not passed to the rollback or WAL pager. `BrowserDatabaseConnection` uses the
 public engine API only. The ORM test saves two notes, filters with
 `where(MappedField.equalTo(...))`, closes, reopens, and filters again.
 
+## Items 83–90
+
+The Linux x64 gate was reprinted on Dart 3.13.7: 10,496 engine tests, 165 ORM
+tests, and 48 generator tests. Format and fatal-info analysis passed. Those
+counts belong to Linux x64.
+
+Chrome on this Linux host opened `openBrowserStorage`, saved two notes, and
+filtered with `where(MappedField.equalTo('kept'))`. Close, then open, returned
+`kept`. `placement` was `browser` and `durabilityPromised` was false. The page
+text is `packages/sqlite_plus_orm/tool/chrome_orm_linux_x64.log`. Power loss
+is not claimed. The browser was Google Chrome 156.0.8078.47.
+
+GitHub Actions job `desktop` runs format, fatal-info analysis, and `dart test`
+for the three packages on `macos-latest` and `windows-latest`. The pinned
+SQLite CLI is not installed on those runners, so the six native integrity
+tests skip. Their pass or fail is not taken from the Linux counts.
+
+Android was not run. This machine has no Android SDK, emulator, or device.
+iOS was not run. This machine is Linux and has no Mac. A macOS Dart VM run is
+not an iOS run.
+
 ## Remaining SQLite targets
 
 These omissions remain project requirements or compatibility limits. They are
@@ -129,7 +150,7 @@ not implemented by closing a bounded engine milestone.
 | Table functions | General virtual-table modules; metadata PRAGMA sources have explicit join-order and hidden-argument limits |
 | Windows | Bounded execution; callback-bearing WHERE filtering can be buffered before window output, and native planner/coroutine equivalence is not general |
 | Extensions | `json_pretty`, correlated `json_each`, FTS5 multi-page leaves, porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes remain unimplemented. The verified JSON, FTS, and R-tree subset is in the compatibility matrix |
-| Platforms and release | Non-Linux execution, the full M9 benchmark matrix, and release qualification. Items 83–108 are open. Items 77–82 cover an unpromised browser image only: the round trip is an in-process simulation, and the OPFS/IndexedDB file was compiled, not run in Chrome |
+| Platforms and release | The full M9 benchmark matrix and release qualification. Items 91–108 are open. Linux x64 and one Chrome page on Linux are recorded. macOS and Windows have CI jobs whose results are not the Linux counts. Android was not run. iOS was not run because this machine has no Mac |
 
 Binary extension loading and the native SQLite C ABI are outside the Pure Dart
 runtime target. Existing durability and resource bounds remain in the
@@ -138,7 +159,8 @@ bounded full-image writes, and no external concurrent SQLite/shared wal-index
 mode. Browser-safe imports alone do not establish browser durability. The
 items 77–82 round trip is an in-process simulation plus a compiled
 `dart:js_interop` file. `durabilityPromised` stays false. Power loss is not
-claimed, and Chrome was not run.
+claimed. The Chrome page on Linux is a separate row and does not change that
+flag.
 
 ## Verification gate
 
