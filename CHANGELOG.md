@@ -14,8 +14,10 @@ three packages are prepared for pub.dev and are not published.
 - Linux x64 on Dart 3.13.7: this revision passed 10497 engine tests, 170 ORM
   tests, and 54 generator tests. The pinned SQLite CLI was present. The three
   example programs ran: the engine tour, the ORM reading log, and the
-  generated library. `dart pub publish --dry-run` is the publish check.
-  Nothing was uploaded.
+  generated library. `dart pub publish --dry-run` reported 0 warnings for
+  `sqlite_plus` and `sqlite_plus_orm`. The generator reported 2 warnings
+  because `analyzer` 6.4.1 and `dart_style` 2.3.6 stay exact. Nothing was
+  uploaded.
 - `benchmark_results/scenarios_10k_linux_x64.json` is the Linux x64 AOT
   measurement for 10000 rows and three samples. 100000 and 1000000 were not
   run. The file records SDK `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`,

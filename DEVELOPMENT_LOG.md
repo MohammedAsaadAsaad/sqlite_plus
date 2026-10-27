@@ -1220,5 +1220,8 @@ result=pass
   pinned SQLite CLI was present, so the native integrity tests ran. These
   counts are Linux x64 only. macOS and Windows results for this head are not
   recorded. The Windows file-lock fix still waits for a `windows-latest` job.
+- `dart pub publish --dry-run` reported 0 warnings for `sqlite_plus` and
+  `sqlite_plus_orm`. `sqlite_plus_generator` reported 2 warnings because
+  `analyzer` 6.4.1 and `dart_style` 2.3.6 stay exact. Nothing was uploaded.
 - M9 stays unchecked. Item 108 stays open. This preparation is not a 1.0
   release and it is not a pub.dev upload.
