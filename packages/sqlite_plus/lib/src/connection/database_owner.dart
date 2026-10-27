@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -32,21 +33,42 @@ final class DatabaseOwner {
     }
     final canonical = await File(path).resolveSymbolicLinks();
     final ready = ReceivePort();
+    final exited = ReceivePort();
     final admin = Capability();
-    final isolate =
-        await Isolate.spawn(_runOwner, [canonical, wal, admin, ready.sendPort]);
+    Isolate? isolate;
     try {
+      isolate = await Isolate.spawn(
+          _runOwner, [canonical, wal, admin, ready.sendPort]);
+      isolate.addOnExitListener(exited.sendPort);
       final response =
           await ready.first.timeout(const Duration(seconds: 30)) as List;
-      if (response[0] != 'ready') throw StateError(response[1] as String);
+      if (response[0] != 'ready') {
+        // The owner reports the error before its finally closes the files.
+        // Killing it there leaves Windows holding the directory.
+        await _releaseFailedOwner(isolate, exited);
+        isolate = null;
+        throw StateError(response[1] as String);
+      }
+      isolate.removeOnExitListener(exited.sendPort);
       final port = response[1] as SendPort;
-      return DatabaseOwner._(
-          isolate, port, admin, DatabaseClient.connect(port));
+      final opened = isolate;
+      isolate = null;
+      return DatabaseOwner._(opened, port, admin, DatabaseClient.connect(port));
     } catch (_) {
-      isolate.kill(priority: Isolate.immediate);
+      if (isolate != null) await _releaseFailedOwner(isolate, exited);
       rethrow;
     } finally {
       ready.close();
+      exited.close();
+    }
+  }
+
+  static Future<void> _releaseFailedOwner(
+      Isolate isolate, ReceivePort exited) async {
+    try {
+      await exited.first.timeout(const Duration(seconds: 5));
+    } on TimeoutException {
+      isolate.kill(priority: Isolate.immediate);
     }
   }
 

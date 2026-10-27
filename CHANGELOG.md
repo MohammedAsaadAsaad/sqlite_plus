@@ -10,9 +10,9 @@ This version stays `0.0.1-dev.1` in `sqlite_plus`, `sqlite_plus_orm`, and
 - Pure Dart engine, ORM, and generator for the subsets named in
   `COMPATIBILITY_MATRIX.md`. Production runtime has no FFI, native SQLite, or
   WASM SQLite.
-- Linux x64 on Dart 3.13.7: the ORM suite was re-run and passed 169 tests.
-  Engine 10,496 and generator 53 are the previous Linux run and were not
-  repeated. The pinned SQLite CLI was present for that earlier engine run.
+- Linux x64 on Dart 3.13.7: the engine suite was re-run after the failed-open
+  change and passed 10496 tests. The pinned SQLite CLI was present. The ORM
+  suite passed 169 tests. Generator 53 was not repeated.
 - `benchmark_results/scenarios_10k_linux_x64.json` is the Linux x64 AOT
   measurement for 10000 rows and three samples. 100000 and 1000000 were not
   run. The file records SDK `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`,
@@ -28,8 +28,9 @@ This version stays `0.0.1-dev.1` in `sqlite_plus`, `sqlite_plus_orm`, and
   `sqlite_plus_orm` only.
 - One Chrome page on Linux: `packages/sqlite_plus_orm/tool/chrome_orm_linux_x64.log`.
   `durabilityPromised` is false.
-- macOS CI passed for commit `9989846` in GitHub Actions run 40487224654.
-  The six tests that need the pinned SQLite CLI skip on that runner.
+- macOS CI passed for commit `e320528` in GitHub Actions run 40494640309.
+  That job passed 10490 engine tests with 6 skipped, 167 ORM tests, and 53
+  generator tests. The six skips are the pinned SQLite CLI checks.
 - Linux CI runs `tool/generate_*.py --verify`. A checksum mismatch fails the
   job. Those steps do not execute SQLite.
 
@@ -37,10 +38,12 @@ This version stays `0.0.1-dev.1` in `sqlite_plus`, `sqlite_plus_orm`, and
 
 - Item 108 and the M9 checkbox are open. The 10000-row AOT file does not close
   them. 100000 and 1000000 rows were not run.
-- Windows CI failed for commit `9989846`. This revision changes the locked
-  temp-directory delete and the CR LF comparisons. A Windows pass is not
-  recorded until the next `windows-latest` job succeeds.
-- The macOS pass above is commit `9989846`, not this later revision.
+- Windows CI for commit `e320528` passed 167 ORM tests and 53 generator tests.
+  The engine job passed 10489, failed 1, and skipped 6. The failure is
+  `database_owner` tearDown `PathAccessException` errno 32. A failed open now
+  waits for the isolate to exit before reporting the error. A Windows pass is
+  not recorded until the next `windows-latest` job succeeds.
+- The macOS pass above is commit `e320528`, not this later revision.
 - Android was not run. iOS was not run. A macOS Dart VM job is not iOS.
 - Power loss is not claimed. Browser storage does not promise durability.
 - DQS stays off.

@@ -1159,3 +1159,26 @@ result=pass
 - Versions stay `0.0.1-dev.1`. M8 stays checked for its earlier subset only.
   M9 stays unchecked. Item 108 stays open. macOS and Windows results for this
   head are not recorded yet.
+
+## 2026-10-27 — Windows file lock after a failed owner open
+
+- GitHub Actions run 40494640309, head `e320528`, passed all three packages on
+  `macos-latest`. The engine job printed 10490 passed and 6 skipped. ORM
+  printed 167. The generator printed 53. The six skips are the pinned CLI
+  integrity tests. These counts are macOS only.
+- The same run passed `windows-latest` for `sqlite_plus_orm` (167) and
+  `sqlite_plus_generator` (53). `sqlite_plus` printed 10489 passed, 1 failed,
+  and 6 skipped. The failure is
+  `database_owner_test.dart` "stale shared-memory and missing sidecars fail
+  without creation". tearDown raised `PathAccessException` errno 32 on the
+  temp directory after 20 retries of 50 ms. The six skips match the macOS
+  CLI skips. These counts are Windows only.
+- A failed `DatabaseOwner.open` used to `Isolate.kill` as soon as the isolate
+  reported the error, which is before its `finally` closes the file. The open
+  path now waits for that isolate to exit, and kills it only if exit exceeds
+  5 seconds. The stale-sidecar test then takes the same byte-range lock the
+  owner uses. Linux `database_owner_test.dart` passed 9 tests. Linux
+  `dart test` for `sqlite_plus` printed 10496 passed. The pinned SQLite CLI
+  was present, so the native integrity tests ran. A Windows pass is not
+  recorded until the next `windows-latest` job for this head.
+- M9 stays unchecked. Item 108 stays open.

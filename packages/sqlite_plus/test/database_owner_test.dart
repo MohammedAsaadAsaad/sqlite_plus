@@ -196,6 +196,13 @@ void main() {
     expect(File('$path-wal').existsSync(), isFalse);
     await expectLater(DatabaseOwner.open(path, directoryEntriesDurable: false),
         throwsUnsupportedError);
+    final handle = await File(path).open(mode: FileMode.append);
+    try {
+      await handle.lock(FileLock.exclusive, 0x40000000, 0x40000200);
+      await handle.unlock(0x40000000, 0x40000200);
+    } finally {
+      await handle.close();
+    }
   });
   test('SQL exceptions and independent bound blobs survive RPC', () async {
     final owner = await DatabaseOwner.open(provision(),

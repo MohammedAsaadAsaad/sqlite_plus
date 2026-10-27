@@ -186,7 +186,7 @@ not implemented by closing a bounded engine milestone.
 | Table functions | General virtual-table modules; metadata PRAGMA sources have explicit join-order and hidden-argument limits |
 | Windows | Bounded execution; callback-bearing WHERE filtering can be buffered before window output, and native planner/coroutine equivalence is not general |
 | Extensions | `json_pretty`, correlated `json_each`, FTS5 multi-page leaves, porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes remain unimplemented. The verified JSON, FTS, and R-tree subset is in the compatibility matrix |
-| Platforms and release | Items 91–98 are the 10000-row Linux x64 AOT file `benchmark_results/scenarios_10k_linux_x64.json`. 100000 and 1000000 were not run. Item 108 and M9 stay open. Linux x64 and one Chrome page on Linux are recorded. macOS CI passed for commit `9989846`. Windows CI failed for that commit. Android was not run. iOS was not run because this machine has no Mac. Power loss is not claimed |
+| Platforms and release | Items 91–98 are the 10000-row Linux x64 AOT file `benchmark_results/scenarios_10k_linux_x64.json`. 100000 and 1000000 were not run. Item 108 and M9 stay open. Linux x64 and one Chrome page on Linux are recorded. macOS CI passed for commit `e320528` in run 40494640309. Windows CI for that commit passed the ORM and generator and failed one engine tearDown with `PathAccessException` errno 32. A Windows pass is not recorded. Android was not run. iOS was not run because this machine has no Mac. Power loss is not claimed |
 
 Binary extension loading and the native SQLite C ABI are outside the Pure Dart
 runtime target. Existing durability and resource bounds remain in the
