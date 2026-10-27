@@ -10,8 +10,19 @@ This version stays `0.0.1-dev.1` in `sqlite_plus`, `sqlite_plus_orm`, and
 - Pure Dart engine, ORM, and generator for the subsets named in
   `COMPATIBILITY_MATRIX.md`. Production runtime has no FFI, native SQLite, or
   WASM SQLite.
-- Linux x64 on Dart 3.13.7: 10,496 engine tests, 167 ORM tests, and 53
-  generator tests. The pinned SQLite CLI was present for the engine run.
+- Linux x64 on Dart 3.13.7: the ORM suite was re-run and passed 169 tests.
+  Engine 10,496 and generator 53 are the previous Linux run and were not
+  repeated. The pinned SQLite CLI was present for that earlier engine run.
+- `benchmark_results/scenarios_10k_linux_x64.json` is the Linux x64 AOT
+  measurement for 10000 rows and three samples. 100000 and 1000000 were not
+  run. The file records SDK `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`,
+  hostname `cursor`, and peak RSS `220463104`. Memory SQL insert microseconds
+  are `[2601012,2518356,2478439]`. Memory ORM save microseconds are
+  `[2934430751,3092578591,2700874993]`. File SQL insert microseconds are
+  `[1941990,1996109,2015981]`. File bytes are `[98304,98304,98304]` and
+  journal bytes are `[8720,8720,8720]`. The remaining point, range, update,
+  and delete arrays are in that file. Cold is the first measured SQL query
+  after the fill in the same process. Warm is the next repetition.
 - Generated `@DbJson` path, FTS `search`, and R-tree `bounds`. The example
   passes `--check`. The compiled consumer saves, searches, and reads through
   `sqlite_plus_orm` only.
@@ -24,8 +35,8 @@ This version stays `0.0.1-dev.1` in `sqlite_plus`, `sqlite_plus_orm`, and
 
 ### Not done
 
-- Items 91–98, the scale and platform performance matrix, are deferred.
-- Item 108 and the M9 checkbox are open.
+- Item 108 and the M9 checkbox are open. The 10000-row AOT file does not close
+  them. 100000 and 1000000 rows were not run.
 - Windows CI failed for commit `9989846`. This revision changes the locked
   temp-directory delete and the CR LF comparisons. A Windows pass is not
   recorded until the next `windows-latest` job succeeds.

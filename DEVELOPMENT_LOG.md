@@ -1115,3 +1115,47 @@ result=pass
   switches, power loss, Android, iOS, and the deferred performance items.
 - M8 stays checked for its earlier subset only. M9 stays unchecked. Item 108
   stays open.
+
+## 2026-10-27 — Items 91–98, capped at 10000 rows
+
+- The measurement ceiling is 10000 rows. `sizes_not_run` is `[100000,1000000]`
+  because those sizes were not run.
+- `packages/sqlite_plus_orm/benchmark/scenarios_10k.dart` rejects a row count
+  outside 1 through 10000. The package test calls it with 2 rows, 1 sample,
+  and `includeFile` false. That test checks the shape only. Its timings are
+  not published.
+- The published file is `benchmark_results/scenarios_10k_linux_x64.json`,
+  written by the AOT executable on Linux x64. SDK
+  `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`. Hostname
+  `cursor`. OS
+  `Linux 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026`.
+  Runtime `AOT executable`. Peak RSS `220463104`.
+- Cold is the first measured SQL query after the fill in the same process.
+  Warm is the next repetition of that query. Population variance is the
+  integer floor of `sum((sample - mean)^2) / sample_count`. Rows per second
+  is `(rows_touched * 1000000) ~/ microseconds`.
+- Memory SQL, three samples, microseconds: insert
+  `[2601012,2518356,2478439]`, point cold `[3699,846,594]`, point warm
+  `[1111,437,418]`, range cold `[66375,50091,48456]`, range warm
+  `[71440,53338,51313]`, update `[737057,663964,693884]`, delete
+  `[790531,535159,515625]`. Image bytes `[98304,98304,98304]`.
+- Memory ORM, three samples, microseconds: track `[7784,5962,11470]`, save
+  `[2934430751,3092578591,2700874993]`, point cold `[552,633,3074]`, point
+  warm `[441,450,524]`, range cold `[151407,165494,221424]`, range warm
+  `[140809,139628,147875]`, update `[713464555,644367619,642860919]`, delete
+  `[639607004,680642252,602419455]`. The file's rows per second for that
+  update and delete are `[0,0,0]`. Image bytes `[102400,102400,102400]`. The
+  ORM image includes `_sqlite_plus_orm_model`.
+- File SQL ran on a pre-created rollback journal. Insert microseconds
+  `[1941990,1996109,2015981]`, point cold `[573,648,606]`, point warm
+  `[586,521,404]`, file bytes `[98304,98304,98304]`, journal bytes
+  `[8720,8720,8720]`. `directoryEntriesDurable` true is a caller attestation.
+  Power loss was not measured.
+- This is not macOS, Windows, Android, iOS, or a native SQLite comparison.
+  No earlier binary was measured, so no delta is claimed.
+- Linux ORM `dart test` printed 169 passed. Format and fatal-info analysis
+  passed for `sqlite_plus_orm`. Engine 10,496 and generator 53 were not
+  re-run. Native schema, journal, and WAL generators were not re-run.
+- Versions stay `0.0.1-dev.1`. M8 stays checked for its earlier subset only.
+  M9 stays unchecked. Item 108 stays open. macOS and Windows results for this
+  head are not recorded yet.

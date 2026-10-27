@@ -43,8 +43,9 @@ opens the in-memory engine.
 
 The verified surface is the subset in `COMPATIBILITY_MATRIX.md`. DQS,
 `json_pretty`, EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable two-database
-commit, journal-mode switches, power loss, Android, iOS, and the deferred
-performance matrix remain open. Version `0.0.1-dev.1` stays until that gate
+commit, journal-mode switches, power loss, Android, and iOS remain open.
+`benchmark_results/scenarios_10k_linux_x64.json` measures 10000 rows on Linux
+x64. 100000 and 1000000 were not run. Version `0.0.1-dev.1` stays until M9
 closes. See `CHANGELOG.md`.
 
 ## Development checks
@@ -441,8 +442,9 @@ page text is `packages/sqlite_plus_orm/tool/chrome_orm_linux_x64.log`.
 The Linux test counts in the compatibility matrix are Linux x64 only. macOS
 and Windows have their own CI jobs. Android was not run. iOS was not run
 because this environment has no Mac. Full SQLite compatibility is not claimed.
-M7 and the verified M8 subset have passed their gates. M9 has not. Items
-91–108 remain open.
+M7 and the verified M8 subset have passed their gates. M9 has not. Item 108
+remains open. Items 91–98 are `benchmark_results/scenarios_10k_linux_x64.json`
+only: 10000 rows on Linux x64. 100000 and 1000000 were not run.
 
 Real AOT benchmark samples are saved under `benchmark_results`. The index
 benchmark builds a 10,000-row memory image and measures five batches of 100
@@ -455,7 +457,15 @@ workloads do not satisfy M9's full scale/platform matrix. Reproduce with:
 (cd packages/sqlite_plus && /tmp/sqlite-plus-index-benchmark)
 (cd packages/sqlite_plus && dart compile exe benchmark/page_writes.dart -o /tmp/sqlite-plus-page-writes)
 (cd packages/sqlite_plus && /tmp/sqlite-plus-page-writes)
+(cd packages/sqlite_plus_orm && dart compile exe benchmark/scenarios_10k.dart -o /tmp/sqlite-plus-scenarios-10k)
+(cd packages/sqlite_plus_orm && /tmp/sqlite-plus-scenarios-10k --output=../../benchmark_results/scenarios_10k_linux_x64.json)
 ```
+
+`scenarios_10k.dart` rejects a row count above 10000. The saved file is the
+AOT run at 10000 rows and three samples. Its cold query is the first measured
+SQL query after the fill in the same process, and its warm query is the next
+repetition. 100000 and 1000000 were not run. The numbers in the compatibility
+matrix are copied from that file.
 
 Generated columns support VIRTUAL/STORED expressions, deterministic scalar
 functions, forward dependencies, affinity, constraints and secondary indexes.
