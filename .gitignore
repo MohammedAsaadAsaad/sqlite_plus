@@ -3,6 +3,7 @@
 build/
 coverage/
 *.g.dart
+!packages/sqlite_plus_generator/example/models.orm.g.dart
 *.freezed.dart
 .DS_Store
 
