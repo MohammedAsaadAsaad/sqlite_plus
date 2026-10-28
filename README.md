@@ -58,6 +58,20 @@ Each package has an example project under `example/`. From a checkout, after `da
 
 `examples/compare` is Bench, an English Flutter screen that runs the same SQL on Android SQLite through `sqflite` and on sqlite_plus. The count is from 1 to 10000. The operations are separate inserts, one transaction of inserts, separate updates, one bulk update, indexed name search, primary-key reads, `VACUUM`, separate deletes, and one delete of every row. Preparation and, for sqlite_plus, `exportImage` are logged beside the measured interval. Copy log puts the whole log on the clipboard. The screen keeps a process RSS and CPU readout while a run is in progress. The Android release packages are one file per ABI under `examples/compare/dist/`: `bench-arm64-v8a.apk` for a phone, `bench-armeabi-v7a.apk` for an older 32-bit phone, and `bench-x86_64.apk` for an emulator.
 
+One phone run of the arm64 package, versionCode 2003, 1000 rows, 13:53:42–13:53:45 Asia/Hebron on 2026-10-28. Every pair matched. The ratio is sqlite_plus divided by native.
+
+| Operation | native | sqlite_plus | ratio |
+|---|---:|---:|---:|
+| Separate insert | 514.9 ms | 6.5 ms | 0.01 |
+| Transaction insert | 104.6 ms | 3.5 ms | 0.03 |
+| Separate update | 508.2 ms | 247.5 ms | 0.49 |
+| Bulk update | 1.3 ms | 92 µs | 0.07 |
+| Search | 126.3 ms | 7.6 ms | 0.06 |
+| Point lookup | 116.2 ms | 9.6 ms | 0.08 |
+| VACUUM | 1.2 ms | 9 µs | 0.01 |
+| Separate delete | 352.7 ms | 168.0 ms | 0.48 |
+| Delete all | 732 µs | 105 µs | 0.14 |
+
 `examples/notes` is Margin, an English Flutter notes application on the ORM. The screen is a left-to-right desk of paper cards. From that directory, `flutter test` covers a save that reopens from the database image. The Android release packages are one file per ABI under `examples/notes/dist/`: `margin-notes-arm64-v8a.apk` for a phone, `margin-notes-armeabi-v7a.apk` for an older 32-bit phone, and `margin-notes-x86_64.apk` for the emulator. The tools screen inserts random notes through the ORM in a separate isolate, with one `saveChanges` transaction or one save per note, and reports wall time, process CPU time, and RSS. The single `saveChanges` writes the added notes with multi-row `INSERT` statements. Separate saves keep the loaded rows until the image is exported once. Delete-all sends one `DELETE`. The same screen opens a live page of process RSS and CPU, including while an insert or delete is running. It can show the database file and run `VACUUM`.
 
 Check the generated part before running the library:

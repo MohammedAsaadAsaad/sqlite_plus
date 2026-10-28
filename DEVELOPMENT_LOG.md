@@ -1559,3 +1559,18 @@ result=pass
 - The same command wrote three Margin packages, application id `dev.sqliteplus.margin_notes`, versionName 1.0.0, launcher Margin. `margin-notes-arm64-v8a.apk` 19997995 bytes, versionCode 2002, sha256 `ae7a1dc46cc33476398fbdb80c6e5625440b8473e7fec8f478592e0471dbc73f`. `margin-notes-armeabi-v7a.apk` 17548421 bytes, versionCode 1002, sha256 `69b004720dc0d4041f28edaf2590ca0a5f224d857006d2eb5214ecbc994e7aae`. `margin-notes-x86_64.apk` 21489458 bytes, versionCode 4002, sha256 `49b46413b93f36362ba3c98875b7e68a70a4ba3ab7c9d85877825d8b0d8c8961`.
 - None of these six packages was installed here.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — Phone log for Bench versionCode 2003
+
+- The arm64 Bench package, versionCode 2003, was run once on a phone. The copied log is stamped 13:53:42–13:53:45 Asia/Hebron on 2026-10-28. Count 1000. Every pair matched. The screen did not name the phone model. The other two ABIs of this build were not part of this run.
+- Separate insert: native 514.9 ms, sqlite_plus 6.5 ms, ratio 0.01. Rows 1000, sum 500500, hits 1000. Prepare 510 µs and 2.8 ms. Export 0 µs and 3 µs. Size 36.0 KB and 28.0 KB. CPU 430.0 ms and 20.0 ms. Memory 171.38 MB → 177.42 MB and 177.79 MB → 178.40 MB.
+- Transaction insert: 104.6 ms and 3.5 ms, ratio 0.03. Rows 1000, sum 500500, hits 1000. Prepare 483 µs and 986 µs. Export 0 µs and 3 µs. Size 36.0 KB and 28.0 KB. CPU 130.0 ms and 0 µs. Memory 182.86 MB → 185.34 MB and 185.33 MB → 185.33 MB.
+- Separate update: 508.2 ms and 247.5 ms, ratio 0.49. Rows 1000, sum 501500, hits 1000. Prepare 166.1 ms and 4.2 ms. Export 0 µs and 4 µs. Size 36.0 KB and 28.0 KB. CPU 450.0 ms and 370.0 ms. Memory 188.16 MB → 189.14 MB and 188.55 MB → 189.17 MB.
+- Bulk update: 1.3 ms and 92 µs, ratio 0.07. Rows 1000, sum 501500, hits 1000. Prepare 134.5 ms and 4.0 ms. Export 0 µs and 3 µs. Size 36.0 KB and 28.0 KB. CPU 0 µs and 0 µs. Memory 191.61 MB → 191.61 MB and 191.41 MB → 191.54 MB.
+- Search: 126.3 ms and 7.6 ms, ratio 0.06. Rows 1000, sum 500500, hits 1000. Prepare 109.2 ms and 107.6 ms. Export 0 µs and 4 µs. Size 52.0 KB and 44.0 KB. CPU 160.0 ms and 10.0 ms. Memory 194.11 MB → 197.14 MB and 197.37 MB → 197.37 MB.
+- Point lookup: 116.2 ms and 9.6 ms, ratio 0.08. Rows 1000, sum 500500, hits 1000. Prepare 184.7 ms and 4.4 ms. Export 0 µs and 3 µs. Size 36.0 KB and 28.0 KB. CPU 150.0 ms and 10.0 ms. Memory 199.83 MB → 202.65 MB and 202.64 MB → 202.64 MB.
+- VACUUM: 1.2 ms and 9 µs, ratio 0.01. Rows 1000, sum 500500, hits 1. Prepare 114.7 ms and 4.8 ms. Export 0 µs and 3 µs. Size 36.0 KB and 28.0 KB. CPU 0 µs and 0 µs. Memory 182.77 MB → 182.82 MB and 182.80 MB → 182.80 MB.
+- Separate delete: 352.7 ms and 168.0 ms, ratio 0.48. Rows 0, sum 0, hits 1000. Prepare 90.9 ms and 3.0 ms. Export 0 µs and 1 µs. Size 16.0 KB and 8.0 KB. CPU 230.0 ms and 220.0 ms. Memory 185.20 MB → 187.22 MB and 187.20 MB → 187.22 MB.
+- Delete all: 732 µs and 105 µs, ratio 0.14. Rows 0, sum 0, hits 1000. Prepare 155.2 ms and 4.5 ms. Export 0 µs and 2 µs. Size 16.0 KB and 8.0 KB. CPU 10.0 ms and 0 µs. Memory 189.58 MB → 189.58 MB and 189.25 MB → 189.25 MB.
+- In each pair the native figure is given first and the sqlite_plus figure second. These are the on-screen intervals from that one log. No engine code changed for this record.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
