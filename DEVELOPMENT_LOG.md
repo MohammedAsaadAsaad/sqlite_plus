@@ -1325,3 +1325,24 @@ result=pass
 - This is one release APK on that emulator. It is not a physical device.
   `flutter build ios` is still not a subcommand on this Linux host. M9 stays
   unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — Split the Margin release packages by ABI
+
+- Pull request 5 was merged to `main` at 2026-10-28 06:18 Asia/Hebron,
+  commit `733a029`.
+- `flutter build apk --split-per-abi --release` replaced
+  `examples/notes/dist/margin-notes.apk` with three packages:
+  `margin-notes-arm64-v8a.apk` (19604707 bytes, versionCode 2001, sha256
+  `dca40bf3e8ad6749ce7fc5e6ada4d4fb443d1f0026105c94009e592082e1f912`),
+  `margin-notes-armeabi-v7a.apk` (17138749 bytes, versionCode 1001, sha256
+  `a289bbd04ea9a87886c2be35c40658b8025566e25ce20573c891794ba2a232e8`),
+  and `margin-notes-x86_64.apk` (21096170 bytes, versionCode 4001, sha256
+  `fdbd71a7add699a8b08d7aebb44f583a52ec37102bfc2f551a6d2e1befe97ade`).
+  Each is signed with the Android debug certificate.
+- `adb install -r` of the x86_64 package succeeded on the same API 35
+  emulator. Logcat reported `Displayed dev.sqliteplus.margin_notes/.MainActivity`
+  at 2026-10-28 06:20:49 Asia/Hebron. The note titled `Kept` with body
+  `Garden` was still on the desk. The arm64-v8a and armeabi-v7a packages
+  were built and checked as zip archives with one native ABI each. They
+  were not installed on a device. M9 stays unchecked. Item 108 stays open.
+  Nothing was uploaded to pub.dev.

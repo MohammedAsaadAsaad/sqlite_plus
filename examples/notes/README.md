@@ -23,9 +23,15 @@ flutter test
 ## Android
 
 ```sh
-flutter build apk --release
+flutter build apk --split-per-abi --release
 ```
 
-The fat release APK is copied to `dist/margin-notes.apk`. Flutter signs it with the debug keystore, so a device can install it when that source is allowed. The application id is `dev.sqliteplus.margin_notes`.
+Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.margin_notes`.
 
-That package was installed on an API 35 x86_64 emulator. A note saved from the editor was still on the desk after the process was stopped and started again. The compatibility matrix records that run.
+| ABI | File | Bytes | versionCode |
+|---|---|---:|---:|
+| arm64-v8a | `dist/margin-notes-arm64-v8a.apk` | 19604707 | 2001 |
+| armeabi-v7a | `dist/margin-notes-armeabi-v7a.apk` | 17138749 | 1001 |
+| x86_64 | `dist/margin-notes-x86_64.apk` | 21096170 | 4001 |
+
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The x86_64 package was installed on an API 35 emulator over the earlier package, and the saved note was still on the desk. The compatibility matrix records that run.
