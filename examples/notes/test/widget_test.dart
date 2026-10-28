@@ -1,0 +1,41 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:margin_notes/app.dart';
+import 'package:margin_notes/note_store.dart';
+
+void main() {
+  testWidgets('the desk shows the masthead and the compose button', (
+    tester,
+  ) async {
+    final directory = Directory.systemTemp.createTempSync('margin-ui');
+    final store = NoteStore(directory);
+    await store.open();
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    await tester.pumpWidget(MarginApp(store: store));
+
+    expect(find.text('هامش'), findsOneWidget);
+    expect(find.byKey(const Key('compose')), findsOneWidget);
+    expect(find.text('المكتب فارغ'), findsOneWidget);
+    await store.close();
+  });
+
+  testWidgets('compose opens the editor', (tester) async {
+    final directory = Directory.systemTemp.createTempSync('margin-editor');
+    final store = NoteStore(directory);
+    await store.open();
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    await tester.pumpWidget(MarginApp(store: store));
+    await tester.tap(find.byKey(const Key('compose')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const Key('title-field')), findsOneWidget);
+    expect(find.byKey(const Key('body-field')), findsOneWidget);
+    expect(find.byKey(const Key('editor-save')), findsOneWidget);
+    await store.close();
+  });
+}

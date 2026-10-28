@@ -1299,3 +1299,29 @@ result=pass
 - `flutter build ios` is not a subcommand of Flutter 3.47.8 on this Linux
   host. No iOS simulator ran. M9 stays unchecked. Item 108 stays open.
   Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — Margin, a notes application on the ORM
+
+- `examples/notes` is a Flutter application. It is outside the pub workspace.
+  `Note` is mapped with `Column` and `EntityType`. `NoteStore` uses
+  `DbContext`, `ensureCreated`, and `saveChanges`. The file is an
+  `exportImage` snapshot named `margin.db`.
+- Linux, Flutter 3.47.8, Dart 3.13.7: `flutter analyze --fatal-infos` reported
+  no issues. `flutter test` passed 6 tests. Four are store tests, including a
+  save that reopens from the image, a blank draft, pin order, and search. Two
+  are widget tests for the desk and the editor.
+- `flutter build apk --release` produced a fat APK. The committed copy is
+  `examples/notes/dist/margin-notes.apk`, sha256
+  `a09263e40b4b0053de152610b0ea15ca178b0371b315c698332d22508f930f15`.
+  It is signed with the Android debug certificate. The application id is
+  `dev.sqliteplus.margin_notes`.
+- That APK was installed on the API 35 x86_64 emulator, image
+  `system-images;android-35;aosp_atd;x86_64`, emulator 37.2.12.0, `accel off`,
+  fingerprint `Android/sdk_slim_x86_64/emu64x:15/AE3A.240806.019/12368160:userdebug/test-keys`.
+  Logcat reported `Displayed dev.sqliteplus.margin_notes/.MainActivity` at
+  2026-10-28 06:11:48 Asia/Hebron. A note titled `Kept` with body `Garden`
+  was saved from the editor. After `am force-stop` and a new start, the same
+  note was on the desk.
+- This is one release APK on that emulator. It is not a physical device.
+  `flutter build ios` is still not a subcommand on this Linux host. M9 stays
+  unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.

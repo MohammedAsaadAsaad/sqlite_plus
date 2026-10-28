@@ -56,6 +56,8 @@ Each package has an example project under `example/`. From a checkout, after `da
 | Reading log | `(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)` | `Kept Garden Revised on north, revision 1; Other Atlas stays at revision 0; 1 match; idle save 0` |
 | Generated library | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` | `Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2` |
 
+`examples/notes` is Margin, a Flutter notes application on the ORM. The screen is an Arabic, right-to-left desk of paper cards. From that directory, `flutter test` covers a save that reopens from the database image. The Android release package is `examples/notes/dist/margin-notes.apk`. It was installed on an API 35 x86_64 emulator, and a saved note was still on the desk after the process stopped and started again.
+
 Check the generated part before running the library:
 
 ```sh

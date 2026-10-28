@@ -1,0 +1,40 @@
+name: margin_notes
+description: Margin, a notes app on the sqlite_plus ORM.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  path_provider: ^2.1.5
+  sqlite_plus:
+    path: ../../packages/sqlite_plus
+  sqlite_plus_orm:
+    path: ../../packages/sqlite_plus_orm
+
+dependency_overrides:
+  sqlite_plus:
+    path: ../../packages/sqlite_plus
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/fonts/OFL.txt
+  fonts:
+    - family: IBMPlexSansArabic
+      fonts:
+        - asset: assets/fonts/IBMPlexSansArabic-Regular.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSansArabic-Bold.ttf
+          weight: 700
