@@ -1492,3 +1492,43 @@ result=pass
   The arm64 `libapp.so` contains `live-metrics`. These packages were not
   installed on a device.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — ميزان, native SQLite beside sqlite_plus
+
+- `examples/compare` is a Flutter application, `publish_to: none`, and not a
+  workspace member. Android SQLite is opened with `sqflite` in that
+  application. The sqlite_plus packages were not changed and were not
+  retested as a suite.
+- Both engines run the same statements on `bench(id, name, body, n)`. The
+  count is 1 through 10000. Separate inserts are autocommit. A transaction
+  uses `BEGIN`/`COMMIT` on sqlite_plus and one `sqflite` transaction on
+  Android. Search creates `bench_name` during preparation, then measures
+  `SELECT id FROM bench WHERE name = ?`. sqlite_plus work runs in an
+  isolate. `exportImage` is timed beside the statement interval. The screen
+  samples process RSS and CPU during a run.
+- Linux Flutter 3.47.8, Dart 3.13.7: `flutter analyze` reported no issues
+  and `flutter test` passed 13 tests. The sqlite_plus engine checks used 1,
+  3, and 4 rows. The widget checks used scripted engines. `sqflite` was not
+  opened on Linux.
+- `flutter build apk --split-per-abi --release` wrote three packages, signed
+  with the debug keystore. Application id `dev.sqliteplus.engine_bench`.
+  `bench-arm64-v8a.apk` 19473455 bytes, versionCode 2001, sha256
+  `954adf7e5327bce9a39b5a3320024919514409328fc3f7f93c47091cfd033281`;
+  `bench-armeabi-v7a.apk` 16974725 bytes, versionCode 1001, sha256
+  `b10f346424d1d548b078391b0bd7fb1421e29e909bf3874cd4b1dc50d8d8b0df`;
+  `bench-x86_64.apk` 20964918 bytes, versionCode 4001, sha256
+  `5ac8989c3588f3f6632989b2327b549d50c9dadcdfe8dc0733555aa2310ceb34`.
+- The x86_64 package was installed on the API 35 emulator,
+  `ro.build.version.release` 15, ABI `x86_64`, model
+  `Android ATD built for x86_64`, fingerprint
+  `Android/sdk_slim_x86_64/emu64x:15/AE3A.240806.019/12368160:userdebug/test-keys`.
+  `adb install -r` succeeded. Logcat `Displayed` at 2026-10-28 08:21:28.549
+  emulator UTC, so 10:21:28 Asia/Hebron.
+- One measured pair, 20 rows, إدراج بمعاملة. The screen showed نتيجة متطابقة,
+  20 rows, sum 210, and 20 hits on both engines. Android SQLite 262.1 ms,
+  sqlite_plus 975.4 ms, ratio 3.72. Native file 16.0 KB. sqlite_plus image
+  8.0 KB and export 125 µs. Log stamps 08:23:14 and 08:23:16 emulator UTC,
+  so 10:23:14 and 10:23:16 Asia/Hebron. This is one run on that image, not a
+  repeated sample, not a physical phone, and not iOS. The other two ABIs
+  were not installed.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
