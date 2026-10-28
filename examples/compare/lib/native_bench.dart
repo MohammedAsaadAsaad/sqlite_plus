@@ -12,7 +12,7 @@ class NativeBenchEngine implements BenchEngine {
   String get id => 'native';
 
   @override
-  String get label => 'النيتف';
+  String get label => 'native';
 
   @override
   final String location;

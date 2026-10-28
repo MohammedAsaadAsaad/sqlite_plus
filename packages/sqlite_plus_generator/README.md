@@ -2,17 +2,13 @@
 
 A development-time generator for `sqlite_plus_orm`. It reads Dart classes and writes columns, codecs, keys, revisions, relationships, JSON `path`, FTS5 `search`, and R-tree `bounds`. The generated application depends on `sqlite_plus_orm`. The analyzer stays in this development tool.
 
-Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request.
+Version `0.0.1-dev.1`.
 
 ## Install
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator:
-    git:
-      url: https://github.com/MohammedAsaadAsaad/sqlite_plus
-      path: packages/sqlite_plus_generator
-      ref: main
+  sqlite_plus_generator: ^0.0.1-dev.1
 ```
 
 The source file imports `sqlite_plus_orm` and declares `part 'models.orm.g.dart';`.

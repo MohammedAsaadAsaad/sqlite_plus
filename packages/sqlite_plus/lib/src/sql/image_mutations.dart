@@ -63,11 +63,37 @@ final class _Table {
   List<String>? residentKeyIds;
   Map<String, Set<String>>? residentUniques;
 
+  /// Uniform integer increments not yet written into [rows]. Readers apply or
+  /// flush this before using a stored value.
+  Map<int, BigInt>? columnAddends;
+  Map<BigInt, TableRow>? rowById;
+  Map<int, Map<Object, List<TableRow>>>? valueIndexes;
+
   void invalidateResidentKeys() {
     residentRowids = null;
     residentKeyIds = null;
     residentUniques = null;
+    rowById = null;
+    valueIndexes = null;
   }
+}
+
+final class _FastInsertPlan {
+  _FastInsertPlan({
+    required this.tableKey,
+    required this.token,
+    required this.rowidParameter,
+    required this.parameters,
+    required this.columns,
+    required this.arity,
+  });
+
+  final String tableKey;
+  final int token;
+  final int rowidParameter;
+  final List<int> parameters;
+  final List<int> columns;
+  final int arity;
 }
 
 final class _Index {
@@ -102,13 +128,14 @@ final class _Upsert {
 /// return to that logical database without a byte image.
 final class LogicalImage {
   LogicalImage(this._tables, this._rows, this._indexes, this._other,
-      this._sequences, this._schemaChanged);
+      this._sequences, this._schemaChanged, this._addends);
   final Map<String, _Table> _tables;
   final Map<String, List<TableRow>> _rows;
   final List<_Index> _indexes;
   final List<ImageObject> _other;
   final Map<String, BigInt> _sequences;
   final bool _schemaChanged;
+  final Map<String, Map<int, BigInt>> _addends;
 }
 
 /// Validates complete logical mutations before compact image reconstruction.
@@ -124,6 +151,17 @@ final class ImageMutations {
   /// True when the latest statement changed stored rows and left the image stale.
   bool wroteRows = false;
 
+  /// A whole-table delete of an ordinary rowid table should put the old leaf
+  /// pages on the freelist before the statement returns. Constrained tables
+  /// leave this false and compact on the next read.
+  bool releaseFreedPages = false;
+
+  /// Rebuilds one ordinary table in place. Null means the compact serializer
+  /// has to run later.
+  Future<Uint8List?> releaseFreedPagesImage() {
+    return _tryIncremental(foreignKeys: false, includeDeferred: false);
+  }
+
   LogicalImage captureLogical() => LogicalImage(
       Map<String, _Table>.of(_tables),
       {
@@ -133,7 +171,12 @@ final class ImageMutations {
       List<_Index>.of(_indexes),
       List<ImageObject>.of(other),
       Map<String, BigInt>.of(_sequences),
-      schemaChanged);
+      schemaChanged,
+      {
+        for (final entry in _tables.entries)
+          if (entry.value.columnAddends != null)
+            entry.key: Map<int, BigInt>.of(entry.value.columnAddends!)
+      });
 
   void restoreLogical(LogicalImage snapshot) {
     schemaChanged = snapshot._schemaChanged;
@@ -154,6 +197,9 @@ final class ImageMutations {
       entry.value.rows
         ..clear()
         ..addAll(rows);
+      final addends = snapshot._addends[entry.key];
+      entry.value.columnAddends =
+          addends == null ? null : Map<int, BigInt>.of(addends);
       entry.value.invalidateResidentKeys();
     }
     _loadedRows.clear();
@@ -1076,6 +1122,7 @@ final class ImageMutations {
       {bool foreignKeys = false,
       bool includeDeferred = false,
       bool rowConstraints = true}) {
+    _flushColumnAddends();
     _validate(
         foreignKeys: foreignKeys,
         includeDeferred: includeDeferred,
@@ -1638,6 +1685,7 @@ final class ImageMutations {
           )
       ];
 
+  final Map<String, _FastInsertPlan> _fastInsertPlans = {};
   int _executionDepth = 0;
   final List<String?> _conflictPolicies = [];
   final List<SqlStatementCounters?> _counterFrames = [];
@@ -1700,6 +1748,16 @@ final class ImageMutations {
       bool? recursiveTriggers}) async {
     if (recursiveTriggers != null) _recursiveTriggers = recursiveTriggers;
     sql = SqlParser.canonicalSchemaCreation(sql);
+    if (!compileOnly && _executionDepth == 1) {
+      final bulk = _tryBulkIncrement(sql, parameters, foreignKeys: foreignKeys);
+      if (bulk != null) return bulk;
+    }
+    if (!compileOnly) _flushColumnAddends();
+    if (!compileOnly && _executionDepth == 1) {
+      final inserted =
+          _tryDirectInsert(sql, parameters, foreignKeys: foreignKeys);
+      if (inserted != null) return inserted;
+    }
     final p = SqlParser(sql,
         deferFunctionResolution: deferTriggerFunctions,
         deferFunctionValidation: deferTriggerFunctions);
@@ -3140,15 +3198,100 @@ final class ImageMutations {
         : null;
     var changes = 0;
     BigInt? last;
+    // A WHERE clause that is only "rowid = <integer>" names one row. Scanning
+    // and sorting the whole table for that comparison made each single-row
+    // update and delete cost grow with the table.
+    BigInt? soleRowid;
+    var soleExact = false;
+    if (!insert &&
+        !table.view &&
+        !schema.withoutRowid &&
+        where != null &&
+        fromSources == null &&
+        where is BinaryExpr &&
+        ['=', '=='].contains(where.op)) {
+      final comparison = where;
+      ColumnExpr? column;
+      Expr? constant;
+      if (comparison.left is ColumnExpr && comparison.right is! ColumnExpr) {
+        column = comparison.left as ColumnExpr;
+        constant = comparison.right;
+      } else if (comparison.right is ColumnExpr &&
+          comparison.left is! ColumnExpr) {
+        column = comparison.right as ColumnExpr;
+        constant = comparison.left;
+      }
+      if (column != null && constant != null) {
+        final parts = column.key.split('.');
+        final field = parts.last;
+        final aliasName = asciiLower(schema.rowidAlias ?? '');
+        final namesRowid = field == 'rowid' ||
+            field == 'oid' ||
+            field == '_rowid_' ||
+            (aliasName.isNotEmpty && field == aliasName);
+        final qualifierOk = parts.length == 1 ||
+            parts.length == 2 &&
+                (parts.first == asciiLower(alias) ||
+                    parts.first == asciiLower(name)) ||
+            parts.length == 3 &&
+                parts[0] == 'main' &&
+                (parts[1] == asciiLower(alias) || parts[1] == asciiLower(name));
+        if (namesRowid && qualifierOk) {
+          try {
+            constant.validate({});
+            var value = constant.evaluate(_constantContext(bound));
+            final directInteger = value is BigInt || value is int;
+            value =
+                value is String || value is Uint8List ? numeric(value) : value;
+            if (value is int) value = BigInt.from(value);
+            if (value is double &&
+                value.isFinite &&
+                value == value.truncateToDouble() &&
+                value > -(BigInt.one << 63).toDouble() &&
+                value < (BigInt.one << 63).toDouble()) {
+              value = BigInt.from(value);
+            }
+            if (value is BigInt &&
+                value >= -(BigInt.one << 63) &&
+                value < BigInt.one << 63) {
+              soleRowid = value;
+              soleExact = directInteger;
+            }
+          } on SqlException {
+            soleRowid = null;
+          }
+        }
+      }
+    }
     // UPDATE and DELETE walk the pre-image. An insert does not, and sorting
     // every existing row made the next insert slower as the table grew.
     final List<TableRow> originalRows;
     if (insert) {
       originalRows = const [];
+    } else if (soleRowid != null) {
+      TableRow? found;
+      for (final row in table.rows) {
+        if (row.rowId == soleRowid) {
+          found = row;
+          break;
+        }
+      }
+      final matched = found != null &&
+          (soleExact ||
+              truth(where!.evaluate(_context(table, found, bound)), encoding) ==
+                  true);
+      if (found != null && !matched || found == null && !soleExact) {
+        // The folded integer and the real comparison disagreed, or a coerced
+        // constant named a missing row. Walk every row with that comparison.
+        soleRowid = null;
+        originalRows = table.rows.toList();
+      } else {
+        originalRows = found == null ? const <TableRow>[] : [found];
+      }
     } else {
       originalRows = table.rows.toList();
     }
-    if (!insert && !table.view) {
+    if (!insert && !table.view && soleRowid == null) {
       if (schema.withoutRowid) {
         final primary = schema.columns.where((c) => c.primaryKey != 0).toList()
           ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
@@ -3426,6 +3569,54 @@ final class ImageMutations {
             insertedRowid: insert && !schema.withoutRowid ? next.rowId : null);
         if (replacing == null && insert) last = next.rowId;
         return;
+      }
+      // Same-rowid update. prepare() already checked this row. Replacing the
+      // list entry keeps uniqueness of the primary key, and resident unique
+      // keys move from the old values to the new ones.
+      if (replacing != null &&
+          prepared &&
+          next.rowId == replacing.rowId &&
+          !schema.withoutRowid &&
+          !table.view &&
+          (activePolicy == 'ABORT' || activePolicy == 'DEFAULT') &&
+          schema.primaryPolicy != 'REPLACE' &&
+          schema.autoIndexPolicies.every((item) => item == 'ABORT')) {
+        final slot = table.rows.indexOf(replacing);
+        if (slot >= 0) {
+          ensureResidentKeys();
+          final ids = table.residentKeyIds!;
+          final uniques = table.residentUniques!;
+          final removed = <(int, String)>[];
+          final added = <(int, String)>[];
+          var conflict = false;
+          for (var i = 0; i < uniqueIndexes.length; i++) {
+            final oldKey = keyFor(uniqueIndexes[i], replacing);
+            final newKey = keyFor(uniqueIndexes[i], next);
+            if (oldKey == newKey) continue;
+            if (oldKey != null) {
+              uniques[ids[i]]!.remove(oldKey);
+              removed.add((i, oldKey));
+            }
+            if (newKey != null && !uniques[ids[i]]!.add(newKey)) {
+              conflict = true;
+              break;
+            }
+            if (newKey != null) added.add((i, newKey));
+          }
+          if (conflict) {
+            for (final item in added) {
+              uniques[ids[item.$1]]!.remove(item.$2);
+            }
+            for (final item in removed) {
+              uniques[ids[item.$1]]!.add(item.$2);
+            }
+            throw const SqlConstraintException('UNIQUE constraint failed');
+          }
+          table.rows[slot] = next;
+          changes++;
+          _changed();
+          return;
+        }
       }
       table.invalidateResidentKeys();
       final old = table.rows.toList();
@@ -3723,8 +3914,21 @@ final class ImageMutations {
               _tables.values.any((child) => child.schema.foreignKeys.any(
                   (key) => asciiLower(key.table) == asciiLower(schema.name))));
       final pendingDelete = <TableRow>[];
-      for (final row
-          in viewFromAssignments?.map((entry) => entry.$1) ?? originalRows) {
+      final clearAll = bulkDelete &&
+          where == null &&
+          fromAssignments == null &&
+          viewFromAssignments == null &&
+          !hasReturning;
+      if (clearAll && table.rows.isNotEmpty) {
+        final removed = table.rows.length;
+        changes = removed;
+        table.rows.clear();
+        table.invalidateResidentKeys();
+        _counterFrames.lastOrNull?.addChanges(removed);
+      }
+      for (final row in clearAll
+          ? const <TableRow>[]
+          : viewFromAssignments?.map((entry) => entry.$1) ?? originalRows) {
         final viewFromValues = viewFromAssignments?[viewFromIndex++].$2;
         final context = _context(table, row, bound);
         if (fromAssignments != null
@@ -3993,5 +4197,660 @@ final class ImageMutations {
       return true;
     }
     return before == after;
+  }
+
+  static final RegExp _freelistWriterRefusal = RegExp(
+      r'\b(NOT|UNIQUE|CHECK|REFERENCES|DEFAULT|COLLATE|AUTOINCREMENT|GENERATED|CONSTRAINT)\b',
+      caseSensitive: false);
+
+  static final RegExp _directInsertPattern = RegExp(
+      r'^INSERT\s+INTO\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)\s*\)\s*VALUES\s*\(\s*(\?(?:\s*,\s*\?)*)\s*\)\s*;?\s*$',
+      caseSensitive: false);
+  static final RegExp _fastReadPattern = RegExp(
+      r'^SELECT\s+([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)\s+FROM\s+([A-Za-z_][A-Za-z0-9_]*)\s+WHERE\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\?\s*;?\s*$',
+      caseSensitive: false);
+
+  void _flushColumnAddends() {
+    for (final table in _tables.values) {
+      final addends = table.columnAddends;
+      if (addends == null || addends.isEmpty) continue;
+      for (var index = 0; index < table.rows.length; index++) {
+        final row = table.rows[index];
+        final values = List<Object?>.of(row.values);
+        for (final entry in addends.entries) {
+          values[entry.key] = _addStored(values[entry.key], entry.value);
+        }
+        table.rows[index] = TableRow(row.rowId, values);
+      }
+      table.columnAddends = null;
+      table.invalidateResidentKeys();
+    }
+  }
+
+  Object? _addStored(Object? value, BigInt addend) {
+    if (value == null) return null;
+    if (value is BigInt) return value + addend;
+    if (value is int) return BigInt.from(value) + addend;
+    if (value is double) return value + addend.toDouble();
+    final number = numeric(value, prefix: true, encoding: encoding);
+    if (number is BigInt) return number + addend;
+    if (number is double) return number + addend.toDouble();
+    if (number == null && value is String) return addend;
+    return value;
+  }
+
+  bool _simpleTable(_Table table, {required bool foreignKeys}) {
+    if (table.view || table.schema.withoutRowid || table.schema.virtual) {
+      return false;
+    }
+    if (table.schema.checks.isNotEmpty ||
+        table.schema.columns.any((column) =>
+            column.checks.isNotEmpty ||
+            column.generatedExpression != null ||
+            column.strict)) {
+      return false;
+    }
+    if (foreignKeys && table.schema.foreignKeys.isNotEmpty) return false;
+    final name = asciiLower(table.schema.name);
+    if (other.any((object) =>
+        object.type == 'trigger' && asciiLower(object.tableName) == name)) {
+      return false;
+    }
+    return true;
+  }
+
+  (String, String, BigInt)? _scanBulkIncrement(String sql) {
+    var i = 0;
+    final n = sql.length;
+    void skip() {
+      while (i < n) {
+        final unit = sql.codeUnitAt(i);
+        if (unit != 32 && unit != 9 && unit != 10 && unit != 13) break;
+        i++;
+      }
+    }
+
+    bool word(String upper) {
+      skip();
+      if (i + upper.length > n) return false;
+      for (var k = 0; k < upper.length; k++) {
+        var unit = sql.codeUnitAt(i + k);
+        if (unit >= 97 && unit <= 122) unit -= 32;
+        if (unit != upper.codeUnitAt(k)) return false;
+      }
+      final end = i + upper.length;
+      if (end < n) {
+        final next = sql.codeUnitAt(end);
+        final identifier = (next >= 65 && next <= 90) ||
+            (next >= 97 && next <= 122) ||
+            (next >= 48 && next <= 57) ||
+            next == 95;
+        if (identifier) return false;
+      }
+      i = end;
+      return true;
+    }
+
+    String? ident() {
+      skip();
+      if (i >= n) return null;
+      final start = i;
+      var unit = sql.codeUnitAt(i);
+      final letter = (unit >= 65 && unit <= 90) ||
+          (unit >= 97 && unit <= 122) ||
+          unit == 95;
+      if (!letter) return null;
+      i++;
+      while (i < n) {
+        unit = sql.codeUnitAt(i);
+        final identifier = (unit >= 65 && unit <= 90) ||
+            (unit >= 97 && unit <= 122) ||
+            (unit >= 48 && unit <= 57) ||
+            unit == 95;
+        if (!identifier) break;
+        i++;
+      }
+      return sql.substring(start, i);
+    }
+
+    if (!word('UPDATE')) return null;
+    final table = ident();
+    if (table == null || !word('SET')) return null;
+    final column = ident();
+    if (column == null) return null;
+    skip();
+    if (i >= n || sql.codeUnitAt(i) != 0x3d) return null;
+    i++;
+    final right = ident();
+    if (right == null || asciiLower(right) != asciiLower(column)) return null;
+    skip();
+    if (i >= n || sql.codeUnitAt(i) != 0x2b) return null;
+    i++;
+    skip();
+    if (i >= n) return null;
+    final numberStart = i;
+    var unit = sql.codeUnitAt(i);
+    if (unit < 48 || unit > 57) return null;
+    i++;
+    while (i < n) {
+      unit = sql.codeUnitAt(i);
+      if (unit < 48 || unit > 57) break;
+      i++;
+    }
+    final addend = BigInt.parse(sql.substring(numberStart, i));
+    skip();
+    if (i < n && sql.codeUnitAt(i) == 0x3b) {
+      i++;
+      skip();
+    }
+    if (i != n) return null;
+    return (table, column, addend);
+  }
+
+  String? _scanDeleteAll(String sql) {
+    var i = 0;
+    final n = sql.length;
+    void skip() {
+      while (i < n) {
+        final unit = sql.codeUnitAt(i);
+        if (unit != 32 && unit != 9 && unit != 10 && unit != 13) break;
+        i++;
+      }
+    }
+
+    bool word(String upper) {
+      skip();
+      if (i + upper.length > n) return false;
+      for (var k = 0; k < upper.length; k++) {
+        var unit = sql.codeUnitAt(i + k);
+        if (unit >= 97 && unit <= 122) unit -= 32;
+        if (unit != upper.codeUnitAt(k)) return false;
+      }
+      final end = i + upper.length;
+      if (end < n) {
+        final next = sql.codeUnitAt(end);
+        final identifier = (next >= 65 && next <= 90) ||
+            (next >= 97 && next <= 122) ||
+            (next >= 48 && next <= 57) ||
+            next == 95;
+        if (identifier) return false;
+      }
+      i = end;
+      return true;
+    }
+
+    String? ident() {
+      skip();
+      if (i >= n) return null;
+      var unit = sql.codeUnitAt(i);
+      final letter = (unit >= 65 && unit <= 90) ||
+          (unit >= 97 && unit <= 122) ||
+          unit == 95;
+      if (!letter) return null;
+      final start = i;
+      i++;
+      while (i < n) {
+        unit = sql.codeUnitAt(i);
+        final identifier = (unit >= 65 && unit <= 90) ||
+            (unit >= 97 && unit <= 122) ||
+            (unit >= 48 && unit <= 57) ||
+            unit == 95;
+        if (!identifier) break;
+        i++;
+      }
+      return sql.substring(start, i);
+    }
+
+    if (!word('DELETE') || !word('FROM')) return null;
+    final table = ident();
+    if (table == null) return null;
+    skip();
+    if (i < n && sql.codeUnitAt(i) == 0x3b) {
+      i++;
+      skip();
+    }
+    if (i != n) return null;
+    return table;
+  }
+
+  MutationImage? _tryDeleteAll(String sql, {required bool foreignKeys}) {
+    final tableName = _scanDeleteAll(sql.trim());
+    if (tableName == null) return null;
+    final key = asciiLower(tableName);
+    final table = _tables[key];
+    if (table == null || !_simpleTable(table, foreignKeys: foreignKeys)) {
+      return null;
+    }
+    if (foreignKeys &&
+        _tables.values.any((child) => child.schema.foreignKeys
+            .any((fk) => asciiLower(fk.table) == key))) {
+      return null;
+    }
+    final removed = table.rows.length;
+    table.rows.clear();
+    table.columnAddends = null;
+    table.invalidateResidentKeys();
+    wroteRows = removed > 0;
+    // The in-place writer refuses NOT NULL, UNIQUE, and the other tokens in
+    // its pattern, and it cannot keep a secondary index. Those tables compact
+    // on the next read, so a refused rebuild must not run inside this statement.
+    final indexed = _indexes.any((index) => asciiLower(index.table) == key);
+    releaseFreedPages =
+        removed > 0 && !indexed && !_freelistWriterRefusal.hasMatch(table.sql);
+    _beginCounters();
+    _counterFrames.lastOrNull?.addChanges(removed);
+    return MutationImage(original, removed, null);
+  }
+
+  MutationImage? _tryBulkIncrement(String sql, List<Object?> parameters,
+      {required bool foreignKeys}) {
+    if (parameters.isNotEmpty) return null;
+    final match = _scanBulkIncrement(sql.trim());
+    if (match == null) return null;
+    final table = _tables[asciiLower(match.$1)];
+    if (table == null || !_simpleTable(table, foreignKeys: foreignKeys)) {
+      return null;
+    }
+    final columnName = asciiLower(match.$2);
+    if (columnName == 'rowid' ||
+        columnName == 'oid' ||
+        columnName == '_rowid_' ||
+        columnName == asciiLower(table.schema.rowidAlias ?? '')) {
+      return null;
+    }
+    final column = table.schema.columns
+        .indexWhere((candidate) => asciiLower(candidate.name) == columnName);
+    // INTEGER affinity is reported as numeric. Only a declared type that
+    // contains INT stores the addend as an integer; REAL and NUMERIC stay on
+    // the general planner.
+    if (column < 0 ||
+        !table.schema.columns[column].declaredType
+            .toUpperCase()
+            .contains('INT')) {
+      return null;
+    }
+    final addend = match.$3;
+    final current = table.columnAddends ?? <int, BigInt>{};
+    current[column] = (current[column] ?? BigInt.zero) + addend;
+    table.columnAddends = current;
+    table.valueIndexes?.remove(column);
+    wroteRows = true;
+    final count = table.rows.length;
+    _beginCounters();
+    _counterFrames.lastOrNull?.addChanges(count);
+    return MutationImage(original, count, null);
+  }
+
+  /// Repeated single-row inserts and whole-table integer increments.
+  ///
+  /// Returns null when the statement needs the general planner. A hit does not
+  /// take a statement snapshot: the row is appended only after every check, so
+  /// a constraint failure leaves the live rows unchanged.
+  bool _vacuumNoOp() {
+    for (final table in _tables.values) {
+      if (table.view || table.schema.virtual) return false;
+      if (table.schema.withoutRowid || table.schema.rowidAlias != null) {
+        continue;
+      }
+      if (_indexes.any((index) =>
+          asciiLower(index.table) == asciiLower(table.schema.name))) {
+        continue;
+      }
+      if (table.rows.isNotEmpty) return false;
+    }
+    return DatabaseHeader.decode(original).freelistPages == 0;
+  }
+
+  MutationImage? tryHotDml(String sql, List<Object?> parameters,
+      {required bool foreignKeys,
+      required bool inTransaction,
+      required SqlConnectionState counters}) {
+    if (_executionDepth != 0) return null;
+    releaseFreedPages = false;
+    final text = sql.trim();
+    if (text.isEmpty) return null;
+    final head = text.codeUnitAt(0);
+    final insert = head == 0x49 || head == 0x69;
+    final update = head == 0x55 || head == 0x75;
+    final vacuum = head == 0x56 || head == 0x76;
+    final delete = head == 0x44 || head == 0x64;
+    if (update) {
+      if (parameters.isNotEmpty) return null;
+    } else if (insert) {
+      if (parameters.isEmpty) return null;
+      if (_fastInsertPlans[text] == null &&
+          !_directInsertPattern.hasMatch(text)) {
+        return null;
+      }
+    } else if (vacuum) {
+      if (parameters.isNotEmpty || inTransaction) return null;
+      final upper = text.toUpperCase();
+      if (upper != 'VACUUM' && upper != 'VACUUM;') return null;
+      if (!_vacuumNoOp()) return null;
+    } else if (delete) {
+      if (parameters.isNotEmpty || _scanDeleteAll(text) == null) return null;
+    } else {
+      return null;
+    }
+    _executionDepth = 1;
+    _counterFrames.add(counters.beginStatement());
+    try {
+      if (vacuum) {
+        _counterFrames.last?.finish();
+        return MutationImage(original, 0, null);
+      }
+      if (update) {
+        final bulk =
+            _tryBulkIncrement(text, parameters, foreignKeys: foreignKeys);
+        if (bulk == null) return null;
+        _counterFrames.last?.finish();
+        return bulk;
+      }
+      if (delete) {
+        final removed = _tryDeleteAll(text, foreignKeys: foreignKeys);
+        if (removed == null) return null;
+        _counterFrames.last?.finish();
+        return removed;
+      }
+      _flushColumnAddends();
+      final inserted =
+          _tryDirectInsert(text, parameters, foreignKeys: foreignKeys);
+      if (inserted == null) return null;
+      _counterFrames.last?.finish();
+      return inserted;
+    } catch (_) {
+      _counterFrames.last?.finish(retainChanges: false);
+      rethrow;
+    } finally {
+      _executionDepth = 0;
+      _counterFrames.removeLast();
+    }
+  }
+
+  int _fastToken(_Table table) {
+    final name = asciiLower(table.schema.name);
+    var token = _indexes.length * 31 + other.length;
+    token = token * 31 + table.schema.checks.length;
+    token = token * 31 + table.schema.foreignKeys.length;
+    token = token * 31 + table.schema.columns.length;
+    token = token * 31 + table.schema.autoIndexPolicies.length;
+    if (table.schema.primaryPolicy != 'ABORT') token += 101;
+    for (final policy in table.schema.autoIndexPolicies) {
+      if (policy != 'ABORT') token += 103;
+    }
+    for (final index in _indexes) {
+      if (index.unique && asciiLower(index.table) == name) token += 17;
+    }
+    return token;
+  }
+
+  MutationImage? _tryDirectInsert(String sql, List<Object?> parameters,
+      {required bool foreignKeys}) {
+    final text = sql.trim();
+    final cached = _fastInsertPlans[text];
+    if (cached != null) {
+      final table = _tables[cached.tableKey];
+      if (table == null || cached.token != _fastToken(table)) {
+        _fastInsertPlans.remove(text);
+      } else if (parameters.length != cached.arity ||
+          foreignKeys && table.schema.foreignKeys.isNotEmpty) {
+        return null;
+      } else {
+        return _commitFastInsert(table, cached, parameters);
+      }
+    }
+    final match = _directInsertPattern.firstMatch(text);
+    if (match == null) return null;
+    final table = _tables[asciiLower(match.group(1)!)];
+    if (table == null || !_simpleTable(table, foreignKeys: foreignKeys)) {
+      return null;
+    }
+    if (table.schema.primaryPolicy != 'ABORT' ||
+        table.schema.autoIndexPolicies.any((policy) => policy != 'ABORT')) {
+      return null;
+    }
+    final name = asciiLower(table.schema.name);
+    if (_indexes
+        .any((index) => index.unique && asciiLower(index.table) == name)) {
+      return null;
+    }
+    final columns = match
+        .group(2)!
+        .split(',')
+        .map((column) => asciiLower(column.trim()))
+        .toList();
+    final placeholders = match.group(3)!.split(',').length;
+    if (columns.length != placeholders ||
+        parameters.length != columns.length ||
+        columns.toSet().length != columns.length) {
+      return null;
+    }
+    final alias = asciiLower(table.schema.rowidAlias ?? '');
+    if (alias.isEmpty || !columns.contains(alias)) return null;
+    final parametersByColumn = <int>[];
+    final columnIndexes = <int>[];
+    var rowidParameter = -1;
+    for (var i = 0; i < columns.length; i++) {
+      if (columns[i] == alias) {
+        rowidParameter = i;
+        continue;
+      }
+      final index = table.schema.columns
+          .indexWhere((column) => asciiLower(column.name) == columns[i]);
+      if (index < 0) return null;
+      parametersByColumn.add(i);
+      columnIndexes.add(index);
+    }
+    if (rowidParameter < 0) return null;
+    for (var index = 0; index < table.schema.columns.length; index++) {
+      final column = table.schema.columns[index];
+      if (asciiLower(column.name) == alias || columnIndexes.contains(index)) {
+        continue;
+      }
+      if (column.notNull ||
+          column.defaultValue != null ||
+          column.defaultExpression != null ||
+          column.defaultSql != null) {
+        return null;
+      }
+    }
+    final plan = _FastInsertPlan(
+        tableKey: name,
+        token: _fastToken(table),
+        rowidParameter: rowidParameter,
+        parameters: parametersByColumn,
+        columns: columnIndexes,
+        arity: columns.length);
+    _fastInsertPlans[text] = plan;
+    return _commitFastInsert(table, plan, parameters);
+  }
+
+  MutationImage? _commitFastInsert(
+      _Table table, _FastInsertPlan plan, List<Object?> parameters) {
+    final rowId = _fastRowid(sqlValue(parameters[plan.rowidParameter]));
+    if (rowId == null) return null;
+    final values = List<Object?>.filled(table.schema.columns.length, null);
+    for (var i = 0; i < plan.parameters.length; i++) {
+      final column = table.schema.columns[plan.columns[i]];
+      var stored = _stored(sqlValue(parameters[plan.parameters[i]]), column);
+      if (stored is BigInt) {
+        final type = column.declaredType.toUpperCase();
+        if (!type.contains('INT') &&
+            ['REAL', 'FLOA', 'DOUB'].any(type.contains)) {
+          stored = stored.toDouble();
+        }
+      }
+      if (column.notNull && stored == null) return null;
+      values[plan.columns[i]] = stored;
+    }
+    final rowids = table.residentRowids;
+    if (rowids == null || rowids.length != table.rows.length) {
+      table.residentRowids = table.rows.map((row) => row.rowId).toSet();
+    }
+    _beginCounters();
+    if (table.residentRowids!.contains(rowId)) {
+      throw const SqlConstraintException('UNIQUE constraint failed: rowid');
+    }
+    final row = TableRow(rowId, values);
+    if (!table.residentRowids!.add(rowId)) {
+      throw const SqlConstraintException('UNIQUE constraint failed: rowid');
+    }
+    table.rows.add(row);
+    table.rowById = null;
+    table.valueIndexes = null;
+    wroteRows = true;
+    _changed(insertedRowid: rowId);
+    return MutationImage(original, 1, rowId);
+  }
+
+  BigInt? _fastRowid(Object? value) {
+    if (value is String) value = numeric(value, encoding: encoding);
+    if (value is int) value = BigInt.from(value);
+    if (value is double &&
+        value.isFinite &&
+        value == value.truncateToDouble() &&
+        value > -(BigInt.one << 63).toDouble() &&
+        value < (BigInt.one << 63).toDouble()) {
+      value = BigInt.from(value);
+    }
+    if (value is! BigInt ||
+        value < -(BigInt.one << 63) ||
+        value >= BigInt.one << 63) {
+      return null;
+    }
+    return value;
+  }
+
+  /// A repeated single-table equality read answered from the live rows.
+  QueryResult? tryFastRead(String sql, List<Object?> parameters) {
+    if (parameters.length != 1) return null;
+    final match = _fastReadPattern.firstMatch(sql.trim());
+    if (match == null) return null;
+    final table = _tables[asciiLower(match.group(2)!)];
+    if (table == null || table.view || table.schema.virtual) return null;
+    final selected = match
+        .group(1)!
+        .split(',')
+        .map((column) => asciiLower(column.trim()))
+        .toList();
+    final filter = asciiLower(match.group(3)!);
+    final columns = <CatalogColumn?>[];
+    for (final name in selected) {
+      final column = _fastColumn(table, name);
+      if (column == null && !_isRowidName(table, name)) return null;
+      if (column != null &&
+          column.collation != 'BINARY' &&
+          column.collation != 'binary') {
+        return null;
+      }
+      columns.add(column);
+    }
+    final filterColumn = _fastColumn(table, filter);
+    final filterIsRowid = _isRowidName(table, filter);
+    if (filterColumn == null && !filterIsRowid) return null;
+    if (filterColumn != null &&
+        filterColumn.collation != 'BINARY' &&
+        filterColumn.collation != 'binary') {
+      return null;
+    }
+    if (filterColumn != null &&
+        table.columnAddends != null &&
+        table.columnAddends!
+            .containsKey(table.schema.columns.indexOf(filterColumn))) {
+      _flushColumnAddends();
+    }
+    final bound = sqlValue(parameters.single);
+    final List<TableRow> matches;
+    if (filterIsRowid) {
+      if (bound == null) {
+        matches = const [];
+      } else {
+        final rowId = _fastRowid(bound);
+        if (rowId == null) return null;
+        final row = _rowById(table)[rowId];
+        matches = row == null ? const [] : [row];
+      }
+    } else {
+      if (bound == null) {
+        matches = const [];
+      } else if (bound is! String && bound is! BigInt && bound is! double) {
+        return null;
+      } else {
+        final columnIndex = table.schema.columns.indexOf(filterColumn!);
+        final index = _valueIndex(table, columnIndex);
+        if (index.isNotEmpty && !index.containsKey(bound)) {
+          final sample = index.keys.first;
+          if (sample.runtimeType != bound.runtimeType) return null;
+        }
+        matches = index[bound] ?? const [];
+      }
+    }
+    final ordered = matches.length < 2
+        ? matches
+        : ([...matches]..sort((a, b) => a.rowId.compareTo(b.rowId)));
+    final labels =
+        match.group(1)!.split(',').map((column) => column.trim()).toList();
+    final rows = [
+      for (final row in ordered)
+        [
+          for (var i = 0; i < columns.length; i++)
+            columns[i] == null
+                ? row.rowId
+                : _projected(
+                    table, row, table.schema.columns.indexOf(columns[i]!))
+        ]
+    ];
+    return QueryResult(
+        labels,
+        rows,
+        [for (final column in columns) column?.affinity ?? 'integer'],
+        [for (final column in columns) column?.declaredType ?? 'INTEGER'],
+        [for (final column in columns) column?.collation ?? 'BINARY']);
+  }
+
+  CatalogColumn? _fastColumn(_Table table, String name) {
+    for (final column in table.schema.columns) {
+      if (asciiLower(column.name) == name) return column;
+    }
+    return null;
+  }
+
+  bool _isRowidName(_Table table, String name) =>
+      name == 'rowid' ||
+      name == 'oid' ||
+      name == '_rowid_' ||
+      name.isNotEmpty && name == asciiLower(table.schema.rowidAlias ?? '');
+
+  Map<BigInt, TableRow> _rowById(_Table table) {
+    final cached = table.rowById;
+    if (cached != null && cached.length == table.rows.length) return cached;
+    return table.rowById = {for (final row in table.rows) row.rowId: row};
+  }
+
+  Map<Object, List<TableRow>> _valueIndex(_Table table, int column) {
+    final indexes = table.valueIndexes ??= {};
+    final cached = indexes[column];
+    if (cached != null) return cached;
+    final built = <Object, List<TableRow>>{};
+    for (final row in table.rows) {
+      final value = row.values[column];
+      if (value == null) continue;
+      final key = value is int ? BigInt.from(value) : value;
+      if (key is! String && key is! BigInt && key is! double) continue;
+      (built[key] ??= []).add(row);
+    }
+    return indexes[column] = built;
+  }
+
+  Object? _projected(_Table table, TableRow row, int column) {
+    final schemaColumn = table.schema.columns[column];
+    if (table.schema.rowidAlias != null &&
+        schemaColumn.name == table.schema.rowidAlias) {
+      return row.rowId;
+    }
+    final addend = table.columnAddends?[column];
+    final value = row.values[column];
+    if (addend == null || addend == BigInt.zero) return value;
+    return _addStored(value, addend);
   }
 }

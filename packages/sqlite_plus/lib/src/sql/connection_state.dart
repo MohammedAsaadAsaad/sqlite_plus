@@ -29,6 +29,10 @@ final class SqlStatementCounters {
     if (insertedRowid != null) connection.lastInsertRowid = insertedRowid;
   }
 
+  void addChanges(int count) {
+    if (count > 0) _changes += count;
+  }
+
   void finish({bool retainChanges = true}) {
     if (_finished) return;
     _finished = true;

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'bench_model.dart';
 import 'native_bench.dart';
@@ -107,7 +108,7 @@ class _BenchPageState extends State<BenchPage> {
     if (_running || _closed) return;
     final count = parseBenchCount(_count.text);
     if (count == null) {
-      setState(() => _countError = 'أدخل عدداً من 1 إلى $maxBenchCount');
+      setState(() => _countError = 'Enter a count from 1 to $maxBenchCount');
       return;
     }
     setState(() {
@@ -250,7 +251,7 @@ class _BenchPageState extends State<BenchPage> {
         foregroundColor: _text,
         elevation: 0,
         title: const Text(
-          'ميزان',
+          'Bench',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
@@ -258,17 +259,17 @@ class _BenchPageState extends State<BenchPage> {
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
         children: [
           const Text(
-            'نفس عبارات SQL على SQLite في أندرويد وعلى sqlite_plus. العدد من 1 إلى 10000. الوقت يقيس العملية نفسها. التجهيز، ومنه فهرس البحث، يظهر وحده، وكذلك تصدير صورة sqlite_plus.',
+            'The same SQL on Android SQLite and on sqlite_plus. The count runs from 1 to 10000. The clock measures the operation itself. Preparation, including the search index, is recorded on its own, as is exporting the sqlite_plus image.',
             style: TextStyle(color: _muted, height: 1.6),
           ),
           if (location != null) ...[
             const SizedBox(height: 8),
-            const Text('ملف النيتف', style: TextStyle(color: _muted)),
+            const Text('Native file', style: TextStyle(color: _muted)),
             const SizedBox(height: 4),
             Text(
               location,
               textDirection: TextDirection.ltr,
-              textAlign: TextAlign.right,
+              textAlign: TextAlign.start,
               style: const TextStyle(color: _muted, height: 1.5),
             ),
           ],
@@ -278,18 +279,18 @@ class _BenchPageState extends State<BenchPage> {
               Expanded(
                 child: _Metric(
                   metricKey: const Key('live-rss'),
-                  label: 'الذاكرة',
+                  label: 'Memory',
                   value: formatBytes(_latestSample.rssBytes),
-                  detail: 'الذروة ${_ltr(formatBytes(_peak))}',
+                  detail: 'Peak ${_ltr(formatBytes(_peak))}',
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _Metric(
                   metricKey: const Key('live-cpu'),
-                  label: 'المعالج',
+                  label: 'CPU',
                   value: '${_cpuPercent.toStringAsFixed(0)}%',
-                  detail: 'منذ الفتح ${_ltr(formatMicros(cpu))}',
+                  detail: 'Since open ${_ltr(formatMicros(cpu))}',
                 ),
               ),
             ],
@@ -308,7 +309,7 @@ class _BenchPageState extends State<BenchPage> {
               fontWeight: FontWeight.w700,
             ),
             decoration: InputDecoration(
-              labelText: 'عدد العمليات',
+              labelText: 'Operation count',
               labelStyle: const TextStyle(color: _muted),
               errorText: _countError,
               filled: true,
@@ -353,7 +354,7 @@ class _BenchPageState extends State<BenchPage> {
                     vertical: 12,
                   ),
                 ),
-                child: const Text('تشغيل الكل'),
+                child: const Text('Run all'),
               ),
             ],
           ),
@@ -376,7 +377,7 @@ class _BenchPageState extends State<BenchPage> {
           if (_latest.isNotEmpty) ...[
             const SizedBox(height: 22),
             const Text(
-              'المقارنة',
+              'Comparison',
               style: TextStyle(
                 color: _text,
                 fontSize: 18,
@@ -395,13 +396,28 @@ class _BenchPageState extends State<BenchPage> {
             children: [
               const Expanded(
                 child: Text(
-                  'السجل',
+                  'Log',
                   style: TextStyle(
                     color: _text,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+              ),
+              TextButton(
+                key: const Key('copy-log'),
+                onPressed: _running || _log.isEmpty
+                    ? null
+                    : () async {
+                        await Clipboard.setData(
+                          ClipboardData(text: formatBenchLog(_log)),
+                        );
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Log copied')),
+                        );
+                      },
+                child: const Text('Copy log'),
               ),
               TextButton(
                 key: const Key('clear-log'),
@@ -411,14 +427,14 @@ class _BenchPageState extends State<BenchPage> {
                         _log.clear();
                         _latest.clear();
                       }),
-                child: const Text('مسح السجل'),
+                child: const Text('Clear log'),
               ),
             ],
           ),
           if (_log.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 8),
-              child: Text('السجل فارغ', style: TextStyle(color: _muted)),
+              child: Text('Log empty', style: TextStyle(color: _muted)),
             )
           else
             for (final entry in _log) _LogTile(entry: entry),
@@ -459,7 +475,7 @@ class _Metric extends StatelessWidget {
           Text(
             value,
             textDirection: TextDirection.ltr,
-            textAlign: TextAlign.right,
+            textAlign: TextAlign.start,
             style: const TextStyle(
               color: _text,
               fontSize: 22,
@@ -481,7 +497,7 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Row(
       children: [
-        _Swatch(color: _native, label: 'النيتف'),
+        _Swatch(color: _native, label: 'native'),
         SizedBox(width: 16),
         _Swatch(color: _plus, label: 'sqlite_plus'),
       ],
@@ -557,7 +573,7 @@ class _CompareCard extends StatelessWidget {
               ),
               if (comparable)
                 Text(
-                  matched ? 'النتيجة متطابقة' : 'النتيجة مختلفة',
+                  matched ? 'Match' : 'Different',
                   style: TextStyle(color: matched ? _plus : _error),
                 ),
             ],
@@ -572,7 +588,7 @@ class _CompareCard extends StatelessWidget {
           if (comparable && native.elapsedMicros > 0) ...[
             const SizedBox(height: 8),
             Text(
-              'sqlite_plus / النيتف  ${(plus.elapsedMicros / native.elapsedMicros).toStringAsFixed(2)}',
+              'sqlite_plus / native  ${(plus.elapsedMicros / native.elapsedMicros).toStringAsFixed(2)}',
               textDirection: TextDirection.ltr,
               style: const TextStyle(color: _muted),
             ),
@@ -607,7 +623,7 @@ class _Bar extends StatelessWidget {
             Text(sample.engineLabel, style: TextStyle(color: color)),
             const Spacer(),
             Text(
-              sample.failed ? 'توقفت' : formatMicros(sample.elapsedMicros),
+              sample.failed ? 'Stopped' : formatMicros(sample.elapsedMicros),
               textDirection: TextDirection.ltr,
               style: const TextStyle(color: _text, fontWeight: FontWeight.w700),
             ),
@@ -675,9 +691,9 @@ class _LogTile extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            sample.failed ? 'توقفت' : formatMicros(sample.elapsedMicros),
+            sample.failed ? 'Stopped' : formatMicros(sample.elapsedMicros),
             textDirection: TextDirection.ltr,
-            textAlign: TextAlign.right,
+            textAlign: TextAlign.start,
             style: const TextStyle(
               color: _text,
               fontSize: 22,
@@ -686,15 +702,15 @@ class _LogTile extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'المعالج ${_ltr(formatMicros(sample.cpuMicros))} · الذاكرة ${_ltr(formatBytes(sample.rssBefore))} → ${_ltr(formatBytes(sample.rssAfter))}',
+            'CPU ${_ltr(formatMicros(sample.cpuMicros))} · memory ${_ltr(formatBytes(sample.rssBefore))} → ${_ltr(formatBytes(sample.rssAfter))}',
             style: const TextStyle(color: _muted, height: 1.4),
           ),
           Text(
-            'صفوف ${_ltr('${sample.rows}')} · مجموع ${_ltr('${sample.checksum}')} · نتائج ${_ltr('${sample.hits}')}',
+            'Rows ${_ltr('${sample.rows}')} · sum ${_ltr('${sample.checksum}')} · hits ${_ltr('${sample.hits}')}',
             style: const TextStyle(color: _muted, height: 1.4),
           ),
           Text(
-            'تجهيز ${_ltr(formatMicros(sample.prepareMicros))} · تصدير ${_ltr(formatMicros(sample.exportMicros))} · الحجم ${_ltr(formatBytes(sample.storedBytes))}',
+            'Prepare ${_ltr(formatMicros(sample.prepareMicros))} · export ${_ltr(formatMicros(sample.exportMicros))} · size ${_ltr(formatBytes(sample.storedBytes))}',
             style: const TextStyle(color: _muted, height: 1.4),
           ),
           if (sample.error != null)

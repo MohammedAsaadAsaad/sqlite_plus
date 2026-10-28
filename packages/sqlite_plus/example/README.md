@@ -12,7 +12,7 @@ One in-memory database for the sqlite_plus engine.
 | Spatial | `rtree` unit box | shelf id `1` |
 | Reopen | `PRAGMA user_version=7`, `exportImage`, `fromImage` | title and version `7`, `40960` bytes |
 
-This example is its own Dart project and a workspace member. It stays in the repository. Publication of the packages is planned.
+This example ships with the package.
 
 From a checkout, after `dart pub get` at the repository root:
 

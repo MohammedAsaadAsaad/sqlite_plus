@@ -2,17 +2,13 @@
 
 Typed queries, change tracking, relationships, and reviewed migrations for `sqlite_plus`. The application names columns and objects. The runtime writes the SQL. Runtime code has no analyzer, reflection, native database, or `dart:io` dependency.
 
-Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request.
+Version `0.0.1-dev.1`.
 
 ## Install
 
 ```yaml
 dependencies:
-  sqlite_plus_orm:
-    git:
-      url: https://github.com/MohammedAsaadAsaad/sqlite_plus
-      path: packages/sqlite_plus_orm
-      ref: main
+  sqlite_plus_orm: ^0.0.1-dev.1
 ```
 
 ```dart

@@ -270,6 +270,11 @@ final class MutableSqliteDatabase {
   Future<QueryResult> query(String sql,
           [List<Object?> parameters = const []]) =>
       _exclusive(() async {
+        final live = _liveMain;
+        if (live != null) {
+          final fast = live.tryFastRead(sql, parameters);
+          if (fast != null) return fast;
+        }
         final explain = SqlParser(sql);
         if (explain.take('EXPLAIN')) {
           if (!(explain.take('QUERY') && explain.take('PLAN'))) {
@@ -321,110 +326,140 @@ final class MutableSqliteDatabase {
             .every((use) => schemaTables.contains(asciiLower(use.table)));
         return _readImage(route.schema!, route.sql, parameters, schemaView);
       });
+
   Future<MutationResult> execute(String sql,
-          [List<Object?> parameters = const []]) =>
-      _exclusive(() async {
-        final parser = SqlParser(sql);
-        if (parser.take('PRAGMA')) {
-          final parsed = _pragmaName(parser);
-          final name = parsed.$2;
-          const writable = {
-            'foreign_keys',
-            'recursive_triggers',
-            'user_version',
-            'application_id',
-            'cache_size',
-            'busy_timeout',
-            'synchronous',
-            'journal_mode',
-            'auto_vacuum'
-          };
-          if (!writable.contains(name)) {
-            throw const SqlException('Unsupported writable PRAGMA');
-          }
-          final statePragma =
-              name == 'foreign_keys' || name == 'recursive_triggers';
-          final value = _pragmaValue(parser,
-              onParsed: statePragma
-                  ? (value) => _applyConnectionPragma(name, value, parsed.$1)
-                  : null);
-          if (parameters.isNotEmpty) {
-            throw const SqlException('PRAGMA bindings unsupported');
-          }
-          if (name == 'user_version' || name == 'application_id') {
-            if (parsed.$1 == 'main') _materializeMain();
-            final signed = _pragmaInteger(value);
-            final image = Uint8List.fromList(_imageFor(parsed.$1));
-            final fields = ByteData.sublistView(image);
-            fields.setInt32(name == 'user_version' ? 60 : 68, signed);
-            final counter = (fields.getUint32(24) + 1) & 0xffffffff;
-            fields.setUint32(24, counter);
-            fields.setUint32(92, counter);
-            await _commitSchema(parsed.$1, image);
-          } else if (!statePragma) {
-            _applyConnectionPragma(name, value, parsed.$1);
-          }
-          return const MutationResult(0, null);
-        }
-        if (['BEGIN', 'COMMIT', 'END', 'ROLLBACK', 'SAVEPOINT', 'RELEASE']
-            .contains(parser.current.keyword)) {
-          if (parameters.isNotEmpty) {
-            throw const SqlException(
-                'Transaction statements take no parameters');
-          }
-          return _transaction(parser);
-        }
-        final route = routeMutation(sql, await _schemaCatalog());
-        if (route.kind == 'attach') {
-          await _attach(route.name!, route.argument!);
-          return const MutationResult(0, null);
-        }
-        if (route.kind == 'detach') {
-          _detach(route.name!);
-          return const MutationResult(0, null);
-        }
-        final schema = route.schema!;
-        final keyword = SqlParser(route.sql).current.keyword;
-        final maintenance =
-            const {'REINDEX', 'ANALYZE', 'VACUUM'}.contains(keyword);
-        if (schema == 'main' && maintenance) {
-          // Maintenance rebuilds from the byte image and resolves functions
-          // again. Publish deferred rows, then load that image fresh.
-          _materializeMain();
-          _dropLive();
-        }
-        final current = _imageFor(schema);
-        final reuse = schema == 'main' &&
-            !maintenance &&
-            _liveMain != null &&
-            (_dirtyMain || identical(_liveMainImage, current));
-        final state = reuse ? _liveMain! : await ImageMutations.load(current);
-        final captured = schema == 'main' && reuse && _dirtyMain
-            ? state.captureLogical()
-            : null;
-        state.deferMaterialize =
-            schema == 'main' && _journal == null && !maintenance;
-        final MutationImage result;
-        try {
-          result = await state.execute(route.sql, parameters,
-              foreignKeys: _foreignKeys,
-              inTransaction: inTransaction,
-              recursiveTriggers: _recursiveTriggers);
-        } on MutationFailure catch (failure) {
-          if (failure.rollbackTransaction) {
-            if (inTransaction) {
-              _restoreSnapshot(_checkpoint!);
-              _clearTransaction();
-            } else if (captured != null) {
-              state.restoreLogical(captured);
-              _liveMain = state;
+      [List<Object?> parameters = const []]) async {
+    if (_closed || _failed || _busy) {
+      throw StateError('Database closed or busy');
+    }
+    final live = _liveMain;
+    if (live != null) {
+      _busy = true;
+      try {
+        live.wroteRows = false;
+        final hot = live.tryHotDml(sql, parameters,
+            foreignKeys: _foreignKeys,
+            inTransaction: inTransaction,
+            counters: functions.connectionState);
+        if (hot != null) {
+          if (live.releaseFreedPages) {
+            live.releaseFreedPages = false;
+            final image = await live.releaseFreedPagesImage();
+            if (image != null) {
+              // _commitSchema drops the live rows; put them back on the
+              // freelist image so the next statement does not compact it.
+              await _commitSchema('main', image);
+              live.rebase(_image);
+              _liveMain = live;
+              _liveMainImage = _image;
+              _dirtyMain = false;
+            } else if (live.wroteRows) {
               _dirtyMain = true;
-            } else if (schema == 'main') {
-              _dropLive();
             }
-          } else if (failure.partialImage != null) {
-            await _commitSchema(schema, failure.partialImage!);
-            if (schema == 'main') _invalidateCatalog();
+          } else if (live.wroteRows) {
+            _dirtyMain = true;
+          }
+          return MutationResult(hot.changes, hot.lastRowid, hot.returning);
+        }
+      } finally {
+        _busy = false;
+      }
+    }
+    return _exclusive(() async {
+      final parser = SqlParser(sql);
+      if (parser.take('PRAGMA')) {
+        final parsed = _pragmaName(parser);
+        final name = parsed.$2;
+        const writable = {
+          'foreign_keys',
+          'recursive_triggers',
+          'user_version',
+          'application_id',
+          'cache_size',
+          'busy_timeout',
+          'synchronous',
+          'journal_mode',
+          'auto_vacuum'
+        };
+        if (!writable.contains(name)) {
+          throw const SqlException('Unsupported writable PRAGMA');
+        }
+        final statePragma =
+            name == 'foreign_keys' || name == 'recursive_triggers';
+        final value = _pragmaValue(parser,
+            onParsed: statePragma
+                ? (value) => _applyConnectionPragma(name, value, parsed.$1)
+                : null);
+        if (parameters.isNotEmpty) {
+          throw const SqlException('PRAGMA bindings unsupported');
+        }
+        if (name == 'user_version' || name == 'application_id') {
+          if (parsed.$1 == 'main') _materializeMain();
+          final signed = _pragmaInteger(value);
+          final image = Uint8List.fromList(_imageFor(parsed.$1));
+          final fields = ByteData.sublistView(image);
+          fields.setInt32(name == 'user_version' ? 60 : 68, signed);
+          final counter = (fields.getUint32(24) + 1) & 0xffffffff;
+          fields.setUint32(24, counter);
+          fields.setUint32(92, counter);
+          await _commitSchema(parsed.$1, image);
+        } else if (!statePragma) {
+          _applyConnectionPragma(name, value, parsed.$1);
+        }
+        return const MutationResult(0, null);
+      }
+      if (['BEGIN', 'COMMIT', 'END', 'ROLLBACK', 'SAVEPOINT', 'RELEASE']
+          .contains(parser.current.keyword)) {
+        if (parameters.isNotEmpty) {
+          throw const SqlException('Transaction statements take no parameters');
+        }
+        return _transaction(parser);
+      }
+      final route = routeMutation(sql, await _schemaCatalog());
+      if (route.kind == 'attach') {
+        await _attach(route.name!, route.argument!);
+        return const MutationResult(0, null);
+      }
+      if (route.kind == 'detach') {
+        _detach(route.name!);
+        return const MutationResult(0, null);
+      }
+      final schema = route.schema!;
+      final keyword = SqlParser(route.sql).current.keyword;
+      final maintenance =
+          const {'REINDEX', 'ANALYZE', 'VACUUM'}.contains(keyword);
+      final vacuumOnLive =
+          keyword == 'VACUUM' && schema == 'main' && _liveMain != null;
+      if (schema == 'main' && maintenance && !vacuumOnLive) {
+        // Maintenance rebuilds from the byte image and resolves functions
+        // again. Publish deferred rows, then load that image fresh.
+        // VACUUM can renumber the live rows and leave a clean image for the
+        // next read when the current image has no free pages.
+        _materializeMain();
+        _dropLive();
+      }
+      final current = _imageFor(schema);
+      final reuse = schema == 'main' &&
+          (!maintenance || vacuumOnLive) &&
+          _liveMain != null &&
+          (_dirtyMain || identical(_liveMainImage, current) || vacuumOnLive);
+      final state = reuse ? _liveMain! : await ImageMutations.load(current);
+      final captured = schema == 'main' && reuse && _dirtyMain
+          ? state.captureLogical()
+          : null;
+      state.deferMaterialize =
+          schema == 'main' && _journal == null && !maintenance;
+      final MutationImage result;
+      try {
+        result = await state.execute(route.sql, parameters,
+            foreignKeys: _foreignKeys,
+            inTransaction: inTransaction,
+            recursiveTriggers: _recursiveTriggers);
+      } on MutationFailure catch (failure) {
+        if (failure.rollbackTransaction) {
+          if (inTransaction) {
+            _restoreSnapshot(_checkpoint!);
+            _clearTransaction();
           } else if (captured != null) {
             state.restoreLogical(captured);
             _liveMain = state;
@@ -432,39 +467,49 @@ final class MutableSqliteDatabase {
           } else if (schema == 'main') {
             _dropLive();
           }
-          throw failure.error;
-        } catch (error) {
-          if (captured != null) {
-            state.restoreLogical(captured);
-            _liveMain = state;
-            _dirtyMain = true;
-          } else if (schema == 'main') {
-            _dropLive();
-          }
-          rethrow;
+        } else if (failure.partialImage != null) {
+          await _commitSchema(schema, failure.partialImage!);
+          if (schema == 'main') _invalidateCatalog();
+        } else if (captured != null) {
+          state.restoreLogical(captured);
+          _liveMain = state;
+          _dirtyMain = true;
+        } else if (schema == 'main') {
+          _dropLive();
         }
+        throw failure.error;
+      } catch (error) {
+        if (captured != null) {
+          state.restoreLogical(captured);
+          _liveMain = state;
+          _dirtyMain = true;
+        } else if (schema == 'main') {
+          _dropLive();
+        }
+        rethrow;
+      }
+      if (!identical(result.image, current)) {
+        await _commitSchema(schema, result.image);
+      }
+      if (schema == 'main') {
         if (!identical(result.image, current)) {
-          await _commitSchema(schema, result.image);
+          state.rebase(_image);
+          _liveMain = state;
+          _liveMainImage = _image;
+          _dirtyMain = false;
+        } else if (state.wroteRows) {
+          _liveMain = state;
+          _liveMainImage = _image;
+          _dirtyMain = true;
+        } else {
+          _liveMain = state;
+          _liveMainImage = _image;
         }
-        if (schema == 'main') {
-          if (!identical(result.image, current)) {
-            state.rebase(_image);
-            _liveMain = state;
-            _liveMainImage = _image;
-            _dirtyMain = false;
-          } else if (state.wroteRows) {
-            _liveMain = state;
-            _liveMainImage = _image;
-            _dirtyMain = true;
-          } else {
-            _liveMain = state;
-            _liveMainImage = _image;
-          }
-        }
-        _rememberSchema(sql);
-        return MutationResult(
-            result.changes, result.lastRowid, result.returning);
-      });
+      }
+      _rememberSchema(sql);
+      return MutationResult(result.changes, result.lastRowid, result.returning);
+    });
+  }
 
   String _pragmaValue(SqlParser parser, {void Function(String)? onParsed}) {
     final parenthesized = parser.take('(');

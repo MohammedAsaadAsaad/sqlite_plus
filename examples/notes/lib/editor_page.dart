@@ -60,7 +60,7 @@ class _EditorPageState extends State<EditorPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'حذف هذه الملاحظة؟',
+                'Delete this note?',
                 style: TextStyle(
                   color: Color(0xFFF6EFE4),
                   fontSize: 20,
@@ -75,7 +75,7 @@ class _EditorPageState extends State<EditorPage> {
                   foregroundColor: const Color(0xFF1A120E),
                 ),
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('حذف'),
+                child: const Text('Delete'),
               ),
             ],
           ),
@@ -98,7 +98,7 @@ class _EditorPageState extends State<EditorPage> {
         foregroundColor: const Color(0xFF1C1612),
         elevation: 0,
         title: const Text(
-          'هامش',
+          'Margin',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
@@ -145,7 +145,7 @@ class _EditorPageState extends State<EditorPage> {
               ),
               cursorColor: const Color(0xFFE15A3A),
               decoration: const InputDecoration(
-                hintText: 'عنوان',
+                hintText: 'Title',
                 hintStyle: TextStyle(color: Color(0xFF8A7566)),
                 border: InputBorder.none,
               ),
@@ -179,7 +179,7 @@ class _EditorPageState extends State<EditorPage> {
                 ),
                 cursorColor: const Color(0xFFE15A3A),
                 decoration: const InputDecoration(
-                  hintText: 'اكتب هنا',
+                  hintText: 'Write here',
                   hintStyle: TextStyle(color: Color(0xFF8A7566)),
                   border: InputBorder.none,
                 ),

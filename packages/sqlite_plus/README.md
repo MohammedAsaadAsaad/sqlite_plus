@@ -2,17 +2,31 @@
 
 A Pure Dart database engine. SQL, JSON, FTS5, R-tree, and geopoly run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request.
+Version `0.0.1-dev.1`.
+
+1000 rows, the same SQL, and every checksum matched. The ratio is sqlite_plus divided by native.
+
+![1000 rows, same SQL. Statement time on a logarithmic scale.](doc/bench-time.png)
+
+![Stored size for the same 1000-row statements.](doc/bench-size.png)
+
+| Operation | native | sqlite_plus | ratio |
+|---|---:|---:|---:|
+| Separate insert | 514.9 ms | 6.5 ms | 0.01 |
+| Transaction insert | 104.6 ms | 3.5 ms | 0.03 |
+| Separate update | 508.2 ms | 247.5 ms | 0.49 |
+| Bulk update | 1.3 ms | 92 µs | 0.07 |
+| Search | 126.3 ms | 7.6 ms | 0.06 |
+| Point lookup | 116.2 ms | 9.6 ms | 0.08 |
+| VACUUM | 1.2 ms | 9 µs | 0.01 |
+| Separate delete | 352.7 ms | 168.0 ms | 0.48 |
+| Delete all | 732 µs | 105 µs | 0.14 |
 
 ## Install
 
 ```yaml
 dependencies:
-  sqlite_plus:
-    git:
-      url: https://github.com/MohammedAsaadAsaad/sqlite_plus
-      path: packages/sqlite_plus
-      ref: main
+  sqlite_plus: ^0.0.1-dev.1
 ```
 
 ```dart
