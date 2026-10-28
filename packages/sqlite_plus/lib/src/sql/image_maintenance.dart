@@ -19,6 +19,7 @@ extension _ImageMaintenance on ImageMutations {
     if (parameters.isNotEmpty) {
       throw const SqlException('VACUUM bindings unsupported');
     }
+    var renumbered = false;
     for (final table in _tables.values) {
       if (table.schema.withoutRowid ||
           table.schema.rowidAlias != null ||
@@ -30,14 +31,30 @@ extension _ImageMaintenance on ImageMutations {
       // can receive compact rowids during VACUUM. Indexed rowids stay stable.
       final rows = table.rows.toList()
         ..sort((a, b) => a.rowId.compareTo(b.rowId));
+      var changed = false;
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].rowId != BigInt.from(i + 1)) {
+          changed = true;
+          break;
+        }
+      }
+      if (!changed) continue;
+      renumbered = true;
       table.rows
         ..clear()
         ..addAll([
           for (var i = 0; i < rows.length; i++)
             TableRow(BigInt.from(i + 1), rows[i].values)
         ]);
+      table.invalidateResidentKeys();
+    }
+    if (!renumbered && DatabaseHeader.decode(original).freelistPages == 0) {
+      // The live rows already are the compact database. Rebuilding the byte
+      // image here duplicated the work a later read performs.
+      return MutationImage(original, 0, null);
     }
     schemaChanged = true;
+    wroteRows = renumbered;
     return MutationImage(serialize(rowConstraints: false), 0, null);
   }
 

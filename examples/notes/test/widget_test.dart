@@ -16,9 +16,9 @@ void main() {
 
     await tester.pumpWidget(MarginApp(store: store));
 
-    expect(find.text('هامش'), findsOneWidget);
+    expect(find.text('Margin'), findsOneWidget);
     expect(find.byKey(const Key('compose')), findsOneWidget);
-    expect(find.text('المكتب فارغ'), findsOneWidget);
+    expect(find.text('The desk is empty'), findsOneWidget);
     await store.close();
   });
 

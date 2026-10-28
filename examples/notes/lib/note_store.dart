@@ -110,7 +110,7 @@ class NoteStore extends ChangeNotifier {
       busy = true;
       progressDone = 0;
       progressTotal = count;
-      progressLabel = singleTransaction ? 'معاملة واحدة' : 'حفظ منفصل';
+      progressLabel = singleTransaction ? 'One transaction' : 'Separate save';
       notifyListeners();
       try {
         final image = _database!.exportImage();
@@ -139,7 +139,7 @@ class NoteStore extends ChangeNotifier {
     return _serialized(() async {
       _checkIdle();
       busy = true;
-      progressLabel = 'مسح الكل';
+      progressLabel = 'Delete all';
       notifyListeners();
       try {
         final image = await _isolateBytes(deleteNotesIsolate, <Object?>[
@@ -251,7 +251,7 @@ class NoteStore extends ChangeNotifier {
   File _imageFile() => File('${directory.path}/margin.db');
 
   void _checkIdle() {
-    if (busy) throw StateError('عمل آخر قيد التنفيذ');
+    if (busy) throw StateError('Another job is already running');
   }
 
   Future<void> _replaceImage(Uint8List image) async {

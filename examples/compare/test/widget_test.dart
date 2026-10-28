@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:engine_bench/app.dart';
 import 'package:engine_bench/bench_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -18,7 +19,7 @@ void main() {
       await tester.enterText(find.byKey(const Key('count-field')), text);
       await tester.tap(find.byKey(const Key('op-separateInsert')));
       await tester.pump();
-      expect(find.text('أدخل عدداً من 1 إلى 10000'), findsOneWidget);
+      expect(find.text('Enter a count from 1 to 10000'), findsOneWidget);
       expect(find.byKey(const Key('log-line')), findsNothing);
       expect(engine.calls, 0);
     }
@@ -33,7 +34,7 @@ void main() {
     await _tall(tester);
     final native = ScriptedEngine(
       id: 'native',
-      label: 'النيتف',
+      label: 'native',
       location: '/tmp/bench-native.db',
       elapsedMicros: 4000,
     );
@@ -46,8 +47,8 @@ void main() {
       BenchApp(engines: [native, plus], isolateSqlitePlus: false),
     );
     await tester.pump();
-    expect(find.text('ميزان'), findsOneWidget);
-    expect(find.text('ملف النيتف'), findsOneWidget);
+    expect(find.text('Bench'), findsOneWidget);
+    expect(find.text('Native file'), findsOneWidget);
     expect(find.text('/tmp/bench-native.db'), findsOneWidget);
     expect(find.byKey(const Key('live-rss')), findsOneWidget);
     expect(find.byKey(const Key('live-cpu')), findsOneWidget);
@@ -58,15 +59,39 @@ void main() {
 
     expect(find.byKey(const Key('log-line')), findsNWidgets(2));
     expect(find.byKey(const Key('compare-search')), findsOneWidget);
-    expect(find.text('النتيجة متطابقة'), findsOneWidget);
-    expect(find.text('sqlite_plus / النيتف  0.50'), findsOneWidget);
+    expect(find.text('Match'), findsOneWidget);
+    expect(find.text('sqlite_plus / native  0.50'), findsOneWidget);
     expect(native.calls, 1);
     expect(plus.calls, 1);
     expect(plus.counts.single, 5);
 
+    String? clipboard;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        final arguments = call.arguments as Map<Object?, Object?>;
+        clipboard = arguments['text'] as String?;
+      } else if (call.method == 'Clipboard.getData') {
+        return <String, dynamic>{'text': clipboard};
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    await tester.tap(find.byKey(const Key('copy-log')));
+    await tester.pump();
+    final copied = await Clipboard.getData(Clipboard.kTextPlain);
+    expect(copied?.text, contains('Search  count=5'));
+    expect(copied?.text, contains('sqlite_plus / native 0.50'));
+    expect(copied?.text, contains('match'));
+    expect(find.text('Log copied'), findsOneWidget);
+
     await tester.tap(find.byKey(const Key('clear-log')));
     await tester.pump();
-    expect(find.text('السجل فارغ'), findsOneWidget);
+    expect(find.text('Log empty'), findsOneWidget);
     expect(find.byKey(const Key('compare-search')), findsNothing);
   });
 
@@ -77,7 +102,7 @@ void main() {
     await tester.pumpWidget(
       BenchApp(
         engines: [
-          ScriptedEngine(id: 'native', label: 'النيتف', checksum: 1),
+          ScriptedEngine(id: 'native', label: 'native', checksum: 1),
           ScriptedEngine(id: 'sqlite_plus', label: 'sqlite_plus', checksum: 2),
         ],
         isolateSqlitePlus: false,
@@ -87,7 +112,7 @@ void main() {
     await tester.enterText(find.byKey(const Key('count-field')), '5');
     await tester.tap(find.byKey(const Key('op-point')));
     await _flush(tester);
-    expect(find.text('النتيجة مختلفة'), findsOneWidget);
+    expect(find.text('Different'), findsOneWidget);
   });
 
   testWidgets('a failed engine is logged and the other engine still runs', (
@@ -99,7 +124,7 @@ void main() {
         engines: [
           ScriptedEngine(
             id: 'native',
-            label: 'النيتف',
+            label: 'native',
             error: StateError('broken'),
           ),
           ScriptedEngine(id: 'sqlite_plus', label: 'sqlite_plus'),
@@ -166,7 +191,7 @@ void main() {
     await tester.pumpWidget(
       BenchApp(
         engines: [
-          ScriptedEngine(id: 'native', label: 'النيتف'),
+          ScriptedEngine(id: 'native', label: 'native'),
           ScriptedEngine(id: 'sqlite_plus', label: 'sqlite_plus'),
         ],
         isolateSqlitePlus: false,

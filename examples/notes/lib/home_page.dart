@@ -29,7 +29,7 @@ class HomePage extends StatelessWidget {
                       const Expanded(child: _Masthead()),
                       IconButton(
                         key: const Key('tools'),
-                        tooltip: 'أدوات',
+                        tooltip: 'Tools',
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
@@ -142,7 +142,7 @@ class _Masthead extends StatelessWidget {
         ),
         SizedBox(height: 4),
         Text(
-          'هامش',
+          'Margin',
           style: TextStyle(
             color: Color(0xFFF6EFE4),
             fontSize: 40,
@@ -151,7 +151,7 @@ class _Masthead extends StatelessWidget {
           ),
         ),
         Text(
-          'ملاحظات على المكتب',
+          'Notes on the desk',
           style: TextStyle(color: Color(0xFFB7A89A), fontSize: 13),
         ),
       ],
@@ -172,7 +172,7 @@ class _SearchField extends StatelessWidget {
       style: const TextStyle(color: Color(0xFFF6EFE4)),
       cursorColor: const Color(0xFFE15A3A),
       decoration: InputDecoration(
-        hintText: 'ابحث في الهامش',
+        hintText: 'Search notes',
         hintStyle: const TextStyle(color: Color(0xFF8C7D70)),
         prefixIcon: const Icon(Icons.search, color: Color(0xFFE15A3A)),
         filled: true,
@@ -201,7 +201,7 @@ class _NoteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final paper = Color(paperOf(note));
-    final title = note.title.trim().isEmpty ? 'بدون عنوان' : note.title.trim();
+    final title = note.title.trim().isEmpty ? 'Untitled' : note.title.trim();
     return Material(
       color: paper,
       borderRadius: BorderRadius.circular(22),
@@ -278,7 +278,7 @@ class _EmptyDesk extends StatelessWidget {
         _DeskMark(),
         SizedBox(height: 18),
         Text(
-          'المكتب فارغ',
+          'The desk is empty',
           style: TextStyle(
             color: Color(0xFFF6EFE4),
             fontSize: 22,
@@ -287,7 +287,7 @@ class _EmptyDesk extends StatelessWidget {
         ),
         SizedBox(height: 6),
         Text(
-          'أول ملاحظة تبدأ من الزر المرجاني',
+          'The first note starts from the coral button',
           style: TextStyle(color: Color(0xFFB7A89A)),
         ),
       ],
@@ -346,7 +346,7 @@ class _ComposeButton extends StatelessWidget {
       onPressed: onPressed,
       icon: const Icon(Icons.edit_outlined),
       label: const Text(
-        'ملاحظة',
+        'Note',
         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
       ),
     );
@@ -361,7 +361,7 @@ String _when(DateTime utc) {
   final clock =
       '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   final gap = today.difference(day).inDays;
-  if (gap == 0) return 'اليوم $clock';
-  if (gap == 1) return 'أمس $clock';
+  if (gap == 0) return 'Today $clock';
+  if (gap == 1) return 'Yesterday $clock';
   return '${local.day}/${local.month} $clock';
 }

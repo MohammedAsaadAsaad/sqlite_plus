@@ -261,6 +261,51 @@ void main() {
         BigInt.one);
   });
 
+  test('a repeated insert, bulk increment, and equality read keep the checksum',
+      () async {
+    final database = await MutableSqliteDatabase.create();
+    addTearDown(database.close);
+    await database.execute(
+        'CREATE TABLE bench(id INTEGER PRIMARY KEY, name TEXT NOT NULL, body TEXT NOT NULL, n INTEGER NOT NULL)');
+    const count = 30;
+    for (var id = 1; id <= count; id++) {
+      final inserted = await database.execute(
+          'INSERT INTO bench(id, name, body, n) VALUES (?, ?, ?, ?)',
+          [id, 'n$id', 'b$id', id]);
+      expect(inserted.changes, 1);
+      expect(inserted.lastInsertRowid, BigInt.from(id));
+    }
+    expect(await totals(database), (count, count * (count + 1) ~/ 2));
+    final bulk = await database.execute('UPDATE bench SET n = n + 1');
+    expect(bulk.changes, count);
+    expect((await database.query('SELECT changes()')).rows.single.single,
+        BigInt.from(count));
+    expect(await totals(database), (count, count * (count + 1) ~/ 2 + count));
+    expect(
+        (await database.query('SELECT n FROM bench WHERE id = ?', [4]))
+            .rows
+            .single
+            .single,
+        BigInt.from(5));
+    await database.execute('CREATE INDEX bench_name ON bench(name)');
+    expect(
+        (await database.query('SELECT id FROM bench WHERE name = ?', ['n9']))
+            .rows
+            .single
+            .single,
+        BigInt.from(9));
+    expect(
+        (await database.query('SELECT body FROM bench WHERE id = ?', [9]))
+            .rows
+            .single
+            .single,
+        'b9');
+    await database.execute('BEGIN');
+    await database.execute('UPDATE bench SET n = n + 1');
+    await database.execute('ROLLBACK');
+    expect(await totals(database), (count, count * (count + 1) ~/ 2 + count));
+  });
+
   test('delete by id then a fresh insert keeps both checksum and uniqueness',
       () async {
     final database = await open();

@@ -19,7 +19,7 @@ void main() {
     expect(report.rssPeak, greaterThanOrEqualTo(report.rssBefore));
     expect(report.cpuMicros, greaterThanOrEqualTo(0));
     final titles = await _titles(report.image);
-    expect(titles, ['عشوائية 1', 'عشوائية 2', 'عشوائية 3', 'عشوائية 4']);
+    expect(titles, ['Random 1', 'Random 2', 'Random 3', 'Random 4']);
   });
 
   test('separate saves insert the same rows', () async {
@@ -27,11 +27,7 @@ void main() {
     final report = await insertRandomNotes(image, 3, singleTransaction: false);
     expect(report.inserted, 3);
     expect(report.singleTransaction, isFalse);
-    expect(await _titles(report.image), [
-      'عشوائية 1',
-      'عشوائية 2',
-      'عشوائية 3',
-    ]);
+    expect(await _titles(report.image), ['Random 1', 'Random 2', 'Random 3']);
   });
 
   test('delete all removes every tracked note in one save', () async {
@@ -62,9 +58,9 @@ void main() {
         lessThanOrEqualTo(vacuumed.before.pageCount),
       );
       expect(await _titles(vacuumed.image), [
-        'عشوائية 1',
-        'عشوائية 2',
-        'عشوائية 3',
+        'Random 1',
+        'Random 2',
+        'Random 3',
       ]);
     },
   );
@@ -79,8 +75,8 @@ void main() {
       final report = await store.insertRandom(2, singleTransaction: true);
       expect(report.inserted, 2);
       expect(store.notes.map((note) => note.title).toSet(), {
-        'عشوائية 1',
-        'عشوائية 2',
+        'Random 1',
+        'Random 2',
       });
       expect(store.busy, isFalse);
 

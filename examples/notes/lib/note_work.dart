@@ -12,16 +12,16 @@ import 'note.dart';
 const maxRandomNotes = 10000;
 
 const _words = <String>[
-  'هامش',
-  'ورقة',
-  'حبر',
-  'حديقة',
-  'دفتر',
-  'سطر',
-  'ظل',
-  'نافذة',
-  'مكتب',
-  'قلم',
+  'margin',
+  'page',
+  'ink',
+  'garden',
+  'notebook',
+  'line',
+  'shade',
+  'window',
+  'desk',
+  'pen',
 ];
 
 class InsertMeasurement {
@@ -249,7 +249,7 @@ Note _randomNote(Random random, int index) {
     (_) => _words[random.nextInt(_words.length)],
   ).join(' ');
   return Note(
-    title: 'عشوائية ${index + 1}',
+    title: 'Random ${index + 1}',
     body: body,
     pinned: random.nextInt(12) == 0,
     updated: DateTime.now().toUtc().subtract(

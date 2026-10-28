@@ -28,6 +28,42 @@ void main() {
     expect(formatClock(DateTime(2026, 10, 28, 7, 3, 4)), '07:03:04');
   });
 
+  test('the copied log is oldest first and includes the comparison', () {
+    BenchLogEntry entry(String id, int micros, DateTime at) => BenchLogEntry(
+      at: at,
+      sample: BenchSample(
+        engineId: id,
+        engineLabel: id,
+        op: BenchOp.search,
+        count: 5,
+        elapsedMicros: micros,
+        cpuMicros: 20,
+        rssBefore: 1000,
+        rssAfter: 1200,
+        rows: 5,
+        checksum: 10,
+        hits: 5,
+        prepareMicros: 30,
+        exportMicros: id == 'sqlite_plus' ? 40 : 0,
+        storedBytes: 4096,
+      ),
+    );
+    final text = formatBenchLog([
+      entry('sqlite_plus', 2000, DateTime(2026, 10, 28, 12, 50, 2)),
+      entry('native', 4000, DateTime(2026, 10, 28, 12, 50, 1)),
+    ]);
+    expect(text.indexOf('12:50:01'), lessThan(text.indexOf('12:50:02')));
+    expect(text, contains('native  Search  count=5  4.0 ms'));
+    expect(text, contains('sqlite_plus  Search  count=5  2.0 ms'));
+    expect(
+      text,
+      contains(
+        'Search  sqlite_plus / native 0.50  match  rows 5/5  sum 10/10  hits 5/5',
+      ),
+    );
+    expect(formatBenchLog(const []), isEmpty);
+  });
+
   test('sample messages keep the measured fields', () {
     const sample = BenchSample(
       engineId: 'sqlite_plus',

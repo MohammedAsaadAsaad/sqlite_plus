@@ -22,9 +22,9 @@ class BenchApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'ميزان',
-      locale: const Locale('ar'),
-      supportedLocales: const [Locale('ar')],
+      title: 'Bench',
+      locale: const Locale('en'),
+      supportedLocales: const [Locale('en')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

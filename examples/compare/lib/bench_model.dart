@@ -23,15 +23,15 @@ const benchChecksum = 'SELECT COUNT(*), COALESCE(SUM(n), 0) FROM bench';
 const benchVacuum = 'VACUUM';
 
 enum BenchOp {
-  separateInsert('إدراج منفصل'),
-  transactionInsert('إدراج بمعاملة'),
-  separateUpdate('تحديث منفصل'),
-  bulkUpdate('تحديث دفعة'),
-  search('بحث'),
-  point('جلب بالمفتاح'),
+  separateInsert('Separate insert'),
+  transactionInsert('Transaction insert'),
+  separateUpdate('Separate update'),
+  bulkUpdate('Bulk update'),
+  search('Search'),
+  point('Point lookup'),
   vacuum('VACUUM'),
-  separateDelete('مسح منفصل'),
-  deleteAll('مسح الكل');
+  separateDelete('Separate delete'),
+  deleteAll('Delete all');
 
   const BenchOp(this.label);
   final String label;
@@ -205,6 +205,60 @@ class BenchLogEntry {
 
   final DateTime at;
   final BenchSample sample;
+}
+
+/// Plain text of [newestFirst], oldest line first, plus one comparison row
+/// for each operation that has both engines in the log.
+String formatBenchLog(List<BenchLogEntry> newestFirst) {
+  if (newestFirst.isEmpty) return '';
+  final lines = <String>[];
+  final latest = <BenchOp, Map<String, BenchSample>>{};
+  for (final entry in newestFirst.reversed) {
+    final sample = entry.sample;
+    latest.putIfAbsent(sample.op, () => {})[sample.engineId] = sample;
+    final status = sample.failed
+        ? 'stopped ${sample.error}'
+        : formatMicros(sample.elapsedMicros);
+    lines.add(
+      '${formatClock(entry.at)}  ${sample.engineLabel}  ${sample.op.label}  count=${sample.count}  $status',
+    );
+    lines.add(
+      '  cpu ${formatMicros(sample.cpuMicros)}  memory ${formatBytes(sample.rssBefore)} -> ${formatBytes(sample.rssAfter)}',
+    );
+    lines.add(
+      '  rows ${sample.rows}  sum ${sample.checksum}  hits ${sample.hits}',
+    );
+    lines.add(
+      '  prepare ${formatMicros(sample.prepareMicros)}  export ${formatMicros(sample.exportMicros)}  size ${formatBytes(sample.storedBytes)}',
+    );
+  }
+  lines.add('');
+  lines.add('comparison');
+  for (final op in BenchOp.values) {
+    final samples = latest[op];
+    if (samples == null) continue;
+    final native = samples['native'];
+    final plus = samples['sqlite_plus'];
+    if (native == null ||
+        plus == null ||
+        native.failed ||
+        plus.failed ||
+        native.elapsedMicros == 0) {
+      lines.add('${op.label}  incomplete');
+      continue;
+    }
+    final matched =
+        native.rows == plus.rows &&
+        native.checksum == plus.checksum &&
+        native.hits == plus.hits;
+    final ratio = (plus.elapsedMicros / native.elapsedMicros).toStringAsFixed(
+      2,
+    );
+    lines.add(
+      '${op.label}  sqlite_plus / native $ratio  ${matched ? 'match' : 'different'}  rows ${plus.rows}/${native.rows}  sum ${plus.checksum}/${native.checksum}  hits ${plus.hits}/${native.hits}',
+    );
+  }
+  return lines.join('\n');
 }
 
 abstract class BenchEngine {

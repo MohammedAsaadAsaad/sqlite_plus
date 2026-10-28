@@ -17,27 +17,27 @@ class DatabasePage extends StatelessWidget {
         foregroundColor: const Color(0xFFF6EFE4),
         elevation: 0,
         title: const Text(
-          'قاعدة البيانات',
+          'Database',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
-          _Fact(label: 'المسار', value: snapshot.path),
-          _Fact(label: 'حجم الملف', value: formatBytes(snapshot.fileBytes)),
-          _Fact(label: 'حجم الصورة', value: formatBytes(snapshot.imageBytes)),
-          _Fact(label: 'الصفحات', value: '${snapshot.pageCount}'),
-          _Fact(label: 'حجم الصفحة', value: formatBytes(snapshot.pageSize)),
+          _Fact(label: 'Path', value: snapshot.path),
+          _Fact(label: 'File size', value: formatBytes(snapshot.fileBytes)),
+          _Fact(label: 'Image size', value: formatBytes(snapshot.imageBytes)),
+          _Fact(label: 'Pages', value: '${snapshot.pageCount}'),
+          _Fact(label: 'Page size', value: formatBytes(snapshot.pageSize)),
           _Fact(
-            label: 'صفحات فارغة',
+            label: 'Free pages',
             value:
                 '${snapshot.freelistCount} · ${formatBytes(snapshot.freelistBytes)}',
           ),
-          _Fact(label: 'الملاحظات', value: '${snapshot.noteCount}'),
+          _Fact(label: 'Notes', value: '${snapshot.noteCount}'),
           const SizedBox(height: 18),
           const Text(
-            'الكائنات',
+            'Objects',
             style: TextStyle(
               color: Color(0xFFE15A3A),
               fontWeight: FontWeight.w700,
@@ -54,7 +54,7 @@ class DatabasePage extends StatelessWidget {
             ),
           const SizedBox(height: 18),
           const Text(
-            'الصفوف',
+            'Rows',
             style: TextStyle(
               color: Color(0xFFE15A3A),
               fontWeight: FontWeight.w700,
@@ -104,7 +104,7 @@ class _NoteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = note.title.trim().isEmpty ? 'بدون عنوان' : note.title.trim();
+    final title = note.title.trim().isEmpty ? 'Untitled' : note.title.trim();
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -131,7 +131,7 @@ class _NoteRow extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'id ${note.id ?? '-'} · tint ${note.tint} · ${note.pinned ? 'مثبتة' : 'حرة'}',
+            'id ${note.id ?? '-'} · tint ${note.tint} · ${note.pinned ? 'pinned' : 'free'}',
             style: const TextStyle(color: Color(0xFF6E5E52), fontSize: 11),
           ),
         ],

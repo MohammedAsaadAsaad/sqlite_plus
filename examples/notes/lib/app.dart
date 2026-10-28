@@ -13,9 +13,9 @@ class MarginApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'هامش',
-      locale: const Locale('ar'),
-      supportedLocales: const [Locale('ar')],
+      title: 'Margin',
+      locale: const Locale('en'),
+      supportedLocales: const [Locale('en')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

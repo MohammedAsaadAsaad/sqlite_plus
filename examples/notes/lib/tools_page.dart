@@ -50,7 +50,7 @@ class _ToolsPageState extends State<ToolsPage> {
             foregroundColor: const Color(0xFFF6EFE4),
             elevation: 0,
             title: const Text(
-              'أدوات',
+              'Tools',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
@@ -66,9 +66,9 @@ class _ToolsPageState extends State<ToolsPage> {
                 style: const TextStyle(color: Color(0xFFF6EFE4), fontSize: 22),
                 cursorColor: const Color(0xFFE15A3A),
                 decoration: InputDecoration(
-                  labelText: 'عدد الملاحظات العشوائية',
+                  labelText: 'Random note count',
                   labelStyle: const TextStyle(color: Color(0xFFB7A89A)),
-                  helperText: 'من 1 إلى $maxRandomNotes',
+                  helperText: 'From 1 to $maxRandomNotes',
                   helperStyle: const TextStyle(color: Color(0xFF8C7D70)),
                   filled: true,
                   fillColor: const Color(0xFF1E1A16),
@@ -84,7 +84,7 @@ class _ToolsPageState extends State<ToolsPage> {
                 contentPadding: EdgeInsets.zero,
                 activeThumbColor: const Color(0xFFE15A3A),
                 title: const Text(
-                  'بـ transaction',
+                  'One transaction',
                   style: TextStyle(
                     color: Color(0xFFF6EFE4),
                     fontWeight: FontWeight.w700,
@@ -92,8 +92,8 @@ class _ToolsPageState extends State<ToolsPage> {
                 ),
                 subtitle: Text(
                   _singleTransaction
-                      ? 'كل الملاحظات في saveChanges واحد'
-                      : 'كل ملاحظة في saveChanges مستقل',
+                      ? 'Every note in one saveChanges'
+                      : 'Each note in its own saveChanges',
                   style: const TextStyle(color: Color(0xFFB7A89A)),
                 ),
                 value: _singleTransaction,
@@ -119,7 +119,7 @@ class _ToolsPageState extends State<ToolsPage> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'أدخل عدداً بين 1 و $maxRandomNotes',
+                                'Enter a count from 1 to $maxRandomNotes',
                               ),
                             ),
                           );
@@ -133,7 +133,7 @@ class _ToolsPageState extends State<ToolsPage> {
                         );
                       },
                 child: const Text(
-                  'أدرج',
+                  'Insert',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
               ),
@@ -162,7 +162,7 @@ class _ToolsPageState extends State<ToolsPage> {
               const SizedBox(height: 22),
               _ToolButton(
                 buttonKey: const Key('delete-all'),
-                label: 'امسح الكل',
+                label: 'Delete all',
                 onPressed: store.busy
                     ? null
                     : () async {
@@ -187,7 +187,7 @@ class _ToolsPageState extends State<ToolsPage> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   const Text(
-                                    'مسح كل الملاحظات؟',
+                                    'Delete every note?',
                                     style: TextStyle(
                                       color: Color(0xFFF6EFE4),
                                       fontSize: 20,
@@ -203,7 +203,7 @@ class _ToolsPageState extends State<ToolsPage> {
                                     ),
                                     onPressed: () =>
                                         Navigator.pop(context, true),
-                                    child: const Text('مسح'),
+                                    child: const Text('Delete'),
                                   ),
                                 ],
                               ),
@@ -216,7 +216,7 @@ class _ToolsPageState extends State<ToolsPage> {
               const SizedBox(height: 10),
               _ToolButton(
                 buttonKey: const Key('live-metrics'),
-                label: 'القياسات',
+                label: 'Metrics',
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(builder: (_) => const MetricsPage()),
                 ),
@@ -224,7 +224,7 @@ class _ToolsPageState extends State<ToolsPage> {
               const SizedBox(height: 10),
               _ToolButton(
                 buttonKey: const Key('database-details'),
-                label: 'تفاصيل القاعدة',
+                label: 'Database details',
                 onPressed: store.busy
                     ? null
                     : () => _run(() async {
@@ -266,14 +266,16 @@ class _MeasureCard extends StatelessWidget {
         ? 0
         : (measurement.cpuMicros * 100) / measurement.elapsedMicros;
     return _Card(
-      title: measurement.singleTransaction ? 'معاملة واحدة' : 'حفظ منفصل',
+      title: measurement.singleTransaction
+          ? 'One transaction'
+          : 'Separate save',
       lines: [
-        'أُدرج ${measurement.inserted}',
-        'الوقت ${formatDuration(measurement.elapsedMicros)}',
-        'المعالج ${formatDuration(measurement.cpuMicros)} · ${cpuShare.toStringAsFixed(1)}%',
-        'الرام قبل ${formatBytes(measurement.rssBefore)}',
-        'الرام أثناء الذروة ${formatBytes(measurement.rssPeak)}',
-        'الرام بعد ${formatBytes(measurement.rssAfter)}',
+        'Inserted ${measurement.inserted}',
+        'Time ${formatDuration(measurement.elapsedMicros)}',
+        'CPU ${formatDuration(measurement.cpuMicros)} · ${cpuShare.toStringAsFixed(1)}%',
+        'Memory before ${formatBytes(measurement.rssBefore)}',
+        'Memory peak ${formatBytes(measurement.rssPeak)}',
+        'Memory after ${formatBytes(measurement.rssAfter)}',
       ],
     );
   }
@@ -287,12 +289,12 @@ class _VacuumCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Card(
-      title: 'قبل وبعد VACUUM',
+      title: 'Before and after VACUUM',
       lines: [
-        'صفحات ${measurement.before.pageCount} ← ${measurement.after.pageCount}',
-        'فارغة ${measurement.before.freelistCount} ← ${measurement.after.freelistCount}',
-        'الصورة ${formatBytes(measurement.before.imageBytes)} ← ${formatBytes(measurement.after.imageBytes)}',
-        'ملاحظات ${measurement.before.noteCount} ← ${measurement.after.noteCount}',
+        'Pages ${measurement.before.pageCount} → ${measurement.after.pageCount}',
+        'Free ${measurement.before.freelistCount} → ${measurement.after.freelistCount}',
+        'Image ${formatBytes(measurement.before.imageBytes)} → ${formatBytes(measurement.after.imageBytes)}',
+        'Notes ${measurement.before.noteCount} → ${measurement.after.noteCount}',
       ],
     );
   }

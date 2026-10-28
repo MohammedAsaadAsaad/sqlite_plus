@@ -65,7 +65,7 @@ class _MetricsPageState extends State<MetricsPage> {
         foregroundColor: const Color(0xFFF6EFE4),
         elevation: 0,
         title: const Text(
-          'القياسات',
+          'Metrics',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
@@ -73,33 +73,33 @@ class _MetricsPageState extends State<MetricsPage> {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
           const Text(
-            'قياسات العملية كلها، تتحدث كل نصف ثانية.',
+            'Measurements for the whole process, updated every half second.',
             style: TextStyle(color: Color(0xFFB7A89A), height: 1.5),
           ),
           const SizedBox(height: 18),
           _Fact(
-            label: 'الرام الآن',
+            label: 'Memory now',
             value: formatBytes(_latest.rssBytes),
             valueKey: const Key('metrics-rss'),
           ),
           _Fact(
-            label: 'ذروة الرام',
+            label: 'Memory peak',
             value: formatBytes(_peak),
             valueKey: const Key('metrics-peak'),
           ),
           _Fact(
-            label: 'المعالج',
+            label: 'CPU',
             value: '${_cpuPercent.toStringAsFixed(1)}%',
             valueKey: const Key('metrics-cpu'),
           ),
           _Fact(
-            label: 'زمن المعالج',
+            label: 'CPU time',
             value: formatDuration(cpu),
             valueKey: const Key('metrics-cpu-time'),
           ),
           const SizedBox(height: 12),
           const Text(
-            'المعالج من وقت العملية في /proc/self/stat بمعدل 100 هرتز، وقد تتجاوز النسبة 100% عند استخدام أكثر من نواة.',
+            'CPU time comes from the process clocks in /proc/self/stat at 100 Hz. The share can pass 100% when more than one core is in use.',
             style: TextStyle(
               color: Color(0xFF6E5E52),
               height: 1.5,
