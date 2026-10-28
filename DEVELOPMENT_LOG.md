@@ -1451,7 +1451,7 @@ result=pass
 - Linux `dart analyze --fatal-infos` reported no issues for `sqlite_plus`
   and `sqlite_plus_orm`. `dart test` printed 10500 engine tests passed and
   176 ORM tests passed. `examples/notes` `flutter analyze --fatal-infos`
-  reported no issues and `flutter test` passed 13 tests.
+  reported no issues and `flutter test` passed 14 tests.
 - The AOT file `benchmark_results/orm_save_batch_linux_x64.json` was measured
   again on this revision. Same workload, three samples. SDK
   `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`.
@@ -1484,11 +1484,11 @@ result=pass
   Flutter signs them with the debug keystore. Application id
   `dev.sqliteplus.margin_notes`. `margin-notes-arm64-v8a.apk` 19932467 bytes,
   versionCode 2001, sha256
-  `ae548877e74c0bd30ca221bdc0dd01b603a1dfb437435d28b56ef823c92d648f`;
+  `d00defb81b1738895a6393ae09e312c1d5e1e3cade0b0927d5f4e735a6b28a3c`;
   `margin-notes-armeabi-v7a.apk` 17482893 bytes, versionCode 1001, sha256
-  `f6ab7c4d69d8bd13cb01025cb2a2156b529cd4eb842215e551e058bd42c5d199`;
+  `fa3af6ff193d6e39dc433b508e0353b083ee064d2f55743c71ae716c2b1383f8`;
   `margin-notes-x86_64.apk` 21489466 bytes, versionCode 4001, sha256
-  `ac64b6a56756bf9a431ee13f80bd169446722320109eacbd7593c89793c794fb`.
+  `23eac4b2e30a237116440ddaab14c6281369082809874a4a79254607f523fe1e`.
   The arm64 `libapp.so` contains `live-metrics`. These packages were not
   installed on a device.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
