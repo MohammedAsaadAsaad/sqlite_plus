@@ -233,8 +233,28 @@ void main() {
     final deletes = connection.statements
         .where((sql) => sql.toUpperCase().startsWith('DELETE'));
     expect(deletes, hasLength(1));
-    expect(deletes.single.toUpperCase(), contains(' IN ('));
+    expect(deletes.single.toUpperCase(), isNot(contains(' WHERE ')));
     expect(await set.query.count(), BigInt.zero);
+  });
+
+  test('a partial delete uses one IN list', () async {
+    final (context, connection) = await _open();
+    addTearDown(context.close);
+    final set = context.set(_type);
+    for (var i = 0; i < 4; i++) {
+      set.add(_Row('row $i'));
+    }
+    expect(await context.saveChanges(), 4);
+    final stored = await set.query.toList();
+    set.remove(stored[0]);
+    set.remove(stored[1]);
+    connection.statements.clear();
+    expect(await context.saveChanges(), 2);
+    final deletes = connection.statements
+        .where((sql) => sql.toUpperCase().startsWith('DELETE'));
+    expect(deletes, hasLength(1));
+    expect(deletes.single.toUpperCase(), contains(' IN ('));
+    expect(await set.query.count(), BigInt.two);
   });
 
   test('separate one-row saves stay within one image rebuild', () async {

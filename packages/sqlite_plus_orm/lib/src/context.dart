@@ -1066,10 +1066,21 @@ final class DbContext {
         ? const <Object?>[]
         : [for (final plan in group) plan.original[column]];
     // IN does not match NULL. A null key stays on the IS comparison.
+    var deleteAll = false;
     if (column != null && values.every((value) => value != null)) {
-      bound.addAll(values);
-      where =
-          '${quoteIdentifier(column)} IN (${List.filled(group.length, '?').join(',')})';
+      final counted = await connection
+          .query('SELECT COUNT(*) FROM ${quoteIdentifier(type.tableName)}');
+      final total = counted.rows.single.single;
+      if (total == group.length || total == BigInt.from(group.length)) {
+        // Every stored row is in this group. One unfiltered DELETE avoids a
+        // search of the key list for every row.
+        deleteAll = true;
+        where = '';
+      } else {
+        bound.addAll(values);
+        where =
+            '${quoteIdentifier(column)} IN (${List.filled(group.length, '?').join(',')})';
+      }
     } else {
       final clauses = <String>[
         for (final plan in group)
@@ -1078,7 +1089,10 @@ final class DbContext {
       where = clauses.join(' OR ');
     }
     final mutation = await connection.execute(
-        'DELETE FROM ${quoteIdentifier(type.tableName)} WHERE $where', bound);
+        deleteAll
+            ? 'DELETE FROM ${quoteIdentifier(type.tableName)}'
+            : 'DELETE FROM ${quoteIdentifier(type.tableName)} WHERE $where',
+        bound);
     if (mutation.changes != group.length) {
       var accounted = 0;
       for (final plan in group) {

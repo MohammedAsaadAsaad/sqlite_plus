@@ -1424,3 +1424,70 @@ result=pass
   The arm64 `libapp.so` contains the `sqlite_schema` trigger lookup. These
   packages were not installed on a device.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — Resident rows, one DELETE, live process page
+
+- Ordinary writes on the main database reuse the loaded rows. The byte image
+  is rebuilt when it is exported, queried, or when the statement cannot stay
+  deferred. Expression indexes, generated columns, triggers, views, journals,
+  and `REINDEX`, `ANALYZE`, and `VACUUM` still publish an image immediately.
+  A commit checks foreign keys. A database with no foreign key does not scan
+  every row again at `COMMIT`.
+- Inserts keep the unique-key sets for the current rows and add the new key.
+  An insert does not sort the existing rows. `saveChanges` of many plain
+  deletes sends one `DELETE`. A single-column key uses `IN`. A group that
+  covers every stored row sends `DELETE FROM` that table. A plain delete
+  rebuilds the row list once when the table has no trigger and nothing
+  references it.
+- Separate note saves still use one `saveChanges` transaction per note and
+  reopen the context. They do not rebuild the image on every note. The
+  isolate exports once at the end. The off position of the tools switch is
+  not a path with zero transactions.
+- Margin updates the open list in memory after save, pin, and delete. The
+  tools screen opens القياسات. That page samples process RSS and CPU every
+  half second. CPU time comes from `/proc/self/stat` at 100 Hz and can exceed
+  100%. The numbers are the whole process.
+- Linux `dart analyze --fatal-infos` reported no issues for `sqlite_plus`
+  and `sqlite_plus_orm`. `dart test` printed 10500 engine tests passed and
+  176 ORM tests passed. `examples/notes` `flutter analyze --fatal-infos`
+  reported no issues and `flutter test` passed 13 tests.
+- The AOT file `benchmark_results/orm_save_batch_linux_x64.json` was measured
+  again on this revision. Same workload, three samples. SDK
+  `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`.
+  Hostname `cursor`. OS
+  `Linux 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026`.
+  Runtime `AOT executable`. For 1000 notes, save microseconds
+  `[116381,100751,102062]`, rows per second `[8592,9925,9797]`, variance
+  `50116598`, image bytes `[65536,65536,65536]`. For 10000 notes, save
+  microseconds `[1296964,1305441,1291381]`, rows per second `[7710,7660,7743]`,
+  variance `33412557`, image bytes `[557056,557056,557056]`. Peak RSS
+  `120561664`. This is Linux x64, not a phone.
+  `scenarios_10k_linux_x64.json` remains its own workload.
+- `benchmark_results/resident_ops_linux_x64.json` is the separate-save and
+  delete measurement. Same SDK, host, OS, and AOT runtime. Three samples.
+  Separate saves of 100 notes, microseconds `[29936,30029,26834]`, rows per
+  second `[3340,3330,3726]`, variance `2204342`, then one export
+  `[7741,7768,7903]`, image bytes `[20480,20480,20480]`. Separate saves of
+  1000 notes, `[270601,273341,274021]`, rows per second `[3695,3658,3649]`,
+  variance `2185155`, export `[75242,73071,73519]`, image bytes
+  `[65536,65536,65536]`. One delete among 1000 notes, save
+  `[26700,25815,25780]`, export `[72327,73403,72295]`, image bytes
+  `[65536,65536,65536]`. Delete-all of 1000, save `[51755,48187,50418]`,
+  rows per second `[19321,20752,19834]`, variance `2166172`, export
+  `[318,315,316]`, image bytes `[12288,12288,12288]`. Delete-all of 10000,
+  save `[1662591,1682367,1700757]`, rows per second `[6014,5944,5879]`,
+  variance `242880648`, export `[364,371,335]`, image bytes
+  `[12288,12288,12288]`. Peak RSS `221724672`. This is not a phone
+  measurement. One delete still rewrites the image when the file is saved.
+- `flutter build apk --split-per-abi --release` replaced the three packages.
+  Flutter signs them with the debug keystore. Application id
+  `dev.sqliteplus.margin_notes`. `margin-notes-arm64-v8a.apk` 19932467 bytes,
+  versionCode 2001, sha256
+  `ae548877e74c0bd30ca221bdc0dd01b603a1dfb437435d28b56ef823c92d648f`;
+  `margin-notes-armeabi-v7a.apk` 17482893 bytes, versionCode 1001, sha256
+  `f6ab7c4d69d8bd13cb01025cb2a2156b529cd4eb842215e551e058bd42c5d199`;
+  `margin-notes-x86_64.apk` 21489466 bytes, versionCode 4001, sha256
+  `ac64b6a56756bf9a431ee13f80bd169446722320109eacbd7593c89793c794fb`.
+  The arm64 `libapp.so` contains `live-metrics`. These packages were not
+  installed on a device.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
