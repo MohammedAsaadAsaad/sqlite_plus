@@ -16,7 +16,8 @@ import 'virtual_table.dart';
 final _crossQueryKey = Object();
 
 final class _ConnectionSnapshot {
-  _ConnectionSnapshot(this.main, this.temp, Map<String, Uint8List> attached)
+  _ConnectionSnapshot(this.main, this.temp, Map<String, Uint8List> attached,
+      [this.logical])
       : attached = {
           for (final entry in attached.entries)
             entry.key: Uint8List.fromList(entry.value)
@@ -24,6 +25,7 @@ final class _ConnectionSnapshot {
   final Uint8List main;
   final Uint8List temp;
   final Map<String, Uint8List> attached;
+  final LogicalImage? logical;
 }
 
 final class MutationResult {
@@ -59,6 +61,14 @@ final class MutableSqliteDatabase {
   _ConnectionSnapshot? _checkpoint;
   bool _explicitTransaction = false;
   final List<(String, _ConnectionSnapshot)> _savepoints = [];
+  ImageMutations? _liveMain;
+  Uint8List? _liveMainImage;
+
+  /// Live rows include commits whose byte image has not been rebuilt yet.
+  bool _dirtyMain = false;
+  SchemaNames? _catalog;
+  SqliteDatabase? _mainReader;
+  Uint8List? _mainReaderImage;
   bool get inTransaction => _checkpoint != null;
   static Future<MutableSqliteDatabase> create(
           {int pageSize = 4096, int encoding = 1}) =>
@@ -81,6 +91,7 @@ final class MutableSqliteDatabase {
     if (_closed || _failed || _busy) {
       throw StateError('Database closed or busy');
     }
+    _materializeMain();
     return Uint8List.fromList(_image);
   }
 
@@ -112,6 +123,8 @@ final class MutableSqliteDatabase {
     final copy = Uint8List.fromList(image);
     if (schema == 'main') {
       _image = copy;
+      _dropLive();
+      _dropReader();
     } else if (schema == 'temp') {
       _temp = copy;
       _tempUsed = true;
@@ -120,8 +133,65 @@ final class MutableSqliteDatabase {
     }
   }
 
-  _ConnectionSnapshot _snapshot() =>
-      _ConnectionSnapshot(_image, _temp, _attached);
+  void _dropLive() {
+    _liveMain = null;
+    _liveMainImage = null;
+    _dirtyMain = false;
+  }
+
+  /// Rebuilds the main byte image from live rows. Schema-only reads can skip
+  /// this while [schemaChanged] is false; the names in the previous image
+  /// still match.
+  void _materializeMain() {
+    final state = _liveMain;
+    if (!_dirtyMain || state == null) return;
+    final image = state.serialize(foreignKeys: false, includeDeferred: false);
+    _storeImage('main', image);
+    state.rebase(_image);
+    _liveMain = state;
+    _liveMainImage = _image;
+    _dirtyMain = false;
+  }
+
+  void _dropReader() {
+    final reader = _mainReader;
+    _mainReader = null;
+    _mainReaderImage = null;
+    if (reader != null) unawaited(reader.close());
+  }
+
+  void _invalidateCatalog() => _catalog = null;
+
+  void _rememberSchema(String sql) {
+    final parser = SqlParser(sql);
+    if (parser.take('EXPLAIN') || parser.take('WITH')) return;
+    final keyword = parser.current.keyword;
+    if (keyword == 'CREATE' ||
+        keyword == 'DROP' ||
+        keyword == 'ALTER' ||
+        keyword == 'ANALYZE') {
+      _invalidateCatalog();
+    }
+  }
+
+  Future<SqliteDatabase> _cachedMainReader() async {
+    if (_mainReader != null && identical(_mainReaderImage, _image)) {
+      return _mainReader!;
+    }
+    final previous = _mainReader;
+    final reader = await SqliteDatabase.openReadOnly(ByteImageStorage(_image),
+        functions: functions);
+    _mainReader = reader;
+    _mainReaderImage = _image;
+    if (previous != null) unawaited(previous.close());
+    return reader;
+  }
+
+  _ConnectionSnapshot _snapshot() => _ConnectionSnapshot(
+      _image,
+      _temp,
+      _attached,
+      _dirtyMain && _liveMain != null ? _liveMain!.captureLogical() : null);
 
   void _restoreSnapshot(_ConnectionSnapshot snapshot) {
     _image = Uint8List.fromList(snapshot.main);
@@ -132,16 +202,34 @@ final class MutableSqliteDatabase {
         for (final entry in snapshot.attached.entries)
           entry.key: Uint8List.fromList(entry.value)
       });
+    _dropReader();
+    _invalidateCatalog();
+    final logical = snapshot.logical;
+    final state = _liveMain;
+    if (logical != null && state != null) {
+      state.restoreLogical(logical);
+      state.rebase(_image);
+      _liveMainImage = _image;
+      _dirtyMain = true;
+    } else {
+      _dropLive();
+    }
   }
 
   Future<SchemaNames> _schemaCatalog() async {
+    if (_dirtyMain && (_liveMain?.schemaChanged ?? false)) _materializeMain();
+    final cached = _catalog;
+    if (cached != null) return cached;
     final order = _schemaOrder();
     final tables = <String, Set<String>>{};
     final objects = <String, Set<String>>{};
     for (final schema in order) {
-      final reader = await SqliteDatabase.openReadOnly(
-          ByteImageStorage(_imageFor(schema)),
-          functions: functions);
+      final ownsReader = schema != 'main';
+      final reader = schema == 'main'
+          ? await _cachedMainReader()
+          : await SqliteDatabase.openReadOnly(
+              ByteImageStorage(_imageFor(schema)),
+              functions: functions);
       try {
         final rows = await reader.query('SELECT type, name FROM sqlite_schema');
         tables[schema] = {};
@@ -152,14 +240,23 @@ final class MutableSqliteDatabase {
           if (row[0] == 'table' || row[0] == 'view') tables[schema]!.add(name);
         }
       } finally {
-        await reader.close();
+        if (ownsReader) await reader.close();
       }
     }
-    return SchemaNames(tables, objects, order);
+    return _catalog = SchemaNames(tables, objects, order);
   }
 
   Future<QueryResult> _readImage(String schema, String sql,
-      [List<Object?> parameters = const []]) async {
+      [List<Object?> parameters = const [], bool schemaView = false]) async {
+    if (schema == 'main' &&
+        _dirtyMain &&
+        (!schemaView || (_liveMain?.schemaChanged ?? false))) {
+      _materializeMain();
+    }
+    if (schema == 'main') {
+      final reader = await _cachedMainReader();
+      return reader.query(sql, parameters);
+    }
     final reader = await SqliteDatabase.openReadOnly(
         ByteImageStorage(_imageFor(schema)),
         functions: functions);
@@ -187,6 +284,7 @@ final class MutableSqliteDatabase {
             throw const SqlException(
                 'cross-database EXPLAIN QUERY PLAN is not implemented');
           }
+          if (route.schema == 'main' && _dirtyMain) _materializeMain();
           final reader = await SqliteDatabase.openReadOnly(
               ByteImageStorage(_imageFor(route.schema!)),
               functions: functions);
@@ -214,7 +312,14 @@ final class MutableSqliteDatabase {
           return runZoned(() => _crossQuery(route, parameters),
               zoneValues: {_crossQueryKey: true});
         }
-        return _readImage(route.schema!, route.sql, parameters);
+        const schemaTables = {
+          'sqlite_schema',
+          'sqlite_master',
+          'sqlite_temp_schema'
+        };
+        final schemaView = route.uses
+            .every((use) => schemaTables.contains(asciiLower(use.table)));
+        return _readImage(route.schema!, route.sql, parameters, schemaView);
       });
   Future<MutationResult> execute(String sql,
           [List<Object?> parameters = const []]) =>
@@ -247,6 +352,7 @@ final class MutableSqliteDatabase {
             throw const SqlException('PRAGMA bindings unsupported');
           }
           if (name == 'user_version' || name == 'application_id') {
+            if (parsed.$1 == 'main') _materializeMain();
             final signed = _pragmaInteger(value);
             final image = Uint8List.fromList(_imageFor(parsed.$1));
             final fields = ByteData.sublistView(image);
@@ -278,11 +384,29 @@ final class MutableSqliteDatabase {
           return const MutationResult(0, null);
         }
         final schema = route.schema!;
+        final keyword = SqlParser(route.sql).current.keyword;
+        final maintenance =
+            const {'REINDEX', 'ANALYZE', 'VACUUM'}.contains(keyword);
+        if (schema == 'main' && maintenance) {
+          // Maintenance rebuilds from the byte image and resolves functions
+          // again. Publish deferred rows, then load that image fresh.
+          _materializeMain();
+          _dropLive();
+        }
         final current = _imageFor(schema);
+        final reuse = schema == 'main' &&
+            !maintenance &&
+            _liveMain != null &&
+            (_dirtyMain || identical(_liveMainImage, current));
+        final state = reuse ? _liveMain! : await ImageMutations.load(current);
+        final captured = schema == 'main' && reuse && _dirtyMain
+            ? state.captureLogical()
+            : null;
+        state.deferMaterialize =
+            schema == 'main' && _journal == null && !maintenance;
         final MutationImage result;
         try {
-          result = await (await ImageMutations.load(current)).execute(
-              route.sql, parameters,
+          result = await state.execute(route.sql, parameters,
               foreignKeys: _foreignKeys,
               inTransaction: inTransaction,
               recursiveTriggers: _recursiveTriggers);
@@ -291,15 +415,53 @@ final class MutableSqliteDatabase {
             if (inTransaction) {
               _restoreSnapshot(_checkpoint!);
               _clearTransaction();
+            } else if (captured != null) {
+              state.restoreLogical(captured);
+              _liveMain = state;
+              _dirtyMain = true;
+            } else if (schema == 'main') {
+              _dropLive();
             }
           } else if (failure.partialImage != null) {
             await _commitSchema(schema, failure.partialImage!);
+            if (schema == 'main') _invalidateCatalog();
+          } else if (captured != null) {
+            state.restoreLogical(captured);
+            _liveMain = state;
+            _dirtyMain = true;
+          } else if (schema == 'main') {
+            _dropLive();
           }
           throw failure.error;
+        } catch (error) {
+          if (captured != null) {
+            state.restoreLogical(captured);
+            _liveMain = state;
+            _dirtyMain = true;
+          } else if (schema == 'main') {
+            _dropLive();
+          }
+          rethrow;
         }
         if (!identical(result.image, current)) {
           await _commitSchema(schema, result.image);
         }
+        if (schema == 'main') {
+          if (!identical(result.image, current)) {
+            state.rebase(_image);
+            _liveMain = state;
+            _liveMainImage = _image;
+            _dirtyMain = false;
+          } else if (state.wroteRows) {
+            _liveMain = state;
+            _liveMainImage = _image;
+            _dirtyMain = true;
+          } else {
+            _liveMain = state;
+            _liveMainImage = _image;
+          }
+        }
+        _rememberSchema(sql);
         return MutationResult(
             result.changes, result.lastRowid, result.returning);
       });
@@ -436,7 +598,13 @@ final class MutableSqliteDatabase {
   }
 
   Future<void> _commitTransaction() async {
-    if (_foreignKeys) (await ImageMutations.load(_image)).validateForeignKeys();
+    if (_foreignKeys) {
+      if (_liveMain != null) {
+        _liveMain!.validateForeignKeys();
+      } else {
+        (await ImageMutations.load(_image)).validateForeignKeys();
+      }
+    }
     try {
       _virtualTransaction('xCommit');
     } catch (error) {
@@ -446,6 +614,7 @@ final class MutableSqliteDatabase {
     }
     if (_journal != null) {
       try {
+        _materializeMain();
         await _journal.commitImage(_image);
       } catch (_) {
         _failed = true;
@@ -462,8 +631,13 @@ final class MutableSqliteDatabase {
       _restoreSnapshot(_checkpoint!);
       _clearTransaction();
     }
+    if (!_failed) _materializeMain();
+    final reader = _mainReader;
+    _mainReader = null;
+    _mainReaderImage = null;
     _closed = true;
     await _journal?.close();
+    if (reader != null) await reader.close();
   }
 
   (String, String) _pragmaName(SqlParser parser) {
@@ -629,6 +803,7 @@ final class MutableSqliteDatabase {
     final opened = await SqliteDatabase.openReadOnly(storage);
     await opened.close();
     _attached[name] = Uint8List.fromList(bytes);
+    _invalidateCatalog();
   }
 
   void _detach(String name) {
@@ -636,10 +811,12 @@ final class MutableSqliteDatabase {
       throw SqlException('no such database: $name');
     }
     _attached.remove(name);
+    _invalidateCatalog();
   }
 
   Future<QueryResult> _crossQuery(
       StatementRoute route, List<Object?> parameters) async {
+    _materializeMain();
     final counts = <String, int>{};
     for (final use in route.uses) {
       final key = asciiLower(use.table);

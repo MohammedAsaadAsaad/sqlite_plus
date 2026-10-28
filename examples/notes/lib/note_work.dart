@@ -311,6 +311,27 @@ Future<int> _pragma(_Session session, String name) async {
   throw StateError('PRAGMA $name returned $value');
 }
 
+class ProcessSample {
+  const ProcessSample(this.rssBytes, this.cpuTicks);
+
+  final int rssBytes;
+  final int cpuTicks;
+
+  static ProcessSample now() => ProcessSample(_rss(), _cpuTicks());
+
+  int cpuMicrosSince(ProcessSample earlier) {
+    final delta = cpuTicks - earlier.cpuTicks;
+    if (delta <= 0) return 0;
+    return (delta * 1000000) ~/ 100;
+  }
+
+  double cpuPercentSince(ProcessSample earlier, Duration elapsed) {
+    final micros = elapsed.inMicroseconds;
+    if (micros <= 0) return 0;
+    return cpuMicrosSince(earlier) * 100 / micros;
+  }
+}
+
 int _rss() {
   try {
     return ProcessInfo.currentRss;

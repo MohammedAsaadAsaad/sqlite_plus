@@ -118,8 +118,8 @@ class _CountingConnection extends OrmConnection {
 
 Future<(DbContext, _CountingConnection)> _open() async {
   final database = await MutableSqliteDatabase.create();
-  await database
-      .execute('CREATE TABLE rows(id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE)');
+  await database.execute(
+      'CREATE TABLE rows(id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE)');
   final connection = _CountingConnection(database);
   final context = DbContext(connection, DbModel([_type]));
   return (context, connection);
@@ -210,6 +210,50 @@ void main() {
     final inserts = connection.statements
         .where((sql) => sql.toUpperCase().startsWith('INSERT'));
     expect(inserts, hasLength(2));
+  });
+
+  test('one save deletes a batch with one DELETE', () async {
+    final (context, connection) = await _open();
+    addTearDown(context.close);
+    const count = 1000;
+    final set = context.set(_type);
+    for (var i = 0; i < count; i++) {
+      set.add(_Row('row $i'));
+    }
+    expect(await context.saveChanges(), count);
+    final stored = await set.query.toList();
+    for (final row in stored) {
+      set.remove(row);
+    }
+    connection.statements.clear();
+    final watch = Stopwatch()..start();
+    expect(await context.saveChanges(), count);
+    watch.stop();
+    expect(watch.elapsedMilliseconds, lessThan(10000));
+    final deletes = connection.statements
+        .where((sql) => sql.toUpperCase().startsWith('DELETE'));
+    expect(deletes, hasLength(1));
+    expect(deletes.single.toUpperCase(), contains(' IN ('));
+    expect(await set.query.count(), BigInt.zero);
+  });
+
+  test('separate one-row saves stay within one image rebuild', () async {
+    final (context, connection) = await _open();
+    addTearDown(context.close);
+    const count = 100;
+    final set = context.set(_type);
+    final watch = Stopwatch()..start();
+    for (var i = 0; i < count; i++) {
+      set.add(_Row('row $i'));
+      expect(await context.saveChanges(), 1);
+    }
+    watch.stop();
+    expect(watch.elapsedMilliseconds, lessThan(15000));
+    expect(connection.statements.where((sql) => sql.startsWith('INSERT')),
+        hasLength(count));
+    final stored = await set.query.orderBy([_id.asc()]).toList();
+    expect(stored, hasLength(count));
+    expect(stored.last.name, 'row ${count - 1}');
   });
 
   test('an AFTER trigger still replaces the returned insert values', () async {

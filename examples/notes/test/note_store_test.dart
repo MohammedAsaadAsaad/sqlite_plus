@@ -65,7 +65,16 @@ void main() {
     expect(store.notes.first.title, 'مثبتة');
     expect(store.notes.first.pinned, isTrue);
     expect(store.notes.last.title, 'أحدث');
+    await store.delete(store.notes.last);
+    expect(store.notes, hasLength(1));
+    expect(store.notes.single.title, 'مثبتة');
     await store.close();
+
+    final reopened = NoteStore(directory);
+    await reopened.open();
+    expect(reopened.notes, hasLength(1));
+    expect(reopened.notes.single.title, 'مثبتة');
+    await reopened.close();
   });
 
   test('search keeps notes whose title or body contains the query', () async {

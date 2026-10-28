@@ -86,11 +86,94 @@ final class _Upsert {
   final Expr? where;
 }
 
+/// In-memory tables, indexes, and rows captured so a later rollback can
+/// return to that logical database without a byte image.
+final class LogicalImage {
+  LogicalImage(this._tables, this._rows, this._indexes, this._other,
+      this._sequences, this._schemaChanged);
+  final Map<String, _Table> _tables;
+  final Map<String, List<TableRow>> _rows;
+  final List<_Index> _indexes;
+  final List<ImageObject> _other;
+  final Map<String, BigInt> _sequences;
+  final bool _schemaChanged;
+}
+
 /// Validates complete logical mutations before compact image reconstruction.
 /// File atomicity remains the responsibility of ImagePager.
 final class ImageMutations {
   ImageMutations._(this.original, this.encoding);
-  final Uint8List original;
+  Uint8List original;
+
+  /// When set, ordinary DML keeps the changed rows and skips the image rebuild.
+  /// The connection materializes those rows on read, export, or schema change.
+  bool deferMaterialize = false;
+
+  /// True when the latest statement changed stored rows and left the image stale.
+  bool wroteRows = false;
+
+  LogicalImage captureLogical() => LogicalImage(
+      Map<String, _Table>.of(_tables),
+      {
+        for (final entry in _tables.entries)
+          entry.key: List<TableRow>.of(entry.value.rows)
+      },
+      List<_Index>.of(_indexes),
+      List<ImageObject>.of(other),
+      Map<String, BigInt>.of(_sequences),
+      schemaChanged);
+
+  void restoreLogical(LogicalImage snapshot) {
+    schemaChanged = snapshot._schemaChanged;
+    _tables
+      ..clear()
+      ..addAll(snapshot._tables);
+    _indexes
+      ..clear()
+      ..addAll(snapshot._indexes);
+    other
+      ..clear()
+      ..addAll(snapshot._other);
+    _sequences
+      ..clear()
+      ..addAll(snapshot._sequences);
+    for (final entry in _tables.entries) {
+      final rows = snapshot._rows[entry.key] ?? const <TableRow>[];
+      entry.value.rows
+        ..clear()
+        ..addAll(rows);
+    }
+    _loadedRows.clear();
+  }
+
+  /// Plain row changes can wait for the next read. Generated columns, views,
+  /// and triggers publish their image immediately so the following statement
+  /// sees the same pages as a per-statement rebuild.
+  bool get _canDeferImage {
+    if (schemaChanged || other.isNotEmpty) return false;
+    // Expression indexes and generated columns are rebuilt from the byte image.
+    // Publishing each statement keeps REINDEX and the next read on that image.
+    if (_indexes.any((index) => index.sql != null)) return false;
+    for (final table in _tables.values) {
+      if (table.schema.columns
+          .any((column) => column.generatedExpression != null)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Treat [image] as the serialized form of the current rows.
+  void rebase(Uint8List image) {
+    original = image;
+    schemaChanged = false;
+    for (final entry in _tables.entries) {
+      _loadedRows[entry.key] = [
+        for (final row in entry.value.rows) TableRow(row.rowId, row.values)
+      ];
+    }
+  }
+
   final int encoding;
   final Map<String, _Table> _tables = {};
   final List<_Index> _indexes = [];
@@ -1551,6 +1634,7 @@ final class ImageMutations {
       bool deferTriggerFunctions = false,
       bool? recursiveTriggers}) async {
     final outer = _executionDepth++ == 0;
+    if (outer) wroteRows = false;
     _subqueries.add(null);
     _targetAliases.add({});
     _conflictPolicies.add(_conflictPolicies.lastOrNull);
@@ -3654,6 +3738,18 @@ final class ImageMutations {
         !sequenceChanged &&
         !other.any((o) => o.type == 'trigger')) {
       return MutationImage(original, 0, null, returned());
+    }
+    if (deferMaterialize && _canDeferImage) {
+      final checkForeignKeys = foreignKeys && _executionDepth == 1;
+      final incremental = await _tryIncremental(
+          foreignKeys: checkForeignKeys, includeDeferred: !inTransaction);
+      if (incremental != null) {
+        return MutationImage(
+            incremental, changes, insert ? last : null, returned());
+      }
+      wroteRows = true;
+      _validate(foreignKeys: checkForeignKeys, includeDeferred: !inTransaction);
+      return MutationImage(original, changes, insert ? last : null, returned());
     }
     return MutationImage(
         await commit(

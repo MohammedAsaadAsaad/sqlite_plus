@@ -86,7 +86,7 @@ class NoteStore extends ChangeNotifier {
       if (note.id == null) _notes!.add(note);
       await _context!.saveChanges();
       await _flush();
-      await _reload();
+      _place(note);
     });
   }
 
@@ -97,7 +97,7 @@ class NoteStore extends ChangeNotifier {
       note.updated = DateTime.now().toUtc();
       await _context!.saveChanges();
       await _flush();
-      await _reload();
+      _place(note);
     });
   }
 
@@ -206,7 +206,7 @@ class NoteStore extends ChangeNotifier {
       _notes!.remove(note);
       await _context!.saveChanges();
       await _flush();
-      await _reload();
+      notes.remove(note);
     });
   }
 
@@ -219,6 +219,14 @@ class NoteStore extends ChangeNotifier {
       ready = false;
       notes.clear();
       if (context != null) await context.close();
+    });
+  }
+
+  void _place(Note note) {
+    if (!notes.contains(note)) notes.add(note);
+    notes.sort((a, b) {
+      if (a.pinned != b.pinned) return a.pinned ? -1 : 1;
+      return b.updated.compareTo(a.updated);
     });
   }
 

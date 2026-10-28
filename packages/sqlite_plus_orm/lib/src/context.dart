@@ -983,6 +983,125 @@ final class DbContext {
     stored[entry] = refreshed;
   }
 
+  Future<void> _deletePlans(
+      _SaveBatch batch,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored,
+      Set<String> triggerTables) async {
+    final plans = batch.deletes;
+    var index = 0;
+    while (index < plans.length) {
+      final plan = plans[index];
+      final type = plan.entry.type;
+      final batchable = type.virtualModule == null &&
+          !triggerTables.contains(type.tableName.toLowerCase()) &&
+          !model.foreignKeys.any((key) =>
+              identical(key.parent, type) && _rewritesRows(key.onDelete));
+      if (!batchable) {
+        await _deleteSingle(batch, plan, stored);
+        index++;
+        continue;
+      }
+      final sample = <Object?>[];
+      _matchOriginal(type, plan.original, sample);
+      final perRow = sample.length;
+      final group = <_SaveIntent>[plan];
+      index++;
+      while (index < plans.length) {
+        final candidate = plans[index];
+        if (!identical(candidate.entry.type, type)) break;
+        final next = group.length + 1;
+        if (next * perRow > _maxInsertParameters ||
+            _deleteSqlLength(type, perRow, next) > _maxInsertSql) {
+          break;
+        }
+        group.add(candidate);
+        index++;
+      }
+      if (group.length == 1) {
+        await _deleteSingle(batch, plan, stored);
+      } else {
+        await _deleteBatch(batch, type, group, stored);
+      }
+    }
+  }
+
+  int _deleteSqlLength(
+          EntityType<dynamic> type, int parametersPerRow, int rows) =>
+      type.tableName.length + rows * (parametersPerRow * 6 + 12) + 32;
+
+  Future<void> _deleteSingle(_SaveBatch batch, _SaveIntent plan,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored) async {
+    final bound = <Object?>[];
+    final mutation = await connection.execute(
+        'DELETE FROM ${quoteIdentifier(plan.entry.type.tableName)} WHERE '
+        '${_matchOriginal(plan.entry.type, plan.original, bound)}',
+        bound);
+    if (mutation.changes != 1 &&
+        !(mutation.changes == 0 &&
+            _isCascadeDeleted(plan.entry, plan.original, batch, stored, {},
+                allowExplicitDelete: false) &&
+            await _readStored(plan.entry.type, plan.original) == null)) {
+      throw const OptimisticConcurrencyException(
+          'Tracked delete did not affect exactly one row');
+    }
+    stored[plan.entry] = null;
+  }
+
+  Future<void> _deleteBatch(
+      _SaveBatch batch,
+      EntityType<dynamic> type,
+      List<_SaveIntent> group,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored) async {
+    final bound = <Object?>[];
+    final probe = <Object?>[];
+    final sample = _matchOriginal(type, group.first.original, probe);
+    final singleColumn = !sample.contains(' AND ');
+    final String where;
+    final column = !singleColumn
+        ? null
+        : type.versionColumn == null
+            ? type.keys.single.sqlName
+            : type.versionColumn!.sqlName;
+    final values = column == null
+        ? const <Object?>[]
+        : [for (final plan in group) plan.original[column]];
+    // IN does not match NULL. A null key stays on the IS comparison.
+    if (column != null && values.every((value) => value != null)) {
+      bound.addAll(values);
+      where =
+          '${quoteIdentifier(column)} IN (${List.filled(group.length, '?').join(',')})';
+    } else {
+      final clauses = <String>[
+        for (final plan in group)
+          '(${_matchOriginal(type, plan.original, bound)})'
+      ];
+      where = clauses.join(' OR ');
+    }
+    final mutation = await connection.execute(
+        'DELETE FROM ${quoteIdentifier(type.tableName)} WHERE $where', bound);
+    if (mutation.changes != group.length) {
+      var accounted = 0;
+      for (final plan in group) {
+        final gone = await _readStored(type, plan.original) == null;
+        if (!gone) {
+          throw const OptimisticConcurrencyException(
+              'Tracked delete did not affect exactly one row');
+        }
+        final cascade = _isCascadeDeleted(
+            plan.entry, plan.original, batch, stored, {},
+            allowExplicitDelete: false);
+        if (!cascade) accounted++;
+      }
+      if (mutation.changes != accounted) {
+        throw const OptimisticConcurrencyException(
+            'Tracked delete did not affect exactly one row');
+      }
+    }
+    for (final plan in group) {
+      stored[plan.entry] = null;
+    }
+  }
+
   Future<int> _save(_SaveBatch batch) async {
     if (batch.writes.isEmpty && batch.deletes.isEmpty) return 0;
     if (connection.inTransaction) {
@@ -998,22 +1117,7 @@ final class DbContext {
       await connection.execute('BEGIN');
       final triggerTables = await _triggerTables();
       await _writePlans(batch, stored, triggerTables);
-      for (final plan in batch.deletes) {
-        final bound = <Object?>[];
-        final mutation = await connection.execute(
-            'DELETE FROM ${quoteIdentifier(plan.entry.type.tableName)} WHERE '
-            '${_matchOriginal(plan.entry.type, plan.original, bound)}',
-            bound);
-        if (mutation.changes != 1 &&
-            !(mutation.changes == 0 &&
-                _isCascadeDeleted(plan.entry, plan.original, batch, stored, {},
-                    allowExplicitDelete: false) &&
-                await _readStored(plan.entry.type, plan.original) == null)) {
-          throw const OptimisticConcurrencyException(
-              'Tracked delete did not affect exactly one row');
-        }
-        stored[plan.entry] = null;
-      }
+      await _deletePlans(batch, stored, triggerTables);
       // A trigger or a rewriting foreign-key action can change rows other than
       // the one just written. One read of each affected table sees that state.
       // Plain inserts already carry it in RETURNING, so they do not reread.

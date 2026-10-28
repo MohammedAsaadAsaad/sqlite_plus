@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'database_page.dart';
+import 'metrics_page.dart';
 import 'note_store.dart';
 import 'note_work.dart';
 
@@ -211,6 +212,18 @@ class _ToolsPageState extends State<ToolsPage> {
                         );
                         if (confirmed == true) await _run(store.deleteAll);
                       },
+              ),
+              const SizedBox(height: 10),
+              _ToolButton(
+                buttonKey: const Key('live-metrics'),
+                label: 'القياسات',
+                onPressed: store.busy
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const MetricsPage(),
+                        ),
+                      ),
               ),
               const SizedBox(height: 10),
               _ToolButton(
