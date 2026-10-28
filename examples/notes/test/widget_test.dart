@@ -89,4 +89,41 @@ void main() {
     expect(find.byKey(const Key('metrics-rss')), findsNothing);
     await store.close();
   });
+
+  testWidgets('live metrics stays open while a job is running', (tester) async {
+    final directory = Directory.systemTemp.createTempSync(
+      'margin-metrics-busy',
+    );
+    final store = NoteStore(directory);
+    await store.open();
+    addTearDown(() => directory.deleteSync(recursive: true));
+    store.busy = true;
+
+    await tester.pumpWidget(MarginApp(store: store));
+    await tester.tap(find.byKey(const Key('tools')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(
+      tester
+          .widget<OutlinedButton>(find.byKey(const Key('live-metrics')))
+          .onPressed,
+      isNotNull,
+    );
+    expect(
+      tester
+          .widget<OutlinedButton>(find.byKey(const Key('delete-all')))
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.byKey(const Key('live-metrics')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('metrics-rss')), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(find.byKey(const Key('metrics-rss')), findsNothing);
+    await store.close();
+  });
 }

@@ -1445,8 +1445,9 @@ result=pass
   not a path with zero transactions.
 - Margin updates the open list in memory after save, pin, and delete. The
   tools screen opens القياسات. That page samples process RSS and CPU every
-  half second. CPU time comes from `/proc/self/stat` at 100 Hz and can exceed
-  100%. The numbers are the whole process.
+  half second, and the button stays available while a job is running. CPU
+  time comes from `/proc/self/stat` at 100 Hz and can exceed 100%. The
+  numbers are the whole process.
 - Linux `dart analyze --fatal-infos` reported no issues for `sqlite_plus`
   and `sqlite_plus_orm`. `dart test` printed 10500 engine tests passed and
   176 ORM tests passed. `examples/notes` `flutter analyze --fatal-infos`

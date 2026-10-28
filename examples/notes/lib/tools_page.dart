@@ -217,13 +217,9 @@ class _ToolsPageState extends State<ToolsPage> {
               _ToolButton(
                 buttonKey: const Key('live-metrics'),
                 label: 'القياسات',
-                onPressed: store.busy
-                    ? null
-                    : () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const MetricsPage(),
-                        ),
-                      ),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const MetricsPage()),
+                ),
               ),
               const SizedBox(height: 10),
               _ToolButton(
