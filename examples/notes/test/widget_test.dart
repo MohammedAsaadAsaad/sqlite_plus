@@ -38,4 +38,26 @@ void main() {
     expect(find.byKey(const Key('editor-save')), findsOneWidget);
     await store.close();
   });
+
+  testWidgets('tools exposes insert, delete, details, and vacuum', (
+    tester,
+  ) async {
+    final directory = Directory.systemTemp.createTempSync('margin-tools');
+    final store = NoteStore(directory);
+    await store.open();
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    await tester.pumpWidget(MarginApp(store: store));
+    await tester.tap(find.byKey(const Key('tools')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const Key('insert-count')), findsOneWidget);
+    expect(find.byKey(const Key('insert-transaction')), findsOneWidget);
+    expect(find.byKey(const Key('insert-run')), findsOneWidget);
+    expect(find.byKey(const Key('delete-all')), findsOneWidget);
+    expect(find.byKey(const Key('database-details')), findsOneWidget);
+    expect(find.byKey(const Key('vacuum-run')), findsOneWidget);
+    await store.close();
+  });
 }

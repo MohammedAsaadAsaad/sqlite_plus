@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'editor_page.dart';
 import 'note.dart';
 import 'note_store.dart';
+import 'tools_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key, required this.store});
@@ -22,7 +23,33 @@ class HomePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _Masthead(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Expanded(child: _Masthead()),
+                      IconButton(
+                        key: const Key('tools'),
+                        tooltip: 'أدوات',
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => ToolsPage(store: store),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.tune, color: Color(0xFFE15A3A)),
+                      ),
+                    ],
+                  ),
+                  if (store.busy) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      store.progressTotal == 0
+                          ? store.progressLabel
+                          : '${store.progressLabel}  ${store.progressDone}/${store.progressTotal}',
+                      style: const TextStyle(color: Color(0xFFE15A3A)),
+                    ),
+                  ],
                   const SizedBox(height: 18),
                   _SearchField(onChanged: store.setSearch),
                   const SizedBox(height: 18),
@@ -56,11 +83,13 @@ class HomePage extends StatelessWidget {
           ),
           floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
           floatingActionButton: _ComposeButton(
-            onPressed: () async {
-              final note = store.draft();
-              if (!context.mounted) return;
-              await _open(context, note);
-            },
+            onPressed: store.busy
+                ? null
+                : () async {
+                    final note = store.draft();
+                    if (!context.mounted) return;
+                    await _open(context, note);
+                  },
           ),
         );
       },
@@ -305,7 +334,7 @@ class _DeskPainter extends CustomPainter {
 class _ComposeButton extends StatelessWidget {
   const _ComposeButton({required this.onPressed});
 
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

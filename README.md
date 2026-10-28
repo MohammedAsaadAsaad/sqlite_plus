@@ -56,7 +56,7 @@ Each package has an example project under `example/`. From a checkout, after `da
 | Reading log | `(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)` | `Kept Garden Revised on north, revision 1; Other Atlas stays at revision 0; 1 match; idle save 0` |
 | Generated library | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` | `Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2` |
 
-`examples/notes` is Margin, a Flutter notes application on the ORM. The screen is an Arabic, right-to-left desk of paper cards. From that directory, `flutter test` covers a save that reopens from the database image. The Android release packages are one file per ABI under `examples/notes/dist/`: `margin-notes-arm64-v8a.apk` for a phone, `margin-notes-armeabi-v7a.apk` for an older 32-bit phone, and `margin-notes-x86_64.apk` for the emulator. The x86_64 package was installed on an API 35 emulator, and a saved note was still on the desk.
+`examples/notes` is Margin, a Flutter notes application on the ORM. The screen is an Arabic, right-to-left desk of paper cards. From that directory, `flutter test` covers a save that reopens from the database image. The Android release packages are one file per ABI under `examples/notes/dist/`: `margin-notes-arm64-v8a.apk` for a phone, `margin-notes-armeabi-v7a.apk` for an older 32-bit phone, and `margin-notes-x86_64.apk` for the emulator. The tools screen inserts random notes through the ORM in a separate isolate, with one `saveChanges` transaction or one save per note, and reports wall time, process CPU time, and RSS. It can delete every note, show the database file, and run `VACUUM`.
 
 Check the generated part before running the library:
 

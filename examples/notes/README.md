@@ -12,6 +12,8 @@ The file on disk is `margin.db`, a snapshot from `exportImage`. Each save writes
 
 Search filters the notes already loaded. Pinning sorts a note ahead of the others.
 
+The tools screen inserts a chosen number of random notes through `DbSet.add` and `saveChanges`. One switch keeps every note in a single `saveChanges` transaction. The other calls `saveChanges` once per note. The work runs in a separate isolate. The screen reports wall time, process CPU time from `/proc/self/stat`, and process RSS before, at the peak sample, and after. It can also delete every tracked note in one `saveChanges`, open a page with the file path, image size, page and freelist counts, schema names, and rows, and run `VACUUM` through the ORM connection with the image stats before and after.
+
 ## Run the tests
 
 ```sh
@@ -30,8 +32,8 @@ Each release APK holds one ABI. Flutter signs them with the debug keystore, so a
 
 | ABI | File | Bytes | versionCode |
 |---|---|---:|---:|
-| arm64-v8a | `dist/margin-notes-arm64-v8a.apk` | 19604707 | 2001 |
-| armeabi-v7a | `dist/margin-notes-armeabi-v7a.apk` | 17138749 | 1001 |
-| x86_64 | `dist/margin-notes-x86_64.apk` | 21096170 | 4001 |
+| arm64-v8a | `dist/margin-notes-arm64-v8a.apk` | 19932467 | 2001 |
+| armeabi-v7a | `dist/margin-notes-armeabi-v7a.apk` | 17466509 | 1001 |
+| x86_64 | `dist/margin-notes-x86_64.apk` | 21423930 | 4001 |
 
 A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The x86_64 package was installed on an API 35 emulator over the earlier package, and the saved note was still on the desk. The compatibility matrix records that run.

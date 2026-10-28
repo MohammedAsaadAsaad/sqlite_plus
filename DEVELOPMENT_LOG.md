@@ -1346,3 +1346,35 @@ result=pass
   were built and checked as zip archives with one native ABI each. They
   were not installed on a device. M9 stays unchecked. Item 108 stays open.
   Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — Margin tools: random insert, delete, details, VACUUM
+
+- The tools screen inserts a chosen count of random notes through `DbSet.add`
+  and `saveChanges`. One mode saves the whole batch in one `saveChanges`
+  transaction. The other calls `saveChanges` once per note and reopens the
+  context between notes. The work runs in `Isolate.spawn`. The result reports
+  wall time, process CPU time from `/proc/self/stat` at 100 ticks per second,
+  and process RSS before, at the sampled peak, and after. Delete-all removes
+  every tracked note in one `saveChanges`. VACUUM runs through
+  `DbContext.connection.execute('VACUUM')` and the screen shows page count,
+  freelist, image bytes, and note count before and after. The details page
+  shows the file path, file and image sizes, page and freelist counts, schema
+  names, and the loaded rows.
+- Linux, Flutter 3.47.8, Dart 3.13.7: `flutter analyze --fatal-infos` reported
+  no issues. `flutter test` passed 12 tests.
+- `flutter build apk --split-per-abi --release` replaced the three packages:
+  `margin-notes-arm64-v8a.apk` 19932467 bytes, sha256
+  `f6ccf637e49873b9b9a9df0e0abd9bb7427d48f4009f778f44a06b00fc6459a1`;
+  `margin-notes-armeabi-v7a.apk` 17466509 bytes, sha256
+  `c8c289bcdb516d475f6bc04daee598ddde11d7b9a0afc72eb504646af783ddce`;
+  `margin-notes-x86_64.apk` 21423930 bytes, sha256
+  `d918346a52b2762638618d9f0e7f9743d3e0629a9bc7222b43fa1f4e45112fc9`.
+- `adb install -r` of the x86_64 package succeeded on the same API 35
+  emulator. Logcat `Displayed` at 2026-10-28 07:03:34 Asia/Hebron. The tools
+  screen exposed the insert count, the transaction switch, delete-all,
+  details, and VACUUM. The details page showed
+  `/data/user/0/dev.sqliteplus.margin_notes/app_flutter/margin.db`, 3 pages,
+  tables `notes` and `_sqlite_plus_orm_model`, and the note `Kept`. The
+  arm64-v8a and armeabi-v7a packages were checked as zip archives. They were
+  not installed on a device. M9 stays unchecked. Item 108 stays open.
+  Nothing was uploaded to pub.dev.
