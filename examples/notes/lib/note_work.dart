@@ -156,10 +156,9 @@ Future<InsertMeasurement> insertRandomNotes(
     if (singleTransaction) {
       for (var i = 0; i < count; i++) {
         session.notes.add(_randomNote(random, i));
-        if (i % 25 == 0) onProgress?.call(i, count);
+        if (i % 25 == 0 || i + 1 == count) onProgress?.call(i + 1, count);
       }
       inserted = await session.context.saveChanges();
-      onProgress?.call(count, count);
     } else {
       for (var i = 0; i < count; i++) {
         session.notes.add(_randomNote(random, i));

@@ -644,6 +644,345 @@ final class DbContext {
     return false;
   }
 
+  static const _maxInsertParameters = 20000;
+  static const _maxInsertSql = 900000;
+
+  Future<Set<String>> _triggerTables() async {
+    final result = await connection
+        .query("SELECT tbl_name FROM sqlite_schema WHERE type='trigger'");
+    return {
+      for (final row in result.rows)
+        if (row.isNotEmpty && row.first is String)
+          (row.first! as String).toLowerCase()
+    };
+  }
+
+  bool _rewritesRows(ForeignKeyAction action) =>
+      action == ForeignKeyAction.cascade ||
+      action == ForeignKeyAction.setNull ||
+      action == ForeignKeyAction.setDefault;
+
+  bool _needsBroadRefresh(_SaveBatch batch, Set<String> triggerTables) {
+    bool triggered(EntityType<dynamic> type) =>
+        triggerTables.contains(type.tableName.toLowerCase());
+    if (batch.writes.any((plan) => triggered(plan.entry.type)) ||
+        batch.deletes.any((plan) => triggered(plan.entry.type))) {
+      return true;
+    }
+    final deleted = [for (final plan in batch.deletes) plan.entry.type];
+    final updated = [
+      for (final plan in batch.writes)
+        if (plan.state != EntityState.added) plan.entry.type
+    ];
+    for (final key in model.foreignKeys) {
+      final parentDeleted = deleted.any((type) => identical(type, key.parent));
+      final parentUpdated = updated.any((type) => identical(type, key.parent));
+      if (parentDeleted && _rewritesRows(key.onDelete)) return true;
+      if (parentUpdated && _rewritesRows(key.onUpdate)) return true;
+    }
+    return false;
+  }
+
+  List<Column<dynamic, dynamic>> _insertColumns(
+          EntityType<dynamic> type, Map<String, Object?> values) =>
+      type.columns
+          .where(
+              (column) => !(column.generated && values[column.sqlName] == null))
+          .toList();
+
+  bool _sameColumns(List<Column<dynamic, dynamic>> left,
+      List<Column<dynamic, dynamic>> right) {
+    if (left.length != right.length) return false;
+    for (var i = 0; i < left.length; i++) {
+      if (!identical(left[i], right[i])) return false;
+    }
+    return true;
+  }
+
+  bool _dependsOnPendingParent(
+      _SaveIntent plan, Set<EntityEntry<dynamic>> pending) {
+    for (final parent in plan.links.values) {
+      if (parent != null && pending.contains(parent)) return true;
+    }
+    return false;
+  }
+
+  void _keepPersisted(
+      EntityType<dynamic> type,
+      EntityEntry<dynamic> entry,
+      Map<String, Object?> values,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored) {
+    type.create(RowReader(values));
+    stored[entry] = values;
+  }
+
+  Future<void> _writePlans(
+      _SaveBatch batch,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored,
+      Set<String> triggerTables) async {
+    final plans = batch.writes;
+    var index = 0;
+    while (index < plans.length) {
+      final plan = plans[index];
+      final type = plan.entry.type;
+      final values = _writeValues(plan, stored, batch.frozenValues);
+      final columns = plan.state == EntityState.added
+          ? _insertColumns(type, values)
+          : const <Column<dynamic, dynamic>>[];
+      final batchable = plan.state == EntityState.added &&
+          type.virtualModule == null &&
+          columns.isNotEmpty &&
+          !triggerTables.contains(type.tableName.toLowerCase());
+      if (!batchable) {
+        await _writeSingle(plan, values, stored, triggerTables);
+        index++;
+        continue;
+      }
+      final group = <(_SaveIntent, Map<String, Object?>)>[(plan, values)];
+      final pending = <EntityEntry<dynamic>>{plan.entry};
+      var sqlLength = _insertSqlLength(type, columns, 1);
+      index++;
+      while (index < plans.length &&
+          group.length * columns.length < _maxInsertParameters &&
+          sqlLength < _maxInsertSql) {
+        final candidate = plans[index];
+        if (candidate.state != EntityState.added ||
+            !identical(candidate.entry.type, type) ||
+            triggerTables.contains(type.tableName.toLowerCase()) ||
+            _dependsOnPendingParent(candidate, pending)) {
+          break;
+        }
+        final candidateValues =
+            _writeValues(candidate, stored, batch.frozenValues);
+        if (!_sameColumns(columns, _insertColumns(type, candidateValues))) {
+          break;
+        }
+        final nextLength = _insertSqlLength(type, columns, group.length + 1);
+        if ((group.length + 1) * columns.length > _maxInsertParameters ||
+            nextLength > _maxInsertSql) {
+          break;
+        }
+        group.add((candidate, candidateValues));
+        pending.add(candidate.entry);
+        sqlLength = nextLength;
+        index++;
+      }
+      if (group.length == 1) {
+        await _writeSingle(plan, values, stored, triggerTables);
+      } else {
+        await _writeAddedBatch(type, columns, group, stored);
+      }
+    }
+  }
+
+  int _insertSqlLength(EntityType<dynamic> type,
+      List<Column<dynamic, dynamic>> columns, int rows) {
+    return type.tableName.length +
+        columns.fold<int>(0, (sum, column) => sum + column.sqlName.length) +
+        rows * (columns.length * 2 + 4) +
+        64;
+  }
+
+  Future<void> _writeAddedBatch(
+      EntityType<dynamic> type,
+      List<Column<dynamic, dynamic>> columns,
+      List<(_SaveIntent, Map<String, Object?>)> group,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored) async {
+    final placeholders = '(${List.filled(columns.length, '?').join(',')})';
+    final sql = 'INSERT INTO ${quoteIdentifier(type.tableName)} '
+        '(${columns.map((column) => quoteIdentifier(column.sqlName)).join(',')}) '
+        'VALUES ${List.filled(group.length, placeholders).join(',')} '
+        'RETURNING ${_columnList(type)}';
+    final bound = <Object?>[
+      for (final row in group)
+        for (final column in columns) row.$2[column.sqlName]
+    ];
+    final mutation = await connection.execute(sql, bound);
+    final returned = mutation.returning;
+    if (mutation.changes != group.length ||
+        returned == null ||
+        returned.rows.length != group.length) {
+      throw const OptimisticConcurrencyException(
+          'Tracked write did not affect exactly one row');
+    }
+    for (var i = 0; i < group.length; i++) {
+      _keepPersisted(type, group[i].$1.entry,
+          _storedValues(type, _reader(returned, returned.rows[i])), stored);
+    }
+  }
+
+  Future<void> _writeSingle(
+      _SaveIntent plan,
+      Map<String, Object?> values,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored,
+      Set<String> triggerTables) async {
+    final type = plan.entry.type;
+    final bound = <Object?>[];
+    String sql;
+    if (plan.state == EntityState.added) {
+      final columns = _insertColumns(type, values);
+      sql = columns.isEmpty
+          ? 'INSERT INTO ${quoteIdentifier(type.tableName)} DEFAULT VALUES'
+          : 'INSERT INTO ${quoteIdentifier(type.tableName)} '
+              '(${columns.map((column) => quoteIdentifier(column.sqlName)).join(',')}) '
+              'VALUES(${columns.map((_) => '?').join(',')})';
+      bound.addAll(columns.map((column) => values[column.sqlName]));
+    } else {
+      final columns = type.columns
+          .where((column) =>
+              column.keyOrder == null &&
+              !ormValuesEqual(
+                  values[column.sqlName], plan.original[column.sqlName]))
+          .toList();
+      if (columns.isEmpty) {
+        stored[plan.entry] = plan.original;
+        return;
+      }
+      sql = 'UPDATE ${quoteIdentifier(type.tableName)} SET '
+          '${columns.map((column) => '${quoteIdentifier(column.sqlName)}=?').join(',')} WHERE ';
+      bound.addAll(columns.map((column) => values[column.sqlName]));
+      sql += _matchOriginal(type, plan.original, bound);
+    }
+    final mutation = await connection.execute(
+        type.virtualModule == null
+            ? '$sql RETURNING ${_columnList(type)}'
+            : sql,
+        bound);
+    final Map<String, Object?> persisted;
+    if (type.virtualModule == null) {
+      final returned = mutation.returning;
+      if (mutation.changes != 1 ||
+          returned == null ||
+          returned.rows.length != 1) {
+        throw const OptimisticConcurrencyException(
+            'Tracked write did not affect exactly one row');
+      }
+      final returnedValues =
+          _storedValues(type, _reader(returned, returned.rows.single));
+      final trustReturning = plan.state == EntityState.added &&
+          !triggerTables.contains(type.tableName.toLowerCase());
+      if (trustReturning) {
+        persisted = returnedValues;
+      } else {
+        final read = await _readStored(type, returnedValues);
+        if (read == null) {
+          throw const OrmStateException(
+              'A trigger deleted the row or changed its primary key');
+        }
+        persisted = read;
+      }
+    } else {
+      // FTS and R-tree writes reject RETURNING. Read the saved row back.
+      if (mutation.changes != 1) {
+        throw const OptimisticConcurrencyException(
+            'Tracked write did not affect exactly one row');
+      }
+      final generated = type.generatedKey;
+      if (plan.state == EntityState.added &&
+          generated != null &&
+          values[generated.sqlName] == null) {
+        final id = mutation.lastInsertRowid;
+        if (id == null) {
+          throw const OrmStateException(
+              'Virtual table insert did not return a row id');
+        }
+        values[generated.sqlName] =
+            generated.encodeValue(generated.decodeValue(id));
+      }
+      final read = await _readStored(type, values);
+      if (read == null) {
+        throw const OrmStateException(
+            'A trigger deleted the row or changed its primary key');
+      }
+      persisted = read;
+    }
+    _keepPersisted(type, plan.entry, persisted, stored);
+  }
+
+  Future<void> _refreshTracked(
+      _SaveBatch batch,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored,
+      Map<EntityEntry<dynamic>, _SaveIntent> byEntry) async {
+    final types = <EntityType<dynamic>>[];
+    for (final entry in batch.tracked) {
+      if (byEntry[entry]?.state == EntityState.deleted) continue;
+      if (types.any((type) => identical(type, entry.type))) continue;
+      types.add(entry.type);
+    }
+    for (final type in types) {
+      if (type.virtualModule != null) {
+        await _refreshTypePointwise(type, batch, stored, byEntry);
+      } else {
+        await _refreshTypeBulk(type, batch, stored, byEntry);
+      }
+    }
+  }
+
+  Future<void> _refreshTypeBulk(
+      EntityType<dynamic> type,
+      _SaveBatch batch,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored,
+      Map<EntityEntry<dynamic>, _SaveIntent> byEntry) async {
+    final result = await connection.query(
+        'SELECT ${_columnList(type)} FROM ${quoteIdentifier(type.tableName)}');
+    final rows = <EntityKey, Map<String, Object?>>{};
+    for (final row in result.rows) {
+      final values = _storedValues(type, _reader(result, row));
+      final identity = _ormRowKey(type, values);
+      if (rows.containsKey(identity)) {
+        throw const OrmStateException('Store key selected multiple rows');
+      }
+      rows[identity] = values;
+    }
+    for (final entry in batch.tracked) {
+      if (!identical(entry.type, type)) continue;
+      if (byEntry[entry]?.state == EntityState.deleted) continue;
+      final values = stored[entry] ?? batch.frozenValues[entry]!;
+      if (entry._state == EntityState.added && !stored.containsKey(entry)) {
+        continue;
+      }
+      final generated = type.generatedKey;
+      final refreshed = generated != null && values[generated.sqlName] == null
+          ? await _readStored(type, values)
+          : rows[_ormRowKey(type, values)];
+      _acceptRefresh(entry, values, refreshed, batch, stored, byEntry);
+    }
+  }
+
+  Future<void> _refreshTypePointwise(
+      EntityType<dynamic> type,
+      _SaveBatch batch,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored,
+      Map<EntityEntry<dynamic>, _SaveIntent> byEntry) async {
+    for (final entry in batch.tracked) {
+      if (!identical(entry.type, type)) continue;
+      if (byEntry[entry]?.state == EntityState.deleted) continue;
+      final values = stored[entry] ?? batch.frozenValues[entry]!;
+      if (entry._state == EntityState.added && !stored.containsKey(entry)) {
+        continue;
+      }
+      _acceptRefresh(entry, values, await _readStored(type, values), batch,
+          stored, byEntry);
+    }
+  }
+
+  void _acceptRefresh(
+      EntityEntry<dynamic> entry,
+      Map<String, Object?> values,
+      Map<String, Object?>? refreshed,
+      _SaveBatch batch,
+      Map<EntityEntry<dynamic>, Map<String, Object?>?> stored,
+      Map<EntityEntry<dynamic>, _SaveIntent> byEntry) {
+    if (byEntry.containsKey(entry) &&
+        refreshed == null &&
+        !_isCascadeDeleted(entry, values, batch, stored, {})) {
+      throw const OrmStateException(
+          'A store action removed a saved tracked row');
+    }
+    if (refreshed != null) entry.type.create(RowReader(refreshed));
+    stored[entry] = refreshed;
+  }
+
   Future<int> _save(_SaveBatch batch) async {
     if (batch.writes.isEmpty && batch.deletes.isEmpty) return 0;
     if (connection.inTransaction) {
@@ -657,89 +996,8 @@ final class DbContext {
     try {
       began = true;
       await connection.execute('BEGIN');
-      for (final plan in batch.writes) {
-        final type = plan.entry.type;
-        final values = _writeValues(plan, stored, batch.frozenValues);
-        final bound = <Object?>[];
-        String sql;
-        if (plan.state == EntityState.added) {
-          final columns = type.columns
-              .where((column) =>
-                  !(column.generated && values[column.sqlName] == null))
-              .toList();
-          sql = columns.isEmpty
-              ? 'INSERT INTO ${quoteIdentifier(type.tableName)} DEFAULT VALUES'
-              : 'INSERT INTO ${quoteIdentifier(type.tableName)} '
-                  '(${columns.map((column) => quoteIdentifier(column.sqlName)).join(',')}) '
-                  'VALUES(${columns.map((_) => '?').join(',')})';
-          bound.addAll(columns.map((column) => values[column.sqlName]));
-        } else {
-          final columns = type.columns
-              .where((column) =>
-                  column.keyOrder == null &&
-                  !ormValuesEqual(
-                      values[column.sqlName], plan.original[column.sqlName]))
-              .toList();
-          if (columns.isEmpty) {
-            stored[plan.entry] = plan.original;
-            continue;
-          }
-          sql = 'UPDATE ${quoteIdentifier(type.tableName)} SET '
-              '${columns.map((column) => '${quoteIdentifier(column.sqlName)}=?').join(',')} WHERE ';
-          bound.addAll(columns.map((column) => values[column.sqlName]));
-          sql += _matchOriginal(type, plan.original, bound);
-        }
-        final mutation = await connection.execute(
-            type.virtualModule == null
-                ? '$sql RETURNING ${_columnList(type)}'
-                : sql,
-            bound);
-        final Map<String, Object?> persisted;
-        if (type.virtualModule == null) {
-          final returned = mutation.returning;
-          if (mutation.changes != 1 ||
-              returned == null ||
-              returned.rows.length != 1) {
-            throw const OptimisticConcurrencyException(
-                'Tracked write did not affect exactly one row');
-          }
-          final returnedValues =
-              _storedValues(type, _reader(returned, returned.rows.single));
-          final read = await _readStored(type, returnedValues);
-          if (read == null) {
-            throw const OrmStateException(
-                'A trigger deleted the row or changed its primary key');
-          }
-          persisted = read;
-        } else {
-          // FTS and R-tree writes reject RETURNING. Read the saved row back.
-          if (mutation.changes != 1) {
-            throw const OptimisticConcurrencyException(
-                'Tracked write did not affect exactly one row');
-          }
-          final generated = type.generatedKey;
-          if (plan.state == EntityState.added &&
-              generated != null &&
-              values[generated.sqlName] == null) {
-            final id = mutation.lastInsertRowid;
-            if (id == null) {
-              throw const OrmStateException(
-                  'Virtual table insert did not return a row id');
-            }
-            values[generated.sqlName] =
-                generated.encodeValue(generated.decodeValue(id));
-          }
-          final read = await _readStored(type, values);
-          if (read == null) {
-            throw const OrmStateException(
-                'A trigger deleted the row or changed its primary key');
-          }
-          persisted = read;
-        }
-        // Validate factories before committing, without mutating tracked objects.
-        type.create(RowReader(persisted));
-        stored[plan.entry] = persisted;
-      }
+      final triggerTables = await _triggerTables();
+      await _writePlans(batch, stored, triggerTables);
       for (final plan in batch.deletes) {
         final bound = <Object?>[];
         final mutation = await connection.execute(
@@ -756,23 +1014,11 @@ final class DbContext {
         }
         stored[plan.entry] = null;
       }
-      // Trigger/FK actions can change other tracked rows. Refresh their baselines
-      // inside the transaction; publish values only after the outer commit.
-      for (final entry in batch.tracked) {
-        if (byEntry[entry]?.state == EntityState.deleted) continue;
-        final values = stored[entry] ?? batch.frozenValues[entry]!;
-        if (entry._state == EntityState.added && !stored.containsKey(entry)) {
-          continue;
-        }
-        final refreshed = await _readStored(entry.type, values);
-        if (byEntry.containsKey(entry) &&
-            refreshed == null &&
-            !_isCascadeDeleted(entry, values, batch, stored, {})) {
-          throw const OrmStateException(
-              'A store action removed a saved tracked row');
-        }
-        if (refreshed != null) entry.type.create(RowReader(refreshed));
-        stored[entry] = refreshed;
+      // A trigger or a rewriting foreign-key action can change rows other than
+      // the one just written. One read of each affected table sees that state.
+      // Plain inserts already carry it in RETURNING, so they do not reread.
+      if (_needsBroadRefresh(batch, triggerTables)) {
+        await _refreshTracked(batch, stored, byEntry);
       }
       final identities =
           <EntityType<dynamic>, Map<EntityKey, EntityEntry<dynamic>>>{};

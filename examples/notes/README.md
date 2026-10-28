@@ -12,7 +12,7 @@ The file on disk is `margin.db`, a snapshot from `exportImage`. Each save writes
 
 Search filters the notes already loaded. Pinning sorts a note ahead of the others.
 
-The tools screen inserts a chosen number of random notes through `DbSet.add` and `saveChanges`. One switch keeps every note in a single `saveChanges` transaction. The other calls `saveChanges` once per note. The work runs in a separate isolate. The screen reports wall time, process CPU time from `/proc/self/stat`, and process RSS before, at the peak sample, and after. It can also delete every tracked note in one `saveChanges`, open a page with the file path, image size, page and freelist counts, schema names, and rows, and run `VACUUM` through the ORM connection with the image stats before and after.
+The tools screen inserts a chosen number of random notes through `DbSet.add` and `saveChanges`. One switch keeps every note in a single `saveChanges` transaction. That save writes the added notes with multi-row `INSERT` statements. The other calls `saveChanges` once per note. The work runs in a separate isolate. The screen reports wall time, process CPU time from `/proc/self/stat`, and process RSS before, at the peak sample, and after. It can also delete every tracked note in one `saveChanges`, open a page with the file path, image size, page and freelist counts, schema names, and rows, and run `VACUUM` through the ORM connection with the image stats before and after.
 
 ## Run the tests
 

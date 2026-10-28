@@ -1378,3 +1378,49 @@ result=pass
   arm64-v8a and armeabi-v7a packages were checked as zip archives. They were
   not installed on a device. M9 stays unchecked. Item 108 stays open.
   Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — saveChanges batches inserted rows
+
+- Each statement on `MutableSqliteDatabase` loads the image and writes a new
+  one. `saveChanges` was doing that once per added row for the `INSERT`, again
+  for the read-back, and again for every tracked row after the writes.
+  `benchmark_results/scenarios_10k_linux_x64.json` records that earlier shape
+  for 10000 assigned-key rows: ORM save microseconds
+  `[2934430751,3092578591,2700874993]`, 3 rows per second. That file stays the
+  record of its own workload.
+- `saveChanges` now reads trigger names from `sqlite_schema` once. Added rows
+  on a table with no trigger are written with multi-row
+  `INSERT ... RETURNING`. A statement stops before 20000 parameters or 900000
+  bytes of SQL text, and the next rows start another statement. `RETURNING` is
+  the stored row when that table has no trigger. A written table that has a
+  trigger still inserts one row and reads it back, so a later child sees the
+  post-trigger key. If a written or deleted table has a trigger, or a delete
+  or update can cascade, set null, or set default, each tracked table is read
+  once. Other saves leave unchanged tracked rows in place.
+- The AOT measurement is `benchmark_results/orm_save_batch_linux_x64.json`.
+  Generated-key notes have title, body, pinned, updated, and tint. Samples 3.
+  SDK `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`.
+  Hostname `cursor`. OS
+  `Linux 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026`.
+  Runtime `AOT executable`. For 1000 rows, save microseconds
+  `[255251,242615,242029]`, rows per second `[3917,4121,4131]`, variance
+  `37203686`, image bytes `[65536,65536,65536]`. For 10000 rows, save
+  microseconds `[4047036,4028665,4055493]`, rows per second `[2470,2482,2465]`,
+  variance `125417341`, image bytes `[557056,557056,557056]`. Peak RSS
+  `127545344`. This is Linux x64, not a phone, and not a delta against
+  `scenarios_10k_linux_x64.json`.
+- Linux `dart analyze --fatal-infos` reported no issues for
+  `sqlite_plus_orm`. `dart test` printed 173 passed. Engine and generator
+  suites were not re-run. `examples/notes` `flutter analyze --fatal-infos`
+  reported no issues and `flutter test` passed 12 tests.
+- `flutter build apk --split-per-abi --release` replaced the three packages.
+  Byte lengths stayed the same and the hashes changed:
+  `margin-notes-arm64-v8a.apk` 19932467 bytes, sha256
+  `4a7e0b9be88f9e44898c0e3345f60833fd048ccae5cd9eb4e3db52ae07957aa7`;
+  `margin-notes-armeabi-v7a.apk` 17466509 bytes, sha256
+  `e7c47e1006489b85b582b96c02a52c09e2e8b3e27a2ba1f89d903bf93ffbf0f2`;
+  `margin-notes-x86_64.apk` 21423930 bytes, sha256
+  `226279e1672cb2c15caadaa3dd01477174bff19dcffd8e484539f7d1df4eaf54`.
+  The arm64 `libapp.so` contains the `sqlite_schema` trigger lookup. These
+  packages were not installed on a device.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
