@@ -2,8 +2,8 @@
 
 ## 0.0.1-dev.1
 
-Pre-release `0.0.1-dev.1`. Publication on pub.dev is planned and waits for an explicit request.
+First pre-release.
 
-The generator emits mappings, JSON `path`, FTS `search`, and R-tree `bounds`.
-The repository `CHANGELOG.md` is the full ledger. The planned follow-up matches
-the engine and ORM plan.
+- Generates columns, codecs, keys, revisions, and relationships from ordinary classes.
+- Generates JSON `path`, FTS `search`, and R-tree `bounds`.
+- The library example ships with the checked-in part.

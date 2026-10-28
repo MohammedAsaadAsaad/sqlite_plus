@@ -29,7 +29,7 @@ Five classes mapped by `sqlite_plus_generator` and saved through `sqlite_plus_or
 | `bin/main.dart` | Prints the line below |
 | `test/library_app_test.dart` | Checks Ada, both totals, the note, the article, and place `1` |
 
-This example is its own Dart project and a workspace member. It stays in the repository. Publication of the packages is planned.
+This example ships with the package.
 
 From a checkout, after `dart pub get` at the repository root:
 

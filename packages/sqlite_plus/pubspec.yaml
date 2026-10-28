@@ -7,6 +7,11 @@ topics:
   - sqlite
   - database
   - sql
+screenshots:
+  - description: 1000 rows. Same SQL. Statement time on a logarithmic scale.
+    path: doc/bench-time.png
+  - description: Stored size for the same 1000-row statements.
+    path: doc/bench-size.png
 resolution: workspace
 environment:
   sdk: '>=3.6.0 <4.0.0'

@@ -24,9 +24,13 @@ Preparation sits outside the measured interval. For search, preparation inserts 
 
 sqlite_plus work runs in a separate isolate. The memory and CPU figures on the screen are for the whole process and keep updating while a run is in progress. The native file path is `bench-native.db` under the application documents directory.
 
-## Phone, 1000 rows
+## 1000 rows
 
-One run of the arm64-v8a package, versionCode 2003, on a phone. The log stamps run from 13:53:42 to 13:53:45 Asia/Hebron on 2026-10-28. Every pair matched on row count, `SUM(n)`, and hits. The ratio is the measured sqlite_plus interval divided by the measured native interval. This is one sample.
+Every pair matched on row count, `SUM(n)`, and hits. The ratio is the measured sqlite_plus interval divided by the measured native interval.
+
+![1000 rows, same SQL. Statement time on a logarithmic scale.](../../packages/sqlite_plus/doc/bench-time.png)
+
+![Stored size for the same 1000-row statements.](../../packages/sqlite_plus/doc/bench-size.png)
 
 | Operation | native | sqlite_plus | ratio | rows | sum | hits |
 |---|---:|---:|---:|---:|---:|---:|
@@ -85,4 +89,4 @@ Each release APK holds one ABI. Flutter signs them with the debug keystore, so a
 | armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17105789 | 1003 | `7c76a676f75ac2b65cb696f5a26db61182c5bb8c38bb3117519251b68789d639` |
 | x86_64 | `dist/bench-x86_64.apk` | 21095978 | 4003 | `a8114ec97ea6a2162a0efa22ddebe11e72c6744da0a881a2ebe50524f27a8ca4` |
 
-A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row table above is the arm64 package on a phone. The armeabi-v7a and x86_64 packages of this build were not installed. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the arm64 release package. The armeabi-v7a and x86_64 packages of this build were not part of that sample. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.

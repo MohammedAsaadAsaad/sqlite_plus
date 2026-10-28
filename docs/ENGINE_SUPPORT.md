@@ -148,8 +148,8 @@ rows, reads the JSON note whose title is `kept`, the FTS article matching
 generator `--check`.
 
 The repository root `LICENSE` is the MIT license. Every package version stays
-`0.0.1-dev.1`. Publication on pub.dev is planned. `CHANGELOG.md` records this
-version. The Linux CI job checks fixture checksums. macOS and Windows CI run
+`0.0.1-dev.1`. The three packages are prepared for pub.dev at this pre-release.
+`CHANGELOG.md` records this version. The Linux CI job checks fixture checksums. macOS and Windows CI run
 format, analysis, package tests, and the example projects.
 
 On Linux x64, Dart 3.13.7, this revision passed format, fatal-info analysis,

@@ -3,8 +3,8 @@
 ## 0.0.1-dev.1
 
 This version is `0.0.1-dev.1` in `sqlite_plus`, `sqlite_plus_orm`, and
-`sqlite_plus_generator`. Publication on pub.dev is planned and waits for an
-explicit request.
+`sqlite_plus_generator`. The three packages are prepared for pub.dev at this
+pre-release.
 
 ### Verified in this tree
 

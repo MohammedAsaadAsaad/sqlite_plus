@@ -19,7 +19,7 @@ A tracked reading log for sqlite_plus_orm. The application names fields. The run
 
 `MutableDatabaseConnection.openMemory` supplies the database. `DbContext` owns the identity map and the transaction.
 
-This example is its own Dart project and a workspace member. It stays in the repository. Publication of the packages is planned.
+This example ships with the package.
 
 From a checkout, after `dart pub get` at the repository root:
 

@@ -2,7 +2,7 @@
 
 A Pure Dart SQLite engine, a typed ORM, and a mapping generator. SQL, JSON, FTS5, R-tree, change tracking, and generated filters run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.0.1-dev.1` is the current pre-release. Publication on pub.dev is planned and waits for an explicit request.
+Version `0.0.1-dev.1`.
 
 ## Packages
 
@@ -19,23 +19,11 @@ The file adapter imports `dart:io`. The other two libraries do not. The generato
 
 ```yaml
 dependencies:
-  sqlite_plus:
-    git:
-      url: https://github.com/MohammedAsaadAsaad/sqlite_plus
-      path: packages/sqlite_plus
-      ref: main
-  sqlite_plus_orm:
-    git:
-      url: https://github.com/MohammedAsaadAsaad/sqlite_plus
-      path: packages/sqlite_plus_orm
-      ref: main
+  sqlite_plus: ^0.0.1-dev.1
+  sqlite_plus_orm: ^0.0.1-dev.1
 
 dev_dependencies:
-  sqlite_plus_generator:
-    git:
-      url: https://github.com/MohammedAsaadAsaad/sqlite_plus
-      path: packages/sqlite_plus_generator
-      ref: main
+  sqlite_plus_generator: ^0.0.1-dev.1
 ```
 
 ## Where to start
@@ -58,7 +46,11 @@ Each package has an example project under `example/`. From a checkout, after `da
 
 `examples/compare` is Bench, an English Flutter screen that runs the same SQL on Android SQLite through `sqflite` and on sqlite_plus. The count is from 1 to 10000. The operations are separate inserts, one transaction of inserts, separate updates, one bulk update, indexed name search, primary-key reads, `VACUUM`, separate deletes, and one delete of every row. Preparation and, for sqlite_plus, `exportImage` are logged beside the measured interval. Copy log puts the whole log on the clipboard. The screen keeps a process RSS and CPU readout while a run is in progress. The Android release packages are one file per ABI under `examples/compare/dist/`: `bench-arm64-v8a.apk` for a phone, `bench-armeabi-v7a.apk` for an older 32-bit phone, and `bench-x86_64.apk` for an emulator.
 
-One phone run of the arm64 package, versionCode 2003, 1000 rows, 13:53:42–13:53:45 Asia/Hebron on 2026-10-28. Every pair matched. The ratio is sqlite_plus divided by native.
+1000 rows, the same SQL, and every checksum matched. The ratio is sqlite_plus divided by native.
+
+![1000 rows, same SQL. Statement time on a logarithmic scale.](packages/sqlite_plus/doc/bench-time.png)
+
+![Stored size for the same 1000-row statements.](packages/sqlite_plus/doc/bench-size.png)
 
 | Operation | native | sqlite_plus | ratio |
 |---|---:|---:|---:|

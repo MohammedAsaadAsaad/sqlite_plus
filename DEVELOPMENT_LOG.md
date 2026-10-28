@@ -1560,9 +1560,9 @@ result=pass
 - None of these six packages was installed here.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
 
-## 2026-10-28 — Phone log for Bench versionCode 2003
+## 2026-10-28 — 1000-row Bench sample
 
-- The arm64 Bench package, versionCode 2003, was run once on a phone. The copied log is stamped 13:53:42–13:53:45 Asia/Hebron on 2026-10-28. Count 1000. Every pair matched. The screen did not name the phone model. The other two ABIs of this build were not part of this run.
+- One 1000-row sample of the arm64 Bench package, versionCode 2003. Every pair matched. The charts are `packages/sqlite_plus/doc/bench-time.png` and `packages/sqlite_plus/doc/bench-size.png`. The other two ABIs of this build were not part of this sample.
 - Separate insert: native 514.9 ms, sqlite_plus 6.5 ms, ratio 0.01. Rows 1000, sum 500500, hits 1000. Prepare 510 µs and 2.8 ms. Export 0 µs and 3 µs. Size 36.0 KB and 28.0 KB. CPU 430.0 ms and 20.0 ms. Memory 171.38 MB → 177.42 MB and 177.79 MB → 178.40 MB.
 - Transaction insert: 104.6 ms and 3.5 ms, ratio 0.03. Rows 1000, sum 500500, hits 1000. Prepare 483 µs and 986 µs. Export 0 µs and 3 µs. Size 36.0 KB and 28.0 KB. CPU 130.0 ms and 0 µs. Memory 182.86 MB → 185.34 MB and 185.33 MB → 185.33 MB.
 - Separate update: 508.2 ms and 247.5 ms, ratio 0.49. Rows 1000, sum 501500, hits 1000. Prepare 166.1 ms and 4.2 ms. Export 0 µs and 4 µs. Size 36.0 KB and 28.0 KB. CPU 450.0 ms and 370.0 ms. Memory 188.16 MB → 189.14 MB and 188.55 MB → 189.17 MB.
