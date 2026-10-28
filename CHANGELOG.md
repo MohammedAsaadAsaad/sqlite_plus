@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.2
+
+`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.0.2`.
+
 ## 0.0.1-dev.1
 
 This version is `0.0.1-dev.1` in `sqlite_plus`, `sqlite_plus_orm`, and

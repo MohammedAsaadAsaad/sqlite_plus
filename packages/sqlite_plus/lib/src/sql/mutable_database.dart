@@ -28,10 +28,18 @@ final class _ConnectionSnapshot {
   final LogicalImage? logical;
 }
 
+/// Outcome of one `INSERT`, `UPDATE`, or `DELETE`.
 final class MutationResult {
+  /// [changes] is the changed-row count. [lastInsertRowid] is set for an insert.
   const MutationResult(this.changes, this.lastInsertRowid, [this.returning]);
+
+  /// Rows from `RETURNING`, or null when the statement has no returning clause.
   final QueryResult? returning;
+
+  /// Rows changed by this statement.
   final int changes;
+
+  /// Rowid of the last insert in this statement, or null for other statements.
   final BigInt? lastInsertRowid;
 }
 
@@ -57,6 +65,8 @@ final class MutableSqliteDatabase {
   /// Reads ATTACH file paths. Memory ATTACH does not use it. A missing reader
   /// rejects file paths. The bytes are a connection-local copy, not a second journal.
   Future<Uint8List> Function(String path)? attachFile;
+
+  /// Scalar, aggregate, and collation callbacks for this connection.
   final functions = SqlFunctionRegistry();
   _ConnectionSnapshot? _checkpoint;
   bool _explicitTransaction = false;
@@ -69,11 +79,17 @@ final class MutableSqliteDatabase {
   SchemaNames? _catalog;
   SqliteDatabase? _mainReader;
   Uint8List? _mainReaderImage;
+
+  /// Whether `BEGIN` or a savepoint is open on this connection.
   bool get inTransaction => _checkpoint != null;
+
+  /// Creates an empty in-memory database.
   static Future<MutableSqliteDatabase> create(
           {int pageSize = 4096, int encoding = 1}) =>
       fromImage(
           DatabaseImageBuilder.empty(pageSize: pageSize, encoding: encoding));
+
+  /// Reopens a database from [exportImage] bytes.
   static Future<MutableSqliteDatabase> fromImage(Uint8List image) async {
     final storage = MemoryStorageBackend();
     await storage.write(0, image);
@@ -82,11 +98,16 @@ final class MutableSqliteDatabase {
     return MutableSqliteDatabase._(Uint8List.fromList(image), null);
   }
 
+  /// Opens a database whose commits go through [pager].
   static Future<MutableSqliteDatabase> fromJournalPager(
           ImagePager pager) async =>
       MutableSqliteDatabase._(await pager.readImage(), pager);
+
+  /// Opens a database on an [ImagePager].
   static Future<MutableSqliteDatabase> fromImagePager(ImagePager pager) =>
       fromJournalPager(pager);
+
+  /// Copies the current database image. Safe to retain after later writes.
   Uint8List exportImage() {
     if (_closed || _failed || _busy) {
       throw StateError('Database closed or busy');
@@ -267,6 +288,7 @@ final class MutableSqliteDatabase {
     }
   }
 
+  /// Runs one SQL statement and returns its rows.
   Future<QueryResult> query(String sql,
           [List<Object?> parameters = const []]) =>
       _exclusive(() async {
@@ -327,6 +349,7 @@ final class MutableSqliteDatabase {
         return _readImage(route.schema!, route.sql, parameters, schemaView);
       });
 
+  /// Runs one write statement inside the connection lock.
   Future<MutationResult> execute(String sql,
       [List<Object?> parameters = const []]) async {
     if (_closed || _failed || _busy) {
@@ -669,6 +692,7 @@ final class MutableSqliteDatabase {
     _clearTransaction();
   }
 
+  /// Rolls back an open transaction and rejects later use.
   Future<void> close() async {
     if (_busy) throw StateError('Database operation in progress');
     if (_closed) return;

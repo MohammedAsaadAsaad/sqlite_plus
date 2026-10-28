@@ -1574,3 +1574,9 @@ result=pass
 - Delete all: 732 µs and 105 µs, ratio 0.14. Rows 0, sum 0, hits 1000. Prepare 155.2 ms and 4.5 ms. Export 0 µs and 2 µs. Size 16.0 KB and 8.0 KB. CPU 10.0 ms and 0 µs. Memory 189.58 MB → 189.58 MB and 189.25 MB → 189.25 MB.
 - In each pair the native figure is given first and the sqlite_plus figure second. These are the on-screen intervals from that one log. No engine code changed for this record.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — version 0.0.2
+
+- Package versions are `0.0.2` in `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator`. The ORM depends on `sqlite_plus: ^0.0.2`. The generator depends on `sqlite_plus_orm: ^0.0.2`.
+- `0.0.1-dev.1` remains the earlier pub.dev upload. `0.0.2` is the release number for this tree.
+- M9 stays unchecked. Item 108 stays open.

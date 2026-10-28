@@ -7,10 +7,15 @@ typedef OrmOperationRunner = Future<R> Function<R>(Future<R> Function());
 sealed class SqlPredicate<T> {
   const SqlPredicate();
 
+  /// Both predicates, combined with `AND`.
   SqlPredicate<T> operator &(SqlPredicate<T> other) =>
       _LogicalPredicate('AND', this, other);
+
+  /// Either predicate, combined with `OR`.
   SqlPredicate<T> operator |(SqlPredicate<T> other) =>
       _LogicalPredicate('OR', this, other);
+
+  /// Negates this predicate.
   SqlPredicate<T> not() => _NotPredicate(this);
 
   Iterable<Column<T, dynamic>> get _columns;
@@ -91,29 +96,48 @@ final class _MatchPredicate<T> extends SqlPredicate<T> {
 
 /// A rectangle in the same coordinate space as an rtree table.
 final class Rect {
+  /// Inclusive bounds of one rectangle.
   const Rect(
       {required this.minX,
       required this.minY,
       required this.maxX,
       required this.maxY});
+
+  /// Left edge.
   final double minX;
+
+  /// Bottom edge.
   final double minY;
+
+  /// Right edge.
   final double maxX;
+
+  /// Top edge.
   final double maxY;
 }
 
 /// Bound comparisons for an rtree. The caller does not write the SQL.
 final class Bounds<T> {
+  /// The four rtree coordinate columns.
   const Bounds(
       {required this.minX,
       required this.maxX,
       required this.minY,
       required this.maxY});
+
+  /// Column storing the minimum X of a stored box.
   final Column<T, double> minX;
+
+  /// Column storing the maximum X of a stored box.
   final Column<T, double> maxX;
+
+  /// Column storing the minimum Y of a stored box.
   final Column<T, double> minY;
+
+  /// Column storing the maximum Y of a stored box.
   final Column<T, double> maxY;
 
+  /// Rows whose box overlaps [rect].
   SqlPredicate<T> intersects(Rect rect) =>
       minX.lte(rect.maxX) &
       maxX.gte(rect.minX) &
@@ -123,10 +147,16 @@ final class Bounds<T> {
 
 /// A mapped table whose [search] stays in Dart.
 final class MappedTable<T> {
+  /// [type] is the mapping. [connection] runs the generated `MATCH` query.
   MappedTable(this.type, this.connection);
+
+  /// Entity mapping for this table.
   final EntityType<T> type;
+
+  /// Connection that executes the search.
   final OrmConnection connection;
 
+  /// Rows whose FTS content matches [text].
   TypedQuery<T> search(String text) =>
       TypedQuery(type: type, connection: connection).search(text);
 }
@@ -145,33 +175,61 @@ final class _NotPredicate<T> extends SqlPredicate<T> {
 /// [nullsFirst] is supplied.
 final class SqlOrdering<T> {
   const SqlOrdering._(this.column, this.descending, this.nullsFirst);
+
+  /// Column being ordered.
   final Column<T, dynamic> column;
+
+  /// Whether the term is `DESC`.
   final bool descending;
+
+  /// `NULLS FIRST`, `NULLS LAST`, or null for SQLite's default placement.
   final bool? nullsFirst;
   String get _sql => '${quoteIdentifier(column.sqlName)} '
       '${descending ? 'DESC' : 'ASC'}'
       '${nullsFirst == null ? '' : nullsFirst! ? ' NULLS FIRST' : ' NULLS LAST'}';
 }
 
+/// Bound comparisons and orderings on a [Column].
 extension ColumnQueryExpressions<T, V> on Column<T, V> {
+  /// `column = ?`.
   SqlPredicate<T> eq(V value) =>
       _ComparisonPredicate(this, '=', encodeValue(value));
+
+  /// `column <> ?`.
   SqlPredicate<T> notEq(V value) =>
       _ComparisonPredicate(this, '<>', encodeValue(value));
+
+  /// `column < ?`.
   SqlPredicate<T> lt(V value) =>
       _ComparisonPredicate(this, '<', encodeValue(value));
+
+  /// `column <= ?`.
   SqlPredicate<T> lte(V value) =>
       _ComparisonPredicate(this, '<=', encodeValue(value));
+
+  /// `column > ?`.
   SqlPredicate<T> gt(V value) =>
       _ComparisonPredicate(this, '>', encodeValue(value));
+
+  /// `column >= ?`.
   SqlPredicate<T> gte(V value) =>
       _ComparisonPredicate(this, '>=', encodeValue(value));
+
+  /// `column IS NULL`.
   SqlPredicate<T> isNull() => _NullPredicate(this, false);
+
+  /// `column IS NOT NULL`.
   SqlPredicate<T> isNotNull() => _NullPredicate(this, true);
+
+  /// `column IN (...)` with one bound value per element.
   SqlPredicate<T> inValues(Iterable<V> values) =>
       _InPredicate(this, values.map(encodeValue).toList());
+
+  /// Ascending order. [nullsFirst] selects `NULLS FIRST` or `NULLS LAST`.
   SqlOrdering<T> asc({bool? nullsFirst}) =>
       SqlOrdering._(this, false, nullsFirst);
+
+  /// Descending order. [nullsFirst] selects `NULLS FIRST` or `NULLS LAST`.
   SqlOrdering<T> desc({bool? nullsFirst}) =>
       SqlOrdering._(this, true, nullsFirst);
 }
@@ -180,19 +238,43 @@ extension ColumnQueryExpressions<T, V> on Column<T, V> {
 /// Dart's `==` must return `bool` and cannot build a predicate. Parenthesize
 /// comparison operators before combining them with `&` or `|`.
 final class MappedField<T, V> {
+  /// Wraps [column] for closure syntax.
   const MappedField(this.column);
+
+  /// The mapped column.
   final Column<T, V> column;
 
+  /// `column = ?`.
   SqlPredicate<T> equalTo(V value) => column.eq(value);
+
+  /// `column <> ?`.
   SqlPredicate<T> notEqualTo(V value) => column.notEq(value);
+
+  /// `column > ?`.
   SqlPredicate<T> operator >(V value) => column.gt(value);
+
+  /// `column < ?`.
   SqlPredicate<T> operator <(V value) => column.lt(value);
+
+  /// `column >= ?`.
   SqlPredicate<T> operator >=(V value) => column.gte(value);
+
+  /// `column <= ?`.
   SqlPredicate<T> operator <=(V value) => column.lte(value);
+
+  /// `column IN (...)`.
   SqlPredicate<T> oneOf(Iterable<V> values) => column.inValues(values);
+
+  /// `column IS NULL`.
   SqlPredicate<T> get isNull => column.isNull();
+
+  /// `column IS NOT NULL`.
   SqlPredicate<T> get isNotNull => column.isNotNull();
+
+  /// Ascending order of this column.
   SqlOrdering<T> get ascending => column.asc();
+
+  /// Descending order of this column.
   SqlOrdering<T> get descending => column.desc();
 
   /// JSON path read through `json_extract`. The path is a bound parameter.
@@ -201,20 +283,36 @@ final class MappedField<T, V> {
 
 /// A JSON path on a mapped column. Comparisons bind both the path and the value.
 final class JsonPathField<T> {
+  /// [path] is bound, not interpolated.
   const JsonPathField(this.column, this.path);
+
+  /// JSON text column.
   final Column<T, dynamic> column;
+
+  /// JSON path passed to `json_extract`.
   final String path;
 
+  /// `json_extract(column, ?) = ?`.
   SqlPredicate<T> equalTo(Object? value) =>
       _JsonExtractPredicate(column, path, '=', value);
+
+  /// `json_extract(column, ?) <> ?`.
   SqlPredicate<T> notEqualTo(Object? value) =>
       _JsonExtractPredicate(column, path, '<>', value);
+
+  /// `json_extract(column, ?) > ?`.
   SqlPredicate<T> operator >(Object? value) =>
       _JsonExtractPredicate(column, path, '>', value);
+
+  /// `json_extract(column, ?) < ?`.
   SqlPredicate<T> operator <(Object? value) =>
       _JsonExtractPredicate(column, path, '<', value);
+
+  /// `json_extract(column, ?) >= ?`.
   SqlPredicate<T> operator >=(Object? value) =>
       _JsonExtractPredicate(column, path, '>=', value);
+
+  /// `json_extract(column, ?) <= ?`.
   SqlPredicate<T> operator <=(Object? value) =>
       _JsonExtractPredicate(column, path, '<=', value);
 }
@@ -246,8 +344,12 @@ final class _JsonExtractPredicate<T> extends SqlPredicate<T> {
 final class OrmQueryCommand {
   OrmQueryCommand._(this.sql, List<Object?> parameters)
       : _parameters = List.unmodifiable(parameters.map(copyOrmValue));
+
+  /// SQL text with `?` placeholders.
   final String sql;
   final List<Object?> _parameters;
+
+  /// A fresh copy of the bound parameters.
   List<Object?> get parameters =>
       List.unmodifiable(_parameters.map(copyOrmValue));
 }
@@ -282,7 +384,10 @@ final class TypedQuery<T> {
       this._noTracking,
       this._rank);
 
+  /// Mapping this query reads.
   final EntityType<T> type;
+
+  /// Connection that runs the statement.
   final OrmConnection connection;
   final T Function(RowReader)? _materialize;
   final OrmOperationRunner? _serialize;
@@ -320,6 +425,7 @@ final class TypedQuery<T> {
     }
   }
 
+  /// Adds [predicate] with `AND` when a filter already exists.
   TypedQuery<T> where(SqlPredicate<T> predicate) {
     _validateColumns(predicate._columns);
     return _copy(
@@ -348,6 +454,7 @@ final class TypedQuery<T> {
     }
   }
 
+  /// Skips [count] rows. Combined with [take], the bounds stay portable.
   TypedQuery<T> skip(int count) {
     _validatePagination(count);
     final offset = BigInt.from(_offset) + BigInt.from(count);
@@ -362,13 +469,16 @@ final class TypedQuery<T> {
     return _copy(offset: offset.toInt(), limit: remaining);
   }
 
+  /// Limits the query to [count] rows.
   TypedQuery<T> take(int count) {
     _validatePagination(count);
     return _copy(limit: _limit == null || count < _limit ? count : _limit);
   }
 
+  /// Reads rows without placing them in the identity map.
   TypedQuery<T> asNoTracking() => _copy(noTracking: true);
 
+  /// The SQL and parameters this query would run.
   OrmQueryCommand toSql() {
     final parameters = <Object?>[];
     final sql = StringBuffer('SELECT ')
@@ -414,16 +524,19 @@ final class TypedQuery<T> {
     return (_noTracking ? type.create : _materialize ?? type.create)(reader);
   }
 
+  /// Materializes every matching row.
   Future<List<T>> toList() => _run(() async {
         final result = await _rows();
         return [for (final row in result.rows) _read(result, row)];
       });
 
+  /// The first row, or null when the query is empty.
   Future<T?> firstOrNull() => _run(() async {
         final result = await take(1)._rows();
         return result.rows.isEmpty ? null : _read(result, result.rows.first);
       });
 
+  /// The only row. Fails when the query returns zero or more than one.
   Future<T> single() => _run(() async {
         final result = await take(2)._rows();
         if (result.rows.length != 1) {
@@ -434,6 +547,7 @@ final class TypedQuery<T> {
         return _read(result, result.rows.single);
       });
 
+  /// Number of rows matching the filter, as [BigInt].
   Future<BigInt> count() => _run(() async {
         final command = toSql();
         final result = await connection.query(
@@ -448,6 +562,7 @@ final class TypedQuery<T> {
         return result.rows.single.single as BigInt;
       });
 
+  /// Whether at least one row matches.
   Future<bool> any() =>
       _run(() async => (await take(1)._rows()).rows.isNotEmpty);
 }

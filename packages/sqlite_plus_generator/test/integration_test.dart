@@ -4,9 +4,11 @@ import 'package:test/test.dart';
 import 'support.dart';
 
 void main() {
-  test('generated consumers migrate, track CRUD and relationships, then reopen',
-      () async {
-    final fixture = await Consumer.create(modelSource('''
+  test(
+    'generated consumers migrate, track CRUD and relationships, then reopen',
+    () async {
+      final fixture = await Consumer.create(
+        modelSource('''
 class Customer {
   Customer({this.id, required this.name, this.revision = 0});
   final BigInt? id;
@@ -25,10 +27,11 @@ class Assigned {
   String? id;
   String value;
 }
-'''));
-    addTearDown(fixture.close);
-    await writeGenerated(await generateLibrary(fixture.input));
-    final run = await fixture.run(r'''
+'''),
+      );
+      addTearDown(fixture.close);
+      await writeGenerated(await generateLibrary(fixture.input));
+      final run = await fixture.run(r'''
 import 'package:generator_consumer/models.dart';
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
@@ -105,7 +108,12 @@ Future<void> main() async {
   print('generated ORM integration passed');
 }
 ''');
-    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-    expect(normalizeNewlines(run.stdout), 'generated ORM integration passed\n');
-  }, timeout: const Timeout(Duration(minutes: 2)));
+      expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+      expect(
+        normalizeNewlines(run.stdout),
+        'generated ORM integration passed\n',
+      );
+    },
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
 }

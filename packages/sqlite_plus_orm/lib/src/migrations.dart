@@ -1,7 +1,9 @@
 part of '../sqlite_plus_orm.dart';
 
+/// Whether an operation can run without a reviewed approval.
 enum MigrationSafety { safe, reviewRequired }
 
+/// Kind of one step in a schema plan.
 enum MigrationKind {
   createTable,
   addColumn,
@@ -21,6 +23,7 @@ final class MigrationOperation {
       [List<Object?> parameters = const [], this._retainedTable])
       : _parameters = List.unmodifiable(parameters.map(copyOrmValue));
 
+  /// One application-authored statement. It always requires approval.
   factory MigrationOperation.sql(String sql,
       {String reason = 'Explicit application migration SQL',
       List<Object?> parameters = const []}) {
@@ -59,14 +62,25 @@ final class MigrationOperation {
         _ormAsciiLower(tableName));
   }
 
+  /// What this step does.
   final MigrationKind kind;
+
+  /// Review text shown with the step.
   final String description;
+
+  /// SQL to run, or null for a bookkeeping step.
   final String? sql;
+
+  /// Whether the step can run inside [SchemaMigrator.applySafe].
   final MigrationSafety safety;
   final List<Object?> _parameters;
   final String? _retainedTable;
+
+  /// A fresh copy of the statement parameters.
   List<Object?> get parameters =>
       List.unmodifiable(_parameters.map(copyOrmValue));
+
+  /// Whether [SchemaMigrator.apply] must receive approval for the plan.
   bool get requiresApproval => safety == MigrationSafety.reviewRequired;
 }
 
@@ -79,13 +93,24 @@ final class SchemaPlan {
       : _catalogAbsent = catalogAbsent,
         operations = List.unmodifiable(operations);
 
+  /// Canonical text of the schema that was read.
   final String baselineSchema;
+
+  /// Canonical text of the schema the model wants.
   final String targetSchema;
+
+  /// Steps that turn [baselineSchema] into [targetSchema].
   final List<MigrationOperation> operations;
   final BigInt _nextVersion;
   final bool _catalogAbsent;
+
+  /// Whether the plan has no steps.
   bool get isEmpty => operations.isEmpty;
+
+  /// Whether any step needs [MigrationApproval].
   bool get requiresApproval => operations.any((op) => op.requiresApproval);
+
+  /// Whether every step is expressible by the migrator.
   bool get canApply =>
       !operations.any((op) => op.kind == MigrationKind.requiresMigration);
 
@@ -113,12 +138,14 @@ final class SchemaPlan {
 
 /// Approval cannot be reused for another plan, including a modified copy.
 final class MigrationApproval {
+  /// Approves this exact [plan]. A copied or newer plan needs a new approval.
   MigrationApproval.forPlan(SchemaPlan plan) : _plan = plan;
   final SchemaPlan _plan;
 }
 
 /// Schema changes through public SQL metadata and the public connection only.
 final class SchemaMigrator {
+  /// Plans and applies schema changes for [model] on [connection].
   SchemaMigrator(this.connection, this.model, {OrmOperationRunner? serialize})
       : _serialize = serialize {
     if (model.entities.any((entity) =>
@@ -128,7 +155,10 @@ final class SchemaMigrator {
     }
   }
 
+  /// Connection that owns the migration transaction.
   final OrmConnection connection;
+
+  /// Model the target schema is built from.
   final DbModel model;
   final OrmOperationRunner? _serialize;
   bool _failed = false;
@@ -141,16 +171,20 @@ final class SchemaMigrator {
     return result;
   }
 
+  /// Diffs the live schema against [model].
   Future<SchemaPlan> plan() => _run(_plan);
 
+  /// Creates the model schema when the database has no ORM catalog.
   Future<void> ensureCreated() => _run(() async {
         final proposed = await _plan();
         await _apply(proposed, safeOnly: true);
       });
 
+  /// Applies only steps marked [MigrationSafety.safe].
   Future<void> applySafe(SchemaPlan plan) =>
       _run(() => _apply(plan, safeOnly: true));
 
+  /// Applies [plan]. Steps that require review need [approval] for this plan.
   Future<void> apply(SchemaPlan plan, {MigrationApproval? approval}) =>
       _run(() => _apply(plan, approval: approval));
 

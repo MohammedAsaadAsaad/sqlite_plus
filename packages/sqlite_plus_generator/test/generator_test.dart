@@ -11,36 +11,43 @@ import 'support.dart';
 void main() {
   Future<Consumer> consumer(String body, {String? import}) async {
     final result = await Consumer.create(
-        import == null ? modelSource(body) : modelSource(body, import: import));
+      import == null ? modelSource(body) : modelSource(body, import: import),
+    );
     addTearDown(result.close);
     return result;
   }
 
   test('example output is a deterministic golden', () async {
     final fixture = await Consumer.create(
-        await File('example/lib/models.dart').readAsString());
+      await File('example/lib/models.dart').readAsString(),
+    );
     addTearDown(fixture.close);
     final result = await generateLibrary(fixture.input);
     expect(
-        normalizeNewlines(result.code),
-        normalizeNewlines(
-            await File('example/lib/models.orm.g.dart').readAsString()));
+      normalizeNewlines(result.code),
+      normalizeNewlines(
+        await File('example/lib/models.orm.g.dart').readAsString(),
+      ),
+    );
     expect(result.code, contains('JsonPathField<Note> path'));
     expect(result.code, contains('virtualModule: "fts5"'));
     expect(result.code, contains('virtualModule: "rtree"'));
     expect(result.code, contains('Bounds<Place>'));
     expect(result.code, contains('search(String text)'));
-    final checked =
-        await fixture.cli(['--input', 'example/lib/models.dart', '--check']);
+    final checked = await fixture.cli([
+      '--input',
+      'example/lib/models.dart',
+      '--check',
+    ]);
     expect(checked.exitCode, 0, reason: '${checked.stdout}\n${checked.stderr}');
     await writeGenerated(result);
     expect((await generateLibrary(fixture.input)).code, result.code);
   });
 
   test(
-      'conventions generate typed keys, mutable/immutable rows and relationships',
-      () async {
-    final fixture = await consumer('''
+    'conventions generate typed keys, mutable/immutable rows and relationships',
+    () async {
+      final fixture = await consumer('''
 typedef UserId = BigInt;
 class Customer {
   Customer({this.id, required this.name});
@@ -54,18 +61,21 @@ class Purchase {
   double total;
 }
 ''');
-    final first = await generateLibrary(fixture.input);
-    expect(first.entityNames, ['Customer', 'Purchase']);
-    expect(File(fixture.output).existsSync(), isFalse);
-    expect(await writeGenerated(first, check: true), isFalse);
-    expect(await writeGenerated(first), isTrue);
-    final second = await generateLibrary(fixture.input);
-    expect(second.code, first.code);
-    expect(await writeGenerated(second, check: true), isTrue);
-    final analyzed = await fixture.analyze();
-    expect(analyzed.exitCode, 0,
-        reason: '${analyzed.stdout}\n${analyzed.stderr}');
-    final run = await fixture.run('''
+      final first = await generateLibrary(fixture.input);
+      expect(first.entityNames, ['Customer', 'Purchase']);
+      expect(File(fixture.output).existsSync(), isFalse);
+      expect(await writeGenerated(first, check: true), isFalse);
+      expect(await writeGenerated(first), isTrue);
+      final second = await generateLibrary(fixture.input);
+      expect(second.code, first.code);
+      expect(await writeGenerated(second, check: true), isTrue);
+      final analyzed = await fixture.analyze();
+      expect(
+        analyzed.exitCode,
+        0,
+        reason: '${analyzed.stdout}\n${analyzed.stderr}',
+      );
+      final run = await fixture.run('''
 import 'package:generator_consumer/models.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 void main() {
@@ -83,14 +93,16 @@ void main() {
   print('generated metadata works');
 }
 ''');
-    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-    expect(normalizeNewlines(run.stdout), 'generated metadata works\n');
-  }, timeout: const Timeout(Duration(minutes: 2)));
+      expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+      expect(normalizeNewlines(run.stdout), 'generated metadata works\n');
+    },
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
 
   test(
-      'prefixed annotations preserve quoted names, composites and immutable state',
-      () async {
-    final fixture = await consumer(r'''
+    'prefixed annotations preserve quoted names, composites and immutable state',
+    () async {
+      final fixture = await consumer(r'''
 @orm.DbEntity(table: r'quoted"$table')
 class Label {
   Label.named({required this.code, required this.region, required this.revision, this.note});
@@ -106,11 +118,11 @@ class Label {
   int transient = 4;
 }
 ''', import: "import 'package:sqlite_plus_orm/sqlite_plus_orm.dart' as orm;");
-    final result = await generateLibrary(fixture.input);
-    expect(result.code, contains(r'\$table'));
-    expect(result.code, contains('orm.EntityType<Label>'));
-    await writeGenerated(result);
-    final run = await fixture.run(r'''
+      final result = await generateLibrary(fixture.input);
+      expect(result.code, contains(r'\$table'));
+      expect(result.code, contains('orm.EntityType<Label>'));
+      await writeGenerated(result);
+      final run = await fixture.run(r'''
 import 'package:generator_consumer/models.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 void main() {
@@ -126,12 +138,15 @@ void main() {
   print('annotations work');
 }
 ''');
-    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-  });
+      expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+    },
+  );
 
-  test('all builtin codecs and nullable fields compile and materialize',
-      () async {
-    final fixture = await consumer('''
+  test(
+    'all builtin codecs and nullable fields compile and materialize',
+    () async {
+      final fixture = await consumer(
+        '''
 class Scalars {
   Scalars({required this.id, required this.i, required this.real,
     required this.flag, required this.text, required this.bytes, required this.time,
@@ -153,9 +168,10 @@ class Scalars {
 }
 ''',
         import:
-            "import 'dart:typed_data';\nimport 'package:sqlite_plus_orm/sqlite_plus_orm.dart';");
-    await writeGenerated(await generateLibrary(fixture.input));
-    final run = await fixture.run('''
+            "import 'dart:typed_data';\nimport 'package:sqlite_plus_orm/sqlite_plus_orm.dart';",
+      );
+      await writeGenerated(await generateLibrary(fixture.input));
+      final run = await fixture.run('''
 import 'dart:typed_data';
 import 'package:generator_consumer/models.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
@@ -175,12 +191,15 @@ void main() {
   print('codecs work');
 }
 ''');
-    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-  });
+      expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+    },
+  );
 
-  test('classId conventions, inferred fields and prefixed scalar types compile',
-      () async {
-    final fixture = await consumer('''
+  test(
+    'classId conventions, inferred fields and prefixed scalar types compile',
+    () async {
+      final fixture = await consumer(
+        '''
 typedef Identity = core.BigInt;
 class Customer {
   Customer(this.customerId, this.bytes);
@@ -189,17 +208,22 @@ class Customer {
   var name = 'inferred';
 }
 ''',
-        import: "import 'dart:core' as core;\n"
+        import:
+            "import 'dart:core' as core;\n"
             "import 'dart:typed_data' as data;\n"
-            "import 'package:sqlite_plus_orm/sqlite_plus_orm.dart' as orm;");
-    final generated = await generateLibrary(fixture.input);
-    expect(generated.code, contains('data.Uint8List?'));
-    expect(generated.code, contains('core.String'));
-    await writeGenerated(generated);
-    final analyzed = await fixture.analyze();
-    expect(analyzed.exitCode, 0,
-        reason: '${analyzed.stdout}\n${analyzed.stderr}');
-    final run = await fixture.run('''
+            "import 'package:sqlite_plus_orm/sqlite_plus_orm.dart' as orm;",
+      );
+      final generated = await generateLibrary(fixture.input);
+      expect(generated.code, contains('data.Uint8List?'));
+      expect(generated.code, contains('core.String'));
+      await writeGenerated(generated);
+      final analyzed = await fixture.analyze();
+      expect(
+        analyzed.exitCode,
+        0,
+        reason: '${analyzed.stdout}\n${analyzed.stderr}',
+      );
+      final run = await fixture.run('''
 import 'package:generator_consumer/models.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 void main() {
@@ -210,12 +234,14 @@ void main() {
       CustomerColumns.customerId.generated) throw StateError('mapping');
 }
 ''');
-    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-  });
+      expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+    },
+  );
 
-  test('constructor assignments and nullable aliases preserve stored values',
-      () async {
-    final fixture = await consumer('''
+  test(
+    'constructor assignments and nullable aliases preserve stored values',
+    () async {
+      final fixture = await consumer('''
 typedef OptionalKey = int?;
 class Mutable {
   Mutable(this.id, String name);
@@ -230,14 +256,17 @@ class Immutable {
 class HashCode { HashCode(this.id); int id; }
 class Child { Child(this.id,this.hashCodeId); int id; int hashCodeId; }
 ''');
-    final result = await generateLibrary(fixture.input);
-    expect(result.code, contains('EntityKey key(int value0)'));
-    expect(result.code, contains('ForeignKey<Child, HashCode> hashCodeId'));
-    await writeGenerated(result);
-    final analyzed = await fixture.analyze();
-    expect(analyzed.exitCode, 0,
-        reason: '${analyzed.stdout}\n${analyzed.stderr}');
-    final run = await fixture.run('''
+      final result = await generateLibrary(fixture.input);
+      expect(result.code, contains('EntityKey key(int value0)'));
+      expect(result.code, contains('ForeignKey<Child, HashCode> hashCodeId'));
+      await writeGenerated(result);
+      final analyzed = await fixture.analyze();
+      expect(
+        analyzed.exitCode,
+        0,
+        reason: '${analyzed.stdout}\n${analyzed.stderr}',
+      );
+      final run = await fixture.run('''
 import 'package:generator_consumer/models.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 void main() {
@@ -248,13 +277,14 @@ void main() {
   }
 }
 ''');
-    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-  });
+      expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+    },
+  );
 
   test(
-      'explicit references use actual selected target metadata and delete policy',
-      () async {
-    final fixture = await consumer('''
+    'explicit references use actual selected target metadata and delete policy',
+    () async {
+      final fixture = await consumer('''
 class Customer { Customer(this.id); @DbColumn(name: 'customer_key') final BigInt id; }
 class Ticket {
   Ticket(this.id, this.owner);
@@ -263,8 +293,8 @@ class Ticket {
   BigInt? owner;
 }
 ''');
-    await writeGenerated(await generateLibrary(fixture.input));
-    final run = await fixture.run('''
+      await writeGenerated(await generateLibrary(fixture.input));
+      final run = await fixture.run('''
 import 'package:generator_consumer/models.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 void main() {
@@ -275,13 +305,14 @@ void main() {
   print('reference works');
 }
 ''');
-    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-  });
+      expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+    },
+  );
 
   test(
-      'implicit constructor and optional ignored parameters map mutable storage',
-      () async {
-    final fixture = await consumer('''
+    'implicit constructor and optional ignored parameters map mutable storage',
+    () async {
+      final fixture = await consumer('''
 class Mutable { BigInt? id; String name = ''; }
 class Named {
   Named.load({required this.id, this.name = 'default', int ignored = 3});
@@ -289,11 +320,14 @@ class Named {
   String name;
 }
 ''');
-    await writeGenerated(await generateLibrary(fixture.input));
-    final analyzed = await fixture.analyze();
-    expect(analyzed.exitCode, 0,
-        reason: '${analyzed.stdout}\n${analyzed.stderr}');
-    final run = await fixture.run('''
+      await writeGenerated(await generateLibrary(fixture.input));
+      final analyzed = await fixture.analyze();
+      expect(
+        analyzed.exitCode,
+        0,
+        reason: '${analyzed.stdout}\n${analyzed.stderr}',
+      );
+      final run = await fixture.run('''
 import 'package:generator_consumer/models.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 void main() {
@@ -302,13 +336,15 @@ void main() {
   if (a.name != 'ready' || b.name != 'named' || b.id != 1) throw StateError('constructors');
 }
 ''');
-    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-  });
+      expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+    },
+  );
 
   test(
-      'generation resolves annotation/type identity without running model code',
-      () async {
-    final fixture = await consumer('''
+    'generation resolves annotation/type identity without running model code',
+    () async {
+      final fixture = await consumer(
+        '''
 final marker = File('SHOULD_NOT_EXIST').writeAsStringSync('executed');
 class DbColumn { const DbColumn({this.name}); final String? name; }
 class Customer {
@@ -319,181 +355,185 @@ class Customer {
 }
 ''',
         import:
-            "import 'dart:io';\nimport 'package:sqlite_plus_orm/sqlite_plus_orm.dart';");
-    final result = await generateLibrary(fixture.input);
-    expect(result.code, contains('name: "name"'));
-    expect(result.code, isNot(contains('impostor')));
-    expect(File('SHOULD_NOT_EXIST').existsSync(), isFalse);
-    expect(File('${fixture.directory.path}/SHOULD_NOT_EXIST').existsSync(),
-        isFalse);
-  });
+            "import 'dart:io';\nimport 'package:sqlite_plus_orm/sqlite_plus_orm.dart';",
+      );
+      final result = await generateLibrary(fixture.input);
+      expect(result.code, contains('name: "name"'));
+      expect(result.code, isNot(contains('impostor')));
+      expect(File('SHOULD_NOT_EXIST').existsSync(), isFalse);
+      expect(
+        File('${fixture.directory.path}/SHOULD_NOT_EXIST').existsSync(),
+        isFalse,
+      );
+    },
+  );
 
   final negative = <(String, String, String)>[
     (
       'unsupported dynamic',
       '@DbEntity() class Bad { Bad(this.id,this.value); final int id; dynamic value; }',
-      'G006'
+      'G006',
     ),
     (
       'unsupported custom type',
       'class DateTime {} class Bad { Bad(this.id,this.time); final int id; DateTime time; }',
-      'G006'
+      'G006',
     ),
     (
       'unsupported enum',
       'enum Status { active } class Bad { Bad(this.id,this.status); final int id; Status status; }',
-      'G006'
+      'G006',
     ),
     (
       'unsupported collection',
       'class Bad { Bad(this.id,this.values); int id; List<String> values; }',
-      'G006'
+      'G006',
     ),
     (
       'unsupported Object',
       'class Bad { Bad(this.id,this.value); int id; Object? value; }',
-      'G006'
+      'G006',
     ),
     (
       'mixed-in model',
       'mixin Extra {} class Bad with Extra { Bad(this.id); int id; }',
-      'G005'
+      'G005',
     ),
     (
       'generated column list collision',
       'class Bad { Bad(this.id,this.all); int id; String all; }',
-      'G011'
+      'G011',
     ),
     (
       'wrong constructor parameter type',
       'class Bad { Bad(String id): id=int.parse(id); final int id; }',
-      'G010'
+      'G010',
     ),
     (
       'unproven final constructor initializer',
       'class Bad { Bad(this.id, String name): name="discarded"; int id; final String name; }',
-      'G010'
+      'G010',
     ),
     (
       'static Object member collision',
       'class Bad { Bad(this.id,this.hashCode); int id; int hashCode; }',
-      'G011'
+      'G011',
     ),
     (
       'empty default SQL',
       'class Bad { Bad(this.id,this.name); int id; @DbColumn(defaultSql: " ") String name; }',
-      'G007'
+      'G007',
     ),
     (
       'duplicate version',
       'class Bad { Bad(this.id,this.a,this.b); int id; @DbVersion() int a; @DbVersion() int b; }',
-      'G009'
+      'G009',
     ),
     (
       'duplicate table name',
       'class One { One(this.id); int id; } @DbEntity(table: "ONE") class Two { Two(this.id); int id; }',
-      'G007'
+      'G007',
     ),
     (
       'foreign key property is not its SQL name',
       'class Parent { Parent(this.id); @DbColumn(name: "pk") int id; } class Bad { Bad(this.id,this.owner); int id; @DbReference(Parent,column: "pk") int owner; }',
-      'G012'
+      'G012',
     ),
     (
       'optional positional hole',
       'class Bad { Bad(this.id,[String ignored="x",this.name="n"]); int id; String name; }',
-      'G010'
+      'G010',
     ),
     ('generic class', 'class Bad<T> { Bad(this.id); final int id; }', 'G005'),
     (
       'inherited storage',
       'class Base {} class Bad extends Base { Bad(this.id); final int id; }',
-      'G005'
+      'G005',
     ),
     (
       'missing key',
       '@DbEntity() class Bad { Bad(this.name); String name; }',
-      'G008'
+      'G008',
     ),
     (
       'ambiguous key',
       'class Bad { Bad(this.id,this.badId); int id; int badId; }',
-      'G008'
+      'G008',
     ),
     (
       'duplicate SQL name',
       'class Bad { Bad(this.id,this.value); final int id; @DbColumn(name: "ID") String value; }',
-      'G007'
+      'G007',
     ),
     (
       'invalid generated key',
       'class Bad { Bad(this.id); @DbKey(generated: true) String? id; }',
-      'G009'
+      'G009',
     ),
     (
       'bad key order',
       'class Bad { Bad(this.id); @DbKey(order: 1) int id; }',
-      'G008'
+      'G008',
     ),
     (
       'invalid version',
       'class Bad { Bad(this.id,this.version); final int id; @DbVersion() String version; }',
-      'G009'
+      'G009',
     ),
     (
       'ignored required ctor state',
       'class Bad { Bad(this.id,this.temporary); final int id; @DbIgnore() final String temporary; }',
-      'G010'
+      'G010',
     ),
     (
       'unmapped final field',
       'class Bad { Bad(this.id); final int id; final String name="fixed"; }',
-      'G010'
+      'G010',
     ),
     (
       'ambiguous constructors',
       'class Bad { Bad.a(this.id); Bad.b(this.id); final int id; }',
-      'G010'
+      'G010',
     ),
     (
       'duplicate generated identifier',
       'class Bad { Bad(this.id); final int id; } class BadMapping {}',
-      'G011'
+      'G011',
     ),
     (
       'missing FK target',
       'class Other { Other(this.code); final int code; } class Bad { Bad(this.id,this.owner); final int id; @DbReference(Other) int owner; }',
-      'G012'
+      'G012',
     ),
     (
       'incompatible FK',
       'class Parent { Parent(this.id); final int id; } class Bad { Bad(this.id,this.owner); final int id; @DbReference(Parent) String owner; }',
-      'G012'
+      'G012',
     ),
     (
       'invalid null action',
       'class Parent { Parent(this.id); final int id; } class Bad { Bad(this.id,this.owner); final int id; @DbReference(Parent,onDelete:ForeignKeyAction.setNull) int owner; }',
-      'G012'
+      'G012',
     ),
     (
       'json on a number',
       'class Bad { Bad(this.id, this.n); final int id; @DbJson() int n; }',
-      'G013'
+      'G013',
     ),
     (
       'unknown virtual module',
       '@DbEntity(module: "fts4") class Bad { Bad({this.rowid, required this.body}); @DbKey(generated: true) final BigInt? rowid; final String body; }',
-      'G013'
+      'G013',
     ),
     (
       'fts without rowid',
       '@DbEntity(module: "fts5") class Bad { Bad(this.id, this.body); final BigInt? id; final String body; }',
-      'G013'
+      'G013',
     ),
     (
       'rtree without bounds',
       '@DbEntity(module: "rtree") class Bad { Bad(this.id); final BigInt id; }',
-      'G013'
+      'G013',
     ),
   ];
   for (final (name, source, code) in negative) {
@@ -503,12 +543,16 @@ class Customer {
         await generateLibrary(fixture.input);
         fail('Expected $code for $name');
       } on GenerationException catch (error) {
-        expect(error.diagnostics.map((diagnostic) => diagnostic.code),
-            contains(code));
         expect(
-            error.diagnostics.every(
-                (diagnostic) => diagnostic.line > 0 && diagnostic.column > 0),
-            isTrue);
+          error.diagnostics.map((diagnostic) => diagnostic.code),
+          contains(code),
+        );
+        expect(
+          error.diagnostics.every(
+            (diagnostic) => diagnostic.line > 0 && diagnostic.column > 0,
+          ),
+          isTrue,
+        );
         expect(error.toString(), contains(fixture.input));
       }
       expect(File(fixture.output).existsSync(), isFalse);
@@ -516,77 +560,110 @@ class Customer {
   }
 
   test(
-      'explicit class selection omits unrelated conventions and diagnoses missing names',
-      () async {
-    final fixture = await consumer('''
+    'explicit class selection omits unrelated conventions and diagnoses missing names',
+    () async {
+      final fixture = await consumer('''
 class One { One(this.id); final int id; }
 class Two { Two(this.id); final int id; }
 abstract class Abstract { int get id; }
 ''');
-    final result = await generateLibrary(fixture.input, classNames: ['Two']);
-    expect(result.entityNames, ['Two']);
-    expect(result.code, isNot(contains('OneMapping')));
-    await expectLater(generateLibrary(fixture.input, classNames: ['Missing']),
-        throwsA(isA<GenerationException>()));
-  });
-
-  test(
-      'bad source, import and part configuration produce actionable diagnostics',
-      () async {
-    for (final source in [
-      'class One { One(this.id); final int id; }',
-      "part 'models.orm.g.dart'; class One { One(this.id); final int id; }",
-      modelSource('class One { One(this.id); final int id; }',
-          import:
-              "import 'package:sqlite_plus_orm/sqlite_plus_orm.dart' deferred as orm;"),
-      modelSource('class One { One(this.id); final int id; }',
-          import:
-              "import 'package:sqlite_plus_orm/sqlite_plus_orm.dart' as OneMapping;"),
-      modelSource('class One { broken! }')
-    ]) {
-      final fixture = await Consumer.create(source);
-      addTearDown(fixture.close);
+      final result = await generateLibrary(fixture.input, classNames: ['Two']);
+      expect(result.entityNames, ['Two']);
+      expect(result.code, isNot(contains('OneMapping')));
       await expectLater(
-          generateLibrary(fixture.input), throwsA(isA<GenerationException>()));
-    }
-  });
-
-  test('hand-written outputs and symbolic links are never overwritten',
-      () async {
-    final fixture = await consumer('class One { One(this.id); final int id; }');
-    await File(fixture.output).writeAsString('// user code\n');
-    await expectLater(
-        generateLibrary(fixture.input), throwsA(isA<GenerationException>()));
-    expect(await File(fixture.output).readAsString(), '// user code\n');
-    await File(fixture.output).delete();
-    await Link(fixture.output).create(fixture.input);
-    await expectLater(
-        generateLibrary(fixture.input), throwsA(isA<GenerationException>()));
-  });
+        generateLibrary(fixture.input, classNames: ['Missing']),
+        throwsA(isA<GenerationException>()),
+      );
+    },
+  );
 
   test(
-      'CLI generates, checks staleness, reports bad arguments and never writes partial output',
-      () async {
-    final fixture = await consumer('class One { One(this.id); final int id; }');
-    final help = await fixture.cli(['--help']);
-    expect(help.exitCode, 0);
-    expect(help.stdout, contains('--input'));
-    final missing = await fixture.cli([]);
-    expect(missing.exitCode, 64);
-    final generated = await fixture.cli(['--input', fixture.input]);
-    expect(generated.exitCode, 0,
-        reason: '${generated.stdout}\n${generated.stderr}');
-    final checked = await fixture.cli(['--input', fixture.input, '--check']);
-    expect(checked.exitCode, 0, reason: '${checked.stdout}\n${checked.stderr}');
-    await File(fixture.input).writeAsString(
-        modelSource('class One { One(this.id); final BigInt id; }'));
-    final stale = await fixture.cli(['--input', fixture.input, '--check']);
-    expect(stale.exitCode, 1, reason: '${stale.stdout}\n${stale.stderr}');
-    final previous = await File(fixture.output).readAsString();
-    await File(fixture.input).writeAsString(modelSource(
-        'class One { One(this.id); final int id; } @DbEntity() class Invalid {}'));
-    final invalid = await fixture.cli(['--input', fixture.input]);
-    expect(invalid.exitCode, 65);
-    expect(await File(fixture.output).readAsString(), previous);
-  }, timeout: const Timeout(Duration(minutes: 3)));
+    'bad source, import and part configuration produce actionable diagnostics',
+    () async {
+      for (final source in [
+        'class One { One(this.id); final int id; }',
+        "part 'models.orm.g.dart'; class One { One(this.id); final int id; }",
+        modelSource(
+          'class One { One(this.id); final int id; }',
+          import:
+              "import 'package:sqlite_plus_orm/sqlite_plus_orm.dart' deferred as orm;",
+        ),
+        modelSource(
+          'class One { One(this.id); final int id; }',
+          import:
+              "import 'package:sqlite_plus_orm/sqlite_plus_orm.dart' as OneMapping;",
+        ),
+        modelSource('class One { broken! }'),
+      ]) {
+        final fixture = await Consumer.create(source);
+        addTearDown(fixture.close);
+        await expectLater(
+          generateLibrary(fixture.input),
+          throwsA(isA<GenerationException>()),
+        );
+      }
+    },
+  );
+
+  test(
+    'hand-written outputs and symbolic links are never overwritten',
+    () async {
+      final fixture = await consumer(
+        'class One { One(this.id); final int id; }',
+      );
+      await File(fixture.output).writeAsString('// user code\n');
+      await expectLater(
+        generateLibrary(fixture.input),
+        throwsA(isA<GenerationException>()),
+      );
+      expect(await File(fixture.output).readAsString(), '// user code\n');
+      await File(fixture.output).delete();
+      await Link(fixture.output).create(fixture.input);
+      await expectLater(
+        generateLibrary(fixture.input),
+        throwsA(isA<GenerationException>()),
+      );
+    },
+  );
+
+  test(
+    'CLI generates, checks staleness, reports bad arguments and never writes partial output',
+    () async {
+      final fixture = await consumer(
+        'class One { One(this.id); final int id; }',
+      );
+      final help = await fixture.cli(['--help']);
+      expect(help.exitCode, 0);
+      expect(help.stdout, contains('--input'));
+      final missing = await fixture.cli([]);
+      expect(missing.exitCode, 64);
+      final generated = await fixture.cli(['--input', fixture.input]);
+      expect(
+        generated.exitCode,
+        0,
+        reason: '${generated.stdout}\n${generated.stderr}',
+      );
+      final checked = await fixture.cli(['--input', fixture.input, '--check']);
+      expect(
+        checked.exitCode,
+        0,
+        reason: '${checked.stdout}\n${checked.stderr}',
+      );
+      await File(fixture.input).writeAsString(
+        modelSource('class One { One(this.id); final BigInt id; }'),
+      );
+      final stale = await fixture.cli(['--input', fixture.input, '--check']);
+      expect(stale.exitCode, 1, reason: '${stale.stdout}\n${stale.stderr}');
+      final previous = await File(fixture.output).readAsString();
+      await File(fixture.input).writeAsString(
+        modelSource(
+          'class One { One(this.id); final int id; } @DbEntity() class Invalid {}',
+        ),
+      );
+      final invalid = await fixture.cli(['--input', fixture.input]);
+      expect(invalid.exitCode, 65);
+      expect(await File(fixture.output).readAsString(), previous);
+    },
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
 }

@@ -7,7 +7,9 @@ import 'expressions.dart';
 import 'schema_expressions.dart';
 import 'virtual_table.dart';
 
+/// One column parsed from a `CREATE TABLE` statement.
 final class CatalogColumn {
+  /// [name] and [declaredType] are the text from the table definition.
   CatalogColumn(this.name, this.declaredType,
       {this.affinityOverride,
       this.generatedExpression,
@@ -24,24 +26,56 @@ final class CatalogColumn {
       this.checks = const [],
       this.primaryDescending = false,
       this.hidden = false});
+
+  /// Column name as declared.
   final String name;
+
+  /// Declared type text, including an empty type.
   final String declaredType;
+
+  /// Affinity forced by the parser, or null to derive it from [declaredType].
   final String? affinityOverride;
+
+  /// Generated-column expression, or null for a stored column.
   final Expr? generatedExpression;
+
+  /// Whether a generated column is `STORED` rather than `VIRTUAL`.
   final bool generatedStored;
 
   /// Hidden input fields of the supported metadata PRAGMA table sources.
   final bool hidden;
+
+  /// Primary-key position, starting at 1. Zero means the column is not a key.
   int primaryKey;
+
+  /// Literal default already evaluated, or null when absent.
   final Object? defaultValue;
+
+  /// Default expression, or null when the default is absent or literal.
   final Expr? defaultExpression;
+
+  /// Whether the column is `NOT NULL`.
   final bool notNull;
+
+  /// Conflict action for the `NOT NULL` constraint.
   final String notNullPolicy;
+
+  /// Original default SQL text, or null when there is no default.
   final String? defaultSql;
+
+  /// `UNIQUE`, `AUTOINCREMENT`, and a descending primary-key direction.
   final bool unique, autoIncrement, primaryDescending;
+
+  /// Set when the enclosing table is `STRICT`.
   bool strict = false;
+
+  /// Collation name. `binary` when the column does not name one.
   final String collation;
+
+  /// `CHECK` expressions written on this column.
   final List<Expr> checks;
+
+  /// Storage affinity used by comparisons and assignment.
   String get affinity {
     if (affinityOverride != null) return affinityOverride!;
     if (strict && declaredType.toUpperCase() == 'ANY') return 'blob';
@@ -50,7 +84,9 @@ final class CatalogColumn {
   }
 }
 
+/// One table, view, or virtual table from the catalog.
 final class CatalogTable {
+  /// [rootPage] is zero for a view or virtual table.
   CatalogTable(this.name, this.rootPage, List<CatalogColumn> columns,
       {this.withoutRowid = false,
       this.rowidAlias,
@@ -58,28 +94,71 @@ final class CatalogTable {
       this.virtualArguments = const [],
       this.virtualPositionals})
       : columns = List.unmodifiable(columns);
+
+  /// Object name as declared.
   final String name;
+
+  /// B-tree root, or zero when the object has no table b-tree.
   final int rootPage;
+
+  /// Declared columns, including generated columns.
   final List<CatalogColumn> columns;
+
+  /// Whether the table was declared `WITHOUT ROWID`.
   final bool withoutRowid;
+
+  /// Integer primary-key column that aliases rowid, if any.
   final String? rowidAlias;
+
+  /// Virtual-table module name, or null for an ordinary table.
   final String? virtualModule;
+
+  /// Module arguments inside `USING module(...)`.
   final List<String> virtualArguments;
+
+  /// Positional module arguments after bound evaluation, if prepared.
   final List<Object?>? virtualPositionals;
+
+  /// Whether [virtualModule] is set.
   bool get virtual => virtualModule != null;
+
+  /// Declared multi-column unique keys, including the primary key.
   final List<List<String>> uniqueKeys = [];
+
+  /// Columns of each automatic uniqueness index.
   final List<List<String>> autoIndexKeys = [];
+
+  /// Collation for each column of each automatic index.
   final List<List<String>> autoIndexCollations = [];
+
+  /// Descending flag for each column of each automatic index.
   final List<List<bool>> autoIndexDescending = [];
+
+  /// Whether each automatic index is the primary key.
   final List<bool> autoIndexPrimary = [];
+
+  /// Collation of each primary-key column, in key order.
   final List<String> primaryKeyCollations = [];
+
+  /// Descending flag of each primary-key column, in key order.
   final List<bool> primaryKeyDescending = [];
+
+  /// Conflict policy of each automatic index.
   final List<String> autoIndexPolicies = [];
+
+  /// Conflict policy of the primary key.
   String primaryPolicy = 'ABORT';
+
+  /// Table-level `CHECK` expressions.
   final List<Expr> checks = [];
+
+  /// Foreign keys declared on this table.
   final List<ForeignKey> foreignKeys = [];
+
+  /// Generated columns in evaluation order.
   final List<CatalogColumn> generatedOrder = [];
 
+  /// Whether [target] names this table's primary key.
   bool matchesForeignKeyPrimary(List<String> target, {required bool implicit}) {
     final primary = columns.where((c) => c.primaryKey != 0).toList();
     if (primary.length != target.length ||
@@ -95,6 +174,7 @@ final class CatalogTable {
             column.collation == primaryKeyCollations[column.primaryKey - 1]);
   }
 
+  /// Collation used when a foreign key compares [name].
   String foreignKeyCollation(String name, {required bool implicit}) {
     final column = columns
         .firstWhere((column) => asciiLower(column.name) == asciiLower(name));
@@ -103,6 +183,7 @@ final class CatalogTable {
         : column.collation;
   }
 
+  /// Writes generated-column values into [row].
   void evaluateGenerated(RowValues row, int encoding,
       {bool recomputeStored = false, bool lazy = false}) {
     final context = EvalContext(row,
@@ -140,6 +221,7 @@ final class CatalogTable {
     }
   }
 
+  /// Columns written to the record, excluding virtual generated columns.
   List<CatalogColumn> get storageColumns {
     final stored = columns
         .where((c) => c.generatedExpression == null || c.generatedStored)
@@ -151,30 +233,56 @@ final class CatalogTable {
   }
 }
 
+/// One foreign key parsed from a table definition.
 final class ForeignKey {
+  /// [columns] in this table reference [targetColumns] in [table].
   ForeignKey(this.columns, this.table, this.targetColumns,
       {this.onDelete = 'NO ACTION',
       this.onUpdate = 'NO ACTION',
       this.deferred = false});
+
+  /// Child columns and the parent columns they reference.
   final List<String> columns, targetColumns;
+
+  /// Parent table name.
   final String table;
+
+  /// `ON DELETE` and `ON UPDATE` actions.
   final String onDelete, onUpdate;
+
+  /// Whether the constraint is `DEFERRABLE INITIALLY DEFERRED`.
   final bool deferred;
 }
 
+/// One row of `sqlite_schema`.
 final class CatalogEntry {
+  /// [type] is `table`, `index`, `view`, or `trigger`.
   CatalogEntry(this.type, this.name, this.tableName, this.rootPage, this.sql);
+
+  /// Schema object type.
   final String type;
+
+  /// Object name.
   final String name;
+
+  /// Table the object belongs to. For a table, this is [name].
   final String tableName;
+
+  /// Root page stored in the schema record.
   final int rootPage;
+
+  /// Original `CREATE` SQL, or null for an internal object.
   final String? sql;
 }
 
 /// sqlite_schema metadata. CREATE definitions are parsed only when a table is used.
 final class DatabaseCatalog {
   DatabaseCatalog._(this.entries);
+
+  /// Schema rows in file order.
   final List<CatalogEntry> entries;
+
+  /// Reads `sqlite_schema` from page 1 of [pager].
   static Future<DatabaseCatalog> read(ReadOnlyPager pager) async {
     final entries = <CatalogEntry>[];
     await for (final record in BtreeReader(pager).scanTable(1)) {
@@ -203,6 +311,7 @@ final class DatabaseCatalog {
     return DatabaseCatalog._(List.unmodifiable(entries));
   }
 
+  /// Parses and returns the table, view, or virtual table named [name].
   CatalogTable table(String name) {
     final matches = entries.where(
         (e) => e.type != 'trigger' && asciiLower(e.name) == asciiLower(name));

@@ -2,31 +2,33 @@
 
 A Pure Dart database engine. SQL, JSON, FTS5, R-tree, and geopoly run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.0.1-dev.1`.
+Version `0.0.2`.
 
-1000 rows, the same SQL, and every checksum matched. The ratio is sqlite_plus divided by native.
+One arm64 phone, 1000 rows, the same SQL, and every checksum matched. The phone model was not recorded. Each time bar is linear for that row, so a 79× gap is 79 times shorter. The figure is native time divided by sqlite_plus time.
 
-![1000 rows, same SQL. Statement time on a logarithmic scale.](doc/bench-time.png)
+![1000 rows on one arm64 phone. Bar length matches measured statement time.](doc/bench-time.png)
 
-![Stored size for the same 1000-row statements.](doc/bench-size.png)
+![Stored size for the same 1000-row statements, on one linear scale.](doc/bench-size.png)
 
-| Operation | native | sqlite_plus | ratio |
+| Operation | native | sqlite_plus | faster |
 |---|---:|---:|---:|
-| Separate insert | 514.9 ms | 6.5 ms | 0.01 |
-| Transaction insert | 104.6 ms | 3.5 ms | 0.03 |
-| Separate update | 508.2 ms | 247.5 ms | 0.49 |
-| Bulk update | 1.3 ms | 92 µs | 0.07 |
-| Search | 126.3 ms | 7.6 ms | 0.06 |
-| Point lookup | 116.2 ms | 9.6 ms | 0.08 |
-| VACUUM | 1.2 ms | 9 µs | 0.01 |
-| Separate delete | 352.7 ms | 168.0 ms | 0.48 |
-| Delete all | 732 µs | 105 µs | 0.14 |
+| Separate insert | 514.9 ms | 6.5 ms | 79× |
+| Transaction insert | 104.6 ms | 3.5 ms | 30× |
+| Separate update | 508.2 ms | 247.5 ms | 2.1× |
+| Bulk update | 1.3 ms | 92 µs | 14× |
+| Search | 126.3 ms | 7.6 ms | 17× |
+| Point lookup | 116.2 ms | 9.6 ms | 12× |
+| VACUUM | 1.2 ms | 9 µs | 133× |
+| Separate delete | 352.7 ms | 168.0 ms | 2.1× |
+| Delete all | 732 µs | 105 µs | 7.0× |
+
+These are statement intervals from one sample, versionCode 2003. They are not a multi-device study, and they are not a claim that every workload is faster. Separate statements cross a platform channel in the native app and stay inside one isolate here.
 
 ## Install
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.0.1-dev.1
+  sqlite_plus: ^0.0.2
 ```
 
 ```dart

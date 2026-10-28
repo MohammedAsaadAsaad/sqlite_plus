@@ -3,12 +3,14 @@ part of '../sqlite_plus_orm.dart';
 /// Explicit relationship access. Loading performs I/O; obtaining a handle or
 /// linking tracked entries does not.
 extension EntityRelationships<T> on EntityEntry<T> {
+  /// Handle for the parent named by [relation]. Does not query.
   EntityReference<T, P> reference<P>(ForeignKey<T, P> relation) {
     _checkRelationshipEntry(this, relation.child);
     _checkRegisteredRelationship(context, relation);
     return EntityReference<T, P>._(this, relation);
   }
 
+  /// Handle for the children named by [relation]. Does not query.
   EntityCollection<C, T> collection<C>(ForeignKey<C, T> relation) {
     _checkRelationshipEntry(this, relation.parent);
     _checkRegisteredRelationship(context, relation);
@@ -16,9 +18,14 @@ extension EntityRelationships<T> on EntityEntry<T> {
   }
 }
 
+/// A child's link to one parent. The handle itself does no I/O.
 final class EntityReference<C, P> {
   EntityReference._(this.entry, this.relation);
+
+  /// Child entry that owns the foreign key.
   final EntityEntry<C> entry;
+
+  /// Foreign key this handle follows.
   final ForeignKey<C, P> relation;
 
   /// Returns the tracked parent, or null for an optional missing reference.
@@ -32,11 +39,17 @@ final class EntityReference<C, P> {
       entry.context._setRelationshipLink(entry, relation, parent);
 }
 
+/// A parent's children for one foreign key. The handle itself does no I/O.
 final class EntityCollection<C, P> {
   EntityCollection._(this.entry, this.relation);
+
+  /// Parent entry.
   final EntityEntry<P> entry;
+
+  /// Foreign key from the child type to this parent.
   final ForeignKey<C, P> relation;
 
+  /// Loads the children, preserving tracked instances.
   Future<List<C>> load() async =>
       (await entry.context.loadCollections(relation, [entry]))[entry]!;
 
@@ -74,6 +87,7 @@ final class EntityCollection<C, P> {
 /// Batch eager loading with bounded parameter lists. Results use the context's
 /// identity map and preserve local changes on already tracked entities.
 extension RelationshipLoading on DbContext {
+  /// Loads parents for [children] in batches.
   Future<Map<EntityEntry<C>, P?>> loadReferences<C, P>(
       ForeignKey<C, P> relation, Iterable<EntityEntry<C>> children) {
     final entries = List<EntityEntry<C>>.of(children);
@@ -141,6 +155,7 @@ extension RelationshipLoading on DbContext {
     });
   }
 
+  /// Loads children for [parents] in batches.
   Future<Map<EntityEntry<P>, List<C>>> loadCollections<C, P>(
       ForeignKey<C, P> relation, Iterable<EntityEntry<P>> parents) {
     final entries = List<EntityEntry<P>>.of(parents);

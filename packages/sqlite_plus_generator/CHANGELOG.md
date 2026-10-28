@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.2
+
+Published release. Depends on `sqlite_plus_orm` 0.0.2, `analyzer` 14, and `dart_style` 3.
+
 ## 0.0.1-dev.1
 
 First pre-release.

@@ -2,13 +2,19 @@
 
 Typed queries, change tracking, relationships, and reviewed migrations for `sqlite_plus`. The application names columns and objects. The runtime writes the SQL. Runtime code has no analyzer, reflection, native database, or `dart:io` dependency.
 
-Version `0.0.1-dev.1`.
+Version `0.0.2`.
+
+The pictures below are the engine, not this ORM. One arm64 phone, 1000 rows, the same SQL, checksums matched. Bar length is measured time.
+
+![Engine statement time for 1000 rows. Bar length matches measured time.](doc/bench-time.png)
+
+![Engine stored size for the same 1000-row statements.](doc/bench-size.png)
 
 ## Install
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.0.1-dev.1
+  sqlite_plus_orm: ^0.0.2
 ```
 
 ```dart
@@ -23,8 +29,6 @@ await context.migrations.ensureCreated();
 |---|---|---|
 | Model | `EntityType`, `Column`, `DbModel` | Table, property, codec, read, and optional write |
 | Unit of work | `DbContext`, `context.set` | Identity map and one transaction per `saveChanges` |
-
-A plain save keeps the loaded rows until the image is exported or queried. Many deleted rows of one table with no trigger and no rewriting foreign key leave in one `DELETE`. A single-column key uses `IN`. A group that already covers every stored row deletes the table without a key list.
 | Revision | `version: true` or `@DbVersion()` | Integer column incremented on update |
 | Filter | `TypedQuery` | Bound comparisons, `skip`, `take`, `count`, `single` |
 | JSON | `MappedField.at` | `json_extract` with a bound path |
@@ -32,6 +36,8 @@ A plain save keeps the loaded rows until the image is exported or queried. Many 
 | Spatial | `Bounds.intersects` | Four R-tree comparisons |
 | Links | `reference`, `collection` | Explicit load. The handle itself does no I/O |
 | Schema | `migrations.plan`, `applySafe`, `apply` | Reviewable diff. Renames stay reviewed |
+
+A plain save keeps the loaded rows until the image is exported or queried. Many deleted rows of one table with no trigger and no rewriting foreign key leave in one `DELETE`. A single-column key uses `IN`. A group that already covers every stored row deletes the table without a key list.
 
 `sqlite_plus_generator` writes this metadata from ordinary classes. The reading log below is the same runtime with a hand-written mapping.
 

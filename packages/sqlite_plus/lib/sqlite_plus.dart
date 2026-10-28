@@ -1,3 +1,6 @@
+/// Pure Dart SQLite-style SQL engine: memory images, JSON, FTS5, and R-tree.
+library;
+
 export 'src/storage/storage_backend.dart';
 export 'src/storage/storage_capabilities.dart';
 export 'src/storage/memory_storage_backend.dart';

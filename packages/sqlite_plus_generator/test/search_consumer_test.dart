@@ -6,13 +6,15 @@ import 'package:test/test.dart';
 import 'support.dart';
 
 void main() {
-  test('compiled consumer saves, searches, and reads through the ORM only',
-      () async {
-    final fixture = await Consumer.create(
-        await File('example/lib/models.dart').readAsString());
-    addTearDown(fixture.close);
-    await writeGenerated(await generateLibrary(fixture.input));
-    const app = r'''
+  test(
+    'compiled consumer saves, searches, and reads through the ORM only',
+    () async {
+      final fixture = await Consumer.create(
+        await File('example/lib/models.dart').readAsString(),
+      );
+      addTearDown(fixture.close);
+      await writeGenerated(await generateLibrary(fixture.input));
+      const app = r'''
 import 'package:generator_consumer/models.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
@@ -55,13 +57,15 @@ Future<void> main() async {
   print('search helpers passed');
 }
 ''';
-    expect(app.contains('package:sqlite_plus/'), isFalse);
-    expect(app.contains('SELECT'), isFalse);
-    expect(app.contains('INSERT'), isFalse);
-    expect(app.contains('CREATE'), isFalse);
-    expect(app.contains('MATCH'), isFalse);
-    final run = await fixture.run(app);
-    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
-    expect(normalizeNewlines(run.stdout), 'search helpers passed\n');
-  }, timeout: const Timeout(Duration(minutes: 2)));
+      expect(app.contains('package:sqlite_plus/'), isFalse);
+      expect(app.contains('SELECT'), isFalse);
+      expect(app.contains('INSERT'), isFalse);
+      expect(app.contains('CREATE'), isFalse);
+      expect(app.contains('MATCH'), isFalse);
+      final run = await fixture.run(app);
+      expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+      expect(normalizeNewlines(run.stdout), 'search helpers passed\n');
+    },
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
 }

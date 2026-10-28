@@ -1,21 +1,47 @@
 part of '../sqlite_plus_orm.dart';
 
+/// Converts one Dart value to a SQLite storage value and back.
 abstract class ValueCodec<V> {
+  /// A codec with no stored configuration.
   const ValueCodec();
+
+  /// `INTEGER`, `REAL`, `TEXT`, or `BLOB`.
   String get sqlType;
+
+  /// Whether SQL `NULL` is a valid stored value.
   bool get nullable => false;
+
+  /// Converts [value] to a SQLite storage value.
   Object? encode(V value);
+
+  /// Converts a SQLite storage value back to [V].
   V decode(Object? value);
 }
 
+/// Built-in codecs for the seven mapped Dart types.
 abstract final class Codecs {
+  /// Signed 64-bit integer stored as `INTEGER`.
   static const ValueCodec<BigInt> bigInt = _BigIntCodec();
+
+  /// Portable 53-bit integer stored as `INTEGER`.
   static const ValueCodec<int> integer = _IntegerCodec();
+
+  /// Finite double stored as `REAL`.
   static const ValueCodec<double> real = _RealCodec();
+
+  /// Text stored as `TEXT`.
   static const ValueCodec<String> text = _TextCodec();
+
+  /// `true` and `false` stored as integers `1` and `0`.
   static const ValueCodec<bool> boolean = _BooleanCodec();
+
+  /// A copied byte list stored as `BLOB`.
   static const ValueCodec<Uint8List> blob = _BlobCodec();
+
+  /// UTC timestamp stored as `TEXT`.
   static const ValueCodec<DateTime> dateTime = _DateTimeCodec();
+
+  /// Wraps [codec] so SQL `NULL` decodes as null.
   static ValueCodec<V?> nullable<V>(ValueCodec<V> codec) {
     if (codec.nullable) {
       throw const OrmMappingException('Codec is already nullable');

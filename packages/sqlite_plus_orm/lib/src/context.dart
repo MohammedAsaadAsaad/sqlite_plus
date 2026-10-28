@@ -1,5 +1,6 @@
 part of '../sqlite_plus_orm.dart';
 
+/// Where an entity sits in the unit of work.
 enum EntityState { added, unchanged, modified, deleted, detached }
 
 Map<String, Object?> _copyOrmRow(Map<String, Object?> values) =>
@@ -19,17 +20,25 @@ EntityKey _ormRowKey(EntityType<dynamic> type, Map<String, Object?> values) {
   return EntityKey(key);
 }
 
+/// One tracked entity and the snapshot taken when it was loaded or saved.
 final class EntityEntry<T> {
   EntityEntry._(this.context, this.type, this._entity, this._state,
       this._snapshot, this._identity);
+
+  /// Context that tracks this entry.
   final DbContext context;
+
+  /// Mapping used to read and write the entity.
   final EntityType<T> type;
   T _entity;
+
+  /// The current object. [DbSet.replace] can change it.
   T get entity => _entity;
   EntityState _state;
   Map<String, Object?> _snapshot;
   EntityKey? _identity;
 
+  /// Added, unchanged, modified, deleted, or detached.
   EntityState get state {
     if (_state != EntityState.unchanged) return _state;
     final values = type.encode(entity);
@@ -46,14 +55,23 @@ final class EntityEntry<T> {
       Map.unmodifiable(_copyOrmRow(_snapshot));
 }
 
+/// The tracked set of one entity type.
 final class DbSet<T> {
   DbSet._(this.context, this.type);
+
+  /// Context that owns this set.
   final DbContext context;
+
+  /// Mapping for [T].
   final EntityType<T> type;
 
+  /// Tracks [entity] as added. The insert happens in [DbContext.saveChanges].
   EntityEntry<T> add(T entity) => context._track(type, entity, true);
+
+  /// Tracks [entity] as already stored.
   EntityEntry<T> attach(T entity) => context._track(type, entity, false);
 
+  /// Marks [entity] deleted, or detaches it when it was only added.
   void remove(T entity) {
     context._checkTrackingMutable();
     final tracked = context._entries[entity];
@@ -68,6 +86,7 @@ final class DbSet<T> {
     }
   }
 
+  /// Keeps the tracking entry but swaps the object instance.
   EntityEntry<T> replace(T previous, T replacement) {
     context._checkTrackingMutable();
     final entry = context.entry(previous);
@@ -86,12 +105,14 @@ final class DbSet<T> {
     return entry;
   }
 
+  /// Query that materializes rows into this set's identity map.
   TypedQuery<T> get query => TypedQuery<T>(
       type: type,
       connection: context.connection,
       materialize: (row) => context._materialize(type, row),
       serialize: context._run);
 
+  /// The tracked entity for [key], loading it when it is not already tracked.
   Future<T?> find(EntityKey key) => context._run(() async {
         final values = key.values;
         if (values.length != type.keys.length) {
@@ -147,10 +168,15 @@ final class _SaveBatch {
 /// dirty. A second save or synchronous add/attach/remove/replace during a pending
 /// save is rejected; SQL query operations are queued instead.
 final class DbContext {
+  /// Claims [connection] exclusively for this context and [model].
   DbContext(this.connection, this.model) {
     connection.claim(this);
   }
+
+  /// Connection used for every statement.
   final OrmConnection connection;
+
+  /// Entity mappings and foreign keys.
   final DbModel model;
   final Map<Object, EntityEntry<dynamic>> _entries = Map.identity();
   final Map<EntityType<dynamic>, Map<EntityKey, EntityEntry<dynamic>>>
@@ -169,6 +195,8 @@ final class DbContext {
   bool _poisoned = false, _savePending = false;
   SchemaMigrator? _migrations;
   bool get _transactionFailed => _poisoned || _migrations?._failed == true;
+
+  /// Schema planner bound to this context's connection and model.
   SchemaMigrator get migrations =>
       _migrations ??= SchemaMigrator(connection, model, serialize: _run);
 
@@ -227,6 +255,7 @@ final class DbContext {
 
   Future<R> _serialize<R>(Future<R> Function() operation) => _run(operation);
 
+  /// The set for [type]. The type must belong to [model].
   DbSet<T> set<T>(EntityType<T> type) {
     _checkUsable();
     if (!model.entities.contains(type)) {
@@ -235,6 +264,7 @@ final class DbContext {
     return DbSet._(this, type);
   }
 
+  /// The tracking entry for an object already known to this context.
   EntityEntry<T> entry<T>(T entity) {
     _checkUsable();
     final entry = _entries[entity];
@@ -549,6 +579,7 @@ final class DbContext {
   }
 
   /// Snapshots the requested values synchronously before queuing SQL.
+  /// Writes added, modified, and deleted entities in one transaction.
   Future<int> saveChanges() {
     try {
       _checkUsable();
@@ -1283,6 +1314,7 @@ final class DbContext {
     }
   }
 
+  /// Releases the connection. Later calls fail.
   Future<void> close() {
     if (_closed) return Future.value();
     if (_closing) return _tail;

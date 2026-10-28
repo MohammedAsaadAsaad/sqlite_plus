@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
-"""Render the 1000-row comparison charts. Times are the measured statement intervals."""
+"""Render the 1000-row comparison charts from the recorded phone sample.
 
-import math
+Time bars are linear inside each row: length is that engine's measured time
+divided by the slower time on the same row. A shared axis would hide the
+microsecond rows next to a 515 ms insert, and a log axis would shrink the gap.
+"""
+
 import os
 
 from PIL import Image, ImageDraw, ImageFont
 
-REGULAR = "/usr/share/fonts/truetype/macos/Inter-Regular.ttf"
-MEDIUM = "/usr/share/fonts/truetype/macos/Inter-Medium.ttf"
-SEMIBOLD = "/usr/share/fonts/truetype/macos/Inter-SemiBold.ttf"
-BOLD = "/usr/share/fonts/truetype/macos/Inter-Bold.ttf"
+REGULAR = "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"
+BOLD = "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf"
 
 BG = (16, 20, 24)
-CARD = (22, 28, 35)
 INK = (244, 241, 234)
 MUTED = (154, 167, 178)
 LINE = (44, 56, 68)
+TRACK = (32, 40, 48)
 NATIVE = (126, 182, 217)
 PLUS = (224, 164, 90)
-TRACK = (32, 40, 48)
+PILL = (46, 36, 24)
 
 # name, native microseconds, sqlite_plus microseconds, native label, plus label
 ROWS = [
@@ -67,24 +69,23 @@ def speedup(native_us, plus_us):
 
 def render_time(path):
     scale = 2
-    width, height = 1280, 860
+    width, height = 1280, 980
     image = Image.new("RGB", (width * scale, height * scale), BG)
     draw = ImageDraw.Draw(image)
     title = font(BOLD, 34 * scale)
     sub = font(REGULAR, 16 * scale)
-    label = font(MEDIUM, 15 * scale)
-    tick = font(REGULAR, 12 * scale)
-    value = font(MEDIUM, 13 * scale)
-    badge = font(SEMIBOLD, 15 * scale)
-    legend = font(MEDIUM, 14 * scale)
+    label = font(BOLD, 15 * scale)
+    value = font(REGULAR, 14 * scale)
+    badge = font(BOLD, 16 * scale)
+    legend = font(BOLD, 14 * scale)
 
     def s(n):
         return n * scale
 
-    draw.text((s(48), s(36)), "1000 rows", font=title, fill=INK)
+    draw.text((s(48), s(32)), "1000 rows, true time", font=title, fill=INK)
     draw.text(
-        (s(48), s(80)),
-        "Same SQL. Every checksum matched. Shorter bar is faster.",
+        (s(48), s(78)),
+        "One arm64 phone. Same SQL. Checksums matched. Bar length is measured time.",
         font=sub,
         fill=MUTED,
     )
@@ -102,88 +103,71 @@ def render_time(path):
         draw.text((text_x, legend_y - s(3)), name, font=face, fill=INK)
         return swatch_left - s(22)
 
-    legend_y = s(48)
+    legend_y = s(42)
     cursor = legend_item(s(width - 48), PLUS, "sqlite_plus", legend)
     legend_item(cursor, NATIVE, "native", legend)
 
-    plot_left = s(236)
-    plot_right = s(860)
-    row_top = s(140)
-    row_h = s(72)
-    lo, hi = math.log10(1), math.log10(1_000_000)
-
-    def x_of(us):
-        t = (math.log10(max(us, 1)) - lo) / (hi - lo)
-        return plot_left + t * (plot_right - plot_left)
-
-    ticks = [
-        (1, "1 µs"),
-        (10, "10 µs"),
-        (100, "100 µs"),
-        (1_000, "1 ms"),
-        (10_000, "10 ms"),
-        (100_000, "100 ms"),
-        (1_000_000, "1 s"),
-    ]
-    axis_y = row_top + len(ROWS) * row_h + s(8)
-    for us, name in ticks:
-        x = x_of(us)
-        draw.line((x, row_top - s(8), x, axis_y), fill=LINE, width=scale)
-        tw = text_width(draw, tick, name)
-        draw.text((x - tw / 2, axis_y + s(8)), name, font=tick, fill=MUTED)
+    plot_left = s(240)
+    plot_right = s(820)
+    row_top = s(128)
+    row_h = s(86)
+    span = plot_right - plot_left
 
     for index, (name, native_us, plus_us, native_text, plus_text) in enumerate(ROWS):
         y = row_top + index * row_h
-        draw.text((s(40), y + s(18)), name, font=label, fill=INK)
+        draw.text((s(40), y + s(24)), name, font=label, fill=INK)
+        slower = max(native_us, plus_us)
         bar_h = s(16)
-        gap = s(6)
-        native_y = y + s(10)
+        gap = s(8)
+        native_y = y + s(12)
         plus_y = native_y + bar_h + gap
-        for bar_y, us, color, caption, column in (
-            (native_y, native_us, NATIVE, native_text, s(878)),
-            (plus_y, plus_us, PLUS, plus_text, s(878)),
+        rounded(draw, (plot_left, native_y, plot_right, native_y + bar_h), s(5), TRACK)
+        rounded(draw, (plot_left, plus_y, plot_right, plus_y + bar_h), s(5), TRACK)
+        for bar_y, us, color, caption in (
+            (native_y, native_us, NATIVE, native_text),
+            (plus_y, plus_us, PLUS, plus_text),
         ):
-            end = max(min(x_of(us), plot_right), plot_left + s(6))
+            length = span * (us / slower)
+            end = plot_left + max(length, scale)
             rounded(draw, (plot_left, bar_y, end, bar_y + bar_h), s(5), color)
-            draw.text((column, bar_y - s(1)), caption, font=value, fill=color)
+            draw.text((plot_right + s(12), bar_y - s(2)), caption, font=value, fill=color)
         mark = speedup(native_us, plus_us)
         mw = text_width(draw, badge, mark)
         pill_w = max(mw + s(22), s(72))
-        pill_x = s(1168)
-        pill = (pill_x, y + s(16), pill_x + pill_w, y + s(46))
-        rounded(draw, pill, s(12), (46, 36, 24))
+        pill_x = s(width - 48) - pill_w
+        rounded(draw, (pill_x, y + s(22), pill_x + pill_w, y + s(56)), s(14), PILL)
         draw.text(
-            (pill_x + (pill_w - mw) / 2, y + s(20)),
+            (pill_x + (pill_w - mw) / 2, y + s(28)),
             mark,
             font=badge,
             fill=PLUS,
         )
 
-    note = "Log scale. The gold figure is native time ÷ sqlite_plus time."
-    draw.text((s(40), s(height - 42)), note, font=sub, fill=MUTED)
+    note = "Each row has its own linear scale. The gold figure is native time ÷ sqlite_plus time."
+    draw.text((s(40), s(height - 48)), note, font=sub, fill=MUTED)
     image = image.resize((width, height), Image.Resampling.LANCZOS)
     image.save(path, "PNG", optimize=True)
 
 
 def render_size(path):
     scale = 2
-    width, height = 1280, 780
+    width, height = 1280, 820
     image = Image.new("RGB", (width * scale, height * scale), BG)
     draw = ImageDraw.Draw(image)
     title = font(BOLD, 34 * scale)
     sub = font(REGULAR, 16 * scale)
-    label = font(MEDIUM, 15 * scale)
+    label = font(BOLD, 15 * scale)
     tick = font(REGULAR, 12 * scale)
-    value = font(MEDIUM, 13 * scale)
-    legend = font(MEDIUM, 14 * scale)
+    value = font(REGULAR, 13 * scale)
+    legend = font(BOLD, 14 * scale)
 
     def s(n):
         return n * scale
 
-    draw.text((s(48), s(36)), "Stored size", font=title, fill=INK)
+    draw.text((s(48), s(32)), "Stored size", font=title, fill=INK)
     draw.text(
-        (s(48), s(80)),
-        "1000 rows, same statements. Native file beside the sqlite_plus image.",
+        (s(48), s(78)),
+        "Same 1000-row phone sample. One linear scale, 0 to 60 KB.",
         font=sub,
         fill=MUTED,
     )
@@ -201,31 +185,30 @@ def render_size(path):
         draw.text((text_x, legend_y - s(3)), name, font=face, fill=INK)
         return swatch_left - s(22)
 
-    legend_y = s(48)
+    legend_y = s(42)
     cursor = legend_item(s(width - 48), PLUS, "sqlite_plus", legend)
     legend_item(cursor, NATIVE, "native", legend)
 
     plot_left = s(250)
-    plot_right = s(1080)
-    row_top = s(140)
-    row_h = s(64)
+    plot_right = s(1040)
+    row_top = s(132)
+    row_h = s(68)
     maximum = 60.0
 
     def x_of(kb):
         return plot_left + (kb / maximum) * (plot_right - plot_left)
 
-    axis_y = row_top + len(SIZES) * row_h + s(6)
+    axis_y = row_top + len(SIZES) * row_h + s(8)
     for kb in (0, 16, 32, 48, 60):
         x = x_of(kb)
         draw.line((x, row_top - s(8), x, axis_y), fill=LINE, width=scale)
         name = f"{kb} KB"
         tw = text_width(draw, tick, name)
-        anchor = x - tw / 2
-        draw.text((anchor, axis_y + s(8)), name, font=tick, fill=MUTED)
+        draw.text((x - tw / 2, axis_y + s(8)), name, font=tick, fill=MUTED)
 
     for index, (name, native_kb, plus_kb) in enumerate(SIZES):
         y = row_top + index * row_h
-        draw.text((s(40), y + s(14)), name, font=label, fill=INK)
+        draw.text((s(40), y + s(16)), name, font=label, fill=INK)
         bar_h = s(14)
         native_y = y + s(8)
         plus_y = native_y + bar_h + s(6)
@@ -233,9 +216,9 @@ def render_size(path):
             (native_kb, native_y, NATIVE),
             (plus_kb, plus_y, PLUS),
         ):
-            end = max(x_of(kb), plot_left + s(4))
+            end = max(x_of(kb), plot_left + scale)
             rounded(draw, (plot_left, bar_y, end, bar_y + bar_h), s(4), color)
-            caption = f"{kb:.1f} KB"
+            caption = f"{kb:.0f} KB" if kb == int(kb) else f"{kb:.1f} KB"
             draw.text((end + s(8), bar_y - s(2)), caption, font=value, fill=color)
 
     image = image.resize((width, height), Image.Resampling.LANCZOS)

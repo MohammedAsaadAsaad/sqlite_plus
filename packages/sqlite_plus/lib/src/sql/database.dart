@@ -34,7 +34,9 @@ String sqlJournalMode(int writeVersion) {
   throw ArgumentError('Unsupported journal write version');
 }
 
+/// Materialized rows from one SQL statement.
 final class QueryResult implements SqlRows {
+  /// Columns and rows. Affinity, declared type, and collation follow [columns].
   QueryResult(List<String> columns, List<List<Object?>> rows,
       [List<String>? affinities,
       List<String>? declaredTypes,
@@ -47,18 +49,30 @@ final class QueryResult implements SqlRows {
             affinities ?? List.filled(columns.length, 'none')),
         columns = List.unmodifiable(columns),
         rows = List.unmodifiable(rows.map(List<Object?>.unmodifiable));
+
+  /// Storage affinity for each column, or `none` when the statement has none.
   @override
   final List<String> columnAffinities;
+
+  /// Declared type text for each column. Empty when the statement has none.
   final List<String> columnDeclaredTypes;
+
+  /// Collation name for each column.
   @override
   final List<String> columnCollations;
+
+  /// Column names in result order.
   @override
   final List<String> columns;
+
+  /// Row values. Integers are [BigInt].
   @override
   final List<List<Object?>> rows;
 }
 
+/// How one statement reached its rows. This is not SQLite bytecode.
 final class QueryPlan {
+  /// A scan described by [access], optional [rootPage], and optional [rowid].
   const QueryPlan(this.access, this.rootPage, this.rowid)
       : _index = null,
         covering = false,
@@ -67,11 +81,23 @@ final class QueryPlan {
       {this.covering = false, this.coveredColumns = const []})
       : rowid = null;
   final _IndexAccess? _index;
+
+  /// Whether the chosen index contains every selected column.
   final bool covering;
+
+  /// Columns the chosen index can satisfy without the table row.
   final List<String> coveredColumns;
+
+  /// Secondary index name, or null for a table scan.
   String? get indexName => _index?.table == false ? _index?.name : null;
+
+  /// Short description of the access path.
   final String access;
+
+  /// B-tree root page, when the plan names one.
   final int? rootPage;
+
+  /// Point-lookup rowid, when the plan is a single row.
   final BigInt? rowid;
 }
 
@@ -89,10 +115,16 @@ final class SqliteDatabase {
       [SqlFunctionRegistry? registry])
       : functions = registry ?? SqlFunctionRegistry();
   final ReadOnlyPager _pager;
+
+  /// Parsed schema for this image.
   final DatabaseCatalog catalog;
   final PlannerStatistics _statistics;
+
+  /// Scalar, aggregate, and collation callbacks for this connection.
   final SqlFunctionRegistry functions;
   bool _closed = false;
+
+  /// Opens a read-only database on [storage].
   static Future<SqliteDatabase> openReadOnly(StorageBackend storage,
       {SqlFunctionRegistry? functions}) async {
     final pager = await ReadOnlyPager.open(storage);
@@ -106,6 +138,7 @@ final class SqliteDatabase {
     }
   }
 
+  /// Releases the pager. Later reads fail.
   Future<void> close() async {
     _closed = true;
     await _pager.close();
@@ -634,6 +667,7 @@ final class SqliteDatabase {
     }
   }
 
+  /// Pages fetched from storage since this database was opened.
   int get pagesRead => _pager.pagesRead;
 
   /// This engine's plan text. It is not SQLite bytecode and not SQLite's
@@ -641,6 +675,7 @@ final class SqliteDatabase {
   List<String> describeQueryPlan(String sql) =>
       functions.run(() => _describeQueryPlan(sql));
 
+  /// Access path for one statement. [parameters] are bound values.
   QueryPlan explain(String sql, [List<Object?> parameters = const []]) =>
       functions.run(() => _explain(sql, parameters));
   List<String> _describeQueryPlan(String sql) {
@@ -673,9 +708,12 @@ final class SqliteDatabase {
         parameters.map(sqlValue).toList());
   }
 
+  /// Runs one read statement. [parameters] bind `?`, `?NNN`, and named placeholders.
   Future<QueryResult> query(String sql,
           [List<Object?> parameters = const []]) =>
       functions.run(() => _query(sql, parameters));
+
+  /// Runs one read statement inside an existing evaluation context.
   Future<QueryResult> queryWithContext(
           String sql, List<Object?> parameters, EvalContext context) =>
       functions.run(() => _query(sql, parameters, context));

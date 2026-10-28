@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.2
+
+Published release. Same engine surface as the first pre-release.
+
 ## 0.0.1-dev.1
 
 First pre-release.

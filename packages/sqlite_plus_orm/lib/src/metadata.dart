@@ -9,12 +9,15 @@ void _ormValidateName(String name) {
   }
 }
 
+/// Quotes [identifier] as a SQL delimited identifier.
 String quoteIdentifier(String identifier) {
   _ormValidateName(identifier);
   return '"${identifier.replaceAll('"', '""')}"';
 }
 
+/// One mapped property: its SQL name, codec, and how to read or write it.
 final class Column<T, V> {
+  /// [property] is the Dart name. [name] overrides the SQL column name.
   Column(
       {required this.property,
       String? name,
@@ -46,18 +49,40 @@ final class Column<T, V> {
     }
   }
 
+  /// Dart property name.
   final String property;
+
+  /// SQL column name.
   final String sqlName;
+
+  /// Converts between the Dart property and the stored value.
   final ValueCodec<V> codec;
+
+  /// Reads the property from an entity.
   final V Function(T) read;
+
+  /// Writes the property. Null when the column is immutable.
   final void Function(T, V)? write;
+
+  /// Primary-key position, starting at zero. Null when this is not a key.
   final int? keyOrder;
+
+  /// Whether the engine assigns this nullable integer key on insert.
   final bool generated;
+
+  /// Whether this integer is incremented on update.
   final bool version;
+
+  /// SQL default text, or null when the column has no default.
   final String? defaultSql;
+
+  /// Whether the column is declared `UNIQUE`.
   final bool unique;
+
+  /// Whether the codec accepts SQL `NULL`.
   bool get nullable => codec.nullable;
 
+  /// Encodes [value] and copies the stored form.
   Object? encodeValue(Object? value) {
     try {
       return copyOrmValue(codec.encode(value as V));
@@ -66,6 +91,7 @@ final class Column<T, V> {
     }
   }
 
+  /// Decodes a stored [value] into the property type.
   V decodeValue(Object? value) {
     try {
       return codec.decode(copyOrmValue(value));
@@ -74,6 +100,7 @@ final class Column<T, V> {
     }
   }
 
+  /// Reads [entity] and returns the stored form.
   Object? readEncoded(T entity) {
     try {
       return encodeValue(read(entity));
@@ -87,6 +114,8 @@ final class Column<T, V> {
   /// Invokes the typed setter without widening a function-valued getter through
   /// heterogeneous column metadata.
   bool get writable => write != null;
+
+  /// Decodes [value] and writes it through the property setter.
   void writeEncoded(T entity, Object? value) {
     final setter = write;
     if (setter == null) {
@@ -96,7 +125,9 @@ final class Column<T, V> {
   }
 }
 
+/// Decodes one stored row through column metadata.
 final class RowReader {
+  /// Copies [values] using case-insensitive SQL column names.
   RowReader(Map<String, Object?> values) {
     for (final entry in values.entries) {
       final key = _ormAsciiLower(entry.key);
@@ -107,7 +138,11 @@ final class RowReader {
     }
   }
   final Map<String, Object?> _values = {};
+
+  /// Decodes [column] from this row.
   V read<T, V>(Column<T, V> column) => column.decodeValue(raw(column.sqlName));
+
+  /// Stored value for [sqlName], copied so the caller cannot alias the row.
   Object? raw(String sqlName) {
     final key = _ormAsciiLower(sqlName);
     if (!_values.containsKey(key)) {
@@ -117,7 +152,9 @@ final class RowReader {
   }
 }
 
+/// A secondary index declared on an [EntityType].
 final class OrmIndex<T> {
+  /// [name] is the SQL index name. [columns] must be distinct and nonempty.
   OrmIndex(
       {required this.name,
       required List<Column<T, dynamic>> columns,
@@ -131,12 +168,20 @@ final class OrmIndex<T> {
       throw const OrmMappingException('Index needs distinct columns');
     }
   }
+
+  /// SQL index name.
   final String name;
+
+  /// Indexed columns, in index order.
   final List<Column<T, dynamic>> columns;
+
+  /// Whether the index is unique.
   final bool unique;
 }
 
+/// Table mapping: columns, factory, and optional store-value writer.
 final class EntityType<T> {
+  /// [tableName] is the SQL name. [create] builds an entity from a row.
   EntityType(
       {required this.tableName,
       required List<Column<T, dynamic>> columns,
@@ -200,18 +245,41 @@ final class EntityType<T> {
     }
     _validateVirtualModule();
   }
+
+  /// SQL table name.
   final String tableName;
+
+  /// `fts5`, `rtree`, or null for an ordinary table.
   final String? virtualModule;
+
+  /// Mapped columns, including keys.
   final List<Column<T, dynamic>> columns;
+
+  /// Builds an entity from a stored row.
   final T Function(RowReader) create;
+
+  /// Writes stored values back onto an existing entity, when it is mutable.
   final T Function(T, RowReader)? applyStoreValues;
+
+  /// Secondary indexes.
   final List<OrmIndex<T>> indexes;
+
+  /// Primary-key columns in key order.
   late final List<Column<T, dynamic>> keys;
+
+  /// The generated primary key, or null.
   late final Column<T, dynamic>? generatedKey;
+
+  /// The version column, or null.
   late final Column<T, dynamic>? versionColumn;
+
+  /// The entity type [T].
   Type get dartType => T;
 
+  /// Whether [applyStoreValues] was supplied.
   bool get canApplyStoreValues => applyStoreValues != null;
+
+  /// Applies a stored row to [entity].
   T applyValues(T entity, RowReader row) {
     final apply = applyStoreValues;
     if (apply == null) {
@@ -221,6 +289,7 @@ final class EntityType<T> {
     return apply(entity, row);
   }
 
+  /// Encoded column values for [entity], keyed by SQL name.
   Map<String, Object?> encode(T entity) => {
         for (final column in columns) column.sqlName: column.readEncoded(entity)
       };
@@ -265,9 +334,12 @@ final class EntityType<T> {
   }
 }
 
+/// SQL action for a foreign-key delete or update.
 enum ForeignKeyAction { noAction, restrict, cascade, setNull, setDefault }
 
+/// A foreign key from [child] columns to a unique parent key.
 final class ForeignKey<C, P> {
+  /// [columns] and [targetColumns] must have the same width and codecs.
   ForeignKey(
       {required this.name,
       required this.child,
@@ -318,17 +390,35 @@ final class ForeignKey<C, P> {
       }
     }
   }
+
+  /// Constraint name.
   final String name;
+
+  /// Entity that stores the foreign key.
   final EntityType<C> child;
+
+  /// Entity that owns the referenced key.
   final EntityType<P> parent;
+
+  /// Child columns, in constraint order.
   final List<Column<C, dynamic>> columns;
+
+  /// Parent columns, in constraint order.
   final List<Column<P, dynamic>> targetColumns;
+
+  /// Action when the parent row is deleted.
   final ForeignKeyAction onDelete;
+
+  /// Action when the parent key is updated.
   final ForeignKeyAction onUpdate;
+
+  /// Whether the constraint is deferred until commit.
   final bool deferred;
 }
 
+/// The entities and foreign keys that form one schema.
 final class DbModel {
+  /// [entities] and [foreignKeys] are copied and validated.
   DbModel(List<EntityType<dynamic>> entities,
       {List<ForeignKey<dynamic, dynamic>> foreignKeys = const []})
       : entities = List.unmodifiable(entities),
@@ -358,14 +448,22 @@ final class DbModel {
       }
     }
   }
+
+  /// Mapped entities.
   final List<EntityType<dynamic>> entities;
+
+  /// Foreign keys between [entities].
   final List<ForeignKey<dynamic, dynamic>> foreignKeys;
 }
 
+/// A copied primary-key value list.
 final class EntityKey {
+  /// Copies [values] so later caller edits do not change the key.
   EntityKey(List<Object?> values)
       : _values = List.unmodifiable(values.map(copyOrmValue));
   final List<Object?> _values;
+
+  /// A fresh copy of the key values.
   List<Object?> get values => List.unmodifiable(_values.map(copyOrmValue));
   @override
   bool operator ==(Object other) =>

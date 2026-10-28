@@ -25,8 +25,11 @@ abstract final class CustomerColumns {
     read: (entity) => entity.revision,
     version: true,
   );
-  static final List<Column<Customer, dynamic>> all =
-      List.unmodifiable([id, name, revision]);
+  static final List<Column<Customer, dynamic>> all = List.unmodifiable([
+    id,
+    name,
+    revision,
+  ]);
 }
 
 abstract final class CustomerMapping {
@@ -38,9 +41,10 @@ abstract final class CustomerMapping {
   );
   static Customer _create(RowReader row) {
     final entity = Customer(
-        id: row.read(CustomerColumns.id),
-        name: row.read(CustomerColumns.name),
-        revision: row.read(CustomerColumns.revision));
+      id: row.read(CustomerColumns.id),
+      name: row.read(CustomerColumns.name),
+      revision: row.read(CustomerColumns.revision),
+    );
     return entity;
   }
 
@@ -58,11 +62,11 @@ final class CustomerFields {
 
 extension CustomerQuery on TypedQuery<Customer> {
   TypedQuery<Customer> filter(
-          SqlPredicate<Customer> Function(CustomerFields row) build) =>
-      where(build(CustomerFields.instance));
+    SqlPredicate<Customer> Function(CustomerFields row) build,
+  ) => where(build(CustomerFields.instance));
   TypedQuery<Customer> orderByFields(
-          List<SqlOrdering<Customer>> Function(CustomerFields row) build) =>
-      orderBy(build(CustomerFields.instance));
+    List<SqlOrdering<Customer>> Function(CustomerFields row) build,
+  ) => orderBy(build(CustomerFields.instance));
 }
 
 abstract final class PurchaseColumns {
@@ -89,8 +93,11 @@ abstract final class PurchaseColumns {
     read: (entity) => entity.total,
     write: (entity, value) => entity.total = value,
   );
-  static final List<Column<Purchase, dynamic>> all =
-      List.unmodifiable([id, customerId, total]);
+  static final List<Column<Purchase, dynamic>> all = List.unmodifiable([
+    id,
+    customerId,
+    total,
+  ]);
 }
 
 abstract final class PurchaseMapping {
@@ -101,9 +108,10 @@ abstract final class PurchaseMapping {
   );
   static Purchase _create(RowReader row) {
     final entity = Purchase(
-        id: row.read(PurchaseColumns.id),
-        customerId: row.read(PurchaseColumns.customerId),
-        total: row.read(PurchaseColumns.total));
+      id: row.read(PurchaseColumns.id),
+      customerId: row.read(PurchaseColumns.customerId),
+      total: row.read(PurchaseColumns.total),
+    );
     entity.id = row.read(PurchaseColumns.id);
     entity.customerId = row.read(PurchaseColumns.customerId);
     entity.total = row.read(PurchaseColumns.total);
@@ -117,13 +125,13 @@ abstract final class PurchaseMapping {
 abstract final class PurchaseRelationships {
   static final ForeignKey<Purchase, Customer> customer =
       ForeignKey<Purchase, Customer>(
-    name: "Purchase_customerId_Customer",
-    child: PurchaseMapping.instance,
-    parent: CustomerMapping.instance,
-    columns: [PurchaseColumns.customerId],
-    targetColumns: [CustomerColumns.id],
-    onDelete: ForeignKeyAction.noAction,
-  );
+        name: "Purchase_customerId_Customer",
+        child: PurchaseMapping.instance,
+        parent: CustomerMapping.instance,
+        columns: [PurchaseColumns.customerId],
+        targetColumns: [CustomerColumns.id],
+        onDelete: ForeignKeyAction.noAction,
+      );
 }
 
 final class PurchaseFields {
@@ -136,11 +144,11 @@ final class PurchaseFields {
 
 extension PurchaseQuery on TypedQuery<Purchase> {
   TypedQuery<Purchase> filter(
-          SqlPredicate<Purchase> Function(PurchaseFields row) build) =>
-      where(build(PurchaseFields.instance));
+    SqlPredicate<Purchase> Function(PurchaseFields row) build,
+  ) => where(build(PurchaseFields.instance));
   TypedQuery<Purchase> orderByFields(
-          List<SqlOrdering<Purchase>> Function(PurchaseFields row) build) =>
-      orderBy(build(PurchaseFields.instance));
+    List<SqlOrdering<Purchase>> Function(PurchaseFields row) build,
+  ) => orderBy(build(PurchaseFields.instance));
 }
 
 abstract final class NoteColumns {
@@ -158,8 +166,10 @@ abstract final class NoteColumns {
     codec: Codecs.text,
     read: (entity) => entity.document,
   );
-  static final List<Column<Note, dynamic>> all =
-      List.unmodifiable([id, document]);
+  static final List<Column<Note, dynamic>> all = List.unmodifiable([
+    id,
+    document,
+  ]);
 }
 
 abstract final class NoteMapping {
@@ -171,7 +181,9 @@ abstract final class NoteMapping {
   );
   static Note _create(RowReader row) {
     final entity = Note(
-        id: row.read(NoteColumns.id), document: row.read(NoteColumns.document));
+      id: row.read(NoteColumns.id),
+      document: row.read(NoteColumns.document),
+    );
     return entity;
   }
 
@@ -191,8 +203,8 @@ extension NoteQuery on TypedQuery<Note> {
   TypedQuery<Note> filter(SqlPredicate<Note> Function(NoteFields row) build) =>
       where(build(NoteFields.instance));
   TypedQuery<Note> orderByFields(
-          List<SqlOrdering<Note>> Function(NoteFields row) build) =>
-      orderBy(build(NoteFields.instance));
+    List<SqlOrdering<Note>> Function(NoteFields row) build,
+  ) => orderBy(build(NoteFields.instance));
 }
 
 abstract final class ArticleColumns {
@@ -210,8 +222,10 @@ abstract final class ArticleColumns {
     codec: Codecs.text,
     read: (entity) => entity.body,
   );
-  static final List<Column<Article, dynamic>> all =
-      List.unmodifiable([rowid, body]);
+  static final List<Column<Article, dynamic>> all = List.unmodifiable([
+    rowid,
+    body,
+  ]);
 }
 
 abstract final class ArticleMapping {
@@ -224,8 +238,9 @@ abstract final class ArticleMapping {
   );
   static Article _create(RowReader row) {
     final entity = Article(
-        rowid: row.read(ArticleColumns.rowid),
-        body: row.read(ArticleColumns.body));
+      rowid: row.read(ArticleColumns.rowid),
+      body: row.read(ArticleColumns.body),
+    );
     return entity;
   }
 
@@ -242,11 +257,11 @@ final class ArticleFields {
 
 extension ArticleQuery on TypedQuery<Article> {
   TypedQuery<Article> filter(
-          SqlPredicate<Article> Function(ArticleFields row) build) =>
-      where(build(ArticleFields.instance));
+    SqlPredicate<Article> Function(ArticleFields row) build,
+  ) => where(build(ArticleFields.instance));
   TypedQuery<Article> orderByFields(
-          List<SqlOrdering<Article>> Function(ArticleFields row) build) =>
-      orderBy(build(ArticleFields.instance));
+    List<SqlOrdering<Article>> Function(ArticleFields row) build,
+  ) => orderBy(build(ArticleFields.instance));
   TypedQuery<Article> search(String text) =>
       TypedQuery<Article>(type: type, connection: connection).search(text);
 }
@@ -283,8 +298,13 @@ abstract final class PlaceColumns {
     codec: Codecs.real,
     read: (entity) => entity.maxY,
   );
-  static final List<Column<Place, dynamic>> all =
-      List.unmodifiable([id, minX, maxX, minY, maxY]);
+  static final List<Column<Place, dynamic>> all = List.unmodifiable([
+    id,
+    minX,
+    maxX,
+    minY,
+    maxY,
+  ]);
 }
 
 abstract final class PlaceMapping {
@@ -297,11 +317,12 @@ abstract final class PlaceMapping {
   );
   static Place _create(RowReader row) {
     final entity = Place(
-        id: row.read(PlaceColumns.id),
-        minX: row.read(PlaceColumns.minX),
-        maxX: row.read(PlaceColumns.maxX),
-        minY: row.read(PlaceColumns.minY),
-        maxY: row.read(PlaceColumns.maxY));
+      id: row.read(PlaceColumns.id),
+      minX: row.read(PlaceColumns.minX),
+      maxX: row.read(PlaceColumns.maxX),
+      minY: row.read(PlaceColumns.minY),
+      maxY: row.read(PlaceColumns.maxY),
+    );
     return entity;
   }
 
@@ -327,19 +348,20 @@ final class PlaceFields {
 
 extension PlaceQuery on TypedQuery<Place> {
   TypedQuery<Place> filter(
-          SqlPredicate<Place> Function(PlaceFields row) build) =>
-      where(build(PlaceFields.instance));
+    SqlPredicate<Place> Function(PlaceFields row) build,
+  ) => where(build(PlaceFields.instance));
   TypedQuery<Place> orderByFields(
-          List<SqlOrdering<Place>> Function(PlaceFields row) build) =>
-      orderBy(build(PlaceFields.instance));
+    List<SqlOrdering<Place>> Function(PlaceFields row) build,
+  ) => orderBy(build(PlaceFields.instance));
 }
 
-final DbModel generatedModel = DbModel([
-  CustomerMapping.instance,
-  PurchaseMapping.instance,
-  NoteMapping.instance,
-  ArticleMapping.instance,
-  PlaceMapping.instance
-], foreignKeys: [
-  PurchaseRelationships.customer
-]);
+final DbModel generatedModel = DbModel(
+  [
+    CustomerMapping.instance,
+    PurchaseMapping.instance,
+    NoteMapping.instance,
+    ArticleMapping.instance,
+    PlaceMapping.instance,
+  ],
+  foreignKeys: [PurchaseRelationships.customer],
+);

@@ -2,13 +2,19 @@
 
 A development-time generator for `sqlite_plus_orm`. It reads Dart classes and writes columns, codecs, keys, revisions, relationships, JSON `path`, FTS5 `search`, and R-tree `bounds`. The generated application depends on `sqlite_plus_orm`. The analyzer stays in this development tool.
 
-Version `0.0.1-dev.1`.
+Version `0.0.2`.
+
+The pictures below are the `sqlite_plus` engine, not this generator. One arm64 phone, 1000 rows, the same SQL, checksums matched. Bar length is measured time.
+
+![Engine statement time for 1000 rows. Bar length matches measured time.](doc/bench-time.png)
+
+![Engine stored size for the same 1000-row statements.](doc/bench-size.png)
 
 ## Install
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.0.1-dev.1
+  sqlite_plus_generator: ^0.0.2
 ```
 
 The source file imports `sqlite_plus_orm` and declares `part 'models.orm.g.dart';`.
@@ -163,7 +169,7 @@ Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2
 | Located, before any write | Generic, inherited, or mixin storage |
 | Located, before any write | Collection fields, unsupported types, ambiguous constructors, unmappable final state |
 
-Tests cover golden output, conventions, annotations, aliases, constructors, diagnostics, CLI ownership, and compiled consumers. Those consumers run migrations, linked CRUD, revisions, queries, relationships, and a reopen. Analyzer `6.4.1` and `dart_style` `2.3.6` are pinned. The ORM runtime depends on `sqlite_plus`.
+Tests cover golden output, conventions, annotations, aliases, constructors, diagnostics, CLI ownership, and compiled consumers. Those consumers run migrations, linked CRUD, revisions, queries, relationships, and a reopen. The tool resolves `analyzer` 14 and `dart_style` 3. The ORM runtime depends on `sqlite_plus`.
 
 ## Where the generated code runs
 

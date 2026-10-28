@@ -1,13 +1,23 @@
 part of '../sqlite_plus_orm.dart';
 
+/// A SQLite connection the ORM can query, write, and close.
 abstract class OrmConnection {
   Object? _owner;
+
+  /// Runs a statement that returns rows.
   Future<QueryResult> query(String sql, [List<Object?> parameters = const []]);
+
+  /// Runs a statement that changes rows.
   Future<MutationResult> execute(String sql,
       [List<Object?> parameters = const []]);
+
+  /// Whether this connection has an open transaction.
   bool get inTransaction;
+
+  /// Closes the connection. The owner must already have released it.
   Future<void> close();
 
+  /// Gives [owner] exclusive use of this connection.
   void claim(Object owner) {
     if (_owner != null) {
       if (identical(_owner, owner)) return;
@@ -17,6 +27,7 @@ abstract class OrmConnection {
     _owner = owner;
   }
 
+  /// Drops the claim held by [owner].
   void release(Object owner) {
     if (!identical(_owner, owner)) {
       throw const OrmStateException(
@@ -30,14 +41,20 @@ abstract class OrmConnection {
   void _release(Object owner) {}
 }
 
+/// ORM connection over a [MutableSqliteDatabase].
 final class MutableDatabaseConnection extends OrmConnection {
+  /// Uses [database]. Closes it on [close] only when [closeDatabase] is true.
   MutableDatabaseConnection(this.database, {this.closeDatabase = false});
 
   /// Opens an in-memory engine database and closes it with this connection.
   static Future<MutableDatabaseConnection> openMemory() async =>
       MutableDatabaseConnection(await MutableSqliteDatabase.create(),
           closeDatabase: true);
+
+  /// Engine database this connection forwards to.
   final MutableSqliteDatabase database;
+
+  /// Whether [close] also closes [database].
   final bool closeDatabase;
   bool _closed = false;
   static final _leases = Expando<MutableDatabaseConnection>();
@@ -102,11 +119,18 @@ final class MutableDatabaseConnection extends OrmConnection {
 /// false for this path, including after a successful reopen.
 final class BrowserDatabaseConnection extends OrmConnection {
   BrowserDatabaseConnection._(this.storage, this.capabilities, this.database);
+
+  /// Byte store holding the database image.
   final StorageBackend storage;
+
+  /// Capabilities reported when the store was opened.
   final StorageCapabilities capabilities;
+
+  /// In-memory engine loaded from [storage].
   final MutableSqliteDatabase database;
   bool _closed = false;
 
+  /// Loads [opened] into a memory database, or creates one when it is empty.
   static Future<BrowserDatabaseConnection> open(OpenedStorage opened) async {
     requireWritable(opened.capabilities);
     final length = await opened.storage.length();
@@ -129,6 +153,7 @@ final class BrowserDatabaseConnection extends OrmConnection {
     if (_closed) throw const OrmStateException('Connection is closed');
   }
 
+  /// Writes the current image back to [storage].
   Future<void> flush() async {
     _check();
     requireWritable(capabilities);
