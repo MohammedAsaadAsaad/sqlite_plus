@@ -3140,15 +3140,100 @@ final class ImageMutations {
         : null;
     var changes = 0;
     BigInt? last;
+    // A WHERE clause that is only "rowid = <integer>" names one row. Scanning
+    // and sorting the whole table for that comparison made each single-row
+    // update and delete cost grow with the table.
+    BigInt? soleRowid;
+    var soleExact = false;
+    if (!insert &&
+        !table.view &&
+        !schema.withoutRowid &&
+        where != null &&
+        fromSources == null &&
+        where is BinaryExpr &&
+        ['=', '=='].contains(where.op)) {
+      final comparison = where;
+      ColumnExpr? column;
+      Expr? constant;
+      if (comparison.left is ColumnExpr && comparison.right is! ColumnExpr) {
+        column = comparison.left as ColumnExpr;
+        constant = comparison.right;
+      } else if (comparison.right is ColumnExpr &&
+          comparison.left is! ColumnExpr) {
+        column = comparison.right as ColumnExpr;
+        constant = comparison.left;
+      }
+      if (column != null && constant != null) {
+        final parts = column.key.split('.');
+        final field = parts.last;
+        final aliasName = asciiLower(schema.rowidAlias ?? '');
+        final namesRowid = field == 'rowid' ||
+            field == 'oid' ||
+            field == '_rowid_' ||
+            (aliasName.isNotEmpty && field == aliasName);
+        final qualifierOk = parts.length == 1 ||
+            parts.length == 2 &&
+                (parts.first == asciiLower(alias) ||
+                    parts.first == asciiLower(name)) ||
+            parts.length == 3 &&
+                parts[0] == 'main' &&
+                (parts[1] == asciiLower(alias) || parts[1] == asciiLower(name));
+        if (namesRowid && qualifierOk) {
+          try {
+            constant.validate({});
+            var value = constant.evaluate(_constantContext(bound));
+            final directInteger = value is BigInt || value is int;
+            value =
+                value is String || value is Uint8List ? numeric(value) : value;
+            if (value is int) value = BigInt.from(value);
+            if (value is double &&
+                value.isFinite &&
+                value == value.truncateToDouble() &&
+                value > -(BigInt.one << 63).toDouble() &&
+                value < (BigInt.one << 63).toDouble()) {
+              value = BigInt.from(value);
+            }
+            if (value is BigInt &&
+                value >= -(BigInt.one << 63) &&
+                value < BigInt.one << 63) {
+              soleRowid = value;
+              soleExact = directInteger;
+            }
+          } on SqlException {
+            soleRowid = null;
+          }
+        }
+      }
+    }
     // UPDATE and DELETE walk the pre-image. An insert does not, and sorting
     // every existing row made the next insert slower as the table grew.
     final List<TableRow> originalRows;
     if (insert) {
       originalRows = const [];
+    } else if (soleRowid != null) {
+      TableRow? found;
+      for (final row in table.rows) {
+        if (row.rowId == soleRowid) {
+          found = row;
+          break;
+        }
+      }
+      final matched = found != null &&
+          (soleExact ||
+              truth(where!.evaluate(_context(table, found, bound)), encoding) ==
+                  true);
+      if (found != null && !matched || found == null && !soleExact) {
+        // The folded integer and the real comparison disagreed, or a coerced
+        // constant named a missing row. Walk every row with that comparison.
+        soleRowid = null;
+        originalRows = table.rows.toList();
+      } else {
+        originalRows = found == null ? const <TableRow>[] : [found];
+      }
     } else {
       originalRows = table.rows.toList();
     }
-    if (!insert && !table.view) {
+    if (!insert && !table.view && soleRowid == null) {
       if (schema.withoutRowid) {
         final primary = schema.columns.where((c) => c.primaryKey != 0).toList()
           ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
@@ -3426,6 +3511,54 @@ final class ImageMutations {
             insertedRowid: insert && !schema.withoutRowid ? next.rowId : null);
         if (replacing == null && insert) last = next.rowId;
         return;
+      }
+      // Same-rowid update. prepare() already checked this row. Replacing the
+      // list entry keeps uniqueness of the primary key, and resident unique
+      // keys move from the old values to the new ones.
+      if (replacing != null &&
+          prepared &&
+          next.rowId == replacing.rowId &&
+          !schema.withoutRowid &&
+          !table.view &&
+          (activePolicy == 'ABORT' || activePolicy == 'DEFAULT') &&
+          schema.primaryPolicy != 'REPLACE' &&
+          schema.autoIndexPolicies.every((item) => item == 'ABORT')) {
+        final slot = table.rows.indexOf(replacing);
+        if (slot >= 0) {
+          ensureResidentKeys();
+          final ids = table.residentKeyIds!;
+          final uniques = table.residentUniques!;
+          final removed = <(int, String)>[];
+          final added = <(int, String)>[];
+          var conflict = false;
+          for (var i = 0; i < uniqueIndexes.length; i++) {
+            final oldKey = keyFor(uniqueIndexes[i], replacing);
+            final newKey = keyFor(uniqueIndexes[i], next);
+            if (oldKey == newKey) continue;
+            if (oldKey != null) {
+              uniques[ids[i]]!.remove(oldKey);
+              removed.add((i, oldKey));
+            }
+            if (newKey != null && !uniques[ids[i]]!.add(newKey)) {
+              conflict = true;
+              break;
+            }
+            if (newKey != null) added.add((i, newKey));
+          }
+          if (conflict) {
+            for (final item in added) {
+              uniques[ids[item.$1]]!.remove(item.$2);
+            }
+            for (final item in removed) {
+              uniques[ids[item.$1]]!.add(item.$2);
+            }
+            throw const SqlConstraintException('UNIQUE constraint failed');
+          }
+          table.rows[slot] = next;
+          changes++;
+          _changed();
+          return;
+        }
       }
       table.invalidateResidentKeys();
       final old = table.rows.toList();
@@ -3723,8 +3856,23 @@ final class ImageMutations {
               _tables.values.any((child) => child.schema.foreignKeys.any(
                   (key) => asciiLower(key.table) == asciiLower(schema.name))));
       final pendingDelete = <TableRow>[];
-      for (final row
-          in viewFromAssignments?.map((entry) => entry.$1) ?? originalRows) {
+      final clearAll = bulkDelete &&
+          where == null &&
+          fromAssignments == null &&
+          viewFromAssignments == null &&
+          !hasReturning;
+      if (clearAll && table.rows.isNotEmpty) {
+        final removed = table.rows.length;
+        changes = removed;
+        table.rows.clear();
+        table.invalidateResidentKeys();
+        for (var i = 0; i < removed; i++) {
+          _changed();
+        }
+      }
+      for (final row in clearAll
+          ? const <TableRow>[]
+          : viewFromAssignments?.map((entry) => entry.$1) ?? originalRows) {
         final viewFromValues = viewFromAssignments?[viewFromIndex++].$2;
         final context = _context(table, row, bound);
         if (fromAssignments != null

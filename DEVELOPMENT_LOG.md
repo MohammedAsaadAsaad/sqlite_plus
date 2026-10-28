@@ -1532,3 +1532,14 @@ result=pass
   repeated sample, not a physical phone, and not iOS. The other two ABIs
   were not installed.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — same-rowid update and unqualified delete
+
+- A phone log in ميزان, 1000 rows, Asia/Hebron 10:40–10:43, showed sqlite_plus at 74.333 s for separate updates, 43.956 s for one bulk update, and 17.411 s for separate deletes. Checksums on that phone matched the native engine. This change addresses those three statement shapes.
+- A same-rowid `UPDATE` replaces that row and moves unique keys. `DELETE` whose comparison is only a rowid alias and an integer reads that row. `DELETE FROM` with no `WHERE` clears the row list. `changes()` still counts every removed row. `UPDATE OR REPLACE`, a rowid change, triggers, foreign keys, `CHECK`, `NOT NULL`, and `RETURNING` keep their existing paths.
+- `packages/sqlite_plus`: `dart format --output=none --set-exit-if-changed .` and `dart analyze --fatal-infos` passed. `dart test` passed 10512 tests. The package example passed analysis, its test, and `dart run bin/main.dart`.
+- `examples/compare`: `flutter analyze` reported no issues and `flutter test` passed 13 tests. Those tests do not open `sqflite`.
+- Linux x64 JIT, Dart 3.13.7, not AOT, not a phone, two samples of 1000 rows and no secondary index. After the bulk update the checksum was 1000 rows and sum 501500. After the per-row update it was 1000 rows and sum 502500. After each delete it was 0 rows and sum 0. Bulk update 55 ms then 52 ms. Separate update 646 ms then 625 ms. `DELETE FROM` 1 ms then 1 ms. Separate delete 118 ms then 136 ms.
+- The phone was not run again. Search, primary-key reads, and `VACUUM` were not part of this measurement.
+- `flutter build apk --split-per-abi --release` wrote three packages, debug keystore, application id `dev.sqliteplus.engine_bench`, versionName 1.0.0. `bench-arm64-v8a.apk` 19473455 bytes, versionCode 2002, sha256 `ec881d9cc8982a42b672010106a237182a40c39570e00182bdbd653b663ebad6`. `bench-armeabi-v7a.apk` 16991109 bytes, versionCode 1002, sha256 `79db3b2c6bd671a00d39ba1b156dc856d279601c2a0b83be77617deeb23b2bf4`. `bench-x86_64.apk` 20964918 bytes, versionCode 4002, sha256 `21715d0753636f7444c5247de864cefed602c3faffa65a4a5bbdc4951f3c5233`. None of these three files was installed here.
+- M9 stays unchecked. Nothing was uploaded to pub.dev.

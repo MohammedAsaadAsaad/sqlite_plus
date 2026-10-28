@@ -42,8 +42,8 @@ Each release APK holds one ABI. Flutter signs them with the debug keystore, so a
 
 | ABI | File | Bytes | versionCode | sha256 |
 |---|---|---:|---:|---|
-| arm64-v8a | `dist/bench-arm64-v8a.apk` | 19473455 | 2001 | `954adf7e5327bce9a39b5a3320024919514409328fc3f7f93c47091cfd033281` |
-| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 16974725 | 1001 | `b10f346424d1d548b078391b0bd7fb1421e29e909bf3874cd4b1dc50d8d8b0df` |
-| x86_64 | `dist/bench-x86_64.apk` | 20964918 | 4001 | `5ac8989c3588f3f6632989b2327b549d50c9dadcdfe8dc0733555aa2310ceb34` |
+| arm64-v8a | `dist/bench-arm64-v8a.apk` | 19473455 | 2002 | `ec881d9cc8982a42b672010106a237182a40c39570e00182bdbd653b663ebad6` |
+| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 16991109 | 1002 | `79db3b2c6bd671a00d39ba1b156dc856d279601c2a0b83be77617deeb23b2bf4` |
+| x86_64 | `dist/bench-x86_64.apk` | 20964918 | 4002 | `21715d0753636f7444c5247de864cefed602c3faffa65a4a5bbdc4951f3c5233` |
 
-A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The x86_64 package was installed on an API 35 emulator. The compatibility matrix records that run.
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. An earlier x86_64 package was installed on an API 35 emulator. These three files were built later and were not installed in that session. The compatibility matrix records both.
