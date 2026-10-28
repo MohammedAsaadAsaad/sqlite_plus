@@ -27,6 +27,8 @@ await context.migrations.ensureCreated();
 |---|---|---|
 | Model | `EntityType`, `Column`, `DbModel` | Table, property, codec, read, and optional write |
 | Unit of work | `DbContext`, `context.set` | Identity map and one transaction per `saveChanges` |
+
+A plain save keeps the loaded rows until the image is exported or queried. Many deleted rows of one table with no trigger and no rewriting foreign key leave in one `DELETE`. A single-column key uses `IN`. A group that already covers every stored row deletes the table without a key list.
 | Revision | `version: true` or `@DbVersion()` | Integer column incremented on update |
 | Filter | `TypedQuery` | Bound comparisons, `skip`, `take`, `count`, `single` |
 | JSON | `MappedField.at` | `json_extract` with a bound path |

@@ -1325,3 +1325,210 @@ result=pass
 - This is one release APK on that emulator. It is not a physical device.
   `flutter build ios` is still not a subcommand on this Linux host. M9 stays
   unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — Split the Margin release packages by ABI
+
+- Pull request 5 was merged to `main` at 2026-10-28 06:18 Asia/Hebron,
+  commit `733a029`.
+- `flutter build apk --split-per-abi --release` replaced
+  `examples/notes/dist/margin-notes.apk` with three packages:
+  `margin-notes-arm64-v8a.apk` (19604707 bytes, versionCode 2001, sha256
+  `dca40bf3e8ad6749ce7fc5e6ada4d4fb443d1f0026105c94009e592082e1f912`),
+  `margin-notes-armeabi-v7a.apk` (17138749 bytes, versionCode 1001, sha256
+  `a289bbd04ea9a87886c2be35c40658b8025566e25ce20573c891794ba2a232e8`),
+  and `margin-notes-x86_64.apk` (21096170 bytes, versionCode 4001, sha256
+  `fdbd71a7add699a8b08d7aebb44f583a52ec37102bfc2f551a6d2e1befe97ade`).
+  Each is signed with the Android debug certificate.
+- `adb install -r` of the x86_64 package succeeded on the same API 35
+  emulator. Logcat reported `Displayed dev.sqliteplus.margin_notes/.MainActivity`
+  at 2026-10-28 06:20:49 Asia/Hebron. The note titled `Kept` with body
+  `Garden` was still on the desk. The arm64-v8a and armeabi-v7a packages
+  were built and checked as zip archives with one native ABI each. They
+  were not installed on a device. M9 stays unchecked. Item 108 stays open.
+  Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — Margin tools: random insert, delete, details, VACUUM
+
+- The tools screen inserts a chosen count of random notes through `DbSet.add`
+  and `saveChanges`. One mode saves the whole batch in one `saveChanges`
+  transaction. The other calls `saveChanges` once per note and reopens the
+  context between notes. The work runs in `Isolate.spawn`. The result reports
+  wall time, process CPU time from `/proc/self/stat` at 100 ticks per second,
+  and process RSS before, at the sampled peak, and after. Delete-all removes
+  every tracked note in one `saveChanges`. VACUUM runs through
+  `DbContext.connection.execute('VACUUM')` and the screen shows page count,
+  freelist, image bytes, and note count before and after. The details page
+  shows the file path, file and image sizes, page and freelist counts, schema
+  names, and the loaded rows.
+- Linux, Flutter 3.47.8, Dart 3.13.7: `flutter analyze --fatal-infos` reported
+  no issues. `flutter test` passed 12 tests.
+- `flutter build apk --split-per-abi --release` replaced the three packages:
+  `margin-notes-arm64-v8a.apk` 19932467 bytes, sha256
+  `f6ccf637e49873b9b9a9df0e0abd9bb7427d48f4009f778f44a06b00fc6459a1`;
+  `margin-notes-armeabi-v7a.apk` 17466509 bytes, sha256
+  `c8c289bcdb516d475f6bc04daee598ddde11d7b9a0afc72eb504646af783ddce`;
+  `margin-notes-x86_64.apk` 21423930 bytes, sha256
+  `d918346a52b2762638618d9f0e7f9743d3e0629a9bc7222b43fa1f4e45112fc9`.
+- `adb install -r` of the x86_64 package succeeded on the same API 35
+  emulator. Logcat `Displayed` at 2026-10-28 07:03:34 Asia/Hebron. The tools
+  screen exposed the insert count, the transaction switch, delete-all,
+  details, and VACUUM. The details page showed
+  `/data/user/0/dev.sqliteplus.margin_notes/app_flutter/margin.db`, 3 pages,
+  tables `notes` and `_sqlite_plus_orm_model`, and the note `Kept`. The
+  arm64-v8a and armeabi-v7a packages were checked as zip archives. They were
+  not installed on a device. M9 stays unchecked. Item 108 stays open.
+  Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — saveChanges batches inserted rows
+
+- Each statement on `MutableSqliteDatabase` loads the image and writes a new
+  one. `saveChanges` was doing that once per added row for the `INSERT`, again
+  for the read-back, and again for every tracked row after the writes.
+  `benchmark_results/scenarios_10k_linux_x64.json` records that earlier shape
+  for 10000 assigned-key rows: ORM save microseconds
+  `[2934430751,3092578591,2700874993]`, 3 rows per second. That file stays the
+  record of its own workload.
+- `saveChanges` now reads trigger names from `sqlite_schema` once. Added rows
+  on a table with no trigger are written with multi-row
+  `INSERT ... RETURNING`. A statement stops before 20000 parameters or 900000
+  bytes of SQL text, and the next rows start another statement. `RETURNING` is
+  the stored row when that table has no trigger. A written table that has a
+  trigger still inserts one row and reads it back, so a later child sees the
+  post-trigger key. If a written or deleted table has a trigger, or a delete
+  or update can cascade, set null, or set default, each tracked table is read
+  once. Other saves leave unchanged tracked rows in place.
+- The AOT measurement is `benchmark_results/orm_save_batch_linux_x64.json`.
+  Generated-key notes have title, body, pinned, updated, and tint. Samples 3.
+  SDK `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`.
+  Hostname `cursor`. OS
+  `Linux 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026`.
+  Runtime `AOT executable`. For 1000 rows, save microseconds
+  `[255251,242615,242029]`, rows per second `[3917,4121,4131]`, variance
+  `37203686`, image bytes `[65536,65536,65536]`. For 10000 rows, save
+  microseconds `[4047036,4028665,4055493]`, rows per second `[2470,2482,2465]`,
+  variance `125417341`, image bytes `[557056,557056,557056]`. Peak RSS
+  `127545344`. This is Linux x64, not a phone, and not a delta against
+  `scenarios_10k_linux_x64.json`.
+- Linux `dart analyze --fatal-infos` reported no issues for
+  `sqlite_plus_orm`. `dart test` printed 173 passed. Engine and generator
+  suites were not re-run. `examples/notes` `flutter analyze --fatal-infos`
+  reported no issues and `flutter test` passed 12 tests.
+- `flutter build apk --split-per-abi --release` replaced the three packages.
+  Byte lengths stayed the same and the hashes changed:
+  `margin-notes-arm64-v8a.apk` 19932467 bytes, sha256
+  `4a7e0b9be88f9e44898c0e3345f60833fd048ccae5cd9eb4e3db52ae07957aa7`;
+  `margin-notes-armeabi-v7a.apk` 17466509 bytes, sha256
+  `e7c47e1006489b85b582b96c02a52c09e2e8b3e27a2ba1f89d903bf93ffbf0f2`;
+  `margin-notes-x86_64.apk` 21423930 bytes, sha256
+  `226279e1672cb2c15caadaa3dd01477174bff19dcffd8e484539f7d1df4eaf54`.
+  The arm64 `libapp.so` contains the `sqlite_schema` trigger lookup. These
+  packages were not installed on a device.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — Resident rows, one DELETE, live process page
+
+- Ordinary writes on the main database reuse the loaded rows. The byte image
+  is rebuilt when it is exported, queried, or when the statement cannot stay
+  deferred. Expression indexes, generated columns, triggers, views, journals,
+  and `REINDEX`, `ANALYZE`, and `VACUUM` still publish an image immediately.
+  A commit checks foreign keys. A database with no foreign key does not scan
+  every row again at `COMMIT`.
+- Inserts keep the unique-key sets for the current rows and add the new key.
+  An insert does not sort the existing rows. `saveChanges` of many plain
+  deletes sends one `DELETE`. A single-column key uses `IN`. A group that
+  covers every stored row sends `DELETE FROM` that table. A plain delete
+  rebuilds the row list once when the table has no trigger and nothing
+  references it.
+- Separate note saves still use one `saveChanges` transaction per note and
+  reopen the context. They do not rebuild the image on every note. The
+  isolate exports once at the end. The off position of the tools switch is
+  not a path with zero transactions.
+- Margin updates the open list in memory after save, pin, and delete. The
+  tools screen opens القياسات. That page samples process RSS and CPU every
+  half second, and the button stays available while a job is running. CPU
+  time comes from `/proc/self/stat` at 100 Hz and can exceed 100%. The
+  numbers are the whole process.
+- Linux `dart analyze --fatal-infos` reported no issues for `sqlite_plus`
+  and `sqlite_plus_orm`. `dart test` printed 10500 engine tests passed and
+  176 ORM tests passed. `examples/notes` `flutter analyze --fatal-infos`
+  reported no issues and `flutter test` passed 14 tests.
+- The AOT file `benchmark_results/orm_save_batch_linux_x64.json` was measured
+  again on this revision. Same workload, three samples. SDK
+  `3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on "linux_x64"`.
+  Hostname `cursor`. OS
+  `Linux 6.12.94+ #1 SMP PREEMPT_DYNAMIC Mon Oct 19 22:12:29 UTC 2026`.
+  Runtime `AOT executable`. For 1000 notes, save microseconds
+  `[116381,100751,102062]`, rows per second `[8592,9925,9797]`, variance
+  `50116598`, image bytes `[65536,65536,65536]`. For 10000 notes, save
+  microseconds `[1296964,1305441,1291381]`, rows per second `[7710,7660,7743]`,
+  variance `33412557`, image bytes `[557056,557056,557056]`. Peak RSS
+  `120561664`. This is Linux x64, not a phone.
+  `scenarios_10k_linux_x64.json` remains its own workload.
+- `benchmark_results/resident_ops_linux_x64.json` is the separate-save and
+  delete measurement. Same SDK, host, OS, and AOT runtime. Three samples.
+  Separate saves of 100 notes, microseconds `[29936,30029,26834]`, rows per
+  second `[3340,3330,3726]`, variance `2204342`, then one export
+  `[7741,7768,7903]`, image bytes `[20480,20480,20480]`. Separate saves of
+  1000 notes, `[270601,273341,274021]`, rows per second `[3695,3658,3649]`,
+  variance `2185155`, export `[75242,73071,73519]`, image bytes
+  `[65536,65536,65536]`. One delete among 1000 notes, save
+  `[26700,25815,25780]`, export `[72327,73403,72295]`, image bytes
+  `[65536,65536,65536]`. Delete-all of 1000, save `[51755,48187,50418]`,
+  rows per second `[19321,20752,19834]`, variance `2166172`, export
+  `[318,315,316]`, image bytes `[12288,12288,12288]`. Delete-all of 10000,
+  save `[1662591,1682367,1700757]`, rows per second `[6014,5944,5879]`,
+  variance `242880648`, export `[364,371,335]`, image bytes
+  `[12288,12288,12288]`. Peak RSS `221724672`. This is not a phone
+  measurement. One delete still rewrites the image when the file is saved.
+- `flutter build apk --split-per-abi --release` replaced the three packages.
+  Flutter signs them with the debug keystore. Application id
+  `dev.sqliteplus.margin_notes`. `margin-notes-arm64-v8a.apk` 19932467 bytes,
+  versionCode 2001, sha256
+  `d00defb81b1738895a6393ae09e312c1d5e1e3cade0b0927d5f4e735a6b28a3c`;
+  `margin-notes-armeabi-v7a.apk` 17482893 bytes, versionCode 1001, sha256
+  `fa3af6ff193d6e39dc433b508e0353b083ee064d2f55743c71ae716c2b1383f8`;
+  `margin-notes-x86_64.apk` 21489466 bytes, versionCode 4001, sha256
+  `23eac4b2e30a237116440ddaab14c6281369082809874a4a79254607f523fe1e`.
+  The arm64 `libapp.so` contains `live-metrics`. These packages were not
+  installed on a device.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-28 — ميزان, native SQLite beside sqlite_plus
+
+- `examples/compare` is a Flutter application, `publish_to: none`, and not a
+  workspace member. Android SQLite is opened with `sqflite` in that
+  application. The sqlite_plus packages were not changed and were not
+  retested as a suite.
+- Both engines run the same statements on `bench(id, name, body, n)`. The
+  count is 1 through 10000. Separate inserts are autocommit. A transaction
+  uses `BEGIN`/`COMMIT` on sqlite_plus and one `sqflite` transaction on
+  Android. Search creates `bench_name` during preparation, then measures
+  `SELECT id FROM bench WHERE name = ?`. sqlite_plus work runs in an
+  isolate. `exportImage` is timed beside the statement interval. The screen
+  samples process RSS and CPU during a run.
+- Linux Flutter 3.47.8, Dart 3.13.7: `flutter analyze` reported no issues
+  and `flutter test` passed 13 tests. The sqlite_plus engine checks used 1,
+  3, and 4 rows. The widget checks used scripted engines. `sqflite` was not
+  opened on Linux.
+- `flutter build apk --split-per-abi --release` wrote three packages, signed
+  with the debug keystore. Application id `dev.sqliteplus.engine_bench`.
+  `bench-arm64-v8a.apk` 19473455 bytes, versionCode 2001, sha256
+  `954adf7e5327bce9a39b5a3320024919514409328fc3f7f93c47091cfd033281`;
+  `bench-armeabi-v7a.apk` 16974725 bytes, versionCode 1001, sha256
+  `b10f346424d1d548b078391b0bd7fb1421e29e909bf3874cd4b1dc50d8d8b0df`;
+  `bench-x86_64.apk` 20964918 bytes, versionCode 4001, sha256
+  `5ac8989c3588f3f6632989b2327b549d50c9dadcdfe8dc0733555aa2310ceb34`.
+- The x86_64 package was installed on the API 35 emulator,
+  `ro.build.version.release` 15, ABI `x86_64`, model
+  `Android ATD built for x86_64`, fingerprint
+  `Android/sdk_slim_x86_64/emu64x:15/AE3A.240806.019/12368160:userdebug/test-keys`.
+  `adb install -r` succeeded. Logcat `Displayed` at 2026-10-28 08:21:28.549
+  emulator UTC, so 10:21:28 Asia/Hebron.
+- One measured pair, 20 rows, إدراج بمعاملة. The screen showed نتيجة متطابقة,
+  20 rows, sum 210, and 20 hits on both engines. Android SQLite 262.1 ms,
+  sqlite_plus 975.4 ms, ratio 3.72. Native file 16.0 KB. sqlite_plus image
+  8.0 KB and export 125 µs. Log stamps 08:23:14 and 08:23:16 emulator UTC,
+  so 10:23:14 and 10:23:16 Asia/Hebron. This is one run on that image, not a
+  repeated sample, not a physical phone, and not iOS. The other two ABIs
+  were not installed.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.

@@ -56,6 +56,18 @@ final class _Table {
   final CatalogTable schema;
   final String sql;
   final List<TableRow> rows;
+
+  /// Unique rowids and index keys for the current [rows]. Inserts update this
+  /// in place. Any other row edit clears it.
+  Set<BigInt>? residentRowids;
+  List<String>? residentKeyIds;
+  Map<String, Set<String>>? residentUniques;
+
+  void invalidateResidentKeys() {
+    residentRowids = null;
+    residentKeyIds = null;
+    residentUniques = null;
+  }
 }
 
 final class _Index {
@@ -86,11 +98,95 @@ final class _Upsert {
   final Expr? where;
 }
 
+/// In-memory tables, indexes, and rows captured so a later rollback can
+/// return to that logical database without a byte image.
+final class LogicalImage {
+  LogicalImage(this._tables, this._rows, this._indexes, this._other,
+      this._sequences, this._schemaChanged);
+  final Map<String, _Table> _tables;
+  final Map<String, List<TableRow>> _rows;
+  final List<_Index> _indexes;
+  final List<ImageObject> _other;
+  final Map<String, BigInt> _sequences;
+  final bool _schemaChanged;
+}
+
 /// Validates complete logical mutations before compact image reconstruction.
 /// File atomicity remains the responsibility of ImagePager.
 final class ImageMutations {
   ImageMutations._(this.original, this.encoding);
-  final Uint8List original;
+  Uint8List original;
+
+  /// When set, ordinary DML keeps the changed rows and skips the image rebuild.
+  /// The connection materializes those rows on read, export, or schema change.
+  bool deferMaterialize = false;
+
+  /// True when the latest statement changed stored rows and left the image stale.
+  bool wroteRows = false;
+
+  LogicalImage captureLogical() => LogicalImage(
+      Map<String, _Table>.of(_tables),
+      {
+        for (final entry in _tables.entries)
+          entry.key: List<TableRow>.of(entry.value.rows)
+      },
+      List<_Index>.of(_indexes),
+      List<ImageObject>.of(other),
+      Map<String, BigInt>.of(_sequences),
+      schemaChanged);
+
+  void restoreLogical(LogicalImage snapshot) {
+    schemaChanged = snapshot._schemaChanged;
+    _tables
+      ..clear()
+      ..addAll(snapshot._tables);
+    _indexes
+      ..clear()
+      ..addAll(snapshot._indexes);
+    other
+      ..clear()
+      ..addAll(snapshot._other);
+    _sequences
+      ..clear()
+      ..addAll(snapshot._sequences);
+    for (final entry in _tables.entries) {
+      final rows = snapshot._rows[entry.key] ?? const <TableRow>[];
+      entry.value.rows
+        ..clear()
+        ..addAll(rows);
+      entry.value.invalidateResidentKeys();
+    }
+    _loadedRows.clear();
+  }
+
+  /// Plain row changes can wait for the next read. Generated columns, views,
+  /// and triggers publish their image immediately so the following statement
+  /// sees the same pages as a per-statement rebuild.
+  bool get _canDeferImage {
+    if (schemaChanged || other.isNotEmpty) return false;
+    // Expression indexes and generated columns are rebuilt from the byte image.
+    // Publishing each statement keeps REINDEX and the next read on that image.
+    if (_indexes.any((index) => index.sql != null)) return false;
+    for (final table in _tables.values) {
+      if (table.schema.columns
+          .any((column) => column.generatedExpression != null)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Treat [image] as the serialized form of the current rows.
+  void rebase(Uint8List image) {
+    original = image;
+    schemaChanged = false;
+    for (final entry in _tables.entries) {
+      _loadedRows[entry.key] = [
+        for (final row in entry.value.rows) TableRow(row.rowId, row.values)
+      ];
+    }
+  }
+
   final int encoding;
   final Map<String, _Table> _tables = {};
   final List<_Index> _indexes = [];
@@ -730,6 +826,7 @@ final class ImageMutations {
                   foreignKeys: true, inTransaction: inTransaction)) {
                 continue;
               }
+              child.invalidateResidentKeys();
               child.rows.remove(row);
               await _referentialActions(child, row, null, depth + 1,
                   inTransaction: inTransaction);
@@ -767,6 +864,7 @@ final class ImageMutations {
               }
               final position = child.rows.indexOf(row);
               if (position < 0) continue;
+              child.invalidateResidentKeys();
               child.rows[position] = changed;
               _validate();
               counters?.changed();
@@ -965,8 +1063,15 @@ final class ImageMutations {
     return MutationImage(serialize(), 0, null);
   }
 
-  void validateForeignKeys() =>
-      _validate(foreignKeys: true, includeDeferred: true);
+  void validateForeignKeys() {
+    // A commit checks foreign keys. Tables without one have already enforced
+    // NOT NULL, CHECK, and UNIQUE while the statement ran.
+    if (_tables.values.every((table) => table.schema.foreignKeys.isEmpty)) {
+      return;
+    }
+    _validate(foreignKeys: true, includeDeferred: true);
+  }
+
   Uint8List serialize(
       {bool foreignKeys = false,
       bool includeDeferred = false,
@@ -977,6 +1082,7 @@ final class ImageMutations {
         rowConstraints: rowConstraints);
     final sequence = _tables['sqlite_sequence'];
     if (sequence != null) {
+      sequence.invalidateResidentKeys();
       sequence.rows
         ..clear()
         ..addAll([
@@ -1551,6 +1657,7 @@ final class ImageMutations {
       bool deferTriggerFunctions = false,
       bool? recursiveTriggers}) async {
     final outer = _executionDepth++ == 0;
+    if (outer) wroteRows = false;
     _subqueries.add(null);
     _targetAliases.add({});
     _conflictPolicies.add(_conflictPolicies.lastOrNull);
@@ -3033,8 +3140,15 @@ final class ImageMutations {
         : null;
     var changes = 0;
     BigInt? last;
-    final originalRows = table.rows.toList();
-    if (!table.view) {
+    // UPDATE and DELETE walk the pre-image. An insert does not, and sorting
+    // every existing row made the next insert slower as the table grew.
+    final List<TableRow> originalRows;
+    if (insert) {
+      originalRows = const [];
+    } else {
+      originalRows = table.rows.toList();
+    }
+    if (!insert && !table.view) {
       if (schema.withoutRowid) {
         final primary = schema.columns.where((c) => c.primaryKey != 0).toList()
           ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
@@ -3164,14 +3278,40 @@ final class ImageMutations {
       ]);
     }
 
-    final rowids = table.rows.map((r) => r.rowId).toSet();
-    final uniqueSets = {
-      for (final index in uniqueIndexes)
-        index: {
-          for (final row in table.rows)
-            if (keyFor(index, row) != null) keyFor(index, row)!
+    String indexCacheId(_Index index) =>
+        '${index.name}\u0000${asciiLower(index.table)}\u0000${index.columns.join('\u0000')}\u0000${index.unique}\u0000${index.descending.join(',')}\u0000${index.collations.join('\u0000')}';
+
+    void ensureResidentKeys() {
+      final ids = [for (final index in uniqueIndexes) indexCacheId(index)];
+      final cachedIds = table.residentKeyIds;
+      final cachedRowids = table.residentRowids;
+      final same = cachedRowids != null &&
+          cachedRowids.length == table.rows.length &&
+          cachedIds != null &&
+          cachedIds.length == ids.length;
+      if (same) {
+        var matches = true;
+        for (var i = 0; i < ids.length; i++) {
+          if (cachedIds[i] != ids[i]) {
+            matches = false;
+            break;
+          }
         }
-    };
+        if (matches) return;
+      }
+      final uniques = <String, Set<String>>{};
+      for (var i = 0; i < uniqueIndexes.length; i++) {
+        final keys = <String>{};
+        for (final row in table.rows) {
+          final key = keyFor(uniqueIndexes[i], row);
+          if (key != null) keys.add(key);
+        }
+        uniques[ids[i]] = keys;
+      }
+      table.residentRowids = table.rows.map((row) => row.rowId).toSet();
+      table.residentKeyIds = ids;
+      table.residentUniques = uniques;
+    }
 
     bool conflictError(SqlConstraintException error, String activePolicy) {
       if (error is SqlDatatypeConstraint) throw error;
@@ -3257,14 +3397,25 @@ final class ImageMutations {
           !other.any((o) =>
               o.type == 'trigger' &&
               asciiLower(o.tableName) == asciiLower(name))) {
+        ensureResidentKeys();
+        final rowids = table.residentRowids!;
+        final ids = table.residentKeyIds!;
+        final uniques = table.residentUniques!;
         if (!rowids.add(next.rowId)) {
           throw const SqlConstraintException('UNIQUE constraint failed: rowid');
         }
-        for (final index in uniqueIndexes) {
-          final key = keyFor(index, next);
-          if (key != null && !uniqueSets[index]!.add(key)) {
+        final added = <(int, String)>[];
+        for (var i = 0; i < uniqueIndexes.length; i++) {
+          final key = keyFor(uniqueIndexes[i], next);
+          if (key == null) continue;
+          if (!uniques[ids[i]]!.add(key)) {
+            rowids.remove(next.rowId);
+            for (final prior in added) {
+              uniques[ids[prior.$1]]!.remove(prior.$2);
+            }
             throw const SqlConstraintException('UNIQUE constraint failed');
           }
+          added.add((i, key));
         }
         table.rows.add(next);
         if (singleForeignKeyInsert) {
@@ -3276,6 +3427,7 @@ final class ImageMutations {
         if (replacing == null && insert) last = next.rowId;
         return;
       }
+      table.invalidateResidentKeys();
       final old = table.rows.toList();
       if (replacing != null) table.rows.remove(replacing);
       final replacingRows = <TableRow>{};
@@ -3562,6 +3714,15 @@ final class ImageMutations {
             }
           : null;
       var viewFromIndex = 0;
+      final bulkDelete = !update &&
+          !table.view &&
+          !other.any((object) =>
+              object.type == 'trigger' &&
+              asciiLower(object.tableName) == asciiLower(name)) &&
+          !(foreignKeys &&
+              _tables.values.any((child) => child.schema.foreignKeys.any(
+                  (key) => asciiLower(key.table) == asciiLower(schema.name))));
+      final pendingDelete = <TableRow>[];
       for (final row
           in viewFromAssignments?.map((entry) => entry.$1) ?? originalRows) {
         final viewFromValues = viewFromAssignments?[viewFromIndex++].$2;
@@ -3574,8 +3735,15 @@ final class ImageMutations {
                     truth(where.evaluate(context), encoding) != true) {
           continue;
         }
-        if (!table.rows.contains(row)) continue;
+        if (!bulkDelete && !table.rows.contains(row)) continue;
         if (!update) {
+          if (bulkDelete) {
+            pendingDelete.add(row);
+            changes++;
+            _changed();
+            emit(row);
+            continue;
+          }
           if (table.view) {
             if (await _fire('INSTEAD OF', 'DELETE', table, row, null, {},
                 foreignKeys: foreignKeys, inTransaction: inTransaction)) {
@@ -3587,6 +3755,7 @@ final class ImageMutations {
               foreignKeys: foreignKeys, inTransaction: inTransaction)) {
             continue;
           }
+          table.invalidateResidentKeys();
           table.rows.remove(row);
           if (foreignKeys) {
             await _referentialActions(table, row, null, 0,
@@ -3649,11 +3818,31 @@ final class ImageMutations {
               foreignKeys: foreignKeys, inTransaction: inTransaction);
         }
       }
+      if (pendingDelete.isNotEmpty) {
+        table.invalidateResidentKeys();
+        final dropping = Set<TableRow>.of(pendingDelete);
+        table.rows.removeWhere(dropping.contains);
+      }
     }
     if (changes == 0 &&
         !sequenceChanged &&
         !other.any((o) => o.type == 'trigger')) {
       return MutationImage(original, 0, null, returned());
+    }
+    if (deferMaterialize && _canDeferImage) {
+      final checkForeignKeys = foreignKeys && _executionDepth == 1;
+      final incremental = await _tryIncremental(
+          foreignKeys: checkForeignKeys, includeDeferred: !inTransaction);
+      if (incremental != null) {
+        return MutationImage(
+            incremental, changes, insert ? last : null, returned());
+      }
+      wroteRows = true;
+      // NOT NULL, CHECK, and UNIQUE were enforced on the rows this statement
+      // changed. Scanning every stored row here made one insert cost grow with
+      // the whole table. Foreign-key checks still run inside _tryIncremental
+      // when they are due, and a transaction commits them from the live rows.
+      return MutationImage(original, changes, insert ? last : null, returned());
     }
     return MutationImage(
         await commit(
@@ -3679,7 +3868,10 @@ final class ImageMutations {
   Future<Uint8List?> _tryIncremental(
       {required bool foreignKeys, required bool includeDeferred}) async {
     if (schemaChanged || other.isNotEmpty) return null;
-    if (foreignKeys || includeDeferred) {
+    // Foreign-key mode also asks for a full row scan. Skip it when no table
+    // declares a foreign key; the statement already enforced its own rows.
+    if ((foreignKeys || includeDeferred) &&
+        _tables.values.any((table) => table.schema.foreignKeys.isNotEmpty)) {
       _validate(foreignKeys: foreignKeys, includeDeferred: includeDeferred);
     }
     final changed = <String>[];
