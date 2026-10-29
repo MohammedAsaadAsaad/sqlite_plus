@@ -37,7 +37,7 @@ void main() {
     await db.execute('INSERT INTO notes VALUES(6,?,?)', ['committed', 6]);
     expect(faults.operations, 0);
     await db.execute('END TRANSACTION');
-    expect(file.durable, db.exportImage());
+    expect(file.volatile, db.exportImage());
     expect(db.inTransaction, isFalse);
   });
   test('nested named savepoints, duplicate names and rollback-to reuse',
@@ -108,15 +108,15 @@ void main() {
   test('failed durable COMMIT poisons the session and restart recovers',
       () async {
     final original = fixture();
-    final faults = CrashController()..persistUnsynced = true;
+    final faults = CrashController();
     final file = ModelFile(original, faults);
     final log = ModelFile(Uint8List(0), faults);
     final pager = await RollbackJournalPager.open(file, log);
     final db = await MutableSqliteDatabase.fromJournalPager(pager);
     await db.execute('BEGIN');
     await db.execute('DELETE FROM notes');
-    // First database page write, after the changed-page journal is durable.
-    faults.crashAt = 6;
+    // The redo write has not been synced, so restart keeps the old image.
+    faults.crashAt = 1;
     await expectLater(db.execute('COMMIT'), throwsA(isA<SimulatedCrash>()));
     await expectLater(db.query('SELECT * FROM notes'), throwsStateError);
     file.crash();

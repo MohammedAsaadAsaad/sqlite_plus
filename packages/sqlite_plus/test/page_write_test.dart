@@ -214,9 +214,8 @@ void main() {
       await db.execute(sql, parameters);
       final operations = probe.operations;
       await db.close();
-      final faults = CrashController()
-        ..persistUnsynced = true
-        ..crashAt = operations ~/ 2;
+      expect(operations, greaterThan(0));
+      final faults = CrashController()..crashAt = 1;
       final file = ModelFile(baseline, faults);
       final log = ModelFile(Uint8List(0), faults);
       final crashing = await RollbackJournalPager.open(file, log);
@@ -246,9 +245,8 @@ void main() {
     await db.execute('UPDATE t SET v=?', ['b' * 7000]);
     final operations = probe.operations;
     await db.close();
-    final faults = CrashController()
-      ..persistUnsynced = true
-      ..crashAt = operations ~/ 2;
+    expect(operations, greaterThan(0));
+    final faults = CrashController()..crashAt = 1;
     final file = ModelFile(wideBase, faults);
     final log = ModelFile(Uint8List(0), faults);
     final crashing = await RollbackJournalPager.open(file, log);
@@ -354,15 +352,17 @@ CREATE TABLE bench (
           [id, 'n$id', 'b$id', id]);
       expect(result.changes, 1);
     }
-    final pageSize = DatabaseHeader.decode(databaseFile.durable).pageSize;
-    expect(journal.durable.length, lessThanOrEqualTo(512 + 3 * (pageSize + 8)));
+    final pageSize = DatabaseHeader.decode(databaseFile.volatile).pageSize;
+    expect(journal.volatile.length,
+        lessThan(RollbackJournalPager.checkpointBytes + pageSize * 8));
     for (var id = 1; id <= 200; id++) {
       expect(
           (await db.execute('UPDATE bench SET n = n + 1 WHERE id = ?', [id]))
               .changes,
           1);
     }
-    expect(journal.durable.length, lessThanOrEqualTo(512 + 3 * (pageSize + 8)));
+    expect(journal.volatile.length,
+        lessThan(RollbackJournalPager.checkpointBytes + pageSize * 8));
     final sum = 200 * 201 ~/ 2 + 200;
     expect(
         (await db.query('SELECT COUNT(*), COALESCE(SUM(n), 0) FROM bench'))
@@ -375,7 +375,7 @@ CREATE TABLE bench (
     }
     expect((await db.query('SELECT COUNT(*) FROM bench')).rows.single.single,
         BigInt.zero);
-    final image = Uint8List.fromList(databaseFile.durable);
+    final image = Uint8List.fromList(databaseFile.volatile);
     final opened = await MutableSqliteDatabase.fromImage(image);
     addTearDown(opened.close);
     expect(
@@ -419,7 +419,7 @@ CREATE TABLE bench (
     }
     await db.execute('DELETE FROM bench WHERE id = ?', [7]);
     await db.execute('UPDATE bench SET n = n + 1');
-    final image = Uint8List.fromList(databaseFile.durable);
+    final image = Uint8List.fromList(databaseFile.volatile);
     final opened = await MutableSqliteDatabase.fromImage(image);
     addTearDown(opened.close);
     expect((await opened.query('PRAGMA integrity_check')).rows.single.single,

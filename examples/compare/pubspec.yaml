@@ -1,7 +1,7 @@
 name: engine_bench
 description: Visual comparison of Android SQLite and sqlite_plus.
 publish_to: none
-version: 1.0.0+7
+version: 1.0.0+8
 
 environment:
   sdk: ^3.13.7

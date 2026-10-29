@@ -131,13 +131,13 @@ void main() {
     await db.execute(
       'CREATE TABLE bench (id INTEGER PRIMARY KEY, name TEXT NOT NULL, body TEXT NOT NULL, n INTEGER NOT NULL)',
     );
-    final createdFile = Uint8List.fromList(storage.durable);
+    final createdFile = Uint8List.fromList(storage.volatile);
     await db.execute(
       'INSERT INTO bench(id, name, body, n) VALUES (1, ?, ?, ?)',
       ['n1', 'b1', 1],
     );
-    expect(storage.durable, isNot(createdFile));
-    expect(storage.durable, db.exportImage());
+    expect(storage.volatile, isNot(createdFile));
+    expect(storage.volatile, db.exportImage());
     final rows = await db.query('SELECT n FROM bench WHERE id = 1');
     expect(rows.rows.single.single, BigInt.one);
     final persisted = Uint8List.fromList(storage.durable);
@@ -163,9 +163,12 @@ void main() {
     final pager = await RollbackJournalPager.open(storage, journal);
     final db = await MutableSqliteDatabase.fromJournalPager(pager);
     await db.execute('DELETE FROM notes');
-    expect(storage.durable, db.exportImage());
-    expect(journal.durable.take(28), everyElement(0));
+    final image = Uint8List.fromList(db.exportImage());
+    expect(storage.volatile, image);
+    expect(journal.volatile.length, greaterThan(32));
     await db.close();
+    expect(storage.durable, image);
+    expect(journal.durable.length, 0);
   });
   test('existing-file adapter performs random writes without initial truncate',
       () async {

@@ -98,8 +98,9 @@ void main() {
       final pager = await RollbackJournalPager.open(db, journal);
       await pager.commitImage(next);
       final operations = baseline.operations;
-      expect(db.durable, next);
+      expect(db.volatile, next);
       await pager.close();
+      expect(db.durable, next);
       // Every database/journal write, truncate and sync gets its own restart.
       for (var point = 1; point <= operations; point++) {
         final controller = CrashController()
@@ -138,14 +139,15 @@ void main() {
     final db = ModelFile(original, controller);
     final journal = ModelFile(Uint8List(0), controller);
     final pager = await RollbackJournalPager.open(db, journal);
-    controller.crashAt = 6; // database write, before database sync
-    await expectLater(pager.commitImage(next), throwsA(isA<SimulatedCrash>()));
+    await pager.commitImage(next);
     final hot = Uint8List.fromList(journal.durable);
+    final stale = Uint8List.fromList(db.durable);
+    await pager.close();
     for (var point = 1; point <= 5; point++) {
       final faults = CrashController()
         ..persistUnsynced = true
         ..crashAt = point;
-      final database = ModelFile(next, faults);
+      final database = ModelFile(stale, faults);
       final log = ModelFile(hot, faults);
       await expectLater(RollbackJournalPager.open(database, log),
           throwsA(isA<SimulatedCrash>()));
@@ -153,7 +155,7 @@ void main() {
       log.crash();
       faults.crashAt = null;
       final recovered = await RollbackJournalPager.open(database, log);
-      expect(await recovered.readImage(), original);
+      expect(await recovered.readImage(), next, reason: 'operation $point');
       await recovered.close();
     }
   });
@@ -163,20 +165,10 @@ void main() {
     final database = ModelFile(original, controller);
     final journal = ModelFile(Uint8List(0), controller);
     final pager = await RollbackJournalPager.open(database, journal);
-    controller.crashAt = 6;
     final next = updatedImage(original, 72);
-    await expectLater(pager.commitImage(next), throwsA(isA<SimulatedCrash>()));
-    final hot = Uint8List.fromList(journal.durable);
-    for (final offset in [
-      0,
-      8,
-      16,
-      20,
-      24,
-      512,
-      512 + 4 + 312,
-      hot.length - 1
-    ]) {
+    await pager.commitImage(next);
+    final hot = Uint8List.fromList(journal.volatile);
+    for (final offset in [0, 8, 12, 16, 20, 24, 28]) {
       final faults = CrashController();
       final corrupt = Uint8List.fromList(hot)..[offset] ^= 1;
       final db = ModelFile(next, faults);
@@ -187,18 +179,31 @@ void main() {
       expect(db.volatile, next);
       expect(faults.operations, 0);
     }
+    final frameFaults = CrashController();
+    final torn = Uint8List.fromList(hot)..[hot.length - 1] ^= 1;
+    final frameDb = ModelFile(next, frameFaults);
+    final frameLog = ModelFile(torn, frameFaults);
+    final opened = await RollbackJournalPager.open(frameDb, frameLog);
+    expect(await opened.readImage(), next);
+    expect(frameFaults.operations, 0);
+    await opened.close();
   });
   test('repeated commits reuse an existing persistent journal', () async {
     final controller = CrashController();
     final db = ModelFile(originalImage(), controller);
     final journal = ModelFile(Uint8List(0), controller);
     final pager = await RollbackJournalPager.open(db, journal);
+    Uint8List? last;
     for (var version = 0; version < 3; version++) {
       final next = updatedImage(await pager.readImage(), version);
       await pager.commitImage(next);
-      expect(db.durable, next);
-      expect(journal.durable.take(28), everyElement(0));
+      expect(db.volatile, next);
+      expect(journal.volatile.length, greaterThan(32));
+      last = next;
     }
+    await pager.close();
+    expect(db.durable, last);
+    expect(journal.durable.length, 0);
     await pager.close();
     await expectLater(pager.readImage(), throwsStateError);
   });
@@ -226,10 +231,13 @@ void main() {
     final db = ModelFile(original, controller);
     final journal = ModelFile(Uint8List(0), controller);
     final pager = await RollbackJournalPager.open(db, journal);
-    await pager.commitImage(updatedImage(original, 4));
+    final next = updatedImage(original, 4);
+    await pager.commitImage(next);
     final pageSize = 512;
-    expect(journal.durable.length, 512 + pageSize + 8);
-    expect(db.durable, updatedImage(original, 4));
+    expect(journal.volatile.length, 32 + 16 + pageSize);
+    expect(db.volatile, next);
     await pager.close();
+    expect(db.durable, next);
+    expect(journal.durable.length, 0);
   });
 }

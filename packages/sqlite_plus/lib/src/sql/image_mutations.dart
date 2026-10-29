@@ -4118,6 +4118,9 @@ final class ImageMutations {
     if (_indexes.any((index) => asciiLower(index.table) == changed)) {
       return null;
     }
+    if (after.isEmpty && before.isNotEmpty) {
+      return RowidPagePatch.clearRoot(original, root);
+    }
     if (after.length == before.length + 1) {
       for (var i = 0; i < before.length; i++) {
         if (!identical(before[i], after[i])) return null;
