@@ -1,30 +1,110 @@
 # sqlite_plus
 
-A Pure Dart database engine. SQL, JSON, FTS5, R-tree, and geopoly run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
+SQL, JSON, full-text search, and R-tree, written in Dart. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.1.0`.
+Version `0.1.1`.
 
-One arm64 phone, Bench versionCode 2009, 1000 rows, Asia/Hebron 14:00 on 2026-10-29. The same SQL, and every checksum matched. The phone model was not in the log. The bars are the file round, and each row has its own linear scale. The gold figure is native time divided by sqlite_plus time. sqlite_plus was faster on every operation in this sample, in memory and on a file. The size figure is taken before close, so the sqlite_plus file still includes the redo. Separate delete was 603.6 KB against the native 16.0 KB.
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.1
+```
 
-![File round, 1000 rows. Bar length matches measured statement time.](doc/bench-time.png)
+```dart
+import 'package:sqlite_plus/sqlite_plus.dart';
 
-![File size before close, each row on its own scale.](doc/bench-size.png)
+final db = await openInMemory();
+```
 
-File round:
+## Write a row, read it back
 
-| Operation | native | sqlite_plus | faster |
-|---|---:|---:|---:|
-| Separate insert | 326.8 ms | 162.2 ms | 2.0× |
-| Transaction insert | 81.0 ms | 72.6 ms | 1.1× |
-| Separate update | 477.6 ms | 381.2 ms | 1.3× |
-| Bulk update | 915 µs | 246 µs | 3.7× |
-| Search | 129.4 ms | 11.7 ms | 11× |
-| Point lookup | 105.9 ms | 7.6 ms | 14× |
-| VACUUM | 923 µs | 13 µs | 71× |
-| Separate delete | 413.8 ms | 345.5 ms | 1.2× |
-| Delete all | 773 µs | 259 µs | 3.0× |
+```dart
+await db.execute(
+  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+);
+await db.execute(
+  'INSERT INTO note(title, body) VALUES (?, ?)',
+  ['Kept Garden', 'a garden kept in the margin'],
+);
+final rows = await db.query(
+  'SELECT title FROM note WHERE title LIKE ?',
+  ['%Garden%'],
+);
+```
 
-Memory round from the same sample:
+Integers come back as `BigInt`. Parameters are `?`, `:name`, `@name`, and `$name`.
+
+## JSON, search, and a map
+
+```dart
+await db.execute(
+  'CREATE TABLE books (id INTEGER PRIMARY KEY, card TEXT NOT NULL)',
+);
+await db.execute(
+  'INSERT INTO books(card) VALUES (json_object(?, ?, ?, ?))',
+  ['title', 'Kept Garden', 'pages', 320],
+);
+final card = await db.query(
+  'SELECT json_extract(card, ?) FROM books WHERE json_extract(card, ?) = ?',
+  [r'$.pages', r'$.title', 'Kept Garden'],
+);
+
+await db.execute('CREATE VIRTUAL TABLE book USING fts5(title, body)');
+await db.execute(
+  'INSERT INTO book(title, body) VALUES (?, ?)',
+  ['Kept Garden', 'a garden kept in the margin'],
+);
+final hit = await db.query(
+  "SELECT highlight(book, 1, '[', ']') FROM book WHERE book MATCH ?",
+  ['kept'],
+);
+
+await db.execute(
+  'CREATE VIRTUAL TABLE shelf USING rtree(id, minX, maxX, minY, maxY)',
+);
+await db.execute(
+  'INSERT INTO shelf VALUES (?, ?, ?, ?, ?)',
+  [1, 0, 1, 0, 1],
+);
+final place = await db.query(
+  'SELECT id FROM shelf WHERE minX <= ? AND maxX >= ? AND minY <= ? AND maxY >= ?',
+  [1, 0, 1, 0],
+);
+```
+
+`card` is `320`. `hit` is `a garden [kept] in the margin`. `place` is shelf `1`.
+
+`BEGIN` / `ROLLBACK` drops a row that never committed. `PRAGMA user_version=7`, then `exportImage()` and `MutableSqliteDatabase.fromImage`, reopen the same title at version `7`. The library tour in `example/lib/library_tour.dart` prints that whole path, including an Arabic token match.
+
+## A function you write
+
+```dart
+db.functions.registerScalar(
+  'twice',
+  1,
+  (args) => args.single == null ? null : (args.single as BigInt) * BigInt.two,
+);
+final doubled = await db.query('SELECT twice(?)', [21]);
+```
+
+`doubled` is `42`. The callback stays on that connection.
+
+## A file
+
+```dart
+import 'package:sqlite_plus/sqlite_plus_io.dart';
+
+final owner = await openDatabase(path, directoryEntriesDurable: true);
+final version = await owner.client.query('PRAGMA user_version');
+await owner.close();
+```
+
+`openDatabase` is `DatabaseOwner.open`. It needs `dart:io`, and the file plus its journal sidecar already exist.
+
+## One phone, one thousand rows
+
+Bench versionCode 2009, one arm64 phone, Asia/Hebron 14:00 on 2026-10-29. The same SQL on both engines, and every checksum matched. The phone model was not in the log. Each row has its own linear scale, so the bar is the measured time. The gold figure is native time divided by sqlite_plus time. This is one sample, not a multi-device study. Separate statements cross a platform channel in the native app and stay inside one isolate here.
+
+![Memory round, 1000 rows. Bar length matches measured time.](doc/bench-time.png)
 
 | Operation | native | sqlite_plus | faster |
 |---|---:|---:|---:|
@@ -38,89 +118,27 @@ Memory round from the same sample:
 | Separate delete | 93.7 ms | 7.3 ms | 13× |
 | Delete all | 195 µs | 97 µs | 2.0× |
 
-These are statement intervals from one sample. They are not a multi-device study. Separate statements cross a platform channel in the native app and stay inside one isolate here.
+The same sample on a file was faster on every operation as well. Search was 11×, a point lookup 14×, and `VACUUM` 71×. Inserts and separate deletes were closer, from 1.1× to 2.0×.
+
+![File round, 1000 rows. Bar length matches measured time.](doc/bench-file.png)
+
+| Operation | native | sqlite_plus | faster |
+|---|---:|---:|---:|
+| Separate insert | 326.8 ms | 162.2 ms | 2.0× |
+| Transaction insert | 81.0 ms | 72.6 ms | 1.1× |
+| Separate update | 477.6 ms | 381.2 ms | 1.3× |
+| Bulk update | 915 µs | 246 µs | 3.7× |
+| Search | 129.4 ms | 11.7 ms | 11× |
+| Point lookup | 105.9 ms | 7.6 ms | 14× |
+| VACUUM | 923 µs | 13 µs | 71× |
+| Separate delete | 413.8 ms | 345.5 ms | 1.2× |
+| Delete all | 773 µs | 259 µs | 3.0× |
+
+File size is taken before close, so the sqlite_plus file still includes the redo. Separate delete was 603.6 KB against the native 16.0 KB.
 
 ## Install
 
-```yaml
-dependencies:
-  sqlite_plus: ^0.1.0
-```
-
-```dart
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final db = await openInMemory();
-```
-
-| Entry | Library | Use it for |
-|---|---|---|
-| `openInMemory` | `sqlite_plus.dart` | A new in-memory database. Same function as `MutableSqliteDatabase.create` |
-| `MutableSqliteDatabase.create` | `sqlite_plus.dart` | The same in-memory open |
-| `MutableSqliteDatabase.fromImage` | `sqlite_plus.dart` | Reopen `exportImage()` bytes |
-| `db.query` / `db.execute` | `sqlite_plus.dart` | Bound SQL. Integers come back as `BigInt` |
-| `db.functions` | `sqlite_plus.dart` | Scalar, aggregate, and collation callbacks |
-| `openDatabase` | `sqlite_plus_io.dart` | A `dart:io` file, on its own isolate. Same function as `DatabaseOwner.open` |
-| `DatabaseOwner.open` | `sqlite_plus_io.dart` | The same file open |
-| `openBrowserStorage` | `sqlite_plus.dart` | Browser bytes. Read `canRead`, `canWrite`, `durabilityPromised`, `placement` |
-
-## Library tour
-
-`example/lib/library_tour.dart` is a separate Dart project. One database holds JSON cards, an FTS5 index, and an R-tree. `arabicToken` in that file is an Arabic token.
-
-| Check | Value |
-|---|---|
-| Title | `Kept Garden` |
-| Pages | `320` |
-| Cards after rollback | `2` |
-| Highlight | `a garden [kept] in the margin` |
-| `bm25` | a finite double |
-| Arabic token | title `Arabic Shelf`, count `1` |
-| R-tree shelf inside the unit box | `1` |
-| `user_version` before and after reopen | `7` |
-| Image length | `40960` bytes |
-
-```dart
-await db.execute(
-    'CREATE TABLE books (id INTEGER PRIMARY KEY, card TEXT NOT NULL)');
-await db.execute(
-    'INSERT INTO books(card) VALUES (json_object(?, ?, ?, ?))',
-    ['title', 'Kept Garden', 'pages', 320]);
-await db.execute('BEGIN');
-await db.execute(
-    'INSERT INTO books(card) VALUES (json_object(?, ?, ?, ?))',
-    ['title', 'Rolled Back', 'pages', 1]);
-await db.execute('ROLLBACK');
-
-final card = await db.query(
-    'SELECT json_extract(card, ?), json_extract(card, ?) FROM books '
-    'WHERE json_extract(card, ?) = ?',
-    [r'$.title', r'$.pages', r'$.title', 'Kept Garden']);
-
-await db.execute('CREATE VIRTUAL TABLE book_text USING fts5(title, body)');
-await db.execute(
-    'INSERT INTO book_text(title, body) VALUES (?, ?), (?, ?)',
-    ['Kept Garden', 'a garden kept in the margin', 'Arabic Shelf', arabicToken]);
-final text = await db.query(
-    "SELECT highlight(book_text, 1, '[', ']'), bm25(book_text) "
-    'FROM book_text WHERE book_text MATCH ?',
-    ['kept']);
-
-await db.execute(
-    'CREATE VIRTUAL TABLE shelves USING rtree(id, minX, maxX, minY, maxY)');
-await db.execute(
-    'INSERT INTO shelves VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)',
-    [1, 0, 1, 0, 1, 2, 5, 6, 5, 6]);
-final place = await db.query(
-    'SELECT id FROM shelves WHERE minX <= ? AND maxX >= ? AND minY <= ? AND maxY >= ?',
-    [1, 0, 1, 0]);
-
-await db.execute('PRAGMA user_version=7');
-final image = db.exportImage();
-final reopened = await MutableSqliteDatabase.fromImage(image);
-```
-
-From a checkout, after `dart pub get` at the repository root:
+The package is already in the snippet above. From a checkout, after `dart pub get` at the repository root:
 
 ```sh
 cd example
@@ -130,6 +148,17 @@ dart run bin/main.dart
 ```text
 Kept Garden (320 pages) | a garden [kept] in the margin | Arabic Shelf x1 | place 1 | cards 2 | version 7 | reopen Kept Garden v7 | 40960 bytes
 ```
+
+## Reference
+
+| Entry | Library | Use it for |
+|---|---|---|
+| `openInMemory` | `sqlite_plus.dart` | A new in-memory database. Same function as `MutableSqliteDatabase.create` |
+| `MutableSqliteDatabase.fromImage` | `sqlite_plus.dart` | Reopen `exportImage()` bytes |
+| `db.query` / `db.execute` | `sqlite_plus.dart` | Bound SQL |
+| `db.functions` | `sqlite_plus.dart` | Scalar, aggregate, and collation callbacks |
+| `openDatabase` | `sqlite_plus_io.dart` | A `dart:io` file, on its own isolate |
+| `openBrowserStorage` | `sqlite_plus.dart` | Browser bytes. Read `canRead`, `canWrite`, `durabilityPromised`, `placement` |
 
 ## Queries
 

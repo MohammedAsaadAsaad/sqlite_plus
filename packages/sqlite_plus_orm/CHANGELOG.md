@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+The package page leads with a save, a revision, and a JSON path. Depends on `sqlite_plus` 0.1.1.
+
 ## 0.1.0
 
 Release number. Depends on `sqlite_plus` 0.1.0.

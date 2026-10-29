@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Render the 1000-row file-round charts from the versionCode 2009 phone sample.
+"""Render the versionCode 2009 phone charts.
 
 Bars are linear inside each row: length is that engine's measurement divided
 by the larger measurement on the same row. A shared axis would hide the
-microsecond rows next to a 327 ms insert, and a log axis would shrink the gap.
-The separate-delete file is 603.6 KB because the size is taken before close
-and still includes the redo.
+microsecond rows next to a multi-hundred-millisecond insert.
 """
 
 import os
@@ -23,9 +21,22 @@ NATIVE = (126, 182, 217)
 PLUS = (224, 164, 90)
 PILL = (46, 36, 24)
 
-# File round, versionCode 2009, Asia/Hebron 14:00 on 2026-10-29.
+# Memory round, versionCode 2009, Asia/Hebron 14:00 on 2026-10-29.
 # name, native microseconds, sqlite_plus microseconds, native label, plus label
-ROWS = [
+MEMORY = [
+    ("Separate insert", 99_000, 5_000, "99.0 ms", "5.0 ms"),
+    ("Transaction insert", 82_100, 2_100, "82.1 ms", "2.1 ms"),
+    ("Separate update", 92_400, 10_700, "92.4 ms", "10.7 ms"),
+    ("Bulk update", 336, 106, "336 µs", "106 µs"),
+    ("Search", 108_000, 6_500, "108.0 ms", "6.5 ms"),
+    ("Point lookup", 97_700, 9_600, "97.7 ms", "9.6 ms"),
+    ("VACUUM", 781, 10, "781 µs", "10 µs"),
+    ("Separate delete", 93_700, 7_300, "93.7 ms", "7.3 ms"),
+    ("Delete all", 195, 97, "195 µs", "97 µs"),
+]
+
+# File round from the same sample.
+FILE = [
     ("Separate insert", 326_800, 162_200, "326.8 ms", "162.2 ms"),
     ("Transaction insert", 81_000, 72_600, "81.0 ms", "72.6 ms"),
     ("Separate update", 477_600, 381_200, "477.6 ms", "381.2 ms"),
@@ -69,7 +80,7 @@ def speedup(native_us, plus_us):
     return f"{value:.1f}×"
 
 
-def render_time(path):
+def render_time(path, rows, heading, subtitle):
     scale = 2
     width, height = 1280, 980
     image = Image.new("RGB", (width * scale, height * scale), BG)
@@ -84,13 +95,8 @@ def render_time(path):
     def s(n):
         return n * scale
 
-    draw.text((s(48), s(32)), "File round, 1000 rows", font=title, fill=INK)
-    draw.text(
-        (s(48), s(78)),
-        "One arm64 phone. Same SQL. Checksums matched. Bar length is measured time.",
-        font=sub,
-        fill=MUTED,
-    )
+    draw.text((s(48), s(32)), heading, font=title, fill=INK)
+    draw.text((s(48), s(78)), subtitle, font=sub, fill=MUTED)
 
     def legend_item(right_edge, color, name, face):
         width_px = text_width(draw, face, name)
@@ -115,7 +121,7 @@ def render_time(path):
     row_h = s(86)
     span = plot_right - plot_left
 
-    for index, (name, native_us, plus_us, native_text, plus_text) in enumerate(ROWS):
+    for index, (name, native_us, plus_us, native_text, plus_text) in enumerate(rows):
         y = row_top + index * row_h
         draw.text((s(40), y + s(24)), name, font=label, fill=INK)
         slower = max(native_us, plus_us)
@@ -226,6 +232,18 @@ if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     doc = os.path.join(root, "doc")
     os.makedirs(doc, exist_ok=True)
-    render_time(os.path.join(doc, "bench-time.png"))
+    caption = "One arm64 phone. Same SQL. Checksums matched. Bar length is measured time."
+    render_time(
+        os.path.join(doc, "bench-time.png"),
+        MEMORY,
+        "Memory round, 1000 rows",
+        caption,
+    )
+    render_time(
+        os.path.join(doc, "bench-file.png"),
+        FILE,
+        "File round, 1000 rows",
+        caption,
+    )
     render_size(os.path.join(doc, "bench-size.png"))
     print("wrote", doc)

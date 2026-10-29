@@ -65,9 +65,11 @@ Preparation, export, file size, process CPU, and process RSS from the same log:
 
 ## Phone log, versionCode 2009
 
-One 1000-row sample of the arm64 package, Asia/Hebron 14:00 on 2026-10-29. Every pair matched. sqlite_plus was faster on every operation. The native interval is first. The ratio is sqlite_plus divided by native. File size is taken before close, so the sqlite_plus file includes the redo. The charts are that file round. Each row has its own scale.
+One 1000-row sample of the arm64 package, Asia/Hebron 14:00 on 2026-10-29. Every pair matched. sqlite_plus was faster on every operation. The native interval is first. The ratio is sqlite_plus divided by native. File size is taken before close, so the sqlite_plus file includes the redo. The first chart is the memory round, the second is the file round, and the third is file size before close. Each row has its own scale.
 
-![File round, 1000 rows. Each row uses its own linear scale.](../../packages/sqlite_plus/doc/bench-time.png)
+![Memory round, 1000 rows. Each row uses its own linear scale.](../../packages/sqlite_plus/doc/bench-time.png)
+
+![File round, 1000 rows. Each row uses its own linear scale.](../../packages/sqlite_plus/doc/bench-file.png)
 
 ![File size before close. Each row uses its own linear scale.](../../packages/sqlite_plus/doc/bench-size.png)
 

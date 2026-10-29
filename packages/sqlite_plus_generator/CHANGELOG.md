@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+The package page leads with the five classes and the generated filter, JSON path, search, and bounds. Depends on `sqlite_plus_orm` 0.1.1.
+
 ## 0.1.0
 
 Release number. Depends on `sqlite_plus_orm` 0.1.0.

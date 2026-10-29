@@ -1,67 +1,27 @@
 # sqlite_plus_generator
 
-A development-time generator for `sqlite_plus_orm`. It reads Dart classes and writes columns, codecs, keys, revisions, relationships, JSON `path`, FTS5 `search`, and R-tree `bounds`. The generated application depends on `sqlite_plus_orm`. The analyzer stays in this development tool.
+Write a Dart class. This tool writes the ORM mapping: columns, a revision, a JSON path, full-text search, and an R-tree box. The analyzer stays on your machine. The application depends on `sqlite_plus_orm`.
 
-Version `0.1.0`.
-
-The pictures below are the `sqlite_plus` engine, not this generator. One arm64 phone, Bench versionCode 2009, the file round, 1000 rows, Asia/Hebron 14:00 on 2026-10-29. The same SQL, checksums matched. Bar length is measured time, and each row has its own scale. The size is taken before close, so the sqlite_plus file still includes the redo.
-
-![Engine file-round statement time for 1000 rows.](doc/bench-time.png)
-
-![Engine file size before close for the same statements.](doc/bench-size.png)
-
-## Install
+Version `0.1.1`.
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.0
+  sqlite_plus_generator: ^0.1.1
 ```
-
-The source file imports `sqlite_plus_orm` and declares `part 'models.orm.g.dart';`.
-
-| Command | Effect |
-|---|---|
-| `dart run sqlite_plus_generator --input lib/models.dart` | Write the part |
-| `--class Customer --class Purchase` | Map only those classes |
-| `--output lib/models.orm.g.dart` | Set the part path |
-| `--check` | Compare the part with the file on disk |
-
-From this package directory:
 
 ```sh
-dart run bin/sqlite_plus_generator.dart --input example/lib/models.dart --check
+dart run sqlite_plus_generator --input lib/models.dart
 ```
 
-## What one class becomes
+`--check` compares the part with the file on disk. `--class Customer` limits the write. `--output` sets the part path.
 
-| You write | The part contains |
-|---|---|
-| A concrete public class | `EntityType`, columns, `filter`, `orderByFields` |
-| `id` or `<ClassName>Id` | The primary key |
-| `@DbColumn` | The SQL name |
-| `@DbIgnore` | The field left out of the table |
-| `@DbKey` | Key order, or `generated: true` |
-| `@DbVersion()` | The revision column |
-| `<Parent>Id` or `@DbReference` | `reference` and `collection` |
-| `@DbJson()` on one `String` | `path(String path)` |
-| `@DbEntity(module: 'fts5')` | `USING fts5` and `search(String text)` |
-| `@DbEntity(module: 'rtree')` | `USING rtree` and `bounds` |
-
-SQL names default to the exact Dart names. Annotations resolve by type identity and accept an import prefix. The write is deterministic, formatted, and replaced through a unique temporary file. Hand-written files and symbolic links stay in place.
-
-## The library
-
-`example/lib/models.dart` is the checked-in input. `example/lib/models.orm.g.dart` is the checked-in part.
-
-| Class | Shape | Generated read |
-|---|---|---|
-| `Customer` | Generated `BigInt? id`, `name`, `@DbVersion() revision` | Relationship target |
-| `Purchase` | Mutable `id`, `customerId`, `total` | `filter((row) => row.total > 20.0)` |
-| `Note` | `@DbJson() document` | `path(r'$.title')` |
-| `Article` | `@DbEntity(module: 'fts5')`, `@DbKey(generated: true) rowid`, `body` | `search('kept')` |
-| `Place` | `@DbEntity(module: 'rtree')`, integer `id`, four doubles | `bounds.intersects` |
+## Five classes, four reads
 
 ```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+part 'models.orm.g.dart';
+
 class Customer {
   Customer({this.id, required this.name, this.revision = 0});
   final BigInt? id;
@@ -106,33 +66,36 @@ class Place {
 }
 ```
 
-`Purchase.customerId` becomes `PurchaseRelationships.customer`. The FTS key is `rowid`. The R-tree key is the integer `id`, followed by `minX`, `maxX`, `minY`, and `maxY`.
-
-## Ten rows, four reads
-
-`example/lib/library_app.dart` imports the ORM and `models.dart`. It opens memory, calls `ensureCreated`, and saves one customer, three purchases, two notes, two articles, and two places.
-
-| Read | Stored values | Result |
-|---|---|---|
-| `filter((row) => row.total > 20.0)` then `orderByFields` | `22.5`, `4`, `30` | `[22.5, 30.0]`, count `2` |
-| `path(r'$.title').equalTo('kept')` | `kept`, `other` | `{"title":"kept"}` |
-| `search('kept')` | `alpha kept`, `beta lost` | `alpha kept` |
-| `bounds.intersects` on the unit box | place `1` and place `2` | place `1` of `2` |
-| `reference(...).load()` | purchase linked to `Ada` | `Ada` |
-| Second `migrations.plan()` | schema matches `generatedModel` | empty |
-
-`saveChanges` returns `10`.
+`customerId` becomes `PurchaseRelationships.customer`. The part is `models.orm.g.dart`.
 
 ```dart
-final matched = purchases.query
+final connection = await MutableDatabaseConnection.openMemory();
+final context = DbContext(connection, generatedModel);
+await context.migrations.ensureCreated();
+
+final purchases = context.set(PurchaseMapping.instance);
+final ada = context.set(CustomerMapping.instance).add(Customer(name: 'Ada'));
+final purchase = purchases.add(Purchase(total: 22.5));
+purchases.add(Purchase(total: 4));
+purchases.add(Purchase(total: 30));
+purchase.reference(PurchaseRelationships.customer).set(ada);
+final notes = context.set(NoteMapping.instance);
+notes.add(Note(document: '{"title":"kept"}'));
+final articles = context.set(ArticleMapping.instance);
+articles.add(Article(body: 'alpha kept'));
+final places = context.set(PlaceMapping.instance);
+places.add(Place(id: BigInt.one, minX: 0, maxX: 1, minY: 0, maxY: 1));
+await context.saveChanges();
+
+final expensive = await purchases.query
     .filter((row) => row.total > 20.0)
-    .orderByFields((row) => [row.total.ascending]);
+    .orderByFields((row) => [row.total.ascending])
+    .toList();
 final note = (await NoteQuery(notes.query)
         .filter((row) => row.path(r'$.title').equalTo('kept'))
         .toList())
     .single;
-final article =
-    (await ArticleQuery(articles.query).search('kept').toList()).single;
+final article = (await ArticleQuery(articles.query).search('kept').toList()).single;
 final inside = await PlaceQuery(places.query)
     .filter((row) => row.bounds.intersects(
         const Rect(minX: 0, minY: 0, maxX: 1, maxY: 1)))
@@ -140,16 +103,43 @@ final inside = await PlaceQuery(places.query)
 final buyer = await purchase.reference(PurchaseRelationships.customer).load();
 ```
 
+`expensive` is `22.5` then `30.0`. `note.document` is `{"title":"kept"}`. `article.body` is `alpha kept`. `inside` is place `1`. `buyer` is `Ada`. The checked-in example also stores the rows that do not match, ten in all, and prints:
+
+```text
+Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2
+```
+
+## The engine underneath
+
+These pictures are the `sqlite_plus` engine on one arm64 phone, Bench versionCode 2009, Asia/Hebron 14:00 on 2026-10-29. One thousand rows, the same SQL, every checksum matched. Each bar is that row's measured time. In memory, a transaction of inserts was 39× and search was 17×. On a file, search was 11× and a point lookup was 14×. One sample. The phone model was not in the log.
+
+![Memory round, 1000 rows. Bar length matches measured time.](doc/bench-time.png)
+
+![File round, 1000 rows. Bar length matches measured time.](doc/bench-file.png)
+
+## What one class becomes
+
+| You write | The part contains |
+|---|---|
+| A concrete public class | `EntityType`, columns, `filter`, `orderByFields` |
+| `id` or `<ClassName>Id` | The primary key |
+| `@DbColumn` | The SQL name |
+| `@DbIgnore` | The field left out of the table |
+| `@DbKey` | Key order, or `generated: true` |
+| `@DbVersion()` | The revision column |
+| `<Parent>Id` or `@DbReference` | `reference` and `collection` |
+| `@DbJson()` on one `String` | `path(String path)` |
+| `@DbEntity(module: 'fts5')` | `USING fts5` and `search(String text)` |
+| `@DbEntity(module: 'rtree')` | `USING rtree` and `bounds` |
+
+SQL names default to the exact Dart names. The write is deterministic and formatted. Hand-written files and symbolic links stay in place. The FTS key is `rowid`. The R-tree key is the integer `id`, then `minX`, `maxX`, `minY`, and `maxY`.
+
 From a checkout, after `dart pub get` at the repository root:
 
 ```sh
 cd example
 dart run sqlite_plus_generator --input lib/models.dart --check
 dart run bin/main.dart
-```
-
-```text
-Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2
 ```
 
 ## Field rules

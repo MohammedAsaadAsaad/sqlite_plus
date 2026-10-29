@@ -1,70 +1,84 @@
 # sqlite_plus
 
-A Pure Dart SQLite engine, a typed ORM, and a mapping generator. SQL, JSON, FTS5, R-tree, change tracking, and generated filters run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
+A SQLite engine in Dart, a typed ORM, and a generator that writes the mapping. SQL, JSON, full-text search, R-tree, change tracking, and generated filters run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.1.0`.
-
-## Packages
-
-| Package | Import | What you get |
-|---|---|---|
-| [`sqlite_plus`](packages/sqlite_plus) | `package:sqlite_plus/sqlite_plus.dart` | In-memory SQL, JSON, FTS5, R-tree, geopoly, and `exportImage` |
-| File adapter | `package:sqlite_plus/sqlite_plus_io.dart` | `openDatabase` for a `dart:io` file |
-| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | `package:sqlite_plus_orm/sqlite_plus_orm.dart` | Tracked objects, bound predicates, relationships, reviewed migrations |
-| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | dev dependency `sqlite_plus_generator` | `filter`, JSON `path`, FTS `search`, R-tree `bounds` |
-
-The file adapter imports `dart:io`. The other two libraries do not. The generator runs on the development machine. The application it writes depends on the ORM.
-
-## Install
+Version `0.1.1`.
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.0
-  sqlite_plus_orm: ^0.1.0
+  sqlite_plus: ^0.1.1
+  sqlite_plus_orm: ^0.1.1
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.0
+  sqlite_plus_generator: ^0.1.1
 ```
 
-## Where to start
+## Query
 
-| You want to | Open |
-|---|---|
-| Run SQL yourself | [`packages/sqlite_plus`](packages/sqlite_plus) |
-| Keep Dart objects and let the runtime write SQL | [`packages/sqlite_plus_orm`](packages/sqlite_plus_orm) |
-| Declare classes and generate the mapping | [`packages/sqlite_plus_generator`](packages/sqlite_plus_generator) |
+```dart
+import 'package:sqlite_plus/sqlite_plus.dart';
 
-## Examples
+final db = await openInMemory();
+await db.execute(
+  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+);
+await db.execute(
+  'INSERT INTO note(title, body) VALUES (?, ?)',
+  ['Kept Garden', 'a garden kept in the margin'],
+);
+final rows = await db.query(
+  'SELECT title FROM note WHERE title LIKE ?',
+  ['%Garden%'],
+);
+```
 
-Each package has an example project under `example/`. From a checkout, after `dart pub get` at the repository root:
+The same database does JSON paths, `MATCH` with `highlight`, an R-tree box, a Dart scalar function, and `exportImage()`. A file uses `openDatabase` from `sqlite_plus_io.dart`.
 
-| Example | Command | Printed line |
-|---|---|---|
-| Engine tour | `(cd packages/sqlite_plus/example && dart run bin/main.dart)` | `Kept Garden (320 pages) \| a garden [kept] in the margin \| Arabic Shelf x1 \| place 1 \| cards 2 \| version 7 \| reopen Kept Garden v7 \| 40960 bytes` |
-| Reading log | `(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)` | `Kept Garden Revised on north, revision 1; Other Atlas stays at revision 0; 1 match; idle save 0` |
-| Generated library | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` | `Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2` |
+## Track a change
 
-`examples/compare` is Bench, an English Flutter screen that runs the same SQL on Android SQLite through `sqflite` and on sqlite_plus. Each operation runs twice: both engines in memory, then both engines on a database file. The count is from 1 to 10000. The operations are separate inserts, one transaction of inserts, separate updates, one bulk update, indexed name search, primary-key reads, `VACUUM`, separate deletes, and one delete of every row. Preparation and, for sqlite_plus, `exportImage` are logged beside the measured interval. Copy log puts the whole log on the clipboard. The screen keeps a process RSS and CPU readout while a run is in progress. Release APKs are local build output, one file per ABI, and they are not stored in this repository.
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
-The figure and the first table are one 1000-row file round from Bench versionCode 2009, Asia/Hebron 14:00 on 2026-10-29. Both engines used a database file. Every checksum matched. Each bar is linear for that row. The phone model was not in the log. sqlite_plus was faster on every operation in this sample, in memory and on a file. The size figure is the same file round, taken before close, so the sqlite_plus file still includes the redo. Separate delete was 603.6 KB against the native 16.0 KB.
+final books = context.set(bookType);
+final book = books.add(Book(BigInt.one, 'Kept Garden', '{"shelf":"north"}', 0));
+await context.saveChanges();
 
-![File round, 1000 rows. Each row uses its own linear scale.](packages/sqlite_plus/doc/bench-time.png)
+book.title = 'Kept Garden Revised';
+await context.saveChanges(); // one row, revision 1
 
-![File size before close. Each row uses its own linear scale.](packages/sqlite_plus/doc/bench-size.png)
+final stored = await books.query
+    .where(bookTitle.eq('Kept Garden Revised') &
+        MappedField(bookNote).at(r'$.shelf').equalTo('north'))
+    .single();
+```
 
-| Operation | native | sqlite_plus | faster |
-|---|---:|---:|---:|
-| Separate insert | 326.8 ms | 162.2 ms | 2.0× |
-| Transaction insert | 81.0 ms | 72.6 ms | 1.1× |
-| Separate update | 477.6 ms | 381.2 ms | 1.3× |
-| Bulk update | 915 µs | 246 µs | 3.7× |
-| Search | 129.4 ms | 11.7 ms | 11× |
-| Point lookup | 105.9 ms | 7.6 ms | 14× |
-| VACUUM | 923 µs | 13 µs | 71× |
-| Separate delete | 413.8 ms | 345.5 ms | 1.2× |
-| Delete all | 773 µs | 259 µs | 3.0× |
+## Let the generator write the mapping
 
-Memory round from the same sample:
+```dart
+class Purchase {
+  Purchase({this.id, this.customerId, required this.total});
+  BigInt? id;
+  BigInt? customerId;
+  double total;
+}
+
+final expensive = await purchases.query
+    .filter((row) => row.total > 20.0)
+    .orderByFields((row) => [row.total.ascending])
+    .toList();
+```
+
+`@DbJson()` adds `path`. `@DbEntity(module: 'fts5')` adds `search`. `@DbEntity(module: 'rtree')` adds `bounds.intersects`. `customerId` becomes a `reference`.
+
+```sh
+dart run sqlite_plus_generator --input lib/models.dart
+```
+
+## One phone, one thousand rows
+
+Bench versionCode 2009, one arm64 phone, Asia/Hebron 14:00 on 2026-10-29. The same SQL on Android SQLite and on sqlite_plus. Every checksum matched. The phone model was not in the log. Each bar is that row's measured time, on its own linear scale. The gold figure is native time divided by sqlite_plus time. This is one sample. Separate statements cross a platform channel in the native app and stay inside one isolate here.
+
+![Memory round, 1000 rows. Bar length matches measured time.](packages/sqlite_plus/doc/bench-time.png)
 
 | Operation | native | sqlite_plus | faster |
 |---|---:|---:|---:|
@@ -78,67 +92,39 @@ Memory round from the same sample:
 | Separate delete | 93.7 ms | 7.3 ms | 13× |
 | Delete all | 195 µs | 97 µs | 2.0× |
 
-`examples/notes` is Margin, an English Flutter notes application on the ORM. The screen is a left-to-right desk of paper cards. From that directory, `flutter test` covers a save that reopens from the database image. The Android release packages are local build output, one file per ABI, and they are not stored in this repository. The tools screen inserts random notes through the ORM in a separate isolate, with one `saveChanges` transaction or one save per note, and reports wall time, process CPU time, and RSS. The single `saveChanges` writes the added notes with multi-row `INSERT` statements. Separate saves keep the loaded rows until the image is exported once. Delete-all sends one `DELETE`. The same screen opens a live page of process RSS and CPU, including while an insert or delete is running. It can show the database file and run `VACUUM`.
+On a file, the same sample was still faster on every operation. Search was 11×, a point lookup 14×, and `VACUUM` 71×. Inserts and separate deletes were closer, from 1.1× to 2.0×. File size is taken before close, so the sqlite_plus file still includes the redo.
 
-Check the generated part before running the library:
+![File round, 1000 rows. Bar length matches measured time.](packages/sqlite_plus/doc/bench-file.png)
 
-```sh
-(cd packages/sqlite_plus_generator/example && dart run sqlite_plus_generator --input lib/models.dart --check)
-```
+| Operation | native | sqlite_plus | faster |
+|---|---:|---:|---:|
+| Separate insert | 326.8 ms | 162.2 ms | 2.0× |
+| Transaction insert | 81.0 ms | 72.6 ms | 1.1× |
+| Separate update | 477.6 ms | 381.2 ms | 1.3× |
+| Bulk update | 915 µs | 246 µs | 3.7× |
+| Search | 129.4 ms | 11.7 ms | 11× |
+| Point lookup | 105.9 ms | 7.6 ms | 14× |
+| VACUUM | 923 µs | 13 µs | 71× |
+| Separate delete | 413.8 ms | 345.5 ms | 1.2× |
+| Delete all | 773 µs | 259 µs | 3.0× |
 
-## Engine, in one image
+## Packages
 
-`packages/sqlite_plus/example/lib/library_tour.dart` builds one in-memory database. The same image is exported and opened again.
+| Package | What you open |
+|---|---|
+| [`sqlite_plus`](packages/sqlite_plus) | `openInMemory`, bound SQL, JSON, FTS5, R-tree, `exportImage` |
+| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | `saveChanges`, revisions, JSON paths, relationships, reviewed migrations |
+| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | `filter`, `path`, `search`, `bounds` from ordinary classes |
 
-| Step | Call | Result |
+`examples/compare` is Bench, the Flutter screen behind the tables. `examples/notes` is Margin, a notes desk on the ORM. Their Android packages are local build output and are not stored in this repository.
+
+From a checkout, after `dart pub get`:
+
+| Example | Command | Prints |
 |---|---|---|
-| Two JSON cards | `json_object` with bound arguments | `Kept Garden`, `320` pages |
-| Rolled-back insert | `BEGIN`, insert, `ROLLBACK` | `COUNT(*)` is `2` |
-| JSON path | `json_extract` with a bound path | title and page count from the card |
-| Full text | `fts5`, `highlight`, `bm25`, `MATCH 'kept'` | `a garden [kept] in the margin`, finite rank |
-| Unicode token | `MATCH` on an Arabic token | `Arabic Shelf`, count `1` |
-| Spatial | `rtree` unit box | shelf id `1` |
-| Reopen | `PRAGMA user_version=7`, `exportImage`, `fromImage` | title and version `7`, `40960` bytes |
-
-```dart
-final db = await openInMemory();
-db.functions.registerScalar('twice', 1,
-    (args) => args.single == null ? null : (args.single as BigInt) * BigInt.two);
-final doubled = await db.query('SELECT twice(?)', [21]);
-```
-
-`doubled` is `42`. The callback stays on that connection. The full tour is in the [engine README](packages/sqlite_plus).
-
-## ORM, with names instead of SQL
-
-`packages/sqlite_plus_orm/example/lib/reading_log.dart` maps a `Book`, saves two rows, renames one, and reads it by title and by a JSON shelf.
-
-| Step | Call | Result |
-|---|---|---|
-| Insert | `books.add` twice, `saveChanges` | `2` |
-| Rename | assign `title`, `saveChanges` | `1`, revision `1` |
-| Idle save | `saveChanges` | `0` |
-| Filter | `title.eq(...) & MappedField.at(r'$.shelf')` | `Kept Garden Revised` on `north` |
-| Other shelf | path `south` | `Other Atlas` at revision `0` |
-
-## Generated Dart
-
-`packages/sqlite_plus_generator/example/lib/models.dart` declares five classes. The application saves ten rows and reads four of them.
-
-| Class | Annotation | Generated call | Result |
-|---|---|---|---|
-| `Customer` | `@DbVersion()` | `reference(...).load()` | `Ada` |
-| `Purchase` | `customerId` | `filter((row) => row.total > 20)` | `22.5`, then `30.0` |
-| `Note` | `@DbJson()` | `path(r'$.title').equalTo('kept')` | `{"title":"kept"}` |
-| `Article` | `@DbEntity(module: 'fts5')` | `search('kept')` | `alpha kept` |
-| `Place` | `@DbEntity(module: 'rtree')` | `bounds.intersects(unit rect)` | place `1` of `2` |
-
-```dart
-final rows = await purchases.query
-    .filter((row) => row.total > 20.0)
-    .orderByFields((row) => [row.total.ascending])
-    .toList();
-```
+| Engine | `(cd packages/sqlite_plus/example && dart run bin/main.dart)` | `Kept Garden (320 pages)` and a reopened image of `40960` bytes |
+| ORM | `(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)` | `Kept Garden Revised on north, revision 1` |
+| Generator | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` | `Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2` |
 
 ## SQL surface
 

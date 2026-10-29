@@ -1679,6 +1679,11 @@ result=pass
 - `packages/sqlite_plus`: `dart format --output=none --set-exit-if-changed .` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10526 tests. The ORM and generator suites were not re-run. No engine behavior changed.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
 
+## 2026-10-29 — Version 0.1.1
+
+- `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.1`. The package pages lead with short practical samples. The phone charts are the versionCode 2009 memory round and file round, each row on its own linear scale. The numbers are the same one-phone sample. No engine, ORM, or generator behavior changed, and the suites were not re-run.
+- M9 stays unchecked. Item 108 stays open.
+
 ## 2026-10-29 — Version 0.1.0
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.0`. The ORM depends on `sqlite_plus: ^0.1.0`. The generator depends on `sqlite_plus_orm: ^0.1.0`. `openInMemory` and `openDatabase` are the familiar names in this release. The previous names remain. `0.0.3` is still the newest version on pub.dev until this release is uploaded.

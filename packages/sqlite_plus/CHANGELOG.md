@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+The package page leads with short SQL, JSON, search, and file samples. The phone charts are the versionCode 2009 memory round and file round, each row on its own linear scale.
+
 ## 0.1.0
 
 `openInMemory` is `MutableSqliteDatabase.create`. `openDatabase` is `DatabaseOwner.open`. The previous names remain.

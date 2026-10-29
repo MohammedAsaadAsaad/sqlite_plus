@@ -5,8 +5,8 @@ resolution: workspace
 environment:
   sdk: '>=3.6.0 <4.0.0'
 dependencies:
-  sqlite_plus_orm: ^0.1.0
+  sqlite_plus_orm: ^0.1.1
 dev_dependencies:
   lints: ^5.0.0
-  sqlite_plus_generator: ^0.1.0
+  sqlite_plus_generator: ^0.1.1
   test: ^1.25.0

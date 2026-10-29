@@ -1,21 +1,17 @@
 # sqlite_plus_orm
 
-Typed queries, change tracking, relationships, and reviewed migrations for `sqlite_plus`. The application names columns and objects. The runtime writes the SQL. Runtime code has no analyzer, reflection, native database, or `dart:io` dependency.
+Change tracking for Dart objects on `sqlite_plus`. You name the fields. The runtime writes the SQL, opens one transaction per save, and bumps a revision when a row changes.
 
-Version `0.1.0`.
-
-The pictures below are the engine, not this ORM. One arm64 phone, Bench versionCode 2009, the file round, 1000 rows, Asia/Hebron 14:00 on 2026-10-29. The same SQL, checksums matched. Bar length is measured time, and each row has its own scale. The size is taken before close, so the sqlite_plus file still includes the redo.
-
-![Engine file-round statement time for 1000 rows.](doc/bench-time.png)
-
-![Engine file size before close for the same statements.](doc/bench-size.png)
-
-## Install
+Version `0.1.1`.
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.0
+  sqlite_plus_orm: ^0.1.1
 ```
+
+## Save two books, rename one
+
+`bookType`, `bookTitle`, and `bookNote` are the mapping. The generator writes them from a class. The reading log declares the same columns by hand.
 
 ```dart
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
@@ -23,87 +19,53 @@ import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 final connection = await MutableDatabaseConnection.openMemory();
 final context = DbContext(connection, DbModel([bookType]));
 await context.migrations.ensureCreated();
-```
-
-| Piece | Type | Role |
-|---|---|---|
-| Model | `EntityType`, `Column`, `DbModel` | Table, property, codec, read, and optional write |
-| Unit of work | `DbContext`, `context.set` | Identity map and one transaction per `saveChanges` |
-| Revision | `version: true` or `@DbVersion()` | Integer column incremented on update |
-| Filter | `TypedQuery` | Bound comparisons, `skip`, `take`, `count`, `single` |
-| JSON | `MappedField.at` | `json_extract` with a bound path |
-| Search | `TypedQuery.search` | `table MATCH ?`, ordered by rank |
-| Spatial | `Bounds.intersects` | Four R-tree comparisons |
-| Links | `reference`, `collection` | Explicit load. The handle itself does no I/O |
-| Schema | `migrations.plan`, `applySafe`, `apply` | Reviewable diff. Renames stay reviewed |
-
-A plain save keeps the loaded rows until the image is exported or queried. Many deleted rows of one table with no trigger and no rewriting foreign key leave in one `DELETE`. A single-column key uses `IN`. A group that already covers every stored row deletes the table without a key list.
-
-`sqlite_plus_generator` writes this metadata from ordinary classes. The reading log below is the same runtime with a hand-written mapping.
-
-## Reading log
-
-`example/lib/reading_log.dart` saves two books, renames one, and reads the JSON shelf. The application source has no SQL text.
-
-| Step | Result |
-|---|---|
-| `saveChanges` after two `add` calls | `2` |
-| `saveChanges` after `title = 'Kept Garden Revised'` | `1`, revision `1` |
-| `saveChanges` with no edits | `0` |
-| Title `Kept Garden Revised` and shelf `north` | one row |
-| Shelf `south` | `Other Atlas`, revision `0` |
-| Second `migrations.plan()` | empty |
-
-```dart
-final bookId = Column<Book, BigInt>(
-    property: 'id', codec: Codecs.bigInt, read: (book) => book.id, keyOrder: 0);
-final bookTitle = Column<Book, String>(
-    property: 'title',
-    codec: Codecs.text,
-    read: (book) => book.title,
-    write: (book, value) => book.title = value);
-final bookNote = Column<Book, String>(
-    property: 'note', codec: Codecs.text, read: (book) => book.note);
-final bookRevision = Column<Book, int>(
-    property: 'revision',
-    codec: Codecs.integer,
-    read: (book) => book.revision,
-    write: (book, value) => book.revision = value,
-    version: true);
 
 final books = context.set(bookType);
 final book = Book(BigInt.one, 'Kept Garden', '{"shelf":"north"}', 0);
 books.add(book);
 books.add(Book(BigInt.two, 'Other Atlas', '{"shelf":"south"}', 0));
-await context.saveChanges();
+await context.saveChanges(); // 2
 
 book.title = 'Kept Garden Revised';
-await context.saveChanges();
+await context.saveChanges(); // 1, and revision becomes 1
+await context.saveChanges(); // 0, nothing changed
 
-final kept = books.query.where(bookTitle.eq('Kept Garden Revised') &
-    MappedField(bookNote).at(r'$.shelf').equalTo('north'));
-final stored = await kept.orderBy([bookTitle.asc()]).single();
+final stored = await books.query
+    .where(bookTitle.eq('Kept Garden Revised') &
+        MappedField(bookNote).at(r'$.shelf').equalTo('north'))
+    .single();
 ```
 
-`stored.revision` is `1`. From a checkout, after `dart pub get` at the repository root:
-
-```sh
-cd example
-dart run bin/main.dart
-```
+`stored.revision` is `1`. The other book stays at revision `0`. A second `migrations.plan()` is empty. `example/lib/reading_log.dart` prints:
 
 ```text
 Kept Garden Revised on north, revision 1; Other Atlas stays at revision 0; 1 match; idle save 0
 ```
 
-A generated filter is the same query with generated names:
+With a generated mapping the filter is a closure, and a purchase points at its customer before the save:
 
 ```dart
 final rows = await purchases.query
     .filter((row) => row.total > 20.0)
     .orderByFields((row) => [row.total.ascending])
     .toList();
+
+final parent = customers.add(Customer(name: 'Ada'));
+final child = purchases.add(Purchase(total: 12.5));
+child.reference(PurchaseRelationships.customer).set(parent);
+await context.saveChanges();
+final loaded = await child.reference(PurchaseRelationships.customer).load();
 ```
+
+`loaded` is the same `Ada` the context already tracks. A plain save keeps the loaded rows until the image is exported or queried. Many deleted rows of one table leave in one `DELETE`.
+
+## The engine underneath
+
+These pictures are the `sqlite_plus` engine on one arm64 phone, Bench versionCode 2009, Asia/Hebron 14:00 on 2026-10-29. One thousand rows, the same SQL, every checksum matched. Each bar is that row's measured time. In memory, a transaction of inserts was 39× and search was 17×. On a file, search was 11× and a point lookup was 14×. One sample. The phone model was not in the log.
+
+![Memory round, 1000 rows. Bar length matches measured time.](doc/bench-time.png)
+
+![File round, 1000 rows. Bar length matches measured time.](doc/bench-file.png)
 
 ## Predicates
 

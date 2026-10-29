@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.1`. The package pages lead with short practical samples. The phone charts are the versionCode 2009 memory round and file round.
+
 ## 0.1.0
 
 `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.0`. `openInMemory` is `MutableSqliteDatabase.create`. `openDatabase` is `DatabaseOwner.open`. The previous names remain.

@@ -1,6 +1,6 @@
 name: sqlite_plus
 description: Pure Dart SQLite-style database engine with SQL, JSON, FTS5, and R-tree.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus
 issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
 topics:
@@ -8,10 +8,10 @@ topics:
   - database
   - sql
 screenshots:
-  - description: 1000-row statement time on one arm64 phone. Bar length matches measured time.
+  - description: 1000-row memory round on one arm64 phone. Bar length matches measured time.
     path: doc/bench-time.png
-  - description: Stored size after the same 1000-row statements on one arm64 phone.
-    path: doc/bench-size.png
+  - description: 1000-row file round on the same phone. Bar length matches measured time.
+    path: doc/bench-file.png
 resolution: workspace
 environment:
   sdk: '>=3.6.0 <4.0.0'
