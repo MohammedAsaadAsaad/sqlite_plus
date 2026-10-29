@@ -148,7 +148,7 @@ rows, reads the JSON note whose title is `kept`, the FTS article matching
 generator `--check`.
 
 The repository root `LICENSE` is the MIT license. Every package version is
-`0.0.3`. The three packages are published on pub.dev at this version.
+`0.1.0`. `0.0.3` remains the last version already on pub.dev until this release is uploaded.
 `CHANGELOG.md` records this version. The Linux CI job checks fixture checksums. macOS and Windows CI run
 format, analysis, package tests, and the example projects.
 

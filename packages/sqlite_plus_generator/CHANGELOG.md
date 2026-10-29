@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0
+
+Release number. Depends on `sqlite_plus_orm` 0.1.0.
+
 ## 0.0.3
 
 Release number. Depends on `sqlite_plus_orm` 0.0.3.

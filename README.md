@@ -2,7 +2,7 @@
 
 A Pure Dart SQLite engine, a typed ORM, and a mapping generator. SQL, JSON, FTS5, R-tree, change tracking, and generated filters run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.0.3`.
+Version `0.1.0`.
 
 ## Packages
 
@@ -19,11 +19,11 @@ The file adapter imports `dart:io`. The other two libraries do not. The generato
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.0.3
-  sqlite_plus_orm: ^0.0.3
+  sqlite_plus: ^0.1.0
+  sqlite_plus_orm: ^0.1.0
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.0.3
+  sqlite_plus_generator: ^0.1.0
 ```
 
 ## Where to start

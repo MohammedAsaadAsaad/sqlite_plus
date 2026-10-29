@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0
+
+`openInMemory` is `MutableSqliteDatabase.create`. `openDatabase` is `DatabaseOwner.open`. The previous names remain.
+
 ## 0.0.3
 
 Release number for the versionCode 2009 phone sample. Android APKs stay out of git.

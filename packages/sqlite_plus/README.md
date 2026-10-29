@@ -2,7 +2,7 @@
 
 A Pure Dart database engine. SQL, JSON, FTS5, R-tree, and geopoly run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.0.3`.
+Version `0.1.0`.
 
 One arm64 phone, Bench versionCode 2009, 1000 rows, Asia/Hebron 14:00 on 2026-10-29. The same SQL, and every checksum matched. The phone model was not in the log. The bars are the file round, and each row has its own linear scale. The gold figure is native time divided by sqlite_plus time. sqlite_plus was faster on every operation in this sample, in memory and on a file. The size figure is taken before close, so the sqlite_plus file still includes the redo. Separate delete was 603.6 KB against the native 16.0 KB.
 
@@ -44,7 +44,7 @@ These are statement intervals from one sample. They are not a multi-device study
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.0.3
+  sqlite_plus: ^0.1.0
 ```
 
 ```dart
