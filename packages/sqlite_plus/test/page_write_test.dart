@@ -331,6 +331,117 @@ void main() {
     expect((timings['batch_insert_100000'] as List).length, 1);
     expect(timings['single_row_inserts_200'], isA<int>());
   });
+
+  test('separate NOT NULL edits commit through changed pages', () async {
+    const create = '''
+CREATE TABLE bench (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  body TEXT NOT NULL,
+  n INTEGER NOT NULL
+)
+''';
+    final controller = CrashController();
+    final databaseFile = ModelFile(await _emptyImage(), controller);
+    final journal = ModelFile(Uint8List(0), controller);
+    final pager = await RollbackJournalPager.open(databaseFile, journal);
+    final db = await MutableSqliteDatabase.fromJournalPager(pager);
+    addTearDown(db.close);
+    await db.execute(create);
+    for (var id = 1; id <= 200; id++) {
+      final result = await db.execute(
+          'INSERT INTO bench(id, name, body, n) VALUES (?, ?, ?, ?)',
+          [id, 'n$id', 'b$id', id]);
+      expect(result.changes, 1);
+    }
+    final pageSize = DatabaseHeader.decode(databaseFile.durable).pageSize;
+    expect(journal.durable.length, lessThanOrEqualTo(512 + 3 * (pageSize + 8)));
+    for (var id = 1; id <= 200; id++) {
+      expect(
+          (await db.execute('UPDATE bench SET n = n + 1 WHERE id = ?', [id]))
+              .changes,
+          1);
+    }
+    expect(journal.durable.length, lessThanOrEqualTo(512 + 3 * (pageSize + 8)));
+    final sum = 200 * 201 ~/ 2 + 200;
+    expect(
+        (await db.query('SELECT COUNT(*), COALESCE(SUM(n), 0) FROM bench'))
+            .rows
+            .single,
+        [BigInt.from(200), BigInt.from(sum)]);
+    for (var id = 1; id <= 200; id++) {
+      expect((await db.execute('DELETE FROM bench WHERE id = ?', [id])).changes,
+          1);
+    }
+    expect((await db.query('SELECT COUNT(*) FROM bench')).rows.single.single,
+        BigInt.zero);
+    final image = Uint8List.fromList(databaseFile.durable);
+    final opened = await MutableSqliteDatabase.fromImage(image);
+    addTearDown(opened.close);
+    expect(
+        (await opened.query('SELECT COUNT(*) FROM bench')).rows.single.single,
+        BigInt.zero);
+    expect((await opened.query('PRAGMA integrity_check')).rows.single.single,
+        'ok');
+    expect(
+        (await opened.execute('UPDATE bench SET n = n + 1 WHERE id = ?', [1]))
+            .changes,
+        0);
+    expect(
+        (await opened.execute('DELETE FROM bench WHERE id = ?', [1])).changes,
+        0);
+  });
+
+  test('a reopened file keeps separate inserts, updates, and deletes',
+      () async {
+    const create = '''
+CREATE TABLE bench (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  body TEXT NOT NULL,
+  n INTEGER NOT NULL
+)
+''';
+    final controller = CrashController();
+    final databaseFile = ModelFile(await _emptyImage(), controller);
+    final journal = ModelFile(Uint8List(0), controller);
+    final pager = await RollbackJournalPager.open(databaseFile, journal);
+    final db = await MutableSqliteDatabase.fromJournalPager(pager);
+    addTearDown(db.close);
+    await db.execute(create);
+    for (var id = 1; id <= 200; id++) {
+      await db.execute(
+          'INSERT INTO bench(id, name, body, n) VALUES (?, ?, ?, ?)',
+          [id, 'n$id', 'b$id', id]);
+    }
+    for (var id = 1; id <= 200; id++) {
+      await db.execute('UPDATE bench SET n = n + 1 WHERE id = ?', [id]);
+    }
+    await db.execute('DELETE FROM bench WHERE id = ?', [7]);
+    await db.execute('UPDATE bench SET n = n + 1');
+    final image = Uint8List.fromList(databaseFile.durable);
+    final opened = await MutableSqliteDatabase.fromImage(image);
+    addTearDown(opened.close);
+    expect((await opened.query('PRAGMA integrity_check')).rows.single.single,
+        'ok');
+    final rows =
+        await opened.query('SELECT COUNT(*), COALESCE(SUM(n), 0) FROM bench');
+    final expectedSum = (200 * 201 ~/ 2 + 200 * 2) - (7 + 2);
+    expect(rows.rows.single, [BigInt.from(199), BigInt.from(expectedSum)]);
+    final point =
+        await opened.query('SELECT body FROM bench WHERE id = ?', [8]);
+    expect(point.rows.single.single, 'b8');
+    expect(
+        (await opened.query('SELECT body FROM bench WHERE id = ?', [7])).rows,
+        isEmpty);
+  });
+}
+
+Future<Uint8List> _emptyImage() async {
+  final created = await MutableSqliteDatabase.create();
+  final image = created.exportImage();
+  await created.close();
+  return image;
 }
 
 Future<Map<int, List<int>>> _indexPages(Uint8List image, String table) async {

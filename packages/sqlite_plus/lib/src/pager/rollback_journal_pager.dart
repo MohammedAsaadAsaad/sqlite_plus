@@ -6,19 +6,20 @@ import 'image_pager.dart';
 import '../format/database_header.dart';
 import '../storage/durable_storage_backend.dart';
 
-/// Single-writer, full-image rollback pager for pre-provisioned durable files.
+/// Single-writer rollback pager for pre-provisioned durable files.
 ///
-/// Uses a single SQLite rollback-journal header and complete page before-images.
-/// PERSIST-style invalidation retains the existing journal directory entry.
-/// Durability depends on [DurableStorageBackend], not merely on this algorithm.
-/// No WAL, locks, concurrent readers or multi-database transactions are provided.
+/// The journal stores before-images of pages this commit overwrites, including
+/// pages removed by a shrink. PERSIST-style invalidation keeps the journal
+/// directory entry. Durability depends on [DurableStorageBackend]. No WAL,
+/// locks, concurrent readers, or multi-database transactions are provided.
 final class RollbackJournalPager implements ImagePager {
-  RollbackJournalPager._(
-      this._database, this._journal, this.pageSize, this.maxImageBytes);
+  RollbackJournalPager._(this._database, this._journal, this.pageSize,
+      this.maxImageBytes, this._cached);
   final DurableStorageBackend _database;
   final DurableStorageBackend _journal;
   final int pageSize;
   final int maxImageBytes;
+  Uint8List _cached;
   bool _busy = false;
   bool _closed = false;
   bool _failed = false;
@@ -31,7 +32,7 @@ final class RollbackJournalPager implements ImagePager {
       {int maxImageBytes = 64 * 1024 * 1024}) async {
     if (maxImageBytes < 100) throw RangeError.value(maxImageBytes);
     await _recover(database, journal, maxImageBytes);
-    final image = await _all(database, maxImageBytes);
+    final image = Uint8List.fromList(await _all(database, maxImageBytes));
     final header = DatabaseHeader.decode(image);
     header.validateFileLength(image.length);
     if (header.readVersion != 1 ||
@@ -42,7 +43,7 @@ final class RollbackJournalPager implements ImagePager {
           'Writer requires a complete rollback-format database image');
     }
     return RollbackJournalPager._(
-        database, journal, header.pageSize, maxImageBytes);
+        database, journal, header.pageSize, maxImageBytes, image);
   }
 
   Future<T> _exclusive<T>(Future<T> Function() body) async {
@@ -60,7 +61,7 @@ final class RollbackJournalPager implements ImagePager {
 
   @override
   Future<Uint8List> readImage() =>
-      _exclusive(() => _all(_database, maxImageBytes));
+      _exclusive(() async => Uint8List.fromList(_cached));
 
   /// A commit is acknowledged only after database sync and journal invalidation
   /// sync. On any I/O failure this instance is poisoned; reopen to recover.
@@ -80,40 +81,75 @@ final class RollbackJournalPager implements ImagePager {
           throw const FormatException('Invalid replacement database image');
         }
         try {
-          final original = await _all(_database, maxImageBytes);
-          final pages = original.length ~/ pageSize;
-          final random = Random.secure();
+          final original = _cached;
+          final oldPages = original.length ~/ pageSize;
+          final nextPages = next.length ~/ pageSize;
+          final changed = <int>[];
+          final limit = oldPages < nextPages ? oldPages : nextPages;
+          for (var page = 1; page <= limit; page++) {
+            final start = (page - 1) * pageSize;
+            var same = true;
+            for (var i = 0; i < pageSize; i++) {
+              if (original[start + i] != next[start + i]) {
+                same = false;
+                break;
+              }
+            }
+            if (!same) changed.add(page);
+          }
+          for (var page = nextPages + 1; page <= oldPages; page++) {
+            changed.add(page);
+          }
+          if (changed.isEmpty && next.length == original.length) return;
+          final random = Random();
           final seed = random.nextInt(65536) * 65536 + random.nextInt(65536);
-          // An invalid header is made durable before reusing the journal.
+          // The header stays invalid until the page records are in the same
+          // synced journal image. A crash before that sync keeps the previous
+          // invalidated header.
           await _journal.write(0, Uint8List(_sectorSize));
           await _journal.truncate(_sectorSize);
-          await _journal.sync();
-          for (var page = 1; page <= pages; page++) {
+          final body = Uint8List(changed.length * (pageSize + 8));
+          for (var i = 0; i < changed.length; i++) {
+            final page = changed[i];
+            final record = Uint8List.sublistView(
+                body, i * (pageSize + 8), (i + 1) * (pageSize + 8));
+            final data = ByteData.sublistView(record);
             final bytes = Uint8List.sublistView(
                 original, (page - 1) * pageSize, page * pageSize);
-            final record = Uint8List(pageSize + 8);
-            final data = ByteData.sublistView(record);
             data.setUint32(0, page);
             record.setRange(4, pageSize + 4, bytes);
             data.setUint32(pageSize + 4, _checksum(bytes, seed));
-            await _journal.write(
-                _sectorSize + (page - 1) * record.length, record);
           }
-          await _journal.sync();
+          if (body.isNotEmpty) await _journal.write(_sectorSize, body);
           final journalHeader = Uint8List(28)..setRange(0, 8, _magic);
           final fields = ByteData.sublistView(journalHeader);
-          fields.setUint32(8, pages);
+          fields.setUint32(8, changed.length);
           fields.setUint32(12, seed);
-          fields.setUint32(16, pages);
+          fields.setUint32(16, oldPages);
           fields.setUint32(20, _sectorSize);
           fields.setUint32(24, pageSize);
           await _journal.write(0, journalHeader);
           await _journal.sync();
-          await _database.write(0, next);
-          await _database.truncate(next.length);
+          for (final page in changed) {
+            if (page > nextPages) continue;
+            await _database.write(
+                (page - 1) * pageSize,
+                Uint8List.sublistView(
+                    next, (page - 1) * pageSize, page * pageSize));
+          }
+          for (var page = oldPages + 1; page <= nextPages; page++) {
+            await _database.write(
+                (page - 1) * pageSize,
+                Uint8List.sublistView(
+                    next, (page - 1) * pageSize, page * pageSize));
+          }
+          if (next.length != original.length) {
+            await _database.truncate(next.length);
+          }
           await _database.sync();
           await _journal.write(0, Uint8List(28));
           await _journal.sync();
+          _cached = next;
         } catch (_) {
           _failed = true;
           rethrow;
@@ -147,7 +183,7 @@ final class RollbackJournalPager implements ImagePager {
     final sector = fields.getUint32(20);
     final size = fields.getUint32(24);
     if (count == 0 ||
-        count != pages ||
+        count > pages ||
         sector != _sectorSize ||
         size < 512 ||
         size > 65536 ||
@@ -156,8 +192,13 @@ final class RollbackJournalPager implements ImagePager {
         sector + count * (size + 8) != length) {
       throw const FormatException('Unsupported or incomplete journal');
     }
-    // Validate the entire journal before changing any database bytes.
-    final original = Uint8List(pages * size);
+    // Validate the journal before changing any database bytes. Pages absent
+    // from the journal were not overwritten and stay as they are on disk.
+    final current = await _all(database, maxImageBytes);
+    final restored = Uint8List(pages * size);
+    final prefix =
+        current.length < restored.length ? current.length : restored.length;
+    restored.setRange(0, prefix, current);
     final seen = <int>{};
     for (var i = 0; i < count; i++) {
       final record = await _read(journal, sector + i * (size + 8), size + 8);
@@ -170,15 +211,15 @@ final class RollbackJournalPager implements ImagePager {
           data.getUint32(size + 4) != _checksum(page, seed)) {
         throw const FormatException('Corrupt journal page or checksum');
       }
-      original.setRange((number - 1) * size, number * size, page);
+      restored.setRange((number - 1) * size, number * size, page);
     }
-    final header = DatabaseHeader.decode(original);
+    final header = DatabaseHeader.decode(restored);
     if (header.pageSize != size) {
       throw const FormatException('Journal page size mismatch');
     }
-    header.validateFileLength(original.length);
-    await database.write(0, original);
-    await database.truncate(original.length);
+    header.validateFileLength(restored.length);
+    await database.write(0, restored);
+    await database.truncate(restored.length);
     await database.sync();
     await journal.write(0, Uint8List(28));
     await journal.sync();

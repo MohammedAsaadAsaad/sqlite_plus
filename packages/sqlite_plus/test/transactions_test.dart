@@ -115,7 +115,8 @@ void main() {
     final db = await MutableSqliteDatabase.fromJournalPager(pager);
     await db.execute('BEGIN');
     await db.execute('DELETE FROM notes');
-    faults.crashAt = original.length ~/ 512 + 7;
+    // First database page write, after the changed-page journal is durable.
+    faults.crashAt = 6;
     await expectLater(db.execute('COMMIT'), throwsA(isA<SimulatedCrash>()));
     await expectLater(db.query('SELECT * FROM notes'), throwsStateError);
     file.crash();

@@ -133,13 +133,12 @@ void main() {
       () async {
     final original = originalImage();
     final next = updatedImage(original, 99);
-    // Before database writing: header + page records + 5 setup operations.
+    // Invalidate, one changed-page record, valid header, then the database write.
     final controller = CrashController()..persistUnsynced = true;
     final db = ModelFile(original, controller);
     final journal = ModelFile(Uint8List(0), controller);
     final pager = await RollbackJournalPager.open(db, journal);
-    final pages = original.length ~/ 512;
-    controller.crashAt = pages + 7; // database write, before database sync
+    controller.crashAt = 6; // database write, before database sync
     await expectLater(pager.commitImage(next), throwsA(isA<SimulatedCrash>()));
     final hot = Uint8List.fromList(journal.durable);
     for (var point = 1; point <= 5; point++) {
@@ -164,7 +163,7 @@ void main() {
     final database = ModelFile(original, controller);
     final journal = ModelFile(Uint8List(0), controller);
     final pager = await RollbackJournalPager.open(database, journal);
-    controller.crashAt = original.length ~/ 512 + 7;
+    controller.crashAt = 6;
     final next = updatedImage(original, 72);
     await expectLater(pager.commitImage(next), throwsA(isA<SimulatedCrash>()));
     final hot = Uint8List.fromList(journal.durable);
@@ -219,6 +218,18 @@ void main() {
       expect(controller.operations, 0);
     }
     expect(await pager.readImage(), originalImage());
+    await pager.close();
+  });
+  test('a one-page edit journals only that before-image', () async {
+    final controller = CrashController();
+    final original = originalImage();
+    final db = ModelFile(original, controller);
+    final journal = ModelFile(Uint8List(0), controller);
+    final pager = await RollbackJournalPager.open(db, journal);
+    await pager.commitImage(updatedImage(original, 4));
+    final pageSize = 512;
+    expect(journal.durable.length, 512 + pageSize + 8);
+    expect(db.durable, updatedImage(original, 4));
     await pager.close();
   });
 }

@@ -1585,6 +1585,18 @@ result=pass
 - None of these three packages was installed here.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
 
+## 2026-10-29 — Changed-page file commits
+
+- A phone log for Bench versionCode 2006, Asia/Hebron 11:31–11:34 on 2026-10-29, matched every checksum. File separate insert was 44.267 s, separate update 87.311 s, and separate delete 45.269 s. Memory separate update was 325.3 ms against native 135.3 ms, and memory separate delete was 164.6 ms against native 101.8 ms. Each autocommit had been rebuilding the whole image and journaling every page.
+- A rollback commit now journals and writes only pages whose bytes differ, plus pages removed when the file shrinks. Recovery overlays those before-images onto the current file and truncates back to the saved page count. The journal is synced once after its header is valid, the database is synced after the new pages, and the invalidated header is synced before the commit returns.
+- One appended row, one replaced row, or one deleted row of an ordinary rowid table is written into the existing leaves. A full rightmost leaf splits onto a new page. A bulk integer addend rewrites the leaves that hold that column. Anything else, including a secondary index, still uses the compact rebuild. `UPDATE table SET column = column + integer WHERE rowid = ?` and `DELETE FROM table WHERE rowid = ?` on a simple table skip the planner.
+- `packages/sqlite_plus`: `dart format .` and `dart analyze --fatal-infos` passed. `dart test` passed 10517 tests.
+- `examples/compare`: `flutter analyze` reported no issues and `flutter test` passed 17 tests. Those tests do not open `sqflite`.
+- Linux x64, Dart 3.13.7, JIT, not AOT and not a phone. Two processes of 1000 `bench` rows. Memory separate insert 23970 µs and 39064 µs. Memory separate update 25721 µs and 43306 µs. Memory separate delete 9747 µs and 15437 µs. Memory bulk update 383 µs and 656 µs. Memory `DELETE FROM bench` 748 µs and 835 µs. File separate insert 1315418 µs and 2293980 µs. File separate update 1884763 µs and 1950286 µs. File separate delete 2080859 µs and 1561274 µs. File bulk update 10267 µs and 13398 µs. File `DELETE FROM bench` 3202 µs and 6234 µs. The file statements still sync the journal, the database, and the journal invalidation. This is not a phone measurement and not a comparison with sqflite.
+- `flutter build apk --split-per-abi --release` wrote three Bench packages, debug keystore, application id `dev.sqliteplus.engine_bench`, versionName 1.0.0, launcher Bench. `bench-arm64-v8a.apk` 19670051 bytes, versionCode 2007, sha256 `43ba38f30313fab89b2108d4e0f16afdab6d696a800af36061411bf98ec18efd`. `bench-armeabi-v7a.apk` 17220477 bytes, versionCode 1007, sha256 `bd8001a24cb4507ce3899de659fb65805122cbbdc58b3f1111d342a52a28649f`. `bench-x86_64.apk` 21227050 bytes, versionCode 4007, sha256 `c477d11c4bd8c726301a6135cbf319db4399e7698a794079d86bb76df6e655a8`.
+- None of these three packages was installed here.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
 ## 2026-10-29 — Bench file open without a loopback socket
 
 - VersionCode 2004 stopped every sqlite_plus file operation on a phone with `SocketException: Failed to create server socket (OS Error: Operation not permitted, errno = 1, address = 127.0.0.1, port = 44098)`. Memory pairs on that phone still completed. `DatabaseOwner` binds that socket as a process lease.

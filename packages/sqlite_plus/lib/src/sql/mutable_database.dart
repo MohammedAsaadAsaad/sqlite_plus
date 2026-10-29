@@ -389,10 +389,7 @@ final class MutableSqliteDatabase {
           if (journal != null && !inTransaction && _dirtyMain) {
             final state = _liveMain;
             if (state != null) {
-              final image = state.serialize(
-                foreignKeys: false,
-                includeDeferred: false,
-              );
+              final image = state.durableImage();
               try {
                 await journal.commitImage(image);
               } catch (_) {

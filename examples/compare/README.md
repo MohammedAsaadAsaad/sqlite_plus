@@ -81,12 +81,12 @@ flutter test
 flutter build apk --split-per-abi --release
 ```
 
-Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.engine_bench`. The launcher name is Bench. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2006.
+Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.engine_bench`. The launcher name is Bench. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2007.
 
 | ABI | File | Bytes | versionCode | sha256 |
 |---|---|---:|---:|---|
-| arm64-v8a | `dist/bench-arm64-v8a.apk` | 19604515 | 2006 | `8277620f7fc8f46815bdcd2da2a657fd87f555746aa8e808ddc11b7c3d584b8e` |
-| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17154941 | 1006 | `85ae690596a25e56e37404312adf106769f7ede0fe51003ef6d3e89fc961778b` |
-| x86_64 | `dist/bench-x86_64.apk` | 21161514 | 4006 | `291c5d01040cb486ce43773d4dee0cf9b4d9e17324d24ca298f480b764815598` |
+| arm64-v8a | `dist/bench-arm64-v8a.apk` | 19670051 | 2007 | `43ba38f30313fab89b2108d4e0f16afdab6d696a800af36061411bf98ec18efd` |
+| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17220477 | 1007 | `bd8001a24cb4507ce3899de659fb65805122cbbdc58b3f1111d342a52a28649f` |
+| x86_64 | `dist/bench-x86_64.apk` | 21227050 | 4007 | `c477d11c4bd8c726301a6135cbf319db4399e7698a794079d86bb76df6e655a8` |
 
-A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the earlier arm64 package, versionCode 2003, native file against sqlite_plus memory. These versionCode 2006 packages were not installed here. VersionCode 2004 opened the sqlite_plus file through `DatabaseOwner`, and a phone rejected its loopback socket. VersionCode 2005 opened the file but left hot autocommit changes in memory. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the earlier arm64 package, versionCode 2003, native file against sqlite_plus memory. These versionCode 2007 packages were not installed here. VersionCode 2006 wrote the whole database image on every autocommit. VersionCode 2007 journals only the pages that statement changed. VersionCode 2004 opened the sqlite_plus file through `DatabaseOwner`, and a phone rejected its loopback socket. VersionCode 2005 opened the file but left hot autocommit changes in memory. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.

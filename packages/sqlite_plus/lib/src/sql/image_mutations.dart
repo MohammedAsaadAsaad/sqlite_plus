@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../btree/btree_reader.dart';
 import '../btree/database_image_builder.dart';
 import '../btree/page_patch.dart';
+import '../btree/rowid_page_patch.dart';
 import '../btree/table_image_writer.dart';
 import '../format/database_header.dart';
 import '../pager/read_only_pager.dart';
@@ -223,13 +224,14 @@ final class ImageMutations {
   }
 
   /// Treat [image] as the serialized form of the current rows.
+  ///
+  /// The loaded snapshot shares row instances. Later edits replace list
+  /// entries, so the snapshot still identifies the rows the image contains.
   void rebase(Uint8List image) {
     original = image;
     schemaChanged = false;
     for (final entry in _tables.entries) {
-      _loadedRows[entry.key] = [
-        for (final row in entry.value.rows) TableRow(row.rowId, row.values)
-      ];
+      _loadedRows[entry.key] = List<TableRow>.of(entry.value.rows);
     }
   }
 
@@ -362,9 +364,7 @@ final class ImageMutations {
         }
       }
       for (final entry in result._tables.entries) {
-        result._loadedRows[entry.key] = [
-          for (final row in entry.value.rows) TableRow(row.rowId, row.values)
-        ];
+        result._loadedRows[entry.key] = List<TableRow>.of(entry.value.rows);
       }
       return result;
     } finally {
@@ -4060,13 +4060,164 @@ final class ImageMutations {
   /// Ordinary single-table DML may rewrite one rowid tree or patch one overflow
   /// page. Every other shape, including schema changes, falls back to the
   /// compact rebuild.
+  /// Image for one autocommit, using a page patch when the row delta allows it.
+  Uint8List durableImage() {
+    final fast = _fastDurableImage();
+    if (fast != null) return fast;
+    return serialize(foreignKeys: false, includeDeferred: false);
+  }
+
   Future<Uint8List> commit(
       {required bool foreignKeys, required bool includeDeferred}) async {
+    final fast = _fastDurableImage();
+    if (fast != null) return fast;
     final incremental = await _tryIncremental(
         foreignKeys: foreignKeys, includeDeferred: includeDeferred);
     if (incremental != null) return incremental;
     return serialize(
         foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+  }
+
+  /// One appended, replaced, or deleted row, or one integer-column addend.
+  ///
+  /// Returns null when the image has to be rebuilt. A hit flushes column
+  /// addends so the live rows match the returned bytes.
+  Uint8List? _fastDurableImage() {
+    if (schemaChanged) return null;
+    final addend = _patchAddend();
+    if (addend != null) {
+      _flushColumnAddends();
+      return addend;
+    }
+    for (final table in _tables.values) {
+      final pending = table.columnAddends;
+      if (pending != null && pending.isNotEmpty) return null;
+    }
+    String? changed;
+    for (final entry in _tables.entries) {
+      if (_sameRowInstances(
+          _loadedRows[entry.key] ?? const [], entry.value.rows)) {
+        continue;
+      }
+      if (changed != null ||
+          entry.key.startsWith('sqlite_') ||
+          entry.value.view ||
+          entry.value.schema.withoutRowid ||
+          entry.value.schema.virtual ||
+          entry.value.schema.rootPage < 0) {
+        return null;
+      }
+      changed = entry.key;
+    }
+    if (changed == null) return original;
+    final table = _tables[changed]!;
+    final before = _loadedRows[changed] ?? const <TableRow>[];
+    final after = table.rows;
+    final root = _tableRoot(table);
+    if (root == null) return null;
+    if (_indexes.any((index) => asciiLower(index.table) == changed)) {
+      return null;
+    }
+    if (after.length == before.length + 1) {
+      for (var i = 0; i < before.length; i++) {
+        if (!identical(before[i], after[i])) return null;
+      }
+      final row = after.last;
+      for (final old in before) {
+        if (row.rowId <= old.rowId) return null;
+      }
+      return RowidPagePatch.append(
+          original, root, row.rowId, _storedValues(table, row));
+    }
+    if (after.length + 1 == before.length) {
+      var index = 0;
+      while (index < after.length && identical(before[index], after[index])) {
+        index++;
+      }
+      for (var i = index; i < after.length; i++) {
+        if (!identical(before[i + 1], after[i])) return null;
+      }
+      return RowidPagePatch.delete(original, root, before[index].rowId);
+    }
+    if (after.length != before.length) return null;
+    var index = -1;
+    for (var i = 0; i < after.length; i++) {
+      if (identical(before[i], after[i])) continue;
+      if (index >= 0 || before[i].rowId != after[i].rowId) return null;
+      index = i;
+    }
+    if (index < 0) return original;
+    return RowidPagePatch.replace(
+        original, root, after[index].rowId, _storedValues(table, after[index]));
+  }
+
+  Uint8List? _patchAddend() {
+    String? changed;
+    for (final entry in _tables.entries) {
+      final addends = entry.value.columnAddends;
+      if (addends == null || addends.isEmpty) continue;
+      if (changed != null) return null;
+      changed = entry.key;
+    }
+    if (changed == null) return null;
+    final table = _tables[changed]!;
+    if (table.view ||
+        table.schema.withoutRowid ||
+        table.schema.virtual ||
+        !_sameRowInstances(_loadedRows[changed] ?? const [], table.rows)) {
+      return null;
+    }
+    final stored = table.schema.storageColumns;
+    final deltas = <int, BigInt>{};
+    for (final entry in table.columnAddends!.entries) {
+      if (entry.key < 0 || entry.key >= table.schema.columns.length) {
+        return null;
+      }
+      final column = table.schema.columns[entry.key];
+      final slot = stored.indexOf(column);
+      if (slot < 0) return null;
+      final name = asciiLower(column.name);
+      if (name == 'rowid' ||
+          name == 'oid' ||
+          name == '_rowid_' ||
+          name == asciiLower(table.schema.rowidAlias ?? '')) {
+        return null;
+      }
+      if (_indexes.any((index) =>
+          asciiLower(index.table) == changed &&
+          index.referencedColumns.contains(name))) {
+        return null;
+      }
+      deltas[slot] = entry.value;
+    }
+    final root = _tableRoot(table);
+    if (root == null) return null;
+    return RowidPagePatch.addColumns(original, root, deltas);
+  }
+
+  int? _tableRoot(_Table table) {
+    final declared = table.schema.rootPage;
+    if (declared > 1) return declared;
+    final roots = RowidPagePatch.schemaRoots(original);
+    final root = roots?[asciiLower(table.schema.name)];
+    if (root == null || root <= 1) return null;
+    return root;
+  }
+
+  List<Object?> _storedValues(_Table table, TableRow row) {
+    final columns = table.schema.columns;
+    return [
+      for (final column in table.schema.storageColumns)
+        row.values[columns.indexOf(column)]
+    ];
+  }
+
+  bool _sameRowInstances(List<TableRow> before, List<TableRow> after) {
+    if (before.length != after.length) return false;
+    for (var i = 0; i < before.length; i++) {
+      if (!identical(before[i], after[i])) return false;
+    }
+    return true;
   }
 
   Future<Uint8List?> _tryIncremental(
@@ -4347,6 +4498,147 @@ final class ImageMutations {
     return (table, column, addend);
   }
 
+  (String, String, BigInt, String)? _scanIncrementWhere(String sql) {
+    final parsed = _scanAssignment(sql);
+    if (parsed == null) return null;
+    return (parsed.$1, parsed.$2, parsed.$3, parsed.$4);
+  }
+
+  (String, String)? _scanDeleteWhere(String sql) {
+    final head = _leadingWords(sql, const ['DELETE', 'FROM']);
+    if (head == null) return null;
+    final table = head.$1;
+    var i = head.$2;
+    if (!_wordAt(sql, i, 'WHERE')) return null;
+    i = _afterWord(sql, i, 'WHERE');
+    final column = _identAt(sql, i);
+    if (column == null) return null;
+    i = column.$2;
+    i = _skipSpace(sql, i);
+    if (i >= sql.length || sql.codeUnitAt(i) != 0x3d) return null;
+    i = _skipSpace(sql, i + 1);
+    if (i >= sql.length || sql.codeUnitAt(i) != 0x3f) return null;
+    i = _skipSpace(sql, i + 1);
+    if (i < sql.length && sql.codeUnitAt(i) == 0x3b) {
+      i = _skipSpace(sql, i + 1);
+    }
+    if (i != sql.length) return null;
+    return (table, column.$1);
+  }
+
+  (String, String, BigInt, String)? _scanAssignment(String sql) {
+    final head = _leadingWords(sql, const ['UPDATE']);
+    if (head == null) return null;
+    final table = head.$1;
+    var i = head.$2;
+    if (!_wordAt(sql, i, 'SET')) return null;
+    i = _afterWord(sql, i, 'SET');
+    final column = _identAt(sql, i);
+    if (column == null) return null;
+    i = _skipSpace(sql, column.$2);
+    if (i >= sql.length || sql.codeUnitAt(i) != 0x3d) return null;
+    final right = _identAt(sql, i + 1);
+    if (right == null || asciiLower(right.$1) != asciiLower(column.$1)) {
+      return null;
+    }
+    i = _skipSpace(sql, right.$2);
+    if (i >= sql.length || sql.codeUnitAt(i) != 0x2b) return null;
+    i = _skipSpace(sql, i + 1);
+    if (i >= sql.length) return null;
+    final numberStart = i;
+    var unit = sql.codeUnitAt(i);
+    if (unit < 48 || unit > 57) return null;
+    i++;
+    while (i < sql.length) {
+      unit = sql.codeUnitAt(i);
+      if (unit < 48 || unit > 57) break;
+      i++;
+    }
+    final addend = BigInt.parse(sql.substring(numberStart, i));
+    if (!_wordAt(sql, i, 'WHERE')) return null;
+    i = _afterWord(sql, i, 'WHERE');
+    final filter = _identAt(sql, i);
+    if (filter == null) return null;
+    i = _skipSpace(sql, filter.$2);
+    if (i >= sql.length || sql.codeUnitAt(i) != 0x3d) return null;
+    i = _skipSpace(sql, i + 1);
+    if (i >= sql.length || sql.codeUnitAt(i) != 0x3f) return null;
+    i = _skipSpace(sql, i + 1);
+    if (i < sql.length && sql.codeUnitAt(i) == 0x3b) {
+      i = _skipSpace(sql, i + 1);
+    }
+    if (i != sql.length) return null;
+    return (table, column.$1, addend, filter.$1);
+  }
+
+  (String, int)? _leadingWords(String sql, List<String> words) {
+    var i = 0;
+    String? ident;
+    for (final word in words) {
+      if (!_wordAt(sql, i, word)) return null;
+      i = _afterWord(sql, i, word);
+    }
+    final name = _identAt(sql, i);
+    if (name == null) return null;
+    ident = name.$1;
+    return (ident, name.$2);
+  }
+
+  int _skipSpace(String sql, int index) {
+    var i = index;
+    while (i < sql.length) {
+      final unit = sql.codeUnitAt(i);
+      if (unit != 32 && unit != 9 && unit != 10 && unit != 13) break;
+      i++;
+    }
+    return i;
+  }
+
+  bool _wordAt(String sql, int index, String upper) {
+    final i = _skipSpace(sql, index);
+    if (i + upper.length > sql.length) return false;
+    for (var k = 0; k < upper.length; k++) {
+      var unit = sql.codeUnitAt(i + k);
+      if (unit >= 97 && unit <= 122) unit -= 32;
+      if (unit != upper.codeUnitAt(k)) return false;
+    }
+    final end = i + upper.length;
+    if (end < sql.length) {
+      final next = sql.codeUnitAt(end);
+      final identifier = (next >= 65 && next <= 90) ||
+          (next >= 97 && next <= 122) ||
+          (next >= 48 && next <= 57) ||
+          next == 95;
+      if (identifier) return false;
+    }
+    return true;
+  }
+
+  int _afterWord(String sql, int index, String upper) {
+    final i = _skipSpace(sql, index);
+    return i + upper.length;
+  }
+
+  (String, int)? _identAt(String sql, int index) {
+    final i = _skipSpace(sql, index);
+    if (i >= sql.length) return null;
+    var unit = sql.codeUnitAt(i);
+    final letter =
+        (unit >= 65 && unit <= 90) || (unit >= 97 && unit <= 122) || unit == 95;
+    if (!letter) return null;
+    var end = i + 1;
+    while (end < sql.length) {
+      unit = sql.codeUnitAt(end);
+      final identifier = (unit >= 65 && unit <= 90) ||
+          (unit >= 97 && unit <= 122) ||
+          (unit >= 48 && unit <= 57) ||
+          unit == 95;
+      if (!identifier) break;
+      end++;
+    }
+    return (sql.substring(i, end), end);
+  }
+
   String? _scanDeleteAll(String sql) {
     var i = 0;
     final n = sql.length;
@@ -4481,6 +4773,89 @@ final class ImageMutations {
     return MutationImage(original, count, null);
   }
 
+  MutationImage? _tryHotRowIncrement(String sql, List<Object?> parameters,
+      {required bool foreignKeys}) {
+    if (parameters.length != 1) return null;
+    final match = _scanIncrementWhere(sql.trim());
+    if (match == null) return null;
+    final table = _tables[asciiLower(match.$1)];
+    if (table == null || !_simpleTable(table, foreignKeys: foreignKeys)) {
+      return null;
+    }
+    if (!_isRowidName(table, asciiLower(match.$4))) return null;
+    final columnName = asciiLower(match.$2);
+    if (_isRowidName(table, columnName)) return null;
+    final column = table.schema.columns
+        .indexWhere((candidate) => asciiLower(candidate.name) == columnName);
+    if (column < 0 ||
+        !table.schema.columns[column].declaredType
+            .toUpperCase()
+            .contains('INT')) {
+      return null;
+    }
+    if (_indexes.any((index) =>
+        asciiLower(index.table) == asciiLower(table.schema.name) &&
+        index.referencedColumns.contains(columnName))) {
+      return null;
+    }
+    final rowId = _fastRowid(sqlValue(parameters.single));
+    if (rowId == null) return null;
+    final existing = _rowById(table)[rowId];
+    if (existing == null) {
+      _beginCounters();
+      return MutationImage(original, 0, null);
+    }
+    final current = existing.values[column];
+    if (current is! BigInt && current is! int) return null;
+    final stored = current is BigInt ? current : BigInt.from(current as int);
+    final values = List<Object?>.of(existing.values);
+    values[column] = stored + match.$3;
+    final updated = TableRow(rowId, values);
+    final index = table.rows.indexOf(existing);
+    if (index < 0) return null;
+    table.rows[index] = updated;
+    table.rowById![rowId] = updated;
+    table.valueIndexes?.remove(column);
+    wroteRows = true;
+    _beginCounters();
+    _changed();
+    return MutationImage(original, 1, null);
+  }
+
+  MutationImage? _tryHotDeleteRow(String sql, List<Object?> parameters,
+      {required bool foreignKeys}) {
+    if (parameters.length != 1) return null;
+    final match = _scanDeleteWhere(sql.trim());
+    if (match == null) return null;
+    final key = asciiLower(match.$1);
+    final table = _tables[key];
+    if (table == null || !_simpleTable(table, foreignKeys: foreignKeys)) {
+      return null;
+    }
+    if (!_isRowidName(table, asciiLower(match.$2))) return null;
+    if (_indexes.any((index) => asciiLower(index.table) == key)) return null;
+    if (foreignKeys &&
+        _tables.values.any((child) => child.schema.foreignKeys
+            .any((fk) => asciiLower(fk.table) == key))) {
+      return null;
+    }
+    final rowId = _fastRowid(sqlValue(parameters.single));
+    if (rowId == null) return null;
+    final existing = _rowById(table)[rowId];
+    if (existing == null) {
+      _beginCounters();
+      return MutationImage(original, 0, null);
+    }
+    table.rows.remove(existing);
+    table.rowById!.remove(rowId);
+    table.residentRowids?.remove(rowId);
+    table.valueIndexes = null;
+    wroteRows = true;
+    _beginCounters();
+    _changed();
+    return MutationImage(original, 1, null);
+  }
+
   /// Repeated single-row inserts and whole-table integer increments.
   ///
   /// Returns null when the statement needs the general planner. A hit does not
@@ -4515,7 +4890,10 @@ final class ImageMutations {
     final vacuum = head == 0x56 || head == 0x76;
     final delete = head == 0x44 || head == 0x64;
     if (update) {
-      if (parameters.isNotEmpty) return null;
+      if (parameters.length > 1) return null;
+      if (parameters.length == 1 && _scanIncrementWhere(text) == null) {
+        return null;
+      }
     } else if (insert) {
       if (parameters.isEmpty) return null;
       if (_fastInsertPlans[text] == null &&
@@ -4528,7 +4906,11 @@ final class ImageMutations {
       if (upper != 'VACUUM' && upper != 'VACUUM;') return null;
       if (!_vacuumNoOp()) return null;
     } else if (delete) {
-      if (parameters.isNotEmpty || _scanDeleteAll(text) == null) return null;
+      if (parameters.length > 1) return null;
+      if (parameters.isEmpty && _scanDeleteAll(text) == null) return null;
+      if (parameters.length == 1 && _scanDeleteWhere(text) == null) {
+        return null;
+      }
     } else {
       return null;
     }
@@ -4540,6 +4922,13 @@ final class ImageMutations {
         return MutationImage(original, 0, null);
       }
       if (update) {
+        if (parameters.isNotEmpty) {
+          final one =
+              _tryHotRowIncrement(text, parameters, foreignKeys: foreignKeys);
+          if (one == null) return null;
+          _counterFrames.last?.finish();
+          return one;
+        }
         final bulk =
             _tryBulkIncrement(text, parameters, foreignKeys: foreignKeys);
         if (bulk == null) return null;
@@ -4547,6 +4936,13 @@ final class ImageMutations {
         return bulk;
       }
       if (delete) {
+        if (parameters.isNotEmpty) {
+          final one =
+              _tryHotDeleteRow(text, parameters, foreignKeys: foreignKeys);
+          if (one == null) return null;
+          _counterFrames.last?.finish();
+          return one;
+        }
         final removed = _tryDeleteAll(text, foreignKeys: foreignKeys);
         if (removed == null) return null;
         _counterFrames.last?.finish();
