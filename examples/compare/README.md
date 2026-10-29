@@ -26,7 +26,7 @@ Memory sqlite_plus work runs in a separate isolate. File sqlite_plus work opens 
 
 ## 1000 rows
 
-The table below is the earlier sample: native on a file, sqlite_plus in memory. Every pair matched on row count, `SUM(n)`, and hits. The ratio is the measured sqlite_plus interval divided by the measured native interval. The app now records a memory pair and a file pair separately. This checkout has no new phone log for those pairs.
+The table below is the earlier sample: native on a file, sqlite_plus in memory. Every pair matched on row count, `SUM(n)`, and hits. The ratio is the measured sqlite_plus interval divided by the measured native interval. The app now records a memory pair and a file pair separately. A later phone log is recorded after this table.
 
 ![1000 rows, same SQL. Statement time on a logarithmic scale.](../../packages/sqlite_plus/doc/bench-time.png)
 
@@ -67,6 +67,33 @@ Preparation, export, file size, process CPU, and process RSS from the same log:
 | Delete all | native | 10.0 ms | 189.58 MB → 189.58 MB | 155.2 ms | 0 µs | 16.0 KB |
 | Delete all | sqlite_plus | 0 µs | 189.25 MB → 189.25 MB | 4.5 ms | 2 µs | 8.0 KB |
 
+## Phone log, versionCode 2008
+
+One 1000-row sample of the arm64 package, Asia/Hebron 13:11 on 2026-10-29. Every pair matched. The native interval is first. File size includes the redo log.
+
+| Operation | Storage | native | sqlite_plus | ratio | sqlite_plus size |
+|---|---|---:|---:|---:|---:|
+| Separate insert | Memory | 90.6 ms | 2.7 ms | 0.03 | 28.0 KB |
+| Separate insert | File | 398.4 ms | 434.3 ms | 1.09 | 108.3 KB |
+| Transaction insert | Memory | 125.1 ms | 4.3 ms | 0.03 | 28.0 KB |
+| Transaction insert | File | 128.5 ms | 101.6 ms | 0.79 | 64.2 KB |
+| Separate update | Memory | 115.9 ms | 14.3 ms | 0.12 | 28.0 KB |
+| Separate update | File | 533.6 ms | 460.6 ms | 0.86 | 124.4 KB |
+| Bulk update | Memory | 1.0 ms | 69 µs | 0.07 | 28.0 KB |
+| Bulk update | File | 1.1 ms | 11.0 ms | 10.41 | 88.3 KB |
+| Search | Memory | 141.3 ms | 10.0 ms | 0.07 | 44.0 KB |
+| Search | File | 169.6 ms | 9.9 ms | 0.06 | 124.3 KB |
+| Point lookup | Memory | 130.2 ms | 12.5 ms | 0.10 | 28.0 KB |
+| Point lookup | File | 139.8 ms | 9.8 ms | 0.07 | 64.2 KB |
+| VACUUM | Memory | 882 µs | 55 µs | 0.06 | 28.0 KB |
+| VACUUM | File | 896 µs | 16 µs | 0.02 | 64.2 KB |
+| Separate delete | Memory | 121.1 ms | 8.9 ms | 0.07 | 8.0 KB |
+| Separate delete | File | 491.3 ms | 537.1 ms | 1.09 | 136.5 KB |
+| Delete all | Memory | 144 µs | 135 µs | 0.94 | 8.0 KB |
+| Delete all | File | 14.1 ms | 403 µs | 0.03 | 52.2 KB |
+
+Separate insert sums are 500500. Separate update and bulk update sums are 501500. Deletes leave 0 rows and sum 0. VACUUM hits are 1. The other hit counts are 1000. This is one sample. The phone model was not in the log.
+
 ## Run the tests
 
 ```sh
@@ -86,7 +113,7 @@ Each release APK holds one ABI. Flutter signs them with the debug keystore, so a
 | ABI | File | Bytes | versionCode | sha256 |
 |---|---|---:|---:|---|
 | arm64-v8a | `dist/bench-arm64-v8a.apk` | 19670051 | 2008 | `85752b8b449977acbcfb241c8cb1833f041f624862a3094d34047429eaec83ca` |
-| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17220477 | 1007 | `bd8001a24cb4507ce3899de659fb65805122cbbdc58b3f1111d342a52a28649f` |
-| x86_64 | `dist/bench-x86_64.apk` | 21227050 | 4007 | `c477d11c4bd8c726301a6135cbf319db4399e7698a794079d86bb76df6e655a8` |
+| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17253245 | 1008 | `0bfebdf11bf97c473a04a1b45067272db1985749073f70da82f1735563fbd4a7` |
+| x86_64 | `dist/bench-x86_64.apk` | 21227050 | 4008 | `096d28b08b799ee3f730dfc8aaebdc458531886817d0dcfdd8b2b039e309547e` |
 
-A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the earlier arm64 package, versionCode 2003, native file against sqlite_plus memory. The arm64 package here is versionCode 2008 and was not installed here. VersionCode 2007 synced the journal, the database, and the journal invalidation on every autocommit. VersionCode 2008 syncs a redo of the changed pages once. The armeabi-v7a and x86_64 files in this directory remain versionCodes 1007 and 4007. VersionCode 2004 opened the sqlite_plus file through `DatabaseOwner`, and a phone rejected its loopback socket. VersionCode 2005 opened the file but left hot autocommit changes in memory. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the earlier arm64 package, versionCode 2003, native file against sqlite_plus memory. The arm64 package here is versionCode 2008 and was not installed here. VersionCode 2007 synced the journal, the database, and the journal invalidation on every autocommit. VersionCode 2008 syncs a redo of the changed pages once. The armeabi-v7a and x86_64 files in this directory are the same engine, versionCodes 1008 and 4008. VersionCode 2004 opened the sqlite_plus file through `DatabaseOwner`, and a phone rejected its loopback socket. VersionCode 2005 opened the file but left hot autocommit changes in memory. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.

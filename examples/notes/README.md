@@ -32,8 +32,8 @@ Each release APK holds one ABI. Flutter signs them with the debug keystore, so a
 
 | ABI | File | Bytes | versionCode | sha256 |
 |---|---|---:|---:|---|
-| arm64-v8a | `dist/margin-notes-arm64-v8a.apk` | 19997995 | 2003 | `97569a908d994269899bf43d9f7f9d5c5d9856ab728fb67b65aa678329131aeb` |
-| armeabi-v7a | `dist/margin-notes-armeabi-v7a.apk` | 17548421 | 1002 | `69b004720dc0d4041f28edaf2590ca0a5f224d857006d2eb5214ecbc994e7aae` |
-| x86_64 | `dist/margin-notes-x86_64.apk` | 21489458 | 4002 | `49b46413b93f36362ba3c98875b7e68a70a4ba3ab7c9d85877825d8b0d8c8961` |
+| arm64-v8a | `dist/margin-notes-arm64-v8a.apk` | 19997995 | 2004 | `ba72c0265fcbcf827b5469f79afc73bb3c3c9e088898eaeca42cdcd0d18d6620` |
+| armeabi-v7a | `dist/margin-notes-armeabi-v7a.apk` | 17613957 | 1004 | `bc1934543c1bb01fb6bd06cfd09a42dba0f8133c7cd0a1533b4aee9364ae013c` |
+| x86_64 | `dist/margin-notes-x86_64.apk` | 21554994 | 4004 | `c304e3766d0a93a31781612eb1f3a1bda98b44d8e6f8b08d247120807433ba00` |
 
-A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. An earlier x86_64 package was installed on an API 35 emulator over the package before it, and the saved note was still on the desk. The arm64 file in this table is versionCode 2003, built with the changed-page engine, and was not installed here. The armeabi-v7a and x86_64 files remain the earlier packages, versionCodes 1002 and 4002. The compatibility matrix records both. The launcher name is Margin. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2003.
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. An earlier x86_64 package was installed on an API 35 emulator over the package before it, and the saved note was still on the desk. These three packages are the current engine and were not installed here. Margin still stores `margin.db` as an `exportImage` snapshot. The launcher name is Margin. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2004.
