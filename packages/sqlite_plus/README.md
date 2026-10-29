@@ -50,16 +50,18 @@ dependencies:
 ```dart
 import 'package:sqlite_plus/sqlite_plus.dart';
 
-final db = await MutableSqliteDatabase.create();
+final db = await openInMemory();
 ```
 
 | Entry | Library | Use it for |
 |---|---|---|
-| `MutableSqliteDatabase.create` | `sqlite_plus.dart` | A new in-memory database |
+| `openInMemory` | `sqlite_plus.dart` | A new in-memory database. Same function as `MutableSqliteDatabase.create` |
+| `MutableSqliteDatabase.create` | `sqlite_plus.dart` | The same in-memory open |
 | `MutableSqliteDatabase.fromImage` | `sqlite_plus.dart` | Reopen `exportImage()` bytes |
 | `db.query` / `db.execute` | `sqlite_plus.dart` | Bound SQL. Integers come back as `BigInt` |
 | `db.functions` | `sqlite_plus.dart` | Scalar, aggregate, and collation callbacks |
-| `DatabaseOwner.open` | `sqlite_plus_io.dart` | A `dart:io` file, on its own isolate |
+| `openDatabase` | `sqlite_plus_io.dart` | A `dart:io` file, on its own isolate. Same function as `DatabaseOwner.open` |
+| `DatabaseOwner.open` | `sqlite_plus_io.dart` | The same file open |
 | `openBrowserStorage` | `sqlite_plus.dart` | Browser bytes. Read `canRead`, `canWrite`, `durabilityPromised`, `placement` |
 
 ## Library tour
@@ -179,7 +181,7 @@ Parameters are `?`, `?NNN`, `:name`, `@name`, and `$name`. A repeated name share
 ## Dart callbacks
 
 ```dart
-final db = await MutableSqliteDatabase.create();
+final db = await openInMemory();
 db.functions.registerScalar(
   'twice',
   1,
@@ -205,7 +207,7 @@ import 'package:sqlite_plus/sqlite_plus_io.dart';
 
 // `path` is an existing database file. The caller also provisions the
 // `-journal` sidecar, or the `-wal` sidecar when `wal` is true.
-final owner = await DatabaseOwner.open(path, directoryEntriesDurable: true);
+final owner = await openDatabase(path, directoryEntriesDurable: true);
 try {
   final version = await owner.client.query('PRAGMA user_version');
 } finally {
@@ -222,7 +224,7 @@ try {
 | `owner.client` | `query` and `execute` for this owner |
 | `DatabaseClient.connect(owner.sendPort)` | Another logical client of the same owner |
 
-A second `DatabaseOwner.open` of the same path fails while the first owner is open. An explicit transaction belongs to the client that began it. `exportImage` on a memory database is the byte image a file can hold.
+A second `openDatabase` of the same path fails while the first owner is open. `DatabaseOwner.open` is that same function. An explicit transaction belongs to the client that began it. `exportImage` on a memory database is the byte image a file can hold.
 
 ## Browser
 
