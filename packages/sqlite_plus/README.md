@@ -22,7 +22,7 @@ One arm64 phone, 1000 rows, the same SQL, and every checksum matched. The phone 
 | Separate delete | 352.7 ms | 168.0 ms | 2.1× |
 | Delete all | 732 µs | 105 µs | 7.0× |
 
-These are statement intervals from one sample, versionCode 2003. They are not a multi-device study, and they are not a claim that every workload is faster. Separate statements cross a platform channel in the native app and stay inside one isolate here.
+These are statement intervals from one sample, versionCode 2003. Native kept a file. sqlite_plus kept memory. They are not the memory pair or the file pair Bench records now. They are not a multi-device study, and they are not a claim that every workload is faster. Separate statements cross a platform channel in the native app and stay inside one isolate here.
 
 ## Install
 

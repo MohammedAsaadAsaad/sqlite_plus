@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:engine_bench/bench_model.dart';
@@ -46,6 +47,7 @@ void main() {
         prepareMicros: 30,
         exportMicros: id == 'sqlite_plus' ? 40 : 0,
         storedBytes: 4096,
+        storage: BenchStorage.memory,
       ),
     );
     final text = formatBenchLog([
@@ -53,12 +55,12 @@ void main() {
       entry('native', 4000, DateTime(2026, 10, 28, 12, 50, 1)),
     ]);
     expect(text.indexOf('12:50:01'), lessThan(text.indexOf('12:50:02')));
-    expect(text, contains('native  Search  count=5  4.0 ms'));
-    expect(text, contains('sqlite_plus  Search  count=5  2.0 ms'));
+    expect(text, contains('native  Memory  Search  count=5  4.0 ms'));
+    expect(text, contains('sqlite_plus  Memory  Search  count=5  2.0 ms'));
     expect(
       text,
       contains(
-        'Search  sqlite_plus / native 0.50  match  rows 5/5  sum 10/10  hits 5/5',
+        'Search  Memory  sqlite_plus / native 0.50  match  rows 5/5  sum 10/10  hits 5/5',
       ),
     );
     expect(formatBenchLog(const []), isEmpty);
@@ -80,6 +82,7 @@ void main() {
       prepareMicros: 5,
       exportMicros: 6,
       storedBytes: 4096,
+      storage: BenchStorage.memory,
     );
     final restored = BenchSample.fromMessage(sample.toMessage());
     expect(restored.op, BenchOp.point);
@@ -175,5 +178,38 @@ void main() {
     expect(sample.hits, 3);
     expect(sample.checksum, benchInsertSum(3));
     expect(sample.error, isNull);
+    expect(sample.storage, BenchStorage.memory);
   });
+
+  test(
+    'a file run matches the memory checksum and leaves a database file',
+    () async {
+      final directory = Directory.systemTemp.createTempSync('bench-file-');
+      addTearDown(() async {
+        if (directory.existsSync()) directory.deleteSync(recursive: true);
+      });
+      final path = '${directory.path}/bench-sqlite-plus.db';
+      final memory = SqlitePlusBenchEngine();
+      final file = SqlitePlusBenchEngine(
+        storage: BenchStorage.file,
+        filePath: path,
+      );
+      expect(memory.location, isNull);
+      expect(file.location, path);
+
+      for (final op in BenchOp.values) {
+        final remembered = await memory.run(op, 2, (_, __) {});
+        final stored = await file.run(op, 2, (_, __) {});
+        expect(stored.storage, BenchStorage.file);
+        expect(stored.rows, remembered.rows);
+        expect(stored.checksum, remembered.checksum);
+        expect(stored.hits, remembered.hits);
+        expect(stored.elapsedMicros, greaterThan(0));
+        expect(stored.exportMicros, 0);
+        expect(stored.storedBytes, greaterThan(0));
+        expect(File(path).existsSync(), isTrue);
+        expect(File('$path-journal').existsSync(), isTrue);
+      }
+    },
+  );
 }

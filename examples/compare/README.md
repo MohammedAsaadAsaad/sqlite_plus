@@ -1,6 +1,6 @@
 # Bench
 
-Bench is a Flutter application that runs the same SQL on Android SQLite and on sqlite_plus, then keeps a log of both. The screen is English, left to right, and set in IBM Plex Sans Arabic under the SIL Open Font License. See `assets/fonts/OFL.txt`. Copy log places the whole log on the clipboard, oldest entry first, with a comparison line for each finished pair.
+Bench is a Flutter application that runs the same SQL on Android SQLite and on sqlite_plus, then keeps a log of both. Every operation runs twice. The memory round opens both engines in memory. The file round opens both engines on a database file. The screen is English, left to right, and set in IBM Plex Sans Arabic under the SIL Open Font License. See `assets/fonts/OFL.txt`. Copy log places the whole log on the clipboard, oldest entry first, with a comparison line for each finished pair.
 
 The application is `publish_to: none`. It is not a workspace member, because the workspace is resolved with the Dart SDK and this project needs the Flutter SDK. `dependency_overrides` points `sqlite_plus` at the package in this repository. Android SQLite is opened with `sqflite` inside this application only.
 
@@ -20,13 +20,13 @@ The table is `bench(id INTEGER PRIMARY KEY, name TEXT, body TEXT, n INTEGER)`. B
 | Separate delete | `DELETE FROM bench WHERE id = ?` once per row |
 | Delete all | `DELETE FROM bench` |
 
-Preparation sits outside the measured interval. For search, preparation inserts the rows and creates `bench_name`. The log records that preparation on its own line. sqlite_plus also records the time and byte size of `exportImage`. The native column records the database file, including a `-wal`, `-shm`, or `-journal` sidecar when one is present. Each finished pair compares row count, `SUM(n)`, and the number of hits. The screen shows `sqlite_plus / native` for the measured intervals.
+Preparation sits outside the measured interval. For search, preparation inserts the rows and creates `bench_name`. The log records that preparation on its own line. A memory sqlite_plus run also records the time and byte size of `exportImage`. A file run records the database file instead, and its export time is 0. The native file size includes a `-wal`, `-shm`, or `-journal` sidecar when one is present. A memory native size is `page_count * page_size`. Each finished pair compares row count, `SUM(n)`, and the number of hits inside one storage round. The screen shows `sqlite_plus / native` for the measured intervals.
 
-sqlite_plus work runs in a separate isolate. The memory and CPU figures on the screen are for the whole process and keep updating while a run is in progress. The native file path is `bench-native.db` under the application documents directory.
+Memory sqlite_plus work runs in a separate isolate. File sqlite_plus work uses `DatabaseOwner` on `bench-sqlite-plus.db`, with a rollback journal. The bench writes an empty image and an empty journal, flushes both, then passes `directoryEntriesDurable: true`. That flag is the caller attestation the file API requires. It is not a power-loss result. Native memory is sqflite `:memory:` with `singleInstance: false`. Native file stays `bench-native.db` under the application documents directory, opened by sqflite with its default journal mode. The memory and CPU figures on the screen are for the whole process and keep updating while a run is in progress.
 
 ## 1000 rows
 
-Every pair matched on row count, `SUM(n)`, and hits. The ratio is the measured sqlite_plus interval divided by the measured native interval.
+The table below is the earlier sample: native on a file, sqlite_plus in memory. Every pair matched on row count, `SUM(n)`, and hits. The ratio is the measured sqlite_plus interval divided by the measured native interval. The app now records a memory pair and a file pair separately. This checkout has no new phone log for those pairs.
 
 ![1000 rows, same SQL. Statement time on a logarithmic scale.](../../packages/sqlite_plus/doc/bench-time.png)
 
@@ -81,12 +81,12 @@ flutter test
 flutter build apk --split-per-abi --release
 ```
 
-Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.engine_bench`. The launcher name is Bench. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2003.
+Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.engine_bench`. The launcher name is Bench. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2004.
 
 | ABI | File | Bytes | versionCode | sha256 |
 |---|---|---:|---:|---|
-| arm64-v8a | `dist/bench-arm64-v8a.apk` | 19604515 | 2003 | `d59caf7a6e974feae0ace5e632aec1220a2758b694b34bb61093e4738803a1d9` |
-| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17105789 | 1003 | `7c76a676f75ac2b65cb696f5a26db61182c5bb8c38bb3117519251b68789d639` |
-| x86_64 | `dist/bench-x86_64.apk` | 21095978 | 4003 | `a8114ec97ea6a2162a0efa22ddebe11e72c6744da0a881a2ebe50524f27a8ca4` |
+| arm64-v8a | `dist/bench-arm64-v8a.apk` | 19670051 | 2004 | `c43dcaf54a9a1ff2b22c81ce804c926b7a361ebe3e6351a56eb28ce69da19556` |
+| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17269629 | 1004 | `a8121bdf0cfadbd217b5b785e836c7ca2d726106ecfdf3b43b7874a3fe8ab03c` |
+| x86_64 | `dist/bench-x86_64.apk` | 21227050 | 4004 | `2536fb13b07d69f0cf645fcc4c9ff001e2a19716b4080a83473e517432a7ac46` |
 
-A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the arm64 release package. The armeabi-v7a and x86_64 packages of this build were not part of that sample. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the earlier arm64 package, versionCode 2003, native file against sqlite_plus memory. These versionCode 2004 packages were not installed here. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.

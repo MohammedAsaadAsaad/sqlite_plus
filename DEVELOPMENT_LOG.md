@@ -1575,6 +1575,15 @@ result=pass
 - In each pair the native figure is given first and the sqlite_plus figure second. These are the on-screen intervals from that one log. No engine code changed for this record.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
 
+## 2026-10-29 — Bench memory pair and file pair
+
+- Each Bench operation now runs twice. Memory opens both engines in memory. File opens both engines on a database file. Native memory is sqflite `:memory:` with `singleInstance: false`, and its size is `page_count * page_size`. Native file stays `bench-native.db`. sqlite_plus memory stays `MutableSqliteDatabase`, with `exportImage` timed beside the statement. sqlite_plus file is `DatabaseOwner` on `bench-sqlite-plus.db` with a rollback journal. The bench writes an empty image and an empty journal, flushes both, then passes `directoryEntriesDurable: true`. That flag is the caller attestation the file API requires. It is not a power-loss result. File export time is 0, and the size is the main file plus any sidecar.
+- The earlier 1000-row table is native file against sqlite_plus memory. No new phone log was collected for the two pairs.
+- `examples/compare`: `flutter analyze` reported no issues and `flutter test` passed 16 tests. The file test ran all nine operations at 2 rows and matched the memory checksums. Those tests do not open `sqflite`. The engine suite was not re-run. No engine code changed.
+- `flutter build apk --split-per-abi --release` wrote three Bench packages, debug keystore, application id `dev.sqliteplus.engine_bench`, versionName 1.0.0, launcher Bench. `bench-arm64-v8a.apk` 19670051 bytes, versionCode 2004, sha256 `c43dcaf54a9a1ff2b22c81ce804c926b7a361ebe3e6351a56eb28ce69da19556`. `bench-armeabi-v7a.apk` 17269629 bytes, versionCode 1004, sha256 `a8121bdf0cfadbd217b5b785e836c7ca2d726106ecfdf3b43b7874a3fe8ab03c`. `bench-x86_64.apk` 21227050 bytes, versionCode 4004, sha256 `2536fb13b07d69f0cf645fcc4c9ff001e2a19716b4080a83473e517432a7ac46`.
+- None of these three packages was installed here.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
 ## 2026-10-28 — version 0.0.2
 
 - Package versions are `0.0.2` in `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator`. The ORM depends on `sqlite_plus: ^0.0.2`. The generator depends on `sqlite_plus_orm: ^0.0.2`.

@@ -40,7 +40,7 @@ class _BenchPageState extends State<BenchPage> {
   late final TextEditingController _count;
   late final List<BenchEngine> _engines;
   final List<BenchLogEntry> _log = [];
-  final Map<BenchOp, Map<String, BenchSample>> _latest = {};
+  final Map<BenchOp, Map<BenchStorage, Map<String, BenchSample>>> _latest = {};
   var _running = false;
   var _closed = false;
   String? _countError;
@@ -62,9 +62,18 @@ class _BenchPageState extends State<BenchPage> {
   void initState() {
     super.initState();
     _count = TextEditingController(text: '1000');
+    final directory = widget.directory;
     _engines =
         widget.engines ??
-        [NativeBenchEngine(widget.directory!), SqlitePlusBenchEngine()];
+        [
+          NativeBenchEngine(directory!, storage: BenchStorage.memory),
+          SqlitePlusBenchEngine(storage: BenchStorage.memory),
+          NativeBenchEngine(directory, storage: BenchStorage.file),
+          SqlitePlusBenchEngine(
+            storage: BenchStorage.file,
+            filePath: '${directory.path}/bench-sqlite-plus.db',
+          ),
+        ];
     final now = ProcessSample.now();
     _opened = now;
     _previous = now;
@@ -124,7 +133,8 @@ class _BenchPageState extends State<BenchPage> {
         for (final engine in _engines) {
           if (!mounted || _closed) return;
           setState(() {
-            _progress = '$step${engine.label} · ${op.label}';
+            _progress =
+                '$step${engine.storage.label} · ${engine.label} · ${op.label}';
             _done = 0;
             _total = count;
           });
@@ -141,7 +151,10 @@ class _BenchPageState extends State<BenchPage> {
             if (_log.length > 200) {
               _log.removeRange(200, _log.length);
             }
-            _latest.putIfAbsent(op, () => {})[engine.id] = sample;
+            _latest
+                    .putIfAbsent(op, () => {})
+                    .putIfAbsent(sample.storage, () => {})[sample.engineId] =
+                sample;
           });
         }
       }
@@ -176,6 +189,7 @@ class _BenchPageState extends State<BenchPage> {
       prepareMicros: 0,
       exportMicros: 0,
       storedBytes: 0,
+      storage: engine.storage,
       error: '$error',
     );
   }
@@ -191,12 +205,13 @@ class _BenchPageState extends State<BenchPage> {
     }
 
     if (widget.isolateSqlitePlus && engine.id == 'sqlite_plus') {
-      return _isolate(op, count, onProgress);
+      return _isolate(engine, op, count, onProgress);
     }
     return engine.run(op, count, onProgress);
   }
 
   Future<BenchSample> _isolate(
+    BenchEngine engine,
     BenchOp op,
     int count,
     void Function(int done, int total) onProgress,
@@ -226,6 +241,8 @@ class _BenchPageState extends State<BenchPage> {
         'send': receive.sendPort,
         'op': op.index,
         'count': count,
+        'storage': engine.storage.index,
+        'path': engine.location,
       });
       return await pending.future;
     } finally {
@@ -239,10 +256,10 @@ class _BenchPageState extends State<BenchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final location = _engines
-        .map((engine) => engine.location)
-        .whereType<String>()
-        .firstOrNull;
+    final files = [
+      for (final engine in _engines)
+        if (engine.location != null) engine,
+    ];
     final cpu = _latestSample.cpuMicrosSince(_opened);
     return Scaffold(
       backgroundColor: _ink,
@@ -259,15 +276,18 @@ class _BenchPageState extends State<BenchPage> {
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
         children: [
           const Text(
-            'The same SQL on Android SQLite and on sqlite_plus. The count runs from 1 to 10000. The clock measures the operation itself. Preparation, including the search index, is recorded on its own, as is exporting the sqlite_plus image.',
+            'Each operation runs twice. Memory keeps both engines in memory. File keeps both engines in a database file. The count runs from 1 to 10000. The clock measures the operation itself. Preparation, including the search index, is recorded on its own. A memory sqlite_plus run also records exportImage.',
             style: TextStyle(color: _muted, height: 1.6),
           ),
-          if (location != null) ...[
+          for (final engine in files) ...[
             const SizedBox(height: 8),
-            const Text('Native file', style: TextStyle(color: _muted)),
+            Text(
+              engine.id == 'native' ? 'Native file' : 'sqlite_plus file',
+              style: const TextStyle(color: _muted),
+            ),
             const SizedBox(height: 4),
             Text(
-              location,
+              engine.location!,
               textDirection: TextDirection.ltr,
               textAlign: TextAlign.start,
               style: const TextStyle(color: _muted, height: 1.5),
@@ -388,8 +408,13 @@ class _BenchPageState extends State<BenchPage> {
             const _Legend(),
             const SizedBox(height: 8),
             for (final op in BenchOp.values)
-              if (_latest[op] != null)
-                _CompareCard(op: op, samples: _latest[op]!),
+              for (final storage in BenchStorage.values)
+                if (_latest[op]?[storage] != null)
+                  _CompareCard(
+                    op: op,
+                    storage: storage,
+                    samples: _latest[op]![storage]!,
+                  ),
           ],
           const SizedBox(height: 22),
           Row(
@@ -528,9 +553,14 @@ class _Swatch extends StatelessWidget {
 }
 
 class _CompareCard extends StatelessWidget {
-  const _CompareCard({required this.op, required this.samples});
+  const _CompareCard({
+    required this.op,
+    required this.storage,
+    required this.samples,
+  });
 
   final BenchOp op;
+  final BenchStorage storage;
   final Map<String, BenchSample> samples;
 
   @override
@@ -549,7 +579,7 @@ class _CompareCard extends StatelessWidget {
       plus?.elapsedMicros ?? 0,
     ].reduce((a, b) => a > b ? a : b);
     return Container(
-      key: Key('compare-${op.name}'),
+      key: Key('compare-${op.name}-${storage.name}'),
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -564,7 +594,7 @@ class _CompareCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  op.label,
+                  '${op.label} · ${storage.label}',
                   style: const TextStyle(
                     color: _text,
                     fontWeight: FontWeight.w700,
@@ -686,7 +716,7 @@ class _LogTile extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${sample.op.label} · ${_ltr('${sample.count}')}',
+            '${sample.storage.label} · ${sample.op.label} · ${_ltr('${sample.count}')}',
             style: const TextStyle(color: _text),
           ),
           const SizedBox(height: 4),

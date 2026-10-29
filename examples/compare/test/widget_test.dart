@@ -58,7 +58,7 @@ void main() {
     await _flush(tester);
 
     expect(find.byKey(const Key('log-line')), findsNWidgets(2));
-    expect(find.byKey(const Key('compare-search')), findsOneWidget);
+    expect(find.byKey(const Key('compare-search-memory')), findsOneWidget);
     expect(find.text('Match'), findsOneWidget);
     expect(find.text('sqlite_plus / native  0.50'), findsOneWidget);
     expect(native.calls, 1);
@@ -85,14 +85,14 @@ void main() {
     await tester.pump();
     final copied = await Clipboard.getData(Clipboard.kTextPlain);
     expect(copied?.text, contains('Search  count=5'));
-    expect(copied?.text, contains('sqlite_plus / native 0.50'));
+    expect(copied?.text, contains('Search  Memory  sqlite_plus / native 0.50'));
     expect(copied?.text, contains('match'));
     expect(find.text('Log copied'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('clear-log')));
     await tester.pump();
     expect(find.text('Log empty'), findsOneWidget);
-    expect(find.byKey(const Key('compare-search')), findsNothing);
+    expect(find.byKey(const Key('compare-search-memory')), findsNothing);
   });
 
   testWidgets('different checksums stay visible in the comparison', (
@@ -205,9 +205,57 @@ void main() {
       find.byKey(const Key('log-line')),
       findsNWidgets(BenchOp.values.length * 2),
     );
-    expect(find.byKey(const Key('compare-separateInsert')), findsOneWidget);
-    expect(find.byKey(const Key('compare-deleteAll')), findsOneWidget);
-    expect(find.byKey(const Key('compare-vacuum')), findsOneWidget);
+    expect(
+      find.byKey(const Key('compare-separateInsert-memory')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('compare-deleteAll-memory')), findsOneWidget);
+    expect(find.byKey(const Key('compare-vacuum-memory')), findsOneWidget);
+  });
+
+  testWidgets('memory and file each keep their own comparison', (tester) async {
+    await _tall(tester);
+    await tester.pumpWidget(
+      BenchApp(
+        engines: [
+          ScriptedEngine(id: 'native', label: 'native'),
+          ScriptedEngine(
+            id: 'sqlite_plus',
+            label: 'sqlite_plus',
+            elapsedMicros: 500,
+          ),
+          ScriptedEngine(
+            id: 'native',
+            label: 'native',
+            storage: BenchStorage.file,
+            location: '/tmp/bench-native.db',
+            elapsedMicros: 4000,
+          ),
+          ScriptedEngine(
+            id: 'sqlite_plus',
+            label: 'sqlite_plus',
+            storage: BenchStorage.file,
+            location: '/tmp/bench-sqlite-plus.db',
+            elapsedMicros: 2000,
+          ),
+        ],
+        isolateSqlitePlus: false,
+      ),
+    );
+    await tester.pump();
+    expect(find.text('Native file'), findsOneWidget);
+    expect(find.text('sqlite_plus file'), findsOneWidget);
+    expect(find.text('/tmp/bench-native.db'), findsOneWidget);
+    expect(find.text('/tmp/bench-sqlite-plus.db'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('count-field')), '3');
+    await tester.tap(find.byKey(const Key('op-search')));
+    await _flush(tester);
+
+    expect(find.byKey(const Key('log-line')), findsNWidgets(4));
+    expect(find.byKey(const Key('compare-search-memory')), findsOneWidget);
+    expect(find.byKey(const Key('compare-search-file')), findsOneWidget);
+    expect(find.text('sqlite_plus / native  0.50'), findsNWidgets(2));
   });
 }
 
@@ -233,6 +281,7 @@ class ScriptedEngine implements BenchEngine {
   ScriptedEngine({
     required this.id,
     required this.label,
+    this.storage = BenchStorage.memory,
     this.location,
     this.elapsedMicros = 1000,
     this.checksum = 10,
@@ -244,6 +293,8 @@ class ScriptedEngine implements BenchEngine {
   final String id;
   @override
   final String label;
+  @override
+  final BenchStorage storage;
   @override
   final String? location;
   final int elapsedMicros;
@@ -282,6 +333,7 @@ class ScriptedEngine implements BenchEngine {
       prepareMicros: 30,
       exportMicros: id == 'sqlite_plus' ? 40 : 0,
       storedBytes: 4096,
+      storage: storage,
     );
   }
 }

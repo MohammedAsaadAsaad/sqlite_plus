@@ -1,10 +1,19 @@
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
 import 'bench_model.dart';
 
 class SqlitePlusBenchEngine implements BenchEngine {
+  SqlitePlusBenchEngine({this.storage = BenchStorage.memory, this.filePath});
+
+  @override
+  final BenchStorage storage;
+
+  final String? filePath;
+
   @override
   String get id => 'sqlite_plus';
 
@@ -12,7 +21,7 @@ class SqlitePlusBenchEngine implements BenchEngine {
   String get label => 'sqlite_plus';
 
   @override
-  String? get location => null;
+  String? get location => storage == BenchStorage.file ? filePath : null;
 
   @override
   Future<BenchSample> run(
@@ -21,88 +30,200 @@ class SqlitePlusBenchEngine implements BenchEngine {
     void Function(int done, int total) onProgress,
   ) async {
     requireBenchCount(count);
-    final database = await MutableSqliteDatabase.create();
-    try {
-      return await _measure(database, op, count, onProgress);
-    } catch (error) {
-      if (database.inTransaction) {
-        try {
-          await database.execute('ROLLBACK');
-        } catch (_) {}
+    if (storage == BenchStorage.memory) {
+      final database = await MutableSqliteDatabase.create();
+      try {
+        return await _measure(
+          _MemorySession(database),
+          op,
+          count,
+          onProgress,
+          storage: storage,
+          after: () async {
+            final exported = Stopwatch()..start();
+            final storedBytes = database.exportImage().length;
+            exported.stop();
+            return (exported.elapsedMicroseconds, storedBytes);
+          },
+        );
+      } catch (error) {
+        if (database.inTransaction) {
+          try {
+            await database.execute('ROLLBACK');
+          } catch (_) {}
+        }
+        rethrow;
+      } finally {
+        await database.close();
       }
+    }
+    final path = filePath;
+    if (path == null) {
+      throw StateError('File bench needs a path');
+    }
+    await _provision(path);
+    // Flush wrote the empty image and journal. directoryEntriesDurable is the
+    // caller attestation DatabaseOwner requires. It is not a power-loss result.
+    final owner = await DatabaseOwner.open(path, directoryEntriesDurable: true);
+    try {
+      return await _measure(
+        _FileSession(owner.client),
+        op,
+        count,
+        onProgress,
+        storage: storage,
+        after: () async => (0, await _fileBytes(path)),
+      );
+    } catch (error) {
+      try {
+        await owner.client.execute('ROLLBACK');
+      } catch (_) {}
       rethrow;
     } finally {
-      await database.close();
+      await owner.close();
     }
-  }
-
-  Future<BenchSample> _measure(
-    MutableSqliteDatabase database,
-    BenchOp op,
-    int count,
-    void Function(int done, int total) onProgress,
-  ) async {
-    final prepare = Stopwatch()..start();
-    await database.execute(benchCreateTable);
-    if (benchNeedsSeed(op)) {
-      await _insertAll(database, count, transaction: true, onProgress: null);
-    }
-    if (benchBuildsNameIndex(op)) {
-      await database.execute(benchNameIndex);
-    }
-    prepare.stop();
-    onProgress(0, count);
-    final before = ProcessSample.now();
-    final measured = Stopwatch()..start();
-    final hits = await _operation(database, op, count, onProgress);
-    measured.stop();
-    final after = ProcessSample.now();
-    final totals = await _checksum(database);
-    final exported = Stopwatch()..start();
-    final storedBytes = database.exportImage().length;
-    exported.stop();
-    return BenchSample(
-      engineId: id,
-      engineLabel: label,
-      op: op,
-      count: count,
-      elapsedMicros: measured.elapsedMicroseconds,
-      cpuMicros: after.cpuMicrosSince(before),
-      rssBefore: before.rssBytes,
-      rssAfter: after.rssBytes,
-      rows: totals.$1,
-      checksum: totals.$2,
-      hits: hits,
-      prepareMicros: prepare.elapsedMicroseconds,
-      exportMicros: exported.elapsedMicroseconds,
-      storedBytes: storedBytes,
-    );
   }
 }
 
 Future<void> sqlitePlusBenchEntry(Map<String, Object?> message) async {
   final send = message['send']! as SendPort;
   try {
-    final sample = await SqlitePlusBenchEngine().run(
-      BenchOp.values[message['op']! as int],
-      message['count']! as int,
-      (done, total) =>
-          send.send({'kind': 'progress', 'done': done, 'total': total}),
-    );
+    final storageIndex =
+        message['storage'] as int? ?? BenchStorage.memory.index;
+    final sample =
+        await SqlitePlusBenchEngine(
+          storage: BenchStorage.values[storageIndex],
+          filePath: message['path'] as String?,
+        ).run(
+          BenchOp.values[message['op']! as int],
+          message['count']! as int,
+          (done, total) =>
+              send.send({'kind': 'progress', 'done': done, 'total': total}),
+        );
     send.send(sample.toMessage());
   } catch (error) {
     send.send({'kind': 'error', 'message': '$error'});
   }
 }
 
-Future<(int, int)> _checksum(MutableSqliteDatabase database) async {
+Future<void> _provision(String path) async {
+  for (final suffix in const ['', '-wal', '-shm', '-journal']) {
+    final file = File('$path$suffix');
+    if (await file.exists()) await file.delete();
+  }
+  final created = await MutableSqliteDatabase.create();
+  try {
+    await File(path).writeAsBytes(created.exportImage(), flush: true);
+  } finally {
+    await created.close();
+  }
+  await File('$path-journal').writeAsBytes(const <int>[], flush: true);
+}
+
+Future<int> _fileBytes(String path) async {
+  var total = 0;
+  for (final suffix in const ['', '-wal', '-shm', '-journal']) {
+    final file = File('$path$suffix');
+    if (await file.exists()) total += await file.length();
+  }
+  return total;
+}
+
+abstract class _PlusSession {
+  Future<MutationResult> execute(String sql, [List<Object?> parameters]);
+  Future<QueryResult> query(String sql, [List<Object?> parameters]);
+}
+
+class _MemorySession implements _PlusSession {
+  _MemorySession(this._database);
+
+  final MutableSqliteDatabase _database;
+
+  @override
+  Future<MutationResult> execute(
+    String sql, [
+    List<Object?> parameters = const [],
+  ]) {
+    return _database.execute(sql, parameters);
+  }
+
+  @override
+  Future<QueryResult> query(String sql, [List<Object?> parameters = const []]) {
+    return _database.query(sql, parameters);
+  }
+}
+
+class _FileSession implements _PlusSession {
+  _FileSession(this._client);
+
+  final DatabaseClient _client;
+
+  @override
+  Future<MutationResult> execute(
+    String sql, [
+    List<Object?> parameters = const [],
+  ]) {
+    return _client.execute(sql, parameters);
+  }
+
+  @override
+  Future<QueryResult> query(String sql, [List<Object?> parameters = const []]) {
+    return _client.query(sql, parameters);
+  }
+}
+
+Future<BenchSample> _measure(
+  _PlusSession database,
+  BenchOp op,
+  int count,
+  void Function(int done, int total) onProgress, {
+  required BenchStorage storage,
+  required Future<(int, int)> Function() after,
+}) async {
+  final prepare = Stopwatch()..start();
+  await database.execute(benchCreateTable);
+  if (benchNeedsSeed(op)) {
+    await _insertAll(database, count, transaction: true, onProgress: null);
+  }
+  if (benchBuildsNameIndex(op)) {
+    await database.execute(benchNameIndex);
+  }
+  prepare.stop();
+  onProgress(0, count);
+  final before = ProcessSample.now();
+  final measured = Stopwatch()..start();
+  final hits = await _operation(database, op, count, onProgress);
+  measured.stop();
+  final afterSample = ProcessSample.now();
+  final totals = await _checksum(database);
+  final exported = await after();
+  return BenchSample(
+    engineId: 'sqlite_plus',
+    engineLabel: 'sqlite_plus',
+    op: op,
+    count: count,
+    elapsedMicros: measured.elapsedMicroseconds,
+    cpuMicros: afterSample.cpuMicrosSince(before),
+    rssBefore: before.rssBytes,
+    rssAfter: afterSample.rssBytes,
+    rows: totals.$1,
+    checksum: totals.$2,
+    hits: hits,
+    prepareMicros: prepare.elapsedMicroseconds,
+    exportMicros: exported.$1,
+    storedBytes: exported.$2,
+    storage: storage,
+  );
+}
+
+Future<(int, int)> _checksum(_PlusSession database) async {
   final result = await database.query(benchChecksum);
   final row = result.rows.single;
   return (benchInt(row[0]), benchInt(row[1]));
 }
 
 Future<int> _operation(
-  MutableSqliteDatabase database,
+  _PlusSession database,
   BenchOp op,
   int count,
   void Function(int done, int total) onProgress,
@@ -155,7 +276,7 @@ Future<int> _operation(
 }
 
 Future<int> _insertAll(
-  MutableSqliteDatabase database,
+  _PlusSession database,
   int count, {
   required bool transaction,
   required void Function(int done, int total)? onProgress,
@@ -172,7 +293,7 @@ Future<int> _insertAll(
 }
 
 Future<int> _each(
-  MutableSqliteDatabase database,
+  _PlusSession database,
   int count,
   String sql,
   void Function(int done, int total) onProgress, {
@@ -194,7 +315,7 @@ Future<int> _each(
 }
 
 Future<int> _once(
-  MutableSqliteDatabase database,
+  _PlusSession database,
   String sql,
   int count,
   void Function(int done, int total) onProgress,
@@ -205,7 +326,7 @@ Future<int> _once(
 }
 
 Future<int> _vacuum(
-  MutableSqliteDatabase database,
+  _PlusSession database,
   int count,
   void Function(int done, int total) onProgress,
 ) async {

@@ -37,6 +37,15 @@ enum BenchOp {
   final String label;
 }
 
+/// Where both engines keep the database for one comparison.
+enum BenchStorage {
+  memory('Memory'),
+  file('File');
+
+  const BenchStorage(this.label);
+  final String label;
+}
+
 bool benchNeedsSeed(BenchOp op) => switch (op) {
   BenchOp.separateInsert || BenchOp.transactionInsert => false,
   _ => true,
@@ -138,6 +147,7 @@ class BenchSample {
     required this.prepareMicros,
     required this.exportMicros,
     required this.storedBytes,
+    required this.storage,
     this.error,
   });
 
@@ -155,6 +165,7 @@ class BenchSample {
   final int prepareMicros;
   final int exportMicros;
   final int storedBytes;
+  final BenchStorage storage;
   final String? error;
 
   bool get failed => error != null;
@@ -175,6 +186,7 @@ class BenchSample {
     'prepareMicros': prepareMicros,
     'exportMicros': exportMicros,
     'storedBytes': storedBytes,
+    'storage': storage.index,
     'error': error ?? '',
   };
 
@@ -195,6 +207,7 @@ class BenchSample {
       prepareMicros: message['prepareMicros']! as int,
       exportMicros: message['exportMicros']! as int,
       storedBytes: message['storedBytes']! as int,
+      storage: BenchStorage.values[message['storage']! as int],
       error: error.isEmpty ? null : error,
     );
   }
@@ -212,15 +225,18 @@ class BenchLogEntry {
 String formatBenchLog(List<BenchLogEntry> newestFirst) {
   if (newestFirst.isEmpty) return '';
   final lines = <String>[];
-  final latest = <BenchOp, Map<String, BenchSample>>{};
+  final latest = <BenchOp, Map<BenchStorage, Map<String, BenchSample>>>{};
   for (final entry in newestFirst.reversed) {
     final sample = entry.sample;
-    latest.putIfAbsent(sample.op, () => {})[sample.engineId] = sample;
+    latest
+            .putIfAbsent(sample.op, () => {})
+            .putIfAbsent(sample.storage, () => {})[sample.engineId] =
+        sample;
     final status = sample.failed
         ? 'stopped ${sample.error}'
         : formatMicros(sample.elapsedMicros);
     lines.add(
-      '${formatClock(entry.at)}  ${sample.engineLabel}  ${sample.op.label}  count=${sample.count}  $status',
+      '${formatClock(entry.at)}  ${sample.engineLabel}  ${sample.storage.label}  ${sample.op.label}  count=${sample.count}  $status',
     );
     lines.add(
       '  cpu ${formatMicros(sample.cpuMicros)}  memory ${formatBytes(sample.rssBefore)} -> ${formatBytes(sample.rssAfter)}',
@@ -235,28 +251,32 @@ String formatBenchLog(List<BenchLogEntry> newestFirst) {
   lines.add('');
   lines.add('comparison');
   for (final op in BenchOp.values) {
-    final samples = latest[op];
-    if (samples == null) continue;
-    final native = samples['native'];
-    final plus = samples['sqlite_plus'];
-    if (native == null ||
-        plus == null ||
-        native.failed ||
-        plus.failed ||
-        native.elapsedMicros == 0) {
-      lines.add('${op.label}  incomplete');
-      continue;
+    final byStorage = latest[op];
+    if (byStorage == null) continue;
+    for (final storage in BenchStorage.values) {
+      final samples = byStorage[storage];
+      if (samples == null) continue;
+      final native = samples['native'];
+      final plus = samples['sqlite_plus'];
+      if (native == null ||
+          plus == null ||
+          native.failed ||
+          plus.failed ||
+          native.elapsedMicros == 0) {
+        lines.add('${op.label}  ${storage.label}  incomplete');
+        continue;
+      }
+      final matched =
+          native.rows == plus.rows &&
+          native.checksum == plus.checksum &&
+          native.hits == plus.hits;
+      final ratio = (plus.elapsedMicros / native.elapsedMicros).toStringAsFixed(
+        2,
+      );
+      lines.add(
+        '${op.label}  ${storage.label}  sqlite_plus / native $ratio  ${matched ? 'match' : 'different'}  rows ${plus.rows}/${native.rows}  sum ${plus.checksum}/${native.checksum}  hits ${plus.hits}/${native.hits}',
+      );
     }
-    final matched =
-        native.rows == plus.rows &&
-        native.checksum == plus.checksum &&
-        native.hits == plus.hits;
-    final ratio = (plus.elapsedMicros / native.elapsedMicros).toStringAsFixed(
-      2,
-    );
-    lines.add(
-      '${op.label}  sqlite_plus / native $ratio  ${matched ? 'match' : 'different'}  rows ${plus.rows}/${native.rows}  sum ${plus.checksum}/${native.checksum}  hits ${plus.hits}/${native.hits}',
-    );
   }
   return lines.join('\n');
 }
@@ -264,6 +284,7 @@ String formatBenchLog(List<BenchLogEntry> newestFirst) {
 abstract class BenchEngine {
   String get id;
   String get label;
+  BenchStorage get storage;
   String? get location;
 
   Future<BenchSample> run(

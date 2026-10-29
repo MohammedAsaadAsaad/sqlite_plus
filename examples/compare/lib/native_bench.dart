@@ -5,8 +5,10 @@ import 'package:sqflite/sqflite.dart';
 import 'bench_model.dart';
 
 class NativeBenchEngine implements BenchEngine {
-  NativeBenchEngine(Directory directory)
-    : location = '${directory.path}/bench-native.db';
+  NativeBenchEngine(Directory directory, {this.storage = BenchStorage.file})
+    : location = storage == BenchStorage.file
+          ? '${directory.path}/bench-native.db'
+          : null;
 
   @override
   String get id => 'native';
@@ -15,7 +17,10 @@ class NativeBenchEngine implements BenchEngine {
   String get label => 'native';
 
   @override
-  final String location;
+  final BenchStorage storage;
+
+  @override
+  final String? location;
 
   @override
   Future<BenchSample> run(
@@ -24,13 +29,28 @@ class NativeBenchEngine implements BenchEngine {
     void Function(int done, int total) onProgress,
   ) async {
     requireBenchCount(count);
-    await deleteDatabase(location);
-    final database = await openDatabase(location, version: 1);
+    final database = await _open();
     try {
       return await _measure(database, op, count, onProgress);
     } finally {
       await database.close();
     }
+  }
+
+  Future<Database> _open() async {
+    if (storage == BenchStorage.memory) {
+      return openDatabase(
+        inMemoryDatabasePath,
+        version: 1,
+        singleInstance: false,
+      );
+    }
+    final path = location;
+    if (path == null) {
+      throw StateError('File bench needs a path');
+    }
+    await deleteDatabase(path);
+    return openDatabase(path, version: 1);
   }
 
   Future<BenchSample> _measure(
@@ -55,7 +75,7 @@ class NativeBenchEngine implements BenchEngine {
     measured.stop();
     final after = ProcessSample.now();
     final totals = await _checksum(database);
-    final storedBytes = await _storedBytes(location);
+    final storedBytes = await _storedBytes(database);
     return BenchSample(
       engineId: id,
       engineLabel: label,
@@ -71,17 +91,26 @@ class NativeBenchEngine implements BenchEngine {
       prepareMicros: prepare.elapsedMicroseconds,
       exportMicros: 0,
       storedBytes: storedBytes,
+      storage: storage,
     );
   }
-}
 
-Future<int> _storedBytes(String location) async {
-  var total = 0;
-  for (final suffix in const ['', '-wal', '-shm', '-journal']) {
-    final file = File('$location$suffix');
-    if (await file.exists()) total += await file.length();
+  Future<int> _storedBytes(Database database) async {
+    if (storage == BenchStorage.memory) {
+      final pages = await database.rawQuery('PRAGMA page_count');
+      final size = await database.rawQuery('PRAGMA page_size');
+      return benchInt(pages.single.values.single) *
+          benchInt(size.single.values.single);
+    }
+    final path = location;
+    if (path == null) return 0;
+    var total = 0;
+    for (final suffix in const ['', '-wal', '-shm', '-journal']) {
+      final file = File('$path$suffix');
+      if (await file.exists()) total += await file.length();
+    }
+    return total;
   }
-  return total;
 }
 
 Future<(int, int)> _checksum(Database database) async {
