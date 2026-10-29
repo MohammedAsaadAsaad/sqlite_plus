@@ -1575,6 +1575,15 @@ result=pass
 - In each pair the native figure is given first and the sqlite_plus figure second. These are the on-screen intervals from that one log. No engine code changed for this record.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
 
+## 2026-10-29 — Bench file open without a loopback socket
+
+- VersionCode 2004 stopped every sqlite_plus file operation on a phone with `SocketException: Failed to create server socket (OS Error: Operation not permitted, errno = 1, address = 127.0.0.1, port = 44098)`. Memory pairs on that phone still completed. `DatabaseOwner` binds that socket as a process lease.
+- The bench file round now opens `RollbackJournalPager` in the bench isolate. The statements still commit to `bench-sqlite-plus.db` and its journal. No loopback socket is created. `directoryEntryIsDurable: true` remains the caller attestation after the empty image and journal are flushed. It is not a power-loss result.
+- `examples/compare`: `flutter analyze` reported no issues and `flutter test` passed 16 tests. The file test ran all nine operations at 2 rows and matched the memory checksums. Those tests do not open `sqflite`. The engine suite was not re-run. No engine code changed.
+- `flutter build apk --split-per-abi --release` wrote three Bench packages, debug keystore, application id `dev.sqliteplus.engine_bench`, versionName 1.0.0, launcher Bench. `bench-arm64-v8a.apk` 19604515 bytes, versionCode 2005, sha256 `f428e8935f0bae206a4a6de477a008f698faccfb9ec3cbc156f564e95c1358bc`. `bench-armeabi-v7a.apk` 17154941 bytes, versionCode 1005, sha256 `e36d6b8c59f035288ea7ccfa0c8601b25b142dedab30aadc01066eeb34717ff1`. `bench-x86_64.apk` 21161514 bytes, versionCode 4005, sha256 `f65b8b2be4ec28a7747bab82dd99caf52b253dd8ae4f1b04c22e1719b4c751f5`.
+- None of these three packages was installed here.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
 ## 2026-10-29 — Bench memory pair and file pair
 
 - Each Bench operation now runs twice. Memory opens both engines in memory. File opens both engines on a database file. Native memory is sqflite `:memory:` with `singleInstance: false`, and its size is `page_count * page_size`. Native file stays `bench-native.db`. sqlite_plus memory stays `MutableSqliteDatabase`, with `exportImage` timed beside the statement. sqlite_plus file is `DatabaseOwner` on `bench-sqlite-plus.db` with a rollback journal. The bench writes an empty image and an empty journal, flushes both, then passes `directoryEntriesDurable: true`. That flag is the caller attestation the file API requires. It is not a power-loss result. File export time is 0, and the size is the main file plus any sidecar.

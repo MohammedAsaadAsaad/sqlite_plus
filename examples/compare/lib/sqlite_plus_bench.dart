@@ -62,12 +62,14 @@ class SqlitePlusBenchEngine implements BenchEngine {
       throw StateError('File bench needs a path');
     }
     await _provision(path);
-    // Flush wrote the empty image and journal. directoryEntriesDurable is the
-    // caller attestation DatabaseOwner requires. It is not a power-loss result.
-    final owner = await DatabaseOwner.open(path, directoryEntriesDurable: true);
+    // The bench isolate owns this file for one run. Opening the pager here
+    // avoids DatabaseOwner's loopback socket, which Android release builds
+    // reject. directoryEntryIsDurable is the caller attestation after flush.
+    // It is not a power-loss result.
+    final database = await _openFile(path);
     try {
       return await _measure(
-        _FileSession(owner.client),
+        _MemorySession(database),
         op,
         count,
         onProgress,
@@ -75,13 +77,40 @@ class SqlitePlusBenchEngine implements BenchEngine {
         after: () async => (0, await _fileBytes(path)),
       );
     } catch (error) {
-      try {
-        await owner.client.execute('ROLLBACK');
-      } catch (_) {}
+      if (database.inTransaction) {
+        try {
+          await database.execute('ROLLBACK');
+        } catch (_) {}
+      }
       rethrow;
     } finally {
-      await owner.close();
+      await database.close();
     }
+  }
+}
+
+Future<MutableSqliteDatabase> _openFile(String path) async {
+  final main = await DurableFileStorageBackend.openExclusive(
+    path,
+    directoryEntryIsDurable: true,
+  );
+  DurableFileStorageBackend? journal;
+  ImagePager? pager;
+  try {
+    journal = await DurableFileStorageBackend.openExisting(
+      '$path-journal',
+      directoryEntryIsDurable: true,
+    );
+    pager = await RollbackJournalPager.open(main, journal);
+    return await MutableSqliteDatabase.fromImagePager(pager);
+  } catch (error) {
+    if (pager != null) {
+      await pager.close();
+    } else {
+      await journal?.close();
+      await main.close();
+    }
+    rethrow;
   }
 }
 
@@ -150,25 +179,6 @@ class _MemorySession implements _PlusSession {
   @override
   Future<QueryResult> query(String sql, [List<Object?> parameters = const []]) {
     return _database.query(sql, parameters);
-  }
-}
-
-class _FileSession implements _PlusSession {
-  _FileSession(this._client);
-
-  final DatabaseClient _client;
-
-  @override
-  Future<MutationResult> execute(
-    String sql, [
-    List<Object?> parameters = const [],
-  ]) {
-    return _client.execute(sql, parameters);
-  }
-
-  @override
-  Future<QueryResult> query(String sql, [List<Object?> parameters = const []]) {
-    return _client.query(sql, parameters);
   }
 }
 
