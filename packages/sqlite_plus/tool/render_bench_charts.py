@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Render the 1000-row comparison charts from the recorded phone sample.
+"""Render the 1000-row file-round charts from the versionCode 2009 phone sample.
 
-Time bars are linear inside each row: length is that engine's measured time
-divided by the slower time on the same row. A shared axis would hide the
-microsecond rows next to a 515 ms insert, and a log axis would shrink the gap.
+Bars are linear inside each row: length is that engine's measurement divided
+by the larger measurement on the same row. A shared axis would hide the
+microsecond rows next to a 327 ms insert, and a log axis would shrink the gap.
+The separate-delete file is 603.6 KB because the size is taken before close
+and still includes the redo.
 """
 
 import os
@@ -16,35 +18,35 @@ BOLD = "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf"
 BG = (16, 20, 24)
 INK = (244, 241, 234)
 MUTED = (154, 167, 178)
-LINE = (44, 56, 68)
 TRACK = (32, 40, 48)
 NATIVE = (126, 182, 217)
 PLUS = (224, 164, 90)
 PILL = (46, 36, 24)
 
+# File round, versionCode 2009, Asia/Hebron 14:00 on 2026-10-29.
 # name, native microseconds, sqlite_plus microseconds, native label, plus label
 ROWS = [
-    ("Separate insert", 514_900, 6_500, "514.9 ms", "6.5 ms"),
-    ("Transaction insert", 104_600, 3_500, "104.6 ms", "3.5 ms"),
-    ("Separate update", 508_200, 247_500, "508.2 ms", "247.5 ms"),
-    ("Bulk update", 1_300, 92, "1.3 ms", "92 µs"),
-    ("Search", 126_300, 7_600, "126.3 ms", "7.6 ms"),
-    ("Point lookup", 116_200, 9_600, "116.2 ms", "9.6 ms"),
-    ("VACUUM", 1_200, 9, "1.2 ms", "9 µs"),
-    ("Separate delete", 352_700, 168_000, "352.7 ms", "168.0 ms"),
-    ("Delete all", 732, 105, "732 µs", "105 µs"),
+    ("Separate insert", 326_800, 162_200, "326.8 ms", "162.2 ms"),
+    ("Transaction insert", 81_000, 72_600, "81.0 ms", "72.6 ms"),
+    ("Separate update", 477_600, 381_200, "477.6 ms", "381.2 ms"),
+    ("Bulk update", 915, 246, "915 µs", "246 µs"),
+    ("Search", 129_400, 11_700, "129.4 ms", "11.7 ms"),
+    ("Point lookup", 105_900, 7_600, "105.9 ms", "7.6 ms"),
+    ("VACUUM", 923, 13, "923 µs", "13 µs"),
+    ("Separate delete", 413_800, 345_500, "413.8 ms", "345.5 ms"),
+    ("Delete all", 773, 259, "773 µs", "259 µs"),
 ]
 
 SIZES = [
-    ("Separate insert", 36.0, 28.0),
-    ("Transaction insert", 36.0, 28.0),
-    ("Separate update", 36.0, 28.0),
-    ("Bulk update", 36.0, 28.0),
-    ("Search", 52.0, 44.0),
-    ("Point lookup", 36.0, 28.0),
-    ("VACUUM", 36.0, 28.0),
-    ("Separate delete", 16.0, 8.0),
-    ("Delete all", 16.0, 8.0),
+    ("Separate insert", 36.0, 115.0),
+    ("Transaction insert", 36.0, 28.4),
+    ("Separate update", 36.0, 82.9),
+    ("Bulk update", 36.0, 28.5),
+    ("Search", 52.0, 64.7),
+    ("Point lookup", 36.0, 28.4),
+    ("VACUUM", 36.0, 28.4),
+    ("Separate delete", 16.0, 603.6),
+    ("Delete all", 16.0, 28.5),
 ]
 
 
@@ -82,7 +84,7 @@ def render_time(path):
     def s(n):
         return n * scale
 
-    draw.text((s(48), s(32)), "1000 rows, true time", font=title, fill=INK)
+    draw.text((s(48), s(32)), "File round, 1000 rows", font=title, fill=INK)
     draw.text(
         (s(48), s(78)),
         "One arm64 phone. Same SQL. Checksums matched. Bar length is measured time.",
@@ -151,23 +153,22 @@ def render_time(path):
 
 def render_size(path):
     scale = 2
-    width, height = 1280, 820
+    width, height = 1280, 980
     image = Image.new("RGB", (width * scale, height * scale), BG)
     draw = ImageDraw.Draw(image)
     title = font(BOLD, 34 * scale)
     sub = font(REGULAR, 16 * scale)
     label = font(BOLD, 15 * scale)
-    tick = font(REGULAR, 12 * scale)
-    value = font(REGULAR, 13 * scale)
+    value = font(REGULAR, 14 * scale)
     legend = font(BOLD, 14 * scale)
 
     def s(n):
         return n * scale
 
-    draw.text((s(48), s(32)), "Stored size", font=title, fill=INK)
+    draw.text((s(48), s(32)), "File size, before close", font=title, fill=INK)
     draw.text(
         (s(48), s(78)),
-        "Same 1000-row phone sample. One linear scale, 0 to 60 KB.",
+        "Same file round. The sqlite_plus size includes the redo. Each row has its own scale.",
         font=sub,
         fill=MUTED,
     )
@@ -189,38 +190,34 @@ def render_size(path):
     cursor = legend_item(s(width - 48), PLUS, "sqlite_plus", legend)
     legend_item(cursor, NATIVE, "native", legend)
 
-    plot_left = s(250)
-    plot_right = s(1040)
-    row_top = s(132)
-    row_h = s(68)
-    maximum = 60.0
-
-    def x_of(kb):
-        return plot_left + (kb / maximum) * (plot_right - plot_left)
-
-    axis_y = row_top + len(SIZES) * row_h + s(8)
-    for kb in (0, 16, 32, 48, 60):
-        x = x_of(kb)
-        draw.line((x, row_top - s(8), x, axis_y), fill=LINE, width=scale)
-        name = f"{kb} KB"
-        tw = text_width(draw, tick, name)
-        draw.text((x - tw / 2, axis_y + s(8)), name, font=tick, fill=MUTED)
+    plot_left = s(240)
+    plot_right = s(900)
+    row_top = s(128)
+    row_h = s(86)
+    span = plot_right - plot_left
 
     for index, (name, native_kb, plus_kb) in enumerate(SIZES):
         y = row_top + index * row_h
-        draw.text((s(40), y + s(16)), name, font=label, fill=INK)
-        bar_h = s(14)
-        native_y = y + s(8)
-        plus_y = native_y + bar_h + s(6)
-        for kb, bar_y, color in (
-            (native_kb, native_y, NATIVE),
-            (plus_kb, plus_y, PLUS),
+        draw.text((s(40), y + s(24)), name, font=label, fill=INK)
+        larger = max(native_kb, plus_kb)
+        bar_h = s(16)
+        gap = s(8)
+        native_y = y + s(12)
+        plus_y = native_y + bar_h + gap
+        rounded(draw, (plot_left, native_y, plot_right, native_y + bar_h), s(5), TRACK)
+        rounded(draw, (plot_left, plus_y, plot_right, plus_y + bar_h), s(5), TRACK)
+        for bar_y, kb, color in (
+            (native_y, native_kb, NATIVE),
+            (plus_y, plus_kb, PLUS),
         ):
-            end = max(x_of(kb), plot_left + scale)
-            rounded(draw, (plot_left, bar_y, end, bar_y + bar_h), s(4), color)
-            caption = f"{kb:.0f} KB" if kb == int(kb) else f"{kb:.1f} KB"
-            draw.text((end + s(8), bar_y - s(2)), caption, font=value, fill=color)
+            length = span * (kb / larger)
+            end = plot_left + max(length, scale)
+            rounded(draw, (plot_left, bar_y, end, bar_y + bar_h), s(5), color)
+            caption = f"{kb:.1f} KB"
+            draw.text((plot_right + s(12), bar_y - s(2)), caption, font=value, fill=color)
 
+    note = "Separate delete stays large because close has not truncated the redo yet."
+    draw.text((s(40), s(height - 48)), note, font=sub, fill=MUTED)
     image = image.resize((width, height), Image.Resampling.LANCZOS)
     image.save(path, "PNG", optimize=True)
 

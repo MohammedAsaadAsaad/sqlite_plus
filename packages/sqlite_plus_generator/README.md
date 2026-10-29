@@ -4,11 +4,11 @@ A development-time generator for `sqlite_plus_orm`. It reads Dart classes and wr
 
 Version `0.0.2`.
 
-The pictures below are the `sqlite_plus` engine, not this generator. One arm64 phone, 1000 rows, the same SQL, checksums matched. Bar length is measured time.
+The pictures below are the `sqlite_plus` engine, not this generator. One arm64 phone, Bench versionCode 2009, the file round, 1000 rows, Asia/Hebron 14:00 on 2026-10-29. The same SQL, checksums matched. Bar length is measured time, and each row has its own scale. The size is taken before close, so the sqlite_plus file still includes the redo.
 
-![Engine statement time for 1000 rows. Bar length matches measured time.](doc/bench-time.png)
+![Engine file-round statement time for 1000 rows.](doc/bench-time.png)
 
-![Engine stored size for the same 1000-row statements.](doc/bench-size.png)
+![Engine file size before close for the same statements.](doc/bench-size.png)
 
 ## Install
 
