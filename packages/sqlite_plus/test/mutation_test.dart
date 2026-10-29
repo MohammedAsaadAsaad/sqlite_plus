@@ -119,6 +119,43 @@ void main() {
             .any((record) => record.values.first == 'new-indexed'),
         isTrue);
   });
+  test('autocommit hot insert is on the rollback file before close', () async {
+    final created = await MutableSqliteDatabase.create();
+    final empty = created.exportImage();
+    await created.close();
+    final controller = CrashController();
+    final storage = ModelFile(empty, controller);
+    final journal = ModelFile(Uint8List(0), controller);
+    final pager = await RollbackJournalPager.open(storage, journal);
+    final db = await MutableSqliteDatabase.fromJournalPager(pager);
+    await db.execute(
+      'CREATE TABLE bench (id INTEGER PRIMARY KEY, name TEXT NOT NULL, body TEXT NOT NULL, n INTEGER NOT NULL)',
+    );
+    final createdFile = Uint8List.fromList(storage.durable);
+    await db.execute(
+      'INSERT INTO bench(id, name, body, n) VALUES (1, ?, ?, ?)',
+      ['n1', 'b1', 1],
+    );
+    expect(storage.durable, isNot(createdFile));
+    expect(storage.durable, db.exportImage());
+    final rows = await db.query('SELECT n FROM bench WHERE id = 1');
+    expect(rows.rows.single.single, BigInt.one);
+    final persisted = Uint8List.fromList(storage.durable);
+    final persistedJournal = Uint8List.fromList(journal.durable);
+    await db.close();
+    final reopenedPager = await RollbackJournalPager.open(
+      ModelFile(persisted, CrashController()),
+      ModelFile(persistedJournal, CrashController()),
+    );
+    final reopened = await MutableSqliteDatabase.fromJournalPager(
+      reopenedPager,
+    );
+    addTearDown(reopened.close);
+    expect(
+      (await reopened.query('SELECT COUNT(*), SUM(n) FROM bench')).rows.single,
+      [BigInt.one, BigInt.one],
+    );
+  });
   test('mutation can commit through the explicit durable capability', () async {
     final controller = CrashController();
     final storage = ModelFile(fixture(), controller);

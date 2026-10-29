@@ -22,7 +22,7 @@ The table is `bench(id INTEGER PRIMARY KEY, name TEXT, body TEXT, n INTEGER)`. B
 
 Preparation sits outside the measured interval. For search, preparation inserts the rows and creates `bench_name`. The log records that preparation on its own line. A memory sqlite_plus run also records the time and byte size of `exportImage`. A file run records the database file instead, and its export time is 0. The native file size includes a `-wal`, `-shm`, or `-journal` sidecar when one is present. A memory native size is `page_count * page_size`. Each finished pair compares row count, `SUM(n)`, and the number of hits inside one storage round. The screen shows `sqlite_plus / native` for the measured intervals.
 
-Memory sqlite_plus work runs in a separate isolate. File sqlite_plus work opens `bench-sqlite-plus.db` with a rollback journal in that same isolate. The bench writes an empty image and an empty journal, flushes both, then passes `directoryEntryIsDurable: true`. That flag is the caller attestation. It is not a power-loss result. This path does not open a loopback socket. Native memory is sqflite `:memory:` with `singleInstance: false`. Native file stays `bench-native.db` under the application documents directory, opened by sqflite with its default journal mode. The memory and CPU figures on the screen are for the whole process and keep updating while a run is in progress.
+Memory sqlite_plus work runs in a separate isolate. File sqlite_plus work opens `bench-sqlite-plus.db` with a rollback journal in that same isolate. An autocommit change is written to that file before the statement returns. A transaction is written on `COMMIT`, which is inside the measured interval. The bench writes an empty image and an empty journal, flushes both, then passes `directoryEntryIsDurable: true`. That flag is the caller attestation. It is not a power-loss result. This path does not open a loopback socket. Native memory is sqflite `:memory:` with `singleInstance: false`. Native file stays `bench-native.db` under the application documents directory, opened by sqflite with its default journal mode. The memory and CPU figures on the screen are for the whole process and keep updating while a run is in progress.
 
 ## 1000 rows
 
@@ -81,12 +81,12 @@ flutter test
 flutter build apk --split-per-abi --release
 ```
 
-Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.engine_bench`. The launcher name is Bench. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2005.
+Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.engine_bench`. The launcher name is Bench. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2006.
 
 | ABI | File | Bytes | versionCode | sha256 |
 |---|---|---:|---:|---|
-| arm64-v8a | `dist/bench-arm64-v8a.apk` | 19604515 | 2005 | `f428e8935f0bae206a4a6de477a008f698faccfb9ec3cbc156f564e95c1358bc` |
-| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17154941 | 1005 | `e36d6b8c59f035288ea7ccfa0c8601b25b142dedab30aadc01066eeb34717ff1` |
-| x86_64 | `dist/bench-x86_64.apk` | 21161514 | 4005 | `f65b8b2be4ec28a7747bab82dd99caf52b253dd8ae4f1b04c22e1719b4c751f5` |
+| arm64-v8a | `dist/bench-arm64-v8a.apk` | 19604515 | 2006 | `8277620f7fc8f46815bdcd2da2a657fd87f555746aa8e808ddc11b7c3d584b8e` |
+| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17154941 | 1006 | `85ae690596a25e56e37404312adf106769f7ede0fe51003ef6d3e89fc961778b` |
+| x86_64 | `dist/bench-x86_64.apk` | 21161514 | 4006 | `291c5d01040cb486ce43773d4dee0cf9b4d9e17324d24ca298f480b764815598` |
 
-A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the earlier arm64 package, versionCode 2003, native file against sqlite_plus memory. These versionCode 2005 packages were not installed here. VersionCode 2004 opened the sqlite_plus file through `DatabaseOwner`, and a phone rejected its loopback socket. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the earlier arm64 package, versionCode 2003, native file against sqlite_plus memory. These versionCode 2006 packages were not installed here. VersionCode 2004 opened the sqlite_plus file through `DatabaseOwner`, and a phone rejected its loopback socket. VersionCode 2005 opened the file but left hot autocommit changes in memory. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.

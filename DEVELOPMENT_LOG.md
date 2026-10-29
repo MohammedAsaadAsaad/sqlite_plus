@@ -1575,6 +1575,16 @@ result=pass
 - In each pair the native figure is given first and the sqlite_plus figure second. These are the on-screen intervals from that one log. No engine code changed for this record.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
 
+## 2026-10-29 — Bench file round writes the real file
+
+- Each Bench operation already runs twice: both engines in memory, then both engines on a file. VersionCode 2005 opened `bench-sqlite-plus.db`, but a hot autocommit change set the live rows dirty and returned without `commitImage`. `close()` rebuilt the memory image and did not write it. The measured file round was therefore still a memory change.
+- An autocommit hot change on a rollback journal now serializes, commits that image, and only then publishes it. The file bytes match `exportImage()` before `close()`. A transaction still waits for `COMMIT`, which is inside the measured interval. Memory databases have no journal, so their hot path is unchanged.
+- `packages/sqlite_plus`: `dart format --output=none --set-exit-if-changed .` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10514 tests.
+- `examples/compare`: `flutter analyze` reported no issues and `flutter test` passed 17 tests. One test reopens the sqlite_plus file after separate insert and after bulk update and reads the same checksum. Those tests do not open `sqflite`.
+- `flutter build apk --split-per-abi --release` wrote three Bench packages, debug keystore, application id `dev.sqliteplus.engine_bench`, versionName 1.0.0, launcher Bench. `bench-arm64-v8a.apk` 19604515 bytes, versionCode 2006, sha256 `8277620f7fc8f46815bdcd2da2a657fd87f555746aa8e808ddc11b7c3d584b8e`. `bench-armeabi-v7a.apk` 17154941 bytes, versionCode 1006, sha256 `85ae690596a25e56e37404312adf106769f7ede0fe51003ef6d3e89fc961778b`. `bench-x86_64.apk` 21161514 bytes, versionCode 4006, sha256 `291c5d01040cb486ce43773d4dee0cf9b4d9e17324d24ca298f480b764815598`.
+- None of these three packages was installed here.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
 ## 2026-10-29 — Bench file open without a loopback socket
 
 - VersionCode 2004 stopped every sqlite_plus file operation on a phone with `SocketException: Failed to create server socket (OS Error: Operation not permitted, errno = 1, address = 127.0.0.1, port = 44098)`. Memory pairs on that phone still completed. `DatabaseOwner` binds that socket as a process lease.

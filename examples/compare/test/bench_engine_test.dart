@@ -4,6 +4,8 @@ import 'dart:isolate';
 import 'package:engine_bench/bench_model.dart';
 import 'package:engine_bench/sqlite_plus_bench.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
 void main() {
   test('count accepts 1 through 10000', () {
@@ -212,4 +214,41 @@ void main() {
       }
     },
   );
+
+  test('sqlite_plus file rows are still in the file after reopen', () async {
+    final directory = Directory.systemTemp.createTempSync('bench-reopen-');
+    addTearDown(() async {
+      if (directory.existsSync()) directory.deleteSync(recursive: true);
+    });
+    final path = '${directory.path}/bench-sqlite-plus.db';
+    final file = SqlitePlusBenchEngine(
+      storage: BenchStorage.file,
+      filePath: path,
+    );
+    final inserted = await file.run(BenchOp.separateInsert, 2, (_, __) {});
+    expect(await _fileChecksum(path), (inserted.rows, inserted.checksum));
+    final updated = await file.run(BenchOp.bulkUpdate, 2, (_, __) {});
+    expect(await _fileChecksum(path), (updated.rows, updated.checksum));
+  });
+}
+
+Future<(int, int)> _fileChecksum(String path) async {
+  final main = await DurableFileStorageBackend.openExclusive(
+    path,
+    directoryEntryIsDurable: true,
+  );
+  final journal = await DurableFileStorageBackend.openExisting(
+    '$path-journal',
+    directoryEntryIsDurable: true,
+  );
+  final database = await MutableSqliteDatabase.fromImagePager(
+    await RollbackJournalPager.open(main, journal),
+  );
+  try {
+    final result = await database.query(benchChecksum);
+    final row = result.rows.single;
+    return (benchInt(row[0]), benchInt(row[1]));
+  } finally {
+    await database.close();
+  }
 }

@@ -382,6 +382,30 @@ final class MutableSqliteDatabase {
           } else if (live.wroteRows) {
             _dirtyMain = true;
           }
+          // A file-backed autocommit must reach the pager before the
+          // statement returns. Hot changes otherwise stay in memory, and
+          // close() does not write them.
+          final journal = _journal;
+          if (journal != null && !inTransaction && _dirtyMain) {
+            final state = _liveMain;
+            if (state != null) {
+              final image = state.serialize(
+                foreignKeys: false,
+                includeDeferred: false,
+              );
+              try {
+                await journal.commitImage(image);
+              } catch (_) {
+                _failed = true;
+                rethrow;
+              }
+              _storeImage('main', image);
+              state.rebase(_image);
+              _liveMain = state;
+              _liveMainImage = _image;
+              _dirtyMain = false;
+            }
+          }
           return MutationResult(hot.changes, hot.lastRowid, hot.returning);
         }
       } finally {
