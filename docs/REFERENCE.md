@@ -49,7 +49,7 @@ opens the in-memory engine.
 a durable two-database commit, more journal modes, extended FTS, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
-rows on Linux x64. Version `0.0.3` is the published release. See
+rows on Linux x64. Version `0.1.0` is the release in this tree. See
 `CHANGELOG.md`.
 
 ## Development checks
@@ -199,7 +199,7 @@ only when that binary is installed.
 
 ## M4 writes (limited subset)
 
-`MutableSqliteDatabase.create(pageSize: 4096, encoding: 1)` creates an empty
+`openInMemory(pageSize: 4096, encoding: 1)` is `MutableSqliteDatabase.create` and creates an empty
 SQLite image. `fromImage(bytes)` opens an independent existing image. M6 adds
 CREATE/DROP TABLE/INDEX/VIEW/TRIGGER, ADD COLUMN/table rename, indexed rowid and WITHOUT ROWID
 mutations, constraints and row triggers. `execute(sql, parameters)` returns the
@@ -247,12 +247,12 @@ ROLLBACK, SAVEPOINT, RELEASE [SAVEPOINT], and ROLLBACK [TRANSACTION] TO
 Closing an active transaction discards it; a commit I/O error poisons the session.
 BEGIN modes share the exclusive-owner contract, not shared-reader lock escalation.
 
-For file access across isolates, use one DatabaseOwner and share its SendPort:
+For file access across isolates, use one DatabaseOwner and share its SendPort. `openDatabase` is `DatabaseOwner.open`:
 
 ```dart
 import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-final owner = await DatabaseOwner.open('snapshot.db',
+final owner = await openDatabase('snapshot.db',
     directoryEntriesDurable: true, wal: true);
 try {
   final client = owner.client;

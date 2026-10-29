@@ -2,7 +2,7 @@
 
 A Pure Dart database engine. SQL, JSON, FTS5, R-tree, and geopoly run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.0.3`.
+Version `0.1.0`.
 
 One arm64 phone, Bench versionCode 2009, 1000 rows, Asia/Hebron 14:00 on 2026-10-29. The same SQL, and every checksum matched. The phone model was not in the log. The bars are the file round, and each row has its own linear scale. The gold figure is native time divided by sqlite_plus time. sqlite_plus was faster on every operation in this sample, in memory and on a file. The size figure is taken before close, so the sqlite_plus file still includes the redo. Separate delete was 603.6 KB against the native 16.0 KB.
 
@@ -44,22 +44,24 @@ These are statement intervals from one sample. They are not a multi-device study
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.0.3
+  sqlite_plus: ^0.1.0
 ```
 
 ```dart
 import 'package:sqlite_plus/sqlite_plus.dart';
 
-final db = await MutableSqliteDatabase.create();
+final db = await openInMemory();
 ```
 
 | Entry | Library | Use it for |
 |---|---|---|
-| `MutableSqliteDatabase.create` | `sqlite_plus.dart` | A new in-memory database |
+| `openInMemory` | `sqlite_plus.dart` | A new in-memory database. Same function as `MutableSqliteDatabase.create` |
+| `MutableSqliteDatabase.create` | `sqlite_plus.dart` | The same in-memory open |
 | `MutableSqliteDatabase.fromImage` | `sqlite_plus.dart` | Reopen `exportImage()` bytes |
 | `db.query` / `db.execute` | `sqlite_plus.dart` | Bound SQL. Integers come back as `BigInt` |
 | `db.functions` | `sqlite_plus.dart` | Scalar, aggregate, and collation callbacks |
-| `DatabaseOwner.open` | `sqlite_plus_io.dart` | A `dart:io` file, on its own isolate |
+| `openDatabase` | `sqlite_plus_io.dart` | A `dart:io` file, on its own isolate. Same function as `DatabaseOwner.open` |
+| `DatabaseOwner.open` | `sqlite_plus_io.dart` | The same file open |
 | `openBrowserStorage` | `sqlite_plus.dart` | Browser bytes. Read `canRead`, `canWrite`, `durabilityPromised`, `placement` |
 
 ## Library tour
@@ -179,7 +181,7 @@ Parameters are `?`, `?NNN`, `:name`, `@name`, and `$name`. A repeated name share
 ## Dart callbacks
 
 ```dart
-final db = await MutableSqliteDatabase.create();
+final db = await openInMemory();
 db.functions.registerScalar(
   'twice',
   1,
@@ -205,7 +207,7 @@ import 'package:sqlite_plus/sqlite_plus_io.dart';
 
 // `path` is an existing database file. The caller also provisions the
 // `-journal` sidecar, or the `-wal` sidecar when `wal` is true.
-final owner = await DatabaseOwner.open(path, directoryEntriesDurable: true);
+final owner = await openDatabase(path, directoryEntriesDurable: true);
 try {
   final version = await owner.client.query('PRAGMA user_version');
 } finally {
@@ -222,7 +224,7 @@ try {
 | `owner.client` | `query` and `execute` for this owner |
 | `DatabaseClient.connect(owner.sendPort)` | Another logical client of the same owner |
 
-A second `DatabaseOwner.open` of the same path fails while the first owner is open. An explicit transaction belongs to the client that began it. `exportImage` on a memory database is the byte image a file can hold.
+A second `openDatabase` of the same path fails while the first owner is open. `DatabaseOwner.open` is that same function. An explicit transaction belongs to the client that began it. `exportImage` on a memory database is the byte image a file can hold.
 
 ## Browser
 

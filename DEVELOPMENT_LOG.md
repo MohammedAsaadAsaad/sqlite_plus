@@ -1672,3 +1672,14 @@ result=pass
 - Package versions are `0.0.3`. The ORM depends on `sqlite_plus: ^0.0.3`. The generator depends on `sqlite_plus_orm: ^0.0.3`.
 - `*.apk` is gitignored. The Bench and Margin release packages stay on disk as build output. Their byte sizes and checksums remain in the example READMEs.
 - M9 stays unchecked. Item 108 stays open.
+
+## 2026-10-29 — Familiar names for the two opens
+
+- `openInMemory` in `sqlite_plus.dart` calls `MutableSqliteDatabase.create`. `openDatabase` in `sqlite_plus_io.dart` calls `DatabaseOwner.open`. The previous names remain. A false `directoryEntriesDurable` still throws before an isolate starts. That flag is still a caller attestation, not a power-loss result.
+- `packages/sqlite_plus`: `dart format --output=none --set-exit-if-changed .` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10526 tests. The ORM and generator suites were not re-run. No engine behavior changed.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-29 — Version 0.1.0
+
+- `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.0`. The ORM depends on `sqlite_plus: ^0.1.0`. The generator depends on `sqlite_plus_orm: ^0.1.0`. `openInMemory` and `openDatabase` are the familiar names in this release. The previous names remain. `0.0.3` is still the newest version on pub.dev until this release is uploaded.
+- M9 stays unchecked. Item 108 stays open.

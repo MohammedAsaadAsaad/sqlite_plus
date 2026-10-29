@@ -44,6 +44,16 @@ final class MutationResult {
   final BigInt? lastInsertRowid;
 }
 
+/// Opens an empty in-memory database.
+///
+/// This is [MutableSqliteDatabase.create]. [pageSize] is a power of two from
+/// 512 to 65536. [encoding] is 1 for UTF-8, 2 for UTF-16le, or 3 for UTF-16be.
+Future<MutableSqliteDatabase> openInMemory({
+  int pageSize = 4096,
+  int encoding = 1,
+}) =>
+    MutableSqliteDatabase.create(pageSize: pageSize, encoding: encoding);
+
 /// Serialized image mutations with constraints, secondary indexes and row triggers.
 /// In-memory by default; an ImagePager supplies the durable commit boundary.
 /// Transactions and savepoints retain independent image snapshots.

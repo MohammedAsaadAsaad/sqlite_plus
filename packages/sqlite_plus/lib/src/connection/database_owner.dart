@@ -10,6 +10,17 @@ import '../sql/mutable_database.dart';
 import '../sql/tokenizer.dart';
 import '../storage/durable_file_storage_backend.dart';
 
+/// Opens a database file on its own isolate.
+///
+/// This is [DatabaseOwner.open]. [path] is an existing database file. The
+/// caller also provisions the `-journal` sidecar, or the `-wal` sidecar when
+/// [wal] is true. [directoryEntriesDurable] is the caller attestation that
+/// those directory entries are already durable. It is not a power-loss result.
+Future<DatabaseOwner> openDatabase(String path,
+        {required bool directoryEntriesDurable, bool wal = false}) =>
+    DatabaseOwner.open(path,
+        directoryEntriesDurable: directoryEntriesDurable, wal: wal);
+
 /// A single connection/handle owner. Share [sendPort] with other isolates and
 /// connect through DatabaseClient; never open additional file handles directly.
 ///

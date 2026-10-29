@@ -2,14 +2,14 @@
 
 A Pure Dart SQLite engine, a typed ORM, and a mapping generator. SQL, JSON, FTS5, R-tree, change tracking, and generated filters run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.0.3`.
+Version `0.1.0`.
 
 ## Packages
 
 | Package | Import | What you get |
 |---|---|---|
 | [`sqlite_plus`](packages/sqlite_plus) | `package:sqlite_plus/sqlite_plus.dart` | In-memory SQL, JSON, FTS5, R-tree, geopoly, and `exportImage` |
-| File adapter | `package:sqlite_plus/sqlite_plus_io.dart` | `DatabaseOwner` for a `dart:io` file |
+| File adapter | `package:sqlite_plus/sqlite_plus_io.dart` | `openDatabase` for a `dart:io` file |
 | [`sqlite_plus_orm`](packages/sqlite_plus_orm) | `package:sqlite_plus_orm/sqlite_plus_orm.dart` | Tracked objects, bound predicates, relationships, reviewed migrations |
 | [`sqlite_plus_generator`](packages/sqlite_plus_generator) | dev dependency `sqlite_plus_generator` | `filter`, JSON `path`, FTS `search`, R-tree `bounds` |
 
@@ -19,11 +19,11 @@ The file adapter imports `dart:io`. The other two libraries do not. The generato
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.0.3
-  sqlite_plus_orm: ^0.0.3
+  sqlite_plus: ^0.1.0
+  sqlite_plus_orm: ^0.1.0
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.0.3
+  sqlite_plus_generator: ^0.1.0
 ```
 
 ## Where to start
@@ -101,7 +101,7 @@ Check the generated part before running the library:
 | Reopen | `PRAGMA user_version=7`, `exportImage`, `fromImage` | title and version `7`, `40960` bytes |
 
 ```dart
-final db = await MutableSqliteDatabase.create();
+final db = await openInMemory();
 db.functions.registerScalar('twice', 1,
     (args) => args.single == null ? null : (args.single as BigInt) * BigInt.two);
 final doubled = await db.query('SELECT twice(?)', [21]);

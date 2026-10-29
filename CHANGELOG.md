@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0
+
+`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.0`. `openInMemory` is `MutableSqliteDatabase.create`. `openDatabase` is `DatabaseOwner.open`. The previous names remain.
+
 ## 0.0.3
 
 `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.0.3`. Android APKs are gitignored.
