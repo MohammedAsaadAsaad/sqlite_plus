@@ -132,12 +132,14 @@ void main() {
       'CREATE TABLE bench (id INTEGER PRIMARY KEY, name TEXT NOT NULL, body TEXT NOT NULL, n INTEGER NOT NULL)',
     );
     final createdFile = Uint8List.fromList(storage.volatile);
+    final createdJournal = journal.volatile.length;
     await db.execute(
       'INSERT INTO bench(id, name, body, n) VALUES (1, ?, ?, ?)',
       ['n1', 'b1', 1],
     );
-    expect(storage.volatile, isNot(createdFile));
-    expect(storage.volatile, db.exportImage());
+    expect(storage.volatile, createdFile);
+    expect(journal.volatile.length, greaterThan(createdJournal));
+    expect(await pager.readImage(), db.exportImage());
     final rows = await db.query('SELECT n FROM bench WHERE id = 1');
     expect(rows.rows.single.single, BigInt.one);
     final persisted = Uint8List.fromList(storage.durable);
@@ -162,9 +164,11 @@ void main() {
     final journal = ModelFile(Uint8List(0), controller);
     final pager = await RollbackJournalPager.open(storage, journal);
     final db = await MutableSqliteDatabase.fromJournalPager(pager);
+    final before = Uint8List.fromList(storage.volatile);
     await db.execute('DELETE FROM notes');
     final image = Uint8List.fromList(db.exportImage());
-    expect(storage.volatile, image);
+    expect(storage.volatile, before);
+    expect(await pager.readImage(), image);
     expect(journal.volatile.length, greaterThan(32));
     await db.close();
     expect(storage.durable, image);

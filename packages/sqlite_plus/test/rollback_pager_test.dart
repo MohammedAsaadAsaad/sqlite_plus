@@ -98,7 +98,8 @@ void main() {
       final pager = await RollbackJournalPager.open(db, journal);
       await pager.commitImage(next);
       final operations = baseline.operations;
-      expect(db.volatile, next);
+      expect(db.volatile, original);
+      expect(await pager.readImage(), next);
       await pager.close();
       expect(db.durable, next);
       // Every database/journal write, truncate and sync gets its own restart.
@@ -197,7 +198,8 @@ void main() {
     for (var version = 0; version < 3; version++) {
       final next = updatedImage(await pager.readImage(), version);
       await pager.commitImage(next);
-      expect(db.volatile, next);
+      expect(db.volatile, originalImage());
+      expect(await pager.readImage(), next);
       expect(journal.volatile.length, greaterThan(32));
       last = next;
     }
@@ -225,7 +227,8 @@ void main() {
     expect(await pager.readImage(), originalImage());
     await pager.close();
   });
-  test('a one-page edit journals only that before-image', () async {
+  test('a one-page edit journals the changed bytes and defers the database',
+      () async {
     final controller = CrashController();
     final original = originalImage();
     final db = ModelFile(original, controller);
@@ -234,8 +237,10 @@ void main() {
     final next = updatedImage(original, 4);
     await pager.commitImage(next);
     final pageSize = 512;
-    expect(journal.volatile.length, 32 + 16 + pageSize);
-    expect(db.volatile, next);
+    expect(journal.volatile.length, greaterThan(32 + 16));
+    expect(journal.volatile.length, lessThan(32 + 16 + 1 + pageSize));
+    expect(db.volatile, original);
+    expect(await pager.readImage(), next);
     await pager.close();
     expect(db.durable, next);
     expect(journal.durable.length, 0);

@@ -7,8 +7,9 @@ import '../format/record_encoder.dart';
 /// Right-edge edits of one ordinary rowid table inside an existing image.
 ///
 /// A null result means the caller must rebuild the image. The input bytes are
-/// left unchanged. Overflow pages, freeblock reuse, descending keys, and
-/// interior pages that cannot take one more child are left to that rebuild.
+/// left unchanged. Overflow pages, reusing a freeblock for a later insert,
+/// descending keys, and interior pages that cannot take one more child are
+/// left to that rebuild. A deleted cell becomes a freeblock.
 abstract final class RowidPagePatch {
   static Map<String, int>? schemaRoots(Uint8List image) {
     final header = DatabaseHeader.decode(image);
@@ -98,13 +99,17 @@ abstract final class RowidPagePatch {
     if (found.separator == rowId) return null;
     final cells = pages.leafCells(found.leaf);
     if (cells == null || found.index >= cells.length) return null;
-    cells.removeAt(found.index);
-    if (cells.isEmpty && found.leaf != root) {
+    if (cells.length == 1 && found.leaf != root) {
       if (!pages.unlinkEmpty(root, found.leaf)) return null;
       pages.touch();
       return pages.assemble();
     }
-    if (!pages.writeLeaf(found.leaf, cells)) return null;
+    if (cells.length == 1) {
+      if (!pages.writeLeaf(found.leaf, const [])) return null;
+    } else if (!pages.dropLeafCell(found.leaf, found.index)) {
+      return null;
+    }
+    cells.removeAt(found.index);
     if (found.separator == rowId) {
       final max = _rowid(cells.last, 0, cells.last.length);
       if (max == null || !pages.replaceSeparator(root, rowId, max)) {
@@ -613,6 +618,102 @@ final class _Pages {
     } on Object {
       return null;
     }
+  }
+
+  /// Removes one leaf cell and leaves its bytes as a freeblock.
+  ///
+  /// Repacking would move every later cell and make a file commit rewrite the
+  /// page. The pointer array stays in key order. A span smaller than 4 bytes
+  /// is counted as fragmented free space.
+  bool dropLeafCell(int number, int index) {
+    final bounds = cellBounds(number, index);
+    if (bounds == null || type(number) != 13) return false;
+    final start = number == 1 ? 100 : 0;
+    final page = cow(number);
+    final data = ByteData.sublistView(page);
+    final cells = data.getUint16(start + 3);
+    if (index < 0 || index >= cells) return false;
+    final array = start + 8;
+    for (var i = index + 1; i < cells; i++) {
+      data.setUint16(array + (i - 1) * 2, data.getUint16(array + i * 2));
+    }
+    data.setUint16(start + 3, cells - 1);
+    return _releaseSpan(data, start, bounds.start, bounds.end, page.length);
+  }
+
+  bool _releaseSpan(ByteData data, int header, int from, int to, int usable) {
+    var content = data.getUint16(header + 5);
+    if (content == 0) content = 65536;
+    if (from == content) {
+      var end = to;
+      final taken = _unlinkFreeblock(data, header, to);
+      if (taken != null) end += taken;
+      if (end > usable) return false;
+      data.setUint16(header + 5, end == 65536 ? 0 : end);
+      return true;
+    }
+    final size = to - from;
+    if (size <= 0 || from < content || to > usable) return false;
+    if (size < 4) {
+      final fragments = data.getUint8(header + 7) + size;
+      if (fragments > 60) return false;
+      data.setUint8(header + 7, fragments);
+      return true;
+    }
+    return _linkFreeblock(data, header, from, size, usable);
+  }
+
+  /// Removes the freeblock that starts at [offset] and returns its size.
+  int? _unlinkFreeblock(ByteData data, int header, int offset) {
+    var previous = header + 1;
+    var block = data.getUint16(header + 1);
+    while (block != 0) {
+      final size = data.getUint16(block + 2);
+      final next = data.getUint16(block);
+      if (block == offset) {
+        data.setUint16(previous, next);
+        return size;
+      }
+      if (size < 4) return null;
+      previous = block;
+      block = next;
+    }
+    return null;
+  }
+
+  bool _linkFreeblock(
+      ByteData data, int header, int from, int size, int usable) {
+    var previous = header + 1;
+    var block = data.getUint16(header + 1);
+    while (block != 0 && block < from) {
+      final blockSize = data.getUint16(block + 2);
+      if (blockSize < 4 || block + blockSize > from) return false;
+      if (from - (block + blockSize) < 4) {
+        size = from + size - block;
+        from = block;
+        data.setUint16(previous, data.getUint16(block));
+        block = data.getUint16(previous);
+        break;
+      }
+      previous = block;
+      block = data.getUint16(block);
+    }
+    var end = from + size;
+    if (block != 0 && block < end + 4) {
+      final nextSize = data.getUint16(block + 2);
+      if (nextSize < 4 || block + nextSize > usable) return false;
+      final merged = block + nextSize;
+      if (merged > end) end = merged;
+      size = end - from;
+      data.setUint16(previous, data.getUint16(block));
+      block = data.getUint16(previous);
+    }
+    if (from + size > usable || size < 4) return false;
+    if (block != 0 && block < from + size + 4) return false;
+    data.setUint16(from, block);
+    data.setUint16(from + 2, size);
+    data.setUint16(previous, from);
+    return true;
   }
 
   bool writeLeaf(int number, List<Uint8List> cells) =>

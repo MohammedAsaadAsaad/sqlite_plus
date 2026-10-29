@@ -37,7 +37,9 @@ void main() {
     await db.execute('INSERT INTO notes VALUES(6,?,?)', ['committed', 6]);
     expect(faults.operations, 0);
     await db.execute('END TRANSACTION');
-    expect(file.volatile, db.exportImage());
+    expect(file.volatile, fixture());
+    expect(await pager.readImage(), db.exportImage());
+    expect(log.volatile.length, greaterThan(32));
     expect(db.inTransaction, isFalse);
   });
   test('nested named savepoints, duplicate names and rollback-to reuse',

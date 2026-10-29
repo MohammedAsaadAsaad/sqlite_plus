@@ -94,6 +94,8 @@ One 1000-row sample of the arm64 package, Asia/Hebron 13:11 on 2026-10-29. Every
 
 Separate insert sums are 500500. Separate update and bulk update sums are 501500. Deletes leave 0 rows and sum 0. VACUUM hits are 1. The other hit counts are 1000. This is one sample. The phone model was not in the log.
 
+VersionCode 2009 has not been installed here. Its file commit syncs the redo once and leaves the database pages until checkpoint or close. A bulk integer update journals the addend instead of rewriting the leaves. The 13:11 sample above is still the latest phone log.
+
 ## Run the tests
 
 ```sh
@@ -108,12 +110,12 @@ flutter test
 flutter build apk --split-per-abi --release
 ```
 
-Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.engine_bench`. The launcher name is Bench. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2008.
+Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.engine_bench`. The launcher name is Bench. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2009.
 
 | ABI | File | Bytes | versionCode | sha256 |
 |---|---|---:|---:|---|
-| arm64-v8a | `dist/bench-arm64-v8a.apk` | 19670051 | 2008 | `85752b8b449977acbcfb241c8cb1833f041f624862a3094d34047429eaec83ca` |
-| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17253245 | 1008 | `0bfebdf11bf97c473a04a1b45067272db1985749073f70da82f1735563fbd4a7` |
-| x86_64 | `dist/bench-x86_64.apk` | 21227050 | 4008 | `096d28b08b799ee3f730dfc8aaebdc458531886817d0dcfdd8b2b039e309547e` |
+| arm64-v8a | `dist/bench-arm64-v8a.apk` | 19670051 | 2009 | `89b8c0f1d3742272f2fedd8e2dfcc2c3a4cebc7ff47084478b977bf8fe6dd611` |
+| armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17286013 | 1009 | `2ec2f0aee1e65875e01bc5b0fa477aa303b90701a664212647e92290932d9e6b` |
+| x86_64 | `dist/bench-x86_64.apk` | 21227050 | 4009 | `293896d63ec03c81425b439dee4409d97864e42e777f77a975e5a1c338294b27` |
 
-A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the earlier arm64 package, versionCode 2003, native file against sqlite_plus memory. The arm64 package here is versionCode 2008 and was not installed here. VersionCode 2007 synced the journal, the database, and the journal invalidation on every autocommit. VersionCode 2008 syncs a redo of the changed pages once. The armeabi-v7a and x86_64 files in this directory are the same engine, versionCodes 1008 and 4008. VersionCode 2004 opened the sqlite_plus file through `DatabaseOwner`, and a phone rejected its loopback socket. VersionCode 2005 opened the file but left hot autocommit changes in memory. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The 1000-row charts and tables above are the earlier arm64 package, versionCode 2003, native file against sqlite_plus memory. The arm64 package here is versionCode 2009 and was not installed here. VersionCode 2007 synced the journal, the database, and the journal invalidation on every autocommit. VersionCode 2008 syncs a redo of the changed pages once and still writes those pages before the statement returns. VersionCode 2009 syncs the redo once and writes the database pages when the log passes 16 MiB or the pager closes. The armeabi-v7a and x86_64 files in this directory are the same engine, versionCodes 1009 and 4009. VersionCode 2004 opened the sqlite_plus file through `DatabaseOwner`, and a phone rejected its loopback socket. VersionCode 2005 opened the file but left hot autocommit changes in memory. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.

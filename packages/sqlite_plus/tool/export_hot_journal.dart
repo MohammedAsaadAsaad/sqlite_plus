@@ -8,9 +8,9 @@ import '../test/rollback_pager_test.dart';
 Future<void> main(List<String> args) async {
   if (args.length != 1) throw ArgumentError('Expected output directory');
   final original = originalImage();
-  // The redo sync persists the journal. The following database write stays
-  // volatile, so the snapshot is the old database plus a hot redo.
-  final faults = CrashController()..crashAt = 3;
+  // A commit is the journal write and its sync. crashAt 2 runs the sync,
+  // which persists the redo, then throws before any database write.
+  final faults = CrashController()..crashAt = 2;
   final database = ModelFile(original, faults);
   final journal = ModelFile(Uint8List(0), faults);
   final pager = await RollbackJournalPager.open(database, journal);
