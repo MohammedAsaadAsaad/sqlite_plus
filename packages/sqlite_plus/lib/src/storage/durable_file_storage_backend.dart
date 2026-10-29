@@ -9,7 +9,8 @@ import 'durable_storage_backend.dart';
 /// renames/removals, and keep database/journal as distinct files. This adapter
 /// never creates/replaces/deletes files and cannot provision their directory
 /// entries. FileMode.append permits random positioning without initial truncate.
-final class DurableFileStorageBackend implements DurableStorageBackend {
+final class DurableFileStorageBackend
+    implements DurableStorageBackend, DirectDurableIO {
   DurableFileStorageBackend._(this._file);
   final RandomAccessFile _file;
   Future<void> _pending = Future.value();
@@ -70,21 +71,42 @@ final class DurableFileStorageBackend implements DurableStorageBackend {
       });
   @override
   Future<void> write(int offset, Uint8List bytes) => _serialize(() async {
-        if (offset < 0) throw RangeError.value(offset);
-        await _file.setPosition(offset);
-        await _file.writeFrom(bytes);
+        writeAtSync(offset, bytes);
       });
   @override
   Future<void> truncate(int size) => _serialize(() async {
-        if (size < 0) throw RangeError.value(size);
-        await _file.truncate(size);
+        truncateAtSync(size);
       });
   @override
-  Future<int> length() => _serialize(_file.length);
+  Future<int> length() => _serialize(() async => _file.lengthSync());
   @override
   Future<void> sync() => _serialize(() async {
-        await _file.flush();
+        _file.flushSync();
       });
+
+  /// Same-isolate commit path. The pager calls these in one straight-line
+  /// sequence so a file statement does not pay an event-loop turn per syscall.
+  @override
+  void writeAtSync(int offset, Uint8List bytes) {
+    if (_closed) throw StateError('Storage closed');
+    if (offset < 0) throw RangeError.value(offset);
+    _file.setPositionSync(offset);
+    _file.writeFromSync(bytes);
+  }
+
+  @override
+  void truncateAtSync(int size) {
+    if (_closed) throw StateError('Storage closed');
+    if (size < 0) throw RangeError.value(size);
+    _file.truncateSync(size);
+  }
+
+  @override
+  void flushSync() {
+    if (_closed) throw StateError('Storage closed');
+    _file.flushSync();
+  }
+
   @override
   Future<void> close() {
     final result = _pending.then((_) async {

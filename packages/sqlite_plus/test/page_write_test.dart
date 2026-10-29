@@ -214,9 +214,8 @@ void main() {
       await db.execute(sql, parameters);
       final operations = probe.operations;
       await db.close();
-      final faults = CrashController()
-        ..persistUnsynced = true
-        ..crashAt = operations ~/ 2;
+      expect(operations, greaterThan(0));
+      final faults = CrashController()..crashAt = 1;
       final file = ModelFile(baseline, faults);
       final log = ModelFile(Uint8List(0), faults);
       final crashing = await RollbackJournalPager.open(file, log);
@@ -246,9 +245,8 @@ void main() {
     await db.execute('UPDATE t SET v=?', ['b' * 7000]);
     final operations = probe.operations;
     await db.close();
-    final faults = CrashController()
-      ..persistUnsynced = true
-      ..crashAt = operations ~/ 2;
+    expect(operations, greaterThan(0));
+    final faults = CrashController()..crashAt = 1;
     final file = ModelFile(wideBase, faults);
     final log = ModelFile(Uint8List(0), faults);
     final crashing = await RollbackJournalPager.open(file, log);
@@ -354,15 +352,17 @@ CREATE TABLE bench (
           [id, 'n$id', 'b$id', id]);
       expect(result.changes, 1);
     }
-    final pageSize = DatabaseHeader.decode(databaseFile.durable).pageSize;
-    expect(journal.durable.length, lessThanOrEqualTo(512 + 3 * (pageSize + 8)));
+    final pageSize = DatabaseHeader.decode(databaseFile.volatile).pageSize;
+    expect(journal.volatile.length,
+        lessThan(RollbackJournalPager.checkpointBytes + pageSize * 8));
     for (var id = 1; id <= 200; id++) {
       expect(
           (await db.execute('UPDATE bench SET n = n + 1 WHERE id = ?', [id]))
               .changes,
           1);
     }
-    expect(journal.durable.length, lessThanOrEqualTo(512 + 3 * (pageSize + 8)));
+    expect(journal.volatile.length,
+        lessThan(RollbackJournalPager.checkpointBytes + pageSize * 8));
     final sum = 200 * 201 ~/ 2 + 200;
     expect(
         (await db.query('SELECT COUNT(*), COALESCE(SUM(n), 0) FROM bench'))
@@ -375,6 +375,7 @@ CREATE TABLE bench (
     }
     expect((await db.query('SELECT COUNT(*) FROM bench')).rows.single.single,
         BigInt.zero);
+    await db.close();
     final image = Uint8List.fromList(databaseFile.durable);
     final opened = await MutableSqliteDatabase.fromImage(image);
     addTearDown(opened.close);
@@ -419,6 +420,7 @@ CREATE TABLE bench (
     }
     await db.execute('DELETE FROM bench WHERE id = ?', [7]);
     await db.execute('UPDATE bench SET n = n + 1');
+    await db.close();
     final image = Uint8List.fromList(databaseFile.durable);
     final opened = await MutableSqliteDatabase.fromImage(image);
     addTearDown(opened.close);
@@ -434,6 +436,103 @@ CREATE TABLE bench (
     expect(
         (await opened.query('SELECT body FROM bench WHERE id = ?', [7])).rows,
         isEmpty);
+  });
+
+  test('a file addend stays in the redo until restart or close', () async {
+    const create = '''
+CREATE TABLE bench (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  body TEXT NOT NULL,
+  n INTEGER NOT NULL
+)
+''';
+    final controller = CrashController();
+    final databaseFile = ModelFile(await _emptyImage(), controller);
+    final journal = ModelFile(Uint8List(0), controller);
+    final pager = await RollbackJournalPager.open(databaseFile, journal);
+    final db = await MutableSqliteDatabase.fromJournalPager(pager);
+    addTearDown(db.close);
+    await db.execute(create);
+    await db.execute('INSERT INTO bench(id, name, body, n) VALUES (1, ?, ?, ?)',
+        ['n1', 'b1', 1]);
+    await db.execute('INSERT INTO bench(id, name, body, n) VALUES (2, ?, ?, ?)',
+        ['n2', 'b2', 2]);
+    final stale = Uint8List.fromList(databaseFile.volatile);
+    final beforeJournal = journal.volatile.length;
+    await db.execute('UPDATE bench SET n = n + 1');
+    await db.execute('UPDATE bench SET n = n + 1');
+    expect(databaseFile.volatile, stale);
+    expect(journal.volatile.length, greaterThan(beforeJournal));
+    await db.execute('DELETE FROM bench WHERE id = ?', [1]);
+    await db.execute('INSERT INTO bench(id, name, body, n) VALUES (3, ?, ?, ?)',
+        ['n3', 'b3', 3]);
+    expect(
+        (await db.query('SELECT COALESCE(SUM(n), 0) FROM bench')).rows.single,
+        [BigInt.from((2 + 2) + 3)]);
+    final persisted = Uint8List.fromList(databaseFile.durable);
+    final persistedJournal = Uint8List.fromList(journal.durable);
+    final reopenedPager = await RollbackJournalPager.open(
+      ModelFile(persisted, CrashController()),
+      ModelFile(persistedJournal, CrashController()),
+    );
+    final reopened =
+        await MutableSqliteDatabase.fromJournalPager(reopenedPager);
+    addTearDown(reopened.close);
+    expect(
+        (await reopened.query(
+                'SELECT COUNT(*), COALESCE(SUM(n), 0) FROM bench ORDER BY id'))
+            .rows
+            .single,
+        [BigInt.two, BigInt.from(7)]);
+    expect(
+        (await reopened.query('SELECT n FROM bench WHERE id = 2'))
+            .rows
+            .single
+            .single,
+        BigInt.from(4));
+    expect((await reopened.query('PRAGMA integrity_check')).rows.single.single,
+        'ok');
+    await db.close();
+    final closed = await MutableSqliteDatabase.fromImage(databaseFile.durable);
+    addTearDown(closed.close);
+    expect(
+        (await closed.query('SELECT COUNT(*), COALESCE(SUM(n), 0) FROM bench'))
+            .rows
+            .single,
+        [BigInt.two, BigInt.from(7)]);
+  });
+
+  test('a file addend is dropped when the redo sync does not finish', () async {
+    const create = '''
+CREATE TABLE bench (
+  id INTEGER PRIMARY KEY,
+  n INTEGER NOT NULL
+)
+''';
+    Future<void> crash(int step, List<Object?> expected) async {
+      final faults = CrashController();
+      final file = ModelFile(await _emptyImage(), faults);
+      final log = ModelFile(Uint8List(0), faults);
+      final pager = await RollbackJournalPager.open(file, log);
+      final db = await MutableSqliteDatabase.fromJournalPager(pager);
+      addTearDown(db.close);
+      await db.execute(create);
+      await db.execute('INSERT INTO bench(id, n) VALUES (1, 4)');
+      faults.crashAt = faults.operations + step;
+      await expectLater(db.execute('UPDATE bench SET n = n + 1'),
+          throwsA(isA<SimulatedCrash>()));
+      file.crash();
+      log.crash();
+      faults.crashAt = null;
+      final recovered = await RollbackJournalPager.open(file, log);
+      final opened = await MutableSqliteDatabase.fromJournalPager(recovered);
+      addTearDown(opened.close);
+      expect((await opened.query('SELECT n FROM bench')).rows.single, expected);
+    }
+
+    await crash(1, [BigInt.from(4)]);
+    await crash(2, [BigInt.from(5)]);
   });
 }
 

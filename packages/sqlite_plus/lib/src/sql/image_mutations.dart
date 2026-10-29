@@ -139,6 +139,17 @@ final class LogicalImage {
   final Map<String, Map<int, BigInt>> _addends;
 }
 
+/// One integer-column addend that can be journaled without rewriting leaves.
+final class FileAddendCommit {
+  FileAddendCommit(this.root, this.deltas);
+
+  /// Table root page. Greater than 1.
+  final int root;
+
+  /// Unjournaled deltas keyed by stored-record slot, not schema column index.
+  final Map<int, BigInt> deltas;
+}
+
 /// Validates complete logical mutations before compact image reconstruction.
 /// File atomicity remains the responsibility of ImagePager.
 final class ImageMutations {
@@ -230,6 +241,8 @@ final class ImageMutations {
   void rebase(Uint8List image) {
     original = image;
     schemaChanged = false;
+    // [image] already contains every journaled addend.
+    _journaledAddends.clear();
     for (final entry in _tables.entries) {
       _loadedRows[entry.key] = List<TableRow>.of(entry.value.rows);
     }
@@ -242,6 +255,10 @@ final class ImageMutations {
   bool schemaChanged = false;
   final Map<String, BigInt> _sequences = {};
   final Map<String, List<TableRow>> _loadedRows = {};
+
+  /// Addends already appended to the redo. [original] does not contain them
+  /// until the next rebase. A later file frame journals only the difference.
+  final Map<String, Map<int, BigInt>> _journaledAddends = {};
   static Future<ImageMutations> load(Uint8List image) async {
     final header = DatabaseHeader.decode(image);
     final result = ImageMutations._(image, header.textEncoding);
@@ -4089,6 +4106,8 @@ final class ImageMutations {
       _flushColumnAddends();
       return addend;
     }
+    // A page patch of [original] would drop addends that exist only in the redo.
+    if (_journaledAddends.isNotEmpty) return null;
     for (final table in _tables.values) {
       final pending = table.columnAddends;
       if (pending != null && pending.isNotEmpty) return null;
@@ -4117,6 +4136,9 @@ final class ImageMutations {
     if (root == null) return null;
     if (_indexes.any((index) => asciiLower(index.table) == changed)) {
       return null;
+    }
+    if (after.isEmpty && before.isNotEmpty) {
+      return RowidPagePatch.clearRoot(original, root);
     }
     if (after.length == before.length + 1) {
       for (var i = 0; i < before.length; i++) {
@@ -4152,6 +4174,32 @@ final class ImageMutations {
   }
 
   Uint8List? _patchAddend() {
+    final full = _addendDeltas(incremental: false);
+    if (full == null) return null;
+    return RowidPagePatch.addColumns(original, full.$1, full.$2);
+  }
+
+  /// The unjournaled part of a single integer addend, or null when the page
+  /// image has to be written. Row edits take the page path.
+  FileAddendCommit? fileAddendCommit() {
+    final delta = _addendDeltas(incremental: true);
+    if (delta == null) return null;
+    return FileAddendCommit(delta.$1, delta.$2);
+  }
+
+  /// Records that [fileAddendCommit] reached the redo.
+  void noteAddendJournaled() {
+    for (final entry in _tables.entries) {
+      final addends = entry.value.columnAddends;
+      if (addends == null || addends.isEmpty) {
+        _journaledAddends.remove(entry.key);
+        continue;
+      }
+      _journaledAddends[entry.key] = Map<int, BigInt>.of(addends);
+    }
+  }
+
+  (int, Map<int, BigInt>)? _addendDeltas({required bool incremental}) {
     String? changed;
     for (final entry in _tables.entries) {
       final addends = entry.value.columnAddends;
@@ -4160,14 +4208,18 @@ final class ImageMutations {
       changed = entry.key;
     }
     if (changed == null) return null;
+    for (final entry in _tables.entries) {
+      if (!_sameRowInstances(
+          _loadedRows[entry.key] ?? const [], entry.value.rows)) {
+        return null;
+      }
+    }
     final table = _tables[changed]!;
-    if (table.view ||
-        table.schema.withoutRowid ||
-        table.schema.virtual ||
-        !_sameRowInstances(_loadedRows[changed] ?? const [], table.rows)) {
+    if (table.view || table.schema.withoutRowid || table.schema.virtual) {
       return null;
     }
     final stored = table.schema.storageColumns;
+    final journaled = _journaledAddends[changed];
     final deltas = <int, BigInt>{};
     for (final entry in table.columnAddends!.entries) {
       if (entry.key < 0 || entry.key >= table.schema.columns.length) {
@@ -4188,11 +4240,21 @@ final class ImageMutations {
           index.referencedColumns.contains(name))) {
         return null;
       }
-      deltas[slot] = entry.value;
+      final amount = incremental
+          ? entry.value - (journaled?[entry.key] ?? BigInt.zero)
+          : entry.value;
+      if (amount == BigInt.zero) continue;
+      if (incremental && amount.bitLength > 63) return null;
+      deltas[slot] = amount;
     }
+    if (deltas.isEmpty) return null;
     final root = _tableRoot(table);
     if (root == null) return null;
-    return RowidPagePatch.addColumns(original, root, deltas);
+    if (incremental &&
+        16 + deltas.length * 12 > DatabaseHeader.decode(original).pageSize) {
+      return null;
+    }
+    return (root, deltas);
   }
 
   int? _tableRoot(_Table table) {

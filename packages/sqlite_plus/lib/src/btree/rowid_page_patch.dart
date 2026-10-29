@@ -7,8 +7,9 @@ import '../format/record_encoder.dart';
 /// Right-edge edits of one ordinary rowid table inside an existing image.
 ///
 /// A null result means the caller must rebuild the image. The input bytes are
-/// left unchanged. Overflow pages, freeblock reuse, descending keys, and
-/// interior pages that cannot take one more child are left to that rebuild.
+/// left unchanged. Overflow pages, reusing a freeblock for a later insert,
+/// descending keys, and interior pages that cannot take one more child are
+/// left to that rebuild. A deleted cell becomes a freeblock.
 abstract final class RowidPagePatch {
   static Map<String, int>? schemaRoots(Uint8List image) {
     final header = DatabaseHeader.decode(image);
@@ -98,9 +99,23 @@ abstract final class RowidPagePatch {
     if (found.separator == rowId) return null;
     final cells = pages.leafCells(found.leaf);
     if (cells == null || found.index >= cells.length) return null;
+    if (cells.length == 1 && found.leaf != root) {
+      if (!pages.unlinkEmpty(root, found.leaf)) return null;
+      pages.touch();
+      return pages.assemble();
+    }
+    if (cells.length == 1) {
+      if (!pages.writeLeaf(found.leaf, const [])) return null;
+    } else if (!pages.dropLeafCell(found.leaf, found.index)) {
+      return null;
+    }
     cells.removeAt(found.index);
-    if (cells.isEmpty && found.leaf != root) return null;
-    if (!pages.writeLeaf(found.leaf, cells)) return null;
+    if (found.separator == rowId) {
+      final max = _rowid(cells.last, 0, cells.last.length);
+      if (max == null || !pages.replaceSeparator(root, rowId, max)) {
+        return null;
+      }
+    }
     pages.touch();
     return pages.assemble();
   }
@@ -110,6 +125,11 @@ abstract final class RowidPagePatch {
   static Uint8List? addColumns(
       Uint8List image, int root, Map<int, BigInt> deltas) {
     if (root < 1 || deltas.isEmpty) return null;
+    final inplace = _Pages.tryOpen(image);
+    if (inplace != null && _addInPlace(inplace, root, deltas, <int>{})) {
+      inplace.touch();
+      return inplace.assemble();
+    }
     final pages = _Pages.tryOpen(image);
     if (pages == null) return null;
     if (!_addLeaves(pages, root, deltas, <int>{})) return null;
@@ -117,31 +137,146 @@ abstract final class RowidPagePatch {
     return pages.assemble();
   }
 
-  static bool _addLeaves(
+  /// Empties [root] and drops pages past it when no other catalog root uses them.
+  static Uint8List? clearRoot(Uint8List image, int root) {
+    if (root < 2) return null;
+    final roots = schemaRoots(image);
+    final pages = _Pages.tryOpen(image);
+    if (roots == null || pages == null || root > pages.pages.length) {
+      return null;
+    }
+    for (final other in roots.values) {
+      if (other > root) return null;
+    }
+    final leaf = Uint8List(pages.pageSize);
+    leaf[0] = 13;
+    ByteData.sublistView(leaf)
+        .setUint16(5, pages.pageSize == 65536 ? 0 : pages.pageSize);
+    pages.pages[root - 1] = leaf;
+    pages._copied.add(root);
+    if (pages.pages.length > root) {
+      pages.pages.removeRange(root, pages.pages.length);
+    }
+    final header = pages.cow(1);
+    final data = ByteData.sublistView(header);
+    data.setUint32(32, 0);
+    data.setUint32(36, 0);
+    pages.touch();
+    return pages.assemble();
+  }
+
+  static bool _addInPlace(
       _Pages pages, int number, Map<int, BigInt> deltas, Set<int> seen) {
     if (!seen.add(number)) return false;
     final type = pages.type(number);
     if (type == 13) {
+      final preview = pages.leafCells(number);
+      if (preview == null) return false;
+      final fits =
+          preview.every((cell) => _bumpCell(Uint8List.fromList(cell), deltas));
+      if (!fits) return _rewriteLeaf(pages, number, deltas);
+      pages.cow(number);
       final cells = pages.leafCells(number);
       if (cells == null) return false;
-      for (var i = 0; i < cells.length; i++) {
-        final rowid = _rowid(cells[i], 0, cells[i].length);
-        final decoded = _payloadValues(cells[i], pages.encoding);
-        if (rowid == null || decoded == null) return false;
-        final values = List<Object?>.of(decoded);
-        for (final entry in deltas.entries) {
-          if (entry.key < 0 || entry.key >= values.length) return false;
-          final value = values[entry.key];
-          if (value == null) continue;
-          if (value is! BigInt) return false;
-          values[entry.key] = value + entry.value;
-        }
-        final cell = pages.tableCell(rowid, values);
-        if (cell == null) return false;
-        cells[i] = cell;
+      for (final cell in cells) {
+        if (!_bumpCell(cell, deltas)) return false;
       }
-      return pages.writeLeaf(number, cells);
+      return true;
     }
+    if (type != 5) return false;
+    final children = pages.children(number);
+    if (children == null) return false;
+    for (final child in children) {
+      if (!_addInPlace(pages, child, deltas, seen)) return false;
+    }
+    return true;
+  }
+
+  static bool _bumpCell(Uint8List cell, Map<int, BigInt> deltas) {
+    try {
+      final reader = SqliteByteReader(cell);
+      final headerSize = reader.varint().toInt();
+      if (headerSize < reader.offset || headerSize > cell.length) return false;
+      final serials = <int>[];
+      while (reader.offset < headerSize) {
+        final serial = reader.varint();
+        if (serial > BigInt.from(0x7fffffff)) return false;
+        serials.add(serial.toInt());
+      }
+      if (reader.offset != headerSize) return false;
+      var body = headerSize;
+      for (var slot = 0; slot < serials.length; slot++) {
+        final width = _serialWidth(serials[slot]);
+        if (width < 0 || body + width > cell.length) return false;
+        final delta = deltas[slot];
+        if (delta != null &&
+            delta != BigInt.zero &&
+            !_storeInteger(cell, body, serials[slot], width, delta)) {
+          return false;
+        }
+        body += width;
+      }
+      return body == cell.length;
+    } on FormatException {
+      return false;
+    }
+  }
+
+  static int _serialWidth(int serial) {
+    const fixed = [0, 1, 2, 3, 4, 6, 8, 8, 0, 0];
+    if (serial < 0) return -1;
+    if (serial < fixed.length) return fixed[serial];
+    if (serial >= 12) return (serial - 12) ~/ 2;
+    return -1;
+  }
+
+  static bool _storeInteger(
+      Uint8List cell, int body, int serial, int width, BigInt delta) {
+    if (serial < 1 || serial > 6) return false;
+    var integer = BigInt.zero;
+    for (var i = 0; i < width; i++) {
+      integer = (integer << 8) | BigInt.from(cell[body + i]);
+    }
+    final next = integer.toSigned(width * 8) + delta;
+    final bits = width * 8;
+    final min = -(BigInt.one << (bits - 1));
+    final max = (BigInt.one << (bits - 1)) - BigInt.one;
+    if (next < min || next > max) return false;
+    var unsigned = next.toUnsigned(bits);
+    for (var i = width - 1; i >= 0; i--) {
+      cell[body + i] = (unsigned & BigInt.from(255)).toInt();
+      unsigned >>= 8;
+    }
+    return true;
+  }
+
+  static bool _rewriteLeaf(_Pages pages, int number, Map<int, BigInt> deltas) {
+    final cells = pages.leafCells(number);
+    if (cells == null) return false;
+    for (var i = 0; i < cells.length; i++) {
+      final rowid = _rowid(cells[i], 0, cells[i].length);
+      final decoded = _payloadValues(cells[i], pages.encoding);
+      if (rowid == null || decoded == null) return false;
+      final values = List<Object?>.of(decoded);
+      for (final entry in deltas.entries) {
+        if (entry.key < 0 || entry.key >= values.length) return false;
+        final value = values[entry.key];
+        if (value == null) continue;
+        if (value is! BigInt) return false;
+        values[entry.key] = value + entry.value;
+      }
+      final cell = pages.tableCell(rowid, values);
+      if (cell == null) return false;
+      cells[i] = cell;
+    }
+    return pages.writeLeaf(number, cells);
+  }
+
+  static bool _addLeaves(
+      _Pages pages, int number, Map<int, BigInt> deltas, Set<int> seen) {
+    if (!seen.add(number)) return false;
+    final type = pages.type(number);
+    if (type == 13) return _rewriteLeaf(pages, number, deltas);
     if (type != 5) return false;
     final children = pages.children(number);
     if (children == null) return false;
@@ -485,6 +620,102 @@ final class _Pages {
     }
   }
 
+  /// Removes one leaf cell and leaves its bytes as a freeblock.
+  ///
+  /// Repacking would move every later cell and make a file commit rewrite the
+  /// page. The pointer array stays in key order. A span smaller than 4 bytes
+  /// is counted as fragmented free space.
+  bool dropLeafCell(int number, int index) {
+    final bounds = cellBounds(number, index);
+    if (bounds == null || type(number) != 13) return false;
+    final start = number == 1 ? 100 : 0;
+    final page = cow(number);
+    final data = ByteData.sublistView(page);
+    final cells = data.getUint16(start + 3);
+    if (index < 0 || index >= cells) return false;
+    final array = start + 8;
+    for (var i = index + 1; i < cells; i++) {
+      data.setUint16(array + (i - 1) * 2, data.getUint16(array + i * 2));
+    }
+    data.setUint16(start + 3, cells - 1);
+    return _releaseSpan(data, start, bounds.start, bounds.end, page.length);
+  }
+
+  bool _releaseSpan(ByteData data, int header, int from, int to, int usable) {
+    var content = data.getUint16(header + 5);
+    if (content == 0) content = 65536;
+    if (from == content) {
+      var end = to;
+      final taken = _unlinkFreeblock(data, header, to);
+      if (taken != null) end += taken;
+      if (end > usable) return false;
+      data.setUint16(header + 5, end == 65536 ? 0 : end);
+      return true;
+    }
+    final size = to - from;
+    if (size <= 0 || from < content || to > usable) return false;
+    if (size < 4) {
+      final fragments = data.getUint8(header + 7) + size;
+      if (fragments > 60) return false;
+      data.setUint8(header + 7, fragments);
+      return true;
+    }
+    return _linkFreeblock(data, header, from, size, usable);
+  }
+
+  /// Removes the freeblock that starts at [offset] and returns its size.
+  int? _unlinkFreeblock(ByteData data, int header, int offset) {
+    var previous = header + 1;
+    var block = data.getUint16(header + 1);
+    while (block != 0) {
+      final size = data.getUint16(block + 2);
+      final next = data.getUint16(block);
+      if (block == offset) {
+        data.setUint16(previous, next);
+        return size;
+      }
+      if (size < 4) return null;
+      previous = block;
+      block = next;
+    }
+    return null;
+  }
+
+  bool _linkFreeblock(
+      ByteData data, int header, int from, int size, int usable) {
+    var previous = header + 1;
+    var block = data.getUint16(header + 1);
+    while (block != 0 && block < from) {
+      final blockSize = data.getUint16(block + 2);
+      if (blockSize < 4 || block + blockSize > from) return false;
+      if (from - (block + blockSize) < 4) {
+        size = from + size - block;
+        from = block;
+        data.setUint16(previous, data.getUint16(block));
+        block = data.getUint16(previous);
+        break;
+      }
+      previous = block;
+      block = data.getUint16(block);
+    }
+    var end = from + size;
+    if (block != 0 && block < end + 4) {
+      final nextSize = data.getUint16(block + 2);
+      if (nextSize < 4 || block + nextSize > usable) return false;
+      final merged = block + nextSize;
+      if (merged > end) end = merged;
+      size = end - from;
+      data.setUint16(previous, data.getUint16(block));
+      block = data.getUint16(previous);
+    }
+    if (from + size > usable || size < 4) return false;
+    if (block != 0 && block < from + size + 4) return false;
+    data.setUint16(from, block);
+    data.setUint16(from + 2, size);
+    data.setUint16(previous, from);
+    return true;
+  }
+
   bool writeLeaf(int number, List<Uint8List> cells) =>
       _write(number, cells, 13, null);
 
@@ -514,6 +745,134 @@ final class _Pages {
     }
     data.setUint16(start + 5, end == 65536 ? 0 : end);
     return true;
+  }
+
+  bool unlinkEmpty(int root, int leaf) {
+    final edge = _findEdge(root, leaf, <int>{});
+    if (edge == null) return false;
+    final parent = edge.$1;
+    final cells = interiorCells(parent);
+    if (cells == null) return false;
+    final start = parent == 1 ? 100 : 0;
+    final right = ByteData.sublistView(pages[parent - 1]).getUint32(start + 8);
+    if (edge.$3) {
+      if (cells.isEmpty) {
+        if (parent != root || parent == 1) return false;
+        final empty = Uint8List(pageSize);
+        empty[0] = 13;
+        ByteData.sublistView(empty)
+            .setUint16(5, pageSize == 65536 ? 0 : pageSize);
+        pages[parent - 1] = empty;
+        _copied.add(parent);
+        return _freePage(leaf);
+      }
+      final last = cells.removeLast();
+      if (last.length < 4) return false;
+      final left = ByteData.sublistView(last).getUint32(0);
+      if (!writeInterior(parent, cells, left)) return false;
+    } else {
+      if (edge.$2 < 0 || edge.$2 >= cells.length) return false;
+      cells.removeAt(edge.$2);
+      if (!writeInterior(parent, cells, right)) return false;
+    }
+    if (count(parent) == 0 && !_collapse(root, parent)) return false;
+    return _freePage(leaf);
+  }
+
+  bool replaceSeparator(int root, BigInt oldKey, BigInt newKey) =>
+      _replaceKey(root, oldKey, newKey, <int>{});
+
+  bool _replaceKey(int number, BigInt oldKey, BigInt newKey, Set<int> seen) {
+    if (!seen.add(number) || type(number) != 5) return false;
+    final cells = interiorCells(number);
+    final kids = children(number);
+    if (cells == null || kids == null) return false;
+    final start = number == 1 ? 100 : 0;
+    final right = ByteData.sublistView(pages[number - 1]).getUint32(start + 8);
+    for (var i = 0; i < cells.length; i++) {
+      if (_cellKey(cells[i]) != oldKey) continue;
+      final child = ByteData.sublistView(cells[i]).getUint32(0);
+      final replacement = interiorCell(child, newKey);
+      if (replacement == null) return false;
+      cells[i] = replacement;
+      return writeInterior(number, cells, right);
+    }
+    for (final child in kids) {
+      if (type(child) == 5 && _replaceKey(child, oldKey, newKey, seen)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _collapse(int root, int parent) {
+    final start = parent == 1 ? 100 : 0;
+    final child = ByteData.sublistView(pages[parent - 1]).getUint32(start + 8);
+    if (child < 1 || child > pages.length || child == parent) return false;
+    if (parent == root) {
+      if (parent == 1) return false;
+      pages[parent - 1] = Uint8List.fromList(pages[child - 1]);
+      _copied.add(parent);
+      return _freePage(child);
+    }
+    final edge = _findEdge(root, parent, <int>{});
+    if (edge == null || !_retarget(edge, child)) return false;
+    return _freePage(parent);
+  }
+
+  bool _retarget((int, int, bool) edge, int child) {
+    final parent = edge.$1;
+    final cells = interiorCells(parent);
+    if (cells == null) return false;
+    final start = parent == 1 ? 100 : 0;
+    final right = ByteData.sublistView(pages[parent - 1]).getUint32(start + 8);
+    if (edge.$3) return writeInterior(parent, cells, child);
+    if (edge.$2 < 0 || edge.$2 >= cells.length) return false;
+    final key = _cellKey(cells[edge.$2]);
+    if (key == null) return false;
+    final replacement = interiorCell(child, key);
+    if (replacement == null) return false;
+    cells[edge.$2] = replacement;
+    return writeInterior(parent, cells, right);
+  }
+
+  bool _freePage(int number) {
+    if (number < 2 || number > pages.length) return false;
+    final page = cow(number);
+    page.fillRange(0, pageSize, 0);
+    final trunk = ByteData.sublistView(page);
+    final header = ByteData.sublistView(cow(1));
+    trunk.setUint32(0, header.getUint32(32));
+    trunk.setUint32(4, 0);
+    header.setUint32(32, number);
+    header.setUint32(36, header.getUint32(36) + 1);
+    return true;
+  }
+
+  (int, int, bool)? _findEdge(int node, int target, Set<int> seen) {
+    if (!seen.add(node) || type(node) != 5) return null;
+    final start = node == 1 ? 100 : 0;
+    final page = pages[node - 1];
+    final data = ByteData.sublistView(page);
+    final cells = data.getUint16(start + 3);
+    for (var i = 0; i < cells; i++) {
+      final offset = data.getUint16(start + 12 + i * 2);
+      if (offset + 4 > pageSize) return null;
+      if (data.getUint32(offset) == target) return (node, i, false);
+    }
+    final right = data.getUint32(start + 8);
+    if (right == target) return (node, -1, true);
+    for (var i = 0; i < cells; i++) {
+      final offset = data.getUint16(start + 12 + i * 2);
+      final found = _findEdge(data.getUint32(offset), target, seen);
+      if (found != null) return found;
+    }
+    return _findEdge(right, target, seen);
+  }
+
+  BigInt? _cellKey(Uint8List cell) {
+    if (cell.length < 5) return null;
+    return _interiorKey(cell, 4);
   }
 
   void touch() {

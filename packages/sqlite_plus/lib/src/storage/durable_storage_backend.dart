@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'storage_backend.dart';
 
 /// A capability contract, not a claim about an arbitrary filesystem adapter.
@@ -9,3 +11,11 @@ import 'storage_backend.dart';
 /// other writers. Ordinary MemoryStorageBackend and the read-only file adapter
 /// intentionally do not implement this contract.
 abstract interface class DurableStorageBackend implements StorageBackend {}
+
+/// Blocking file operations for one commit. Callers must not overlap these
+/// with an outstanding asynchronous operation on the same backend.
+abstract interface class DirectDurableIO {
+  void writeAtSync(int offset, Uint8List bytes);
+  void truncateAtSync(int size);
+  void flushSync();
+}

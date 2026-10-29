@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import '../btree/database_image_builder.dart';
 import 'image_mutations.dart';
 import '../pager/image_pager.dart';
+import '../pager/rollback_journal_pager.dart';
 import '../storage/memory_storage_backend.dart';
 import 'database.dart';
 import 'parser.dart';
@@ -389,18 +390,34 @@ final class MutableSqliteDatabase {
           if (journal != null && !inTransaction && _dirtyMain) {
             final state = _liveMain;
             if (state != null) {
-              final image = state.durableImage();
-              try {
-                await journal.commitImage(image);
-              } catch (_) {
-                _failed = true;
-                rethrow;
+              final logical = journal is RollbackJournalPager
+                  ? state.fileAddendCommit()
+                  : null;
+              if (logical != null) {
+                // The redo sync is the commit. Leaves stay cached, and the
+                // live rows keep the addend until a later read materializes it.
+                try {
+                  await (journal as RollbackJournalPager)
+                      .commitAddend(logical.root, logical.deltas);
+                } catch (_) {
+                  _failed = true;
+                  rethrow;
+                }
+                state.noteAddendJournaled();
+              } else {
+                final image = state.durableImage();
+                try {
+                  await journal.commitImage(image);
+                } catch (_) {
+                  _failed = true;
+                  rethrow;
+                }
+                _storeImage('main', image);
+                state.rebase(_image);
+                _liveMain = state;
+                _liveMainImage = _image;
+                _dirtyMain = false;
               }
-              _storeImage('main', image);
-              state.rebase(_image);
-              _liveMain = state;
-              _liveMainImage = _image;
-              _dirtyMain = false;
             }
           }
           return MutationResult(hot.changes, hot.lastRowid, hot.returning);

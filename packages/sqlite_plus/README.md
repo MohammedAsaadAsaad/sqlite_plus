@@ -4,25 +4,41 @@ A Pure Dart database engine. SQL, JSON, FTS5, R-tree, and geopoly run in the Dar
 
 Version `0.0.2`.
 
-One arm64 phone, 1000 rows, the same SQL, and every checksum matched. The phone model was not recorded. Each time bar is linear for that row, so a 79× gap is 79 times shorter. The figure is native time divided by sqlite_plus time.
+One arm64 phone, Bench versionCode 2009, 1000 rows, Asia/Hebron 14:00 on 2026-10-29. The same SQL, and every checksum matched. The phone model was not in the log. The bars are the file round, and each row has its own linear scale. The gold figure is native time divided by sqlite_plus time. sqlite_plus was faster on every operation in this sample, in memory and on a file. The size figure is taken before close, so the sqlite_plus file still includes the redo. Separate delete was 603.6 KB against the native 16.0 KB.
 
-![1000 rows on one arm64 phone. Bar length matches measured statement time.](doc/bench-time.png)
+![File round, 1000 rows. Bar length matches measured statement time.](doc/bench-time.png)
 
-![Stored size for the same 1000-row statements, on one linear scale.](doc/bench-size.png)
+![File size before close, each row on its own scale.](doc/bench-size.png)
+
+File round:
 
 | Operation | native | sqlite_plus | faster |
 |---|---:|---:|---:|
-| Separate insert | 514.9 ms | 6.5 ms | 79× |
-| Transaction insert | 104.6 ms | 3.5 ms | 30× |
-| Separate update | 508.2 ms | 247.5 ms | 2.1× |
-| Bulk update | 1.3 ms | 92 µs | 14× |
-| Search | 126.3 ms | 7.6 ms | 17× |
-| Point lookup | 116.2 ms | 9.6 ms | 12× |
-| VACUUM | 1.2 ms | 9 µs | 133× |
-| Separate delete | 352.7 ms | 168.0 ms | 2.1× |
-| Delete all | 732 µs | 105 µs | 7.0× |
+| Separate insert | 326.8 ms | 162.2 ms | 2.0× |
+| Transaction insert | 81.0 ms | 72.6 ms | 1.1× |
+| Separate update | 477.6 ms | 381.2 ms | 1.3× |
+| Bulk update | 915 µs | 246 µs | 3.7× |
+| Search | 129.4 ms | 11.7 ms | 11× |
+| Point lookup | 105.9 ms | 7.6 ms | 14× |
+| VACUUM | 923 µs | 13 µs | 71× |
+| Separate delete | 413.8 ms | 345.5 ms | 1.2× |
+| Delete all | 773 µs | 259 µs | 3.0× |
 
-These are statement intervals from one sample, versionCode 2003. Native kept a file. sqlite_plus kept memory. They are not the memory pair or the file pair Bench records now. They are not a multi-device study, and they are not a claim that every workload is faster. Separate statements cross a platform channel in the native app and stay inside one isolate here.
+Memory round from the same sample:
+
+| Operation | native | sqlite_plus | faster |
+|---|---:|---:|---:|
+| Separate insert | 99.0 ms | 5.0 ms | 20× |
+| Transaction insert | 82.1 ms | 2.1 ms | 39× |
+| Separate update | 92.4 ms | 10.7 ms | 8.6× |
+| Bulk update | 336 µs | 106 µs | 3.2× |
+| Search | 108.0 ms | 6.5 ms | 17× |
+| Point lookup | 97.7 ms | 9.6 ms | 10× |
+| VACUUM | 781 µs | 10 µs | 78× |
+| Separate delete | 93.7 ms | 7.3 ms | 13× |
+| Delete all | 195 µs | 97 µs | 2.0× |
+
+These are statement intervals from one sample. They are not a multi-device study. Separate statements cross a platform channel in the native app and stay inside one isolate here.
 
 ## Install
 
