@@ -137,7 +137,7 @@ flutter test
 flutter build apk --split-per-abi --release
 ```
 
-Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.engine_bench`. The launcher name is Bench. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2009.
+Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.engine_bench`. The launcher name is Bench. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2009. The APK files are build output and are not stored in git. This table records the versionCode 2009 packages that produced the phone sample.
 
 | ABI | File | Bytes | versionCode | sha256 |
 |---|---|---:|---:|---|

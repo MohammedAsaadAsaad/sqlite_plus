@@ -2,7 +2,7 @@
 
 Typed queries, change tracking, relationships, and reviewed migrations for `sqlite_plus`. The application names columns and objects. The runtime writes the SQL. Runtime code has no analyzer, reflection, native database, or `dart:io` dependency.
 
-Version `0.0.2`.
+Version `0.0.3`.
 
 The pictures below are the engine, not this ORM. One arm64 phone, Bench versionCode 2009, the file round, 1000 rows, Asia/Hebron 14:00 on 2026-10-29. The same SQL, checksums matched. Bar length is measured time, and each row has its own scale. The size is taken before close, so the sqlite_plus file still includes the redo.
 
@@ -14,7 +14,7 @@ The pictures below are the engine, not this ORM. One arm64 phone, Bench versionC
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.0.2
+  sqlite_plus_orm: ^0.0.3
 ```
 
 ```dart

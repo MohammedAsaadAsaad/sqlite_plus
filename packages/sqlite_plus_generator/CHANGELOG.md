@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.3
+
+Release number. Depends on `sqlite_plus_orm` 0.0.3.
+
 ## 0.0.2
 
 Published release. Depends on `sqlite_plus_orm` 0.0.2, `analyzer` 14, and `dart_style` 3.

@@ -28,7 +28,7 @@ flutter test
 flutter build apk --split-per-abi --release
 ```
 
-Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.margin_notes`.
+Each release APK holds one ABI. Flutter signs them with the debug keystore, so a device can install the matching file when that source is allowed. The application id is `dev.sqliteplus.margin_notes`. The APK files are build output and are not stored in git. This table records the versionCode 2004 packages.
 
 | ABI | File | Bytes | versionCode | sha256 |
 |---|---|---:|---:|---|

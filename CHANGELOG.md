@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.3
+
+`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.0.3`. Android APKs are gitignored.
+
 ## 0.0.2
 
 `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.0.2`.

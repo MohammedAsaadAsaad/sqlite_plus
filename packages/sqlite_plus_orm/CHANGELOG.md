@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.3
+
+Release number. Depends on `sqlite_plus` 0.0.3.
+
 ## 0.0.2
 
 Published release. Depends on `sqlite_plus` 0.0.2.

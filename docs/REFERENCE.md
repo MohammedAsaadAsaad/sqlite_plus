@@ -49,7 +49,7 @@ opens the in-memory engine.
 a durable two-database commit, more journal modes, extended FTS, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
-rows on Linux x64. Version `0.0.2` is the published release. See
+rows on Linux x64. Version `0.0.3` is the published release. See
 `CHANGELOG.md`.
 
 ## Development checks

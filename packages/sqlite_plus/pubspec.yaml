@@ -1,6 +1,6 @@
 name: sqlite_plus
 description: Pure Dart SQLite-style database engine with SQL, JSON, FTS5, and R-tree.
-version: 0.0.2
+version: 0.0.3
 repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus
 issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
 topics:

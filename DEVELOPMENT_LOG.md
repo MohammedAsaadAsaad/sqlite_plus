@@ -1666,3 +1666,9 @@ result=pass
 - The 13:11 versionCode 2008 log remains the earlier sample. On that log, file separate insert, file bulk update, and file separate delete were slower than native. The README charts were redrawn from this 14:00 file round. Each row has its own scale. The separate-delete bar stays long because the size includes the redo before close.
 - No engine code changed for this note. The packages were not rebuilt. The armeabi-v7a and x86_64 files were not part of this sample. Margin is unchanged.
 - M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.
+
+## 2026-10-29 — version 0.0.3
+
+- Package versions are `0.0.3`. The ORM depends on `sqlite_plus: ^0.0.3`. The generator depends on `sqlite_plus_orm: ^0.0.3`.
+- `*.apk` is gitignored. The Bench and Margin release packages stay on disk as build output. Their byte sizes and checksums remain in the example READMEs.
+- M9 stays unchecked. Item 108 stays open.

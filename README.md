@@ -2,7 +2,7 @@
 
 A Pure Dart SQLite engine, a typed ORM, and a mapping generator. SQL, JSON, FTS5, R-tree, change tracking, and generated filters run in the Dart VM. The production runtime has no FFI, native SQLite, or WASM.
 
-Version `0.0.2`.
+Version `0.0.3`.
 
 ## Packages
 
@@ -19,11 +19,11 @@ The file adapter imports `dart:io`. The other two libraries do not. The generato
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.0.2
-  sqlite_plus_orm: ^0.0.2
+  sqlite_plus: ^0.0.3
+  sqlite_plus_orm: ^0.0.3
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.0.2
+  sqlite_plus_generator: ^0.0.3
 ```
 
 ## Where to start
@@ -44,41 +44,41 @@ Each package has an example project under `example/`. From a checkout, after `da
 | Reading log | `(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)` | `Kept Garden Revised on north, revision 1; Other Atlas stays at revision 0; 1 match; idle save 0` |
 | Generated library | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` | `Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2` |
 
-`examples/compare` is Bench, an English Flutter screen that runs the same SQL on Android SQLite through `sqflite` and on sqlite_plus. Each operation runs twice: both engines in memory, then both engines on a database file. The count is from 1 to 10000. The operations are separate inserts, one transaction of inserts, separate updates, one bulk update, indexed name search, primary-key reads, `VACUUM`, separate deletes, and one delete of every row. Preparation and, for sqlite_plus, `exportImage` are logged beside the measured interval. Copy log puts the whole log on the clipboard. The screen keeps a process RSS and CPU readout while a run is in progress. The Android release packages are one file per ABI under `examples/compare/dist/`: `bench-arm64-v8a.apk` for a phone, `bench-armeabi-v7a.apk` for an older 32-bit phone, and `bench-x86_64.apk` for an emulator.
+`examples/compare` is Bench, an English Flutter screen that runs the same SQL on Android SQLite through `sqflite` and on sqlite_plus. Each operation runs twice: both engines in memory, then both engines on a database file. The count is from 1 to 10000. The operations are separate inserts, one transaction of inserts, separate updates, one bulk update, indexed name search, primary-key reads, `VACUUM`, separate deletes, and one delete of every row. Preparation and, for sqlite_plus, `exportImage` are logged beside the measured interval. Copy log puts the whole log on the clipboard. The screen keeps a process RSS and CPU readout while a run is in progress. Release APKs are local build output, one file per ABI, and they are not stored in this repository.
 
-The figure and the first table are one 1000-row file round from Bench versionCode 2009, Asia/Hebron 14:00 on 2026-10-29. Both engines used a database file. Every checksum matched. The ratio is sqlite_plus divided by native. The phone model was not in the log. sqlite_plus was faster on every operation in this sample, in memory and on a file. The size figure is the same file round, taken before close, so the sqlite_plus file still includes the redo. Separate delete was 603.6 KB against the native 16.0 KB.
+The figure and the first table are one 1000-row file round from Bench versionCode 2009, Asia/Hebron 14:00 on 2026-10-29. Both engines used a database file. Every checksum matched. Each bar is linear for that row. The phone model was not in the log. sqlite_plus was faster on every operation in this sample, in memory and on a file. The size figure is the same file round, taken before close, so the sqlite_plus file still includes the redo. Separate delete was 603.6 KB against the native 16.0 KB.
 
 ![File round, 1000 rows. Each row uses its own linear scale.](packages/sqlite_plus/doc/bench-time.png)
 
 ![File size before close. Each row uses its own linear scale.](packages/sqlite_plus/doc/bench-size.png)
 
-| Operation | native | sqlite_plus | ratio |
+| Operation | native | sqlite_plus | faster |
 |---|---:|---:|---:|
-| Separate insert | 326.8 ms | 162.2 ms | 0.50 |
-| Transaction insert | 81.0 ms | 72.6 ms | 0.90 |
-| Separate update | 477.6 ms | 381.2 ms | 0.80 |
-| Bulk update | 915 µs | 246 µs | 0.27 |
-| Search | 129.4 ms | 11.7 ms | 0.09 |
-| Point lookup | 105.9 ms | 7.6 ms | 0.07 |
-| VACUUM | 923 µs | 13 µs | 0.01 |
-| Separate delete | 413.8 ms | 345.5 ms | 0.84 |
-| Delete all | 773 µs | 259 µs | 0.34 |
+| Separate insert | 326.8 ms | 162.2 ms | 2.0× |
+| Transaction insert | 81.0 ms | 72.6 ms | 1.1× |
+| Separate update | 477.6 ms | 381.2 ms | 1.3× |
+| Bulk update | 915 µs | 246 µs | 3.7× |
+| Search | 129.4 ms | 11.7 ms | 11× |
+| Point lookup | 105.9 ms | 7.6 ms | 14× |
+| VACUUM | 923 µs | 13 µs | 71× |
+| Separate delete | 413.8 ms | 345.5 ms | 1.2× |
+| Delete all | 773 µs | 259 µs | 3.0× |
 
 Memory round from the same sample:
 
-| Operation | native | sqlite_plus | ratio |
+| Operation | native | sqlite_plus | faster |
 |---|---:|---:|---:|
-| Separate insert | 99.0 ms | 5.0 ms | 0.05 |
-| Transaction insert | 82.1 ms | 2.1 ms | 0.03 |
-| Separate update | 92.4 ms | 10.7 ms | 0.12 |
-| Bulk update | 336 µs | 106 µs | 0.32 |
-| Search | 108.0 ms | 6.5 ms | 0.06 |
-| Point lookup | 97.7 ms | 9.6 ms | 0.10 |
-| VACUUM | 781 µs | 10 µs | 0.01 |
-| Separate delete | 93.7 ms | 7.3 ms | 0.08 |
-| Delete all | 195 µs | 97 µs | 0.50 |
+| Separate insert | 99.0 ms | 5.0 ms | 20× |
+| Transaction insert | 82.1 ms | 2.1 ms | 39× |
+| Separate update | 92.4 ms | 10.7 ms | 8.6× |
+| Bulk update | 336 µs | 106 µs | 3.2× |
+| Search | 108.0 ms | 6.5 ms | 17× |
+| Point lookup | 97.7 ms | 9.6 ms | 10× |
+| VACUUM | 781 µs | 10 µs | 78× |
+| Separate delete | 93.7 ms | 7.3 ms | 13× |
+| Delete all | 195 µs | 97 µs | 2.0× |
 
-`examples/notes` is Margin, an English Flutter notes application on the ORM. The screen is a left-to-right desk of paper cards. From that directory, `flutter test` covers a save that reopens from the database image. The Android release packages are one file per ABI under `examples/notes/dist/`: `margin-notes-arm64-v8a.apk` for a phone, `margin-notes-armeabi-v7a.apk` for an older 32-bit phone, and `margin-notes-x86_64.apk` for the emulator. The tools screen inserts random notes through the ORM in a separate isolate, with one `saveChanges` transaction or one save per note, and reports wall time, process CPU time, and RSS. The single `saveChanges` writes the added notes with multi-row `INSERT` statements. Separate saves keep the loaded rows until the image is exported once. Delete-all sends one `DELETE`. The same screen opens a live page of process RSS and CPU, including while an insert or delete is running. It can show the database file and run `VACUUM`.
+`examples/notes` is Margin, an English Flutter notes application on the ORM. The screen is a left-to-right desk of paper cards. From that directory, `flutter test` covers a save that reopens from the database image. The Android release packages are local build output, one file per ABI, and they are not stored in this repository. The tools screen inserts random notes through the ORM in a separate isolate, with one `saveChanges` transaction or one save per note, and reports wall time, process CPU time, and RSS. The single `saveChanges` writes the added notes with multi-row `INSERT` statements. Separate saves keep the loaded rows until the image is exported once. Delete-all sends one `DELETE`. The same screen opens a live page of process RSS and CPU, including while an insert or delete is running. It can show the database file and run `VACUUM`.
 
 Check the generated part before running the library:
 

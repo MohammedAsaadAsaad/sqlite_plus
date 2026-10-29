@@ -7,4 +7,7 @@ coverage/
 *.freezed.dart
 .DS_Store
 
+# Android release packages are built locally.
+*.apk
+
 __pycache__/

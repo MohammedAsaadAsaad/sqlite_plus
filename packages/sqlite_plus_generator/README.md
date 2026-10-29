@@ -2,7 +2,7 @@
 
 A development-time generator for `sqlite_plus_orm`. It reads Dart classes and writes columns, codecs, keys, revisions, relationships, JSON `path`, FTS5 `search`, and R-tree `bounds`. The generated application depends on `sqlite_plus_orm`. The analyzer stays in this development tool.
 
-Version `0.0.2`.
+Version `0.0.3`.
 
 The pictures below are the `sqlite_plus` engine, not this generator. One arm64 phone, Bench versionCode 2009, the file round, 1000 rows, Asia/Hebron 14:00 on 2026-10-29. The same SQL, checksums matched. Bar length is measured time, and each row has its own scale. The size is taken before close, so the sqlite_plus file still includes the redo.
 
@@ -14,7 +14,7 @@ The pictures below are the `sqlite_plus` engine, not this generator. One arm64 p
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.0.2
+  sqlite_plus_generator: ^0.0.3
 ```
 
 The source file imports `sqlite_plus_orm` and declares `part 'models.orm.g.dart';`.
