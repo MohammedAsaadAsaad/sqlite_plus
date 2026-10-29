@@ -1620,3 +1620,12 @@ result=pass
 - Package versions are `0.0.2` in `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator`. The ORM depends on `sqlite_plus: ^0.0.2`. The generator depends on `sqlite_plus_orm: ^0.0.2`.
 - `0.0.1-dev.1` remains the earlier pub.dev upload. `0.0.2` is the release number for this tree.
 - M9 stays unchecked. Item 108 stays open.
+
+## 2026-10-29 — Margin arm64 package versionCode 2003
+
+- `examples/notes` pubspec build number is 3, so the arm64 split versionCode is 2003. That package is the changed-page engine. The armeabi-v7a and x86_64 files in `examples/notes/dist` were left at versionCodes 1002 and 4002.
+- `flutter analyze` reported no issues. `flutter test` passed 14 tests.
+- `flutter build apk --release --split-per-abi --target-platform android-arm64` wrote one package, debug keystore, application id `dev.sqliteplus.margin_notes`, versionName 1.0.0, launcher Margin. `margin-notes-arm64-v8a.apk` 19997995 bytes, versionCode 2003, sha256 `97569a908d994269899bf43d9f7f9d5c5d9856ab728fb67b65aa678329131aeb`.
+- This package was not installed here.
+- The Bench arm64 package already on main is `bench-arm64-v8a.apk` 19670051 bytes, versionCode 2007, sha256 `43ba38f30313fab89b2108d4e0f16afdab6d696a800af36061411bf98ec18efd`. It was not rebuilt for this note and was not installed here.
+- M9 stays unchecked. Item 108 stays open. Nothing was uploaded to pub.dev.

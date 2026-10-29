@@ -331,14 +331,14 @@ packages:
       path: "../../packages/sqlite_plus"
       relative: true
     source: path
-    version: "0.0.1-dev.1"
+    version: "0.0.2"
   sqlite_plus_orm:
     dependency: "direct main"
     description:
       path: "../../packages/sqlite_plus_orm"
       relative: true
     source: path
-    version: "0.0.1-dev.1"
+    version: "0.0.2"
   stack_trace:
     dependency: transitive
     description:

@@ -1,7 +1,7 @@
 name: margin_notes
 description: Margin, a notes app on the sqlite_plus ORM.
 publish_to: none
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.13.7

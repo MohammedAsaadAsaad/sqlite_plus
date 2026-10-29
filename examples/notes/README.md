@@ -32,8 +32,8 @@ Each release APK holds one ABI. Flutter signs them with the debug keystore, so a
 
 | ABI | File | Bytes | versionCode | sha256 |
 |---|---|---:|---:|---|
-| arm64-v8a | `dist/margin-notes-arm64-v8a.apk` | 19997995 | 2002 | `ae7a1dc46cc33476398fbdb80c6e5625440b8473e7fec8f478592e0471dbc73f` |
+| arm64-v8a | `dist/margin-notes-arm64-v8a.apk` | 19997995 | 2003 | `97569a908d994269899bf43d9f7f9d5c5d9856ab728fb67b65aa678329131aeb` |
 | armeabi-v7a | `dist/margin-notes-armeabi-v7a.apk` | 17548421 | 1002 | `69b004720dc0d4041f28edaf2590ca0a5f224d857006d2eb5214ecbc994e7aae` |
 | x86_64 | `dist/margin-notes-x86_64.apk` | 21489458 | 4002 | `49b46413b93f36362ba3c98875b7e68a70a4ba3ab7c9d85877825d8b0d8c8961` |
 
-A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. An earlier x86_64 package was installed on an API 35 emulator over the package before it, and the saved note was still on the desk. These three files were built later and were not installed in that session. The compatibility matrix records both. The launcher name is Margin. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2002.
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. An earlier x86_64 package was installed on an API 35 emulator over the package before it, and the saved note was still on the desk. The arm64 file in this table is versionCode 2003, built with the changed-page engine, and was not installed here. The armeabi-v7a and x86_64 files remain the earlier packages, versionCodes 1002 and 4002. The compatibility matrix records both. The launcher name is Margin. Version name 1.0.0. The split versionCode is the pubspec build number plus 1000 times the ABI index, so arm64-v8a is 2003.
