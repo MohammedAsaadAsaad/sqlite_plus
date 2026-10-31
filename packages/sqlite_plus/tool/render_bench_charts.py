@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Render the versionCode 2009 phone charts.
+"""Render the Linux desktop release charts.
 
 Bars are linear inside each row: length is that engine's measurement divided
 by the larger measurement on the same row. A shared axis would hide the
-microsecond rows next to a multi-hundred-millisecond insert.
+microsecond rows next to a multi-second insert.
 """
 
 import os
@@ -21,43 +21,42 @@ NATIVE = (126, 182, 217)
 PLUS = (224, 164, 90)
 PILL = (46, 36, 24)
 
-# Memory round, versionCode 2009, Asia/Hebron 14:00 on 2026-10-29.
+# Linux desktop, release build, 1,000 rows. Native is sqflite through FFI.
 # name, native microseconds, sqlite_plus microseconds, native label, plus label
 MEMORY = [
-    ("Separate insert", 99_000, 5_000, "99.0 ms", "5.0 ms"),
-    ("Transaction insert", 82_100, 2_100, "82.1 ms", "2.1 ms"),
-    ("Separate update", 92_400, 10_700, "92.4 ms", "10.7 ms"),
-    ("Bulk update", 336, 106, "336 µs", "106 µs"),
-    ("Search", 108_000, 6_500, "108.0 ms", "6.5 ms"),
-    ("Point lookup", 97_700, 9_600, "97.7 ms", "9.6 ms"),
-    ("VACUUM", 781, 10, "781 µs", "10 µs"),
-    ("Separate delete", 93_700, 7_300, "93.7 ms", "7.3 ms"),
-    ("Delete all", 195, 97, "195 µs", "97 µs"),
+    ("Separate insert", 1_896_000, 7_500, "1.896 s", "7.5 ms"),
+    ("Transaction insert", 1_841_000, 7_000, "1.841 s", "7.0 ms"),
+    ("Separate update", 1_853_000, 20_100, "1.853 s", "20.1 ms"),
+    ("Bulk update", 1_800, 71, "1.8 ms", "71 µs"),
+    ("Search", 1_864_000, 17_400, "1.864 s", "17.4 ms"),
+    ("Point lookup", 1_995_000, 25_400, "1.995 s", "25.4 ms"),
+    ("VACUUM", 2_200, 77, "2.2 ms", "77 µs"),
+    ("Separate delete", 1_777_000, 13_200, "1.777 s", "13.2 ms"),
+    ("Delete all", 1_400, 159, "1.4 ms", "159 µs"),
 ]
 
-# File round from the same sample.
 FILE = [
-    ("Separate insert", 326_800, 162_200, "326.8 ms", "162.2 ms"),
-    ("Transaction insert", 81_000, 72_600, "81.0 ms", "72.6 ms"),
-    ("Separate update", 477_600, 381_200, "477.6 ms", "381.2 ms"),
-    ("Bulk update", 915, 246, "915 µs", "246 µs"),
-    ("Search", 129_400, 11_700, "129.4 ms", "11.7 ms"),
-    ("Point lookup", 105_900, 7_600, "105.9 ms", "7.6 ms"),
-    ("VACUUM", 923, 13, "923 µs", "13 µs"),
-    ("Separate delete", 413_800, 345_500, "413.8 ms", "345.5 ms"),
-    ("Delete all", 773, 259, "773 µs", "259 µs"),
+    ("Separate insert", 5_319_000, 1_523_000, "5.319 s", "1.523 s"),
+    ("Transaction insert", 1_883_000, 181_500, "1.883 s", "181.5 ms"),
+    ("Separate update", 5_452_000, 1_667_000, "5.452 s", "1.667 s"),
+    ("Bulk update", 4_500, 1_400, "4.5 ms", "1.4 ms"),
+    ("Search", 2_280_000, 16_100, "2.280 s", "16.1 ms"),
+    ("Point lookup", 1_801_000, 17_400, "1.801 s", "17.4 ms"),
+    ("VACUUM", 6_300, 36, "6.3 ms", "36 µs"),
+    ("Separate delete", 5_207_000, 1_749_000, "5.207 s", "1.749 s"),
+    ("Delete all", 4_500, 1_100, "4.5 ms", "1.1 ms"),
 ]
 
 SIZES = [
-    ("Separate insert", 36.0, 115.0),
-    ("Transaction insert", 36.0, 28.4),
-    ("Separate update", 36.0, 82.9),
-    ("Bulk update", 36.0, 28.5),
-    ("Search", 52.0, 64.7),
-    ("Point lookup", 36.0, 28.4),
-    ("VACUUM", 36.0, 28.4),
-    ("Separate delete", 16.0, 603.6),
-    ("Delete all", 16.0, 28.5),
+    ("Separate insert", 28.0, 115.0),
+    ("Transaction insert", 28.0, 28.4),
+    ("Separate update", 28.0, 82.9),
+    ("Bulk update", 28.0, 28.5),
+    ("Search", 44.0, 64.7),
+    ("Point lookup", 28.0, 28.4),
+    ("VACUUM", 28.0, 28.4),
+    ("Separate delete", 28.0, 603.6),
+    ("Delete all", 28.0, 28.5),
 ]
 
 
@@ -174,7 +173,7 @@ def render_size(path):
     draw.text((s(48), s(32)), "File size, before close", font=title, fill=INK)
     draw.text(
         (s(48), s(78)),
-        "Same file round. The sqlite_plus size includes the redo. Each row has its own scale.",
+        "Linux file round, before close. The sqlite_plus size includes the redo.",
         font=sub,
         fill=MUTED,
     )
@@ -228,11 +227,73 @@ def render_size(path):
     image.save(path, "PNG", optimize=True)
 
 
+def render_migrations(path):
+    scale = 2
+    width, height = 1280, 560
+    image = Image.new("RGB", (width * scale, height * scale), BG)
+    draw = ImageDraw.Draw(image)
+    title = font(BOLD, 32 * scale)
+    sub = font(REGULAR, 16 * scale)
+    kicker = font(BOLD, 13 * scale)
+    card_title = font(BOLD, 22 * scale)
+    body = font(REGULAR, 16 * scale)
+    code = font(BOLD, 15 * scale)
+
+    def s(n):
+        return n * scale
+
+    draw.text((s(48), s(36)), "The model is the schema", font=title, fill=INK)
+    draw.text(
+        (s(48), s(82)),
+        "Create is automatic. A nullable column is safe. A rename or a drop is a statement you write.",
+        font=sub,
+        fill=MUTED,
+    )
+
+    cards = [
+        (
+            "01",
+            "Create",
+            ["An empty database.", "ensureCreated()", "Every mapped table is created."],
+        ),
+        (
+            "02",
+            "Add a column",
+            ["Add a nullable field.", "plan()  then  applySafe()", "Stored rows stay. The new field is null."],
+        ),
+        (
+            "03",
+            "Rename or remove",
+            ["plan() will not guess.", "Write the SQL. Approve that plan.", "Down is the reverse statement."],
+        ),
+    ]
+    card_w, card_h = 376, 340
+    left, top = 48, 150
+    gap = 28
+    for index, (number, name, lines) in enumerate(cards):
+        x = s(left + index * (card_w + gap))
+        y = s(top)
+        rounded(draw, (x, y, x + s(card_w), y + s(card_h)), s(22), TRACK)
+        draw.text((x + s(28), y + s(28)), number, font=kicker, fill=PLUS)
+        draw.text((x + s(28), y + s(62)), name, font=card_title, fill=INK)
+        for line_index, line in enumerate(lines):
+            face = code if line_index == 1 else body
+            color = INK if line_index == 1 else MUTED
+            draw.text((x + s(28), y + s(140 + line_index * 52)), line, font=face, fill=color)
+
+    image = image.resize((width, height), Image.Resampling.LANCZOS)
+    image.save(path, "PNG", optimize=True)
+
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     doc = os.path.join(root, "doc")
     os.makedirs(doc, exist_ok=True)
-    caption = "One arm64 phone. Same SQL. Checksums matched. Bar length is measured time."
+    packages = os.path.dirname(root)
+    render_migrations(
+        os.path.join(packages, "sqlite_plus_orm", "doc", "migrations.png")
+    )
+    caption = "Linux desktop, release build. Same SQL. Checksums matched."
     render_time(
         os.path.join(doc, "bench-time.png"),
         MEMORY,

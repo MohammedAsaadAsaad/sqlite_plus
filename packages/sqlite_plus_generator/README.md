@@ -1,21 +1,21 @@
+![sqlite_plus](doc/logo.png)
+
 # sqlite_plus_generator
 
-Write a Dart class. This tool writes the ORM mapping: columns, a revision, a JSON path, full-text search, and an R-tree box. The analyzer stays on your machine. The application depends on `sqlite_plus_orm`.
-
-Version `0.1.1`.
+Write the class. This tool writes the columns, the revision, the JSON path, the full-text search, and the R-tree box. The analyzer stays on your machine. The application depends on `sqlite_plus_orm`.
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.1
+  sqlite_plus_generator: ^0.1.2
 ```
 
 ```sh
 dart run sqlite_plus_generator --input lib/models.dart
 ```
 
-`--check` compares the part with the file on disk. `--class Customer` limits the write. `--output` sets the part path.
+`--check` compares the part with the file on disk. `--class Book` limits the write.
 
-## Five classes, four reads
+## The classes
 
 ```dart
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
@@ -68,8 +68,9 @@ class Place {
 
 `customerId` becomes `PurchaseRelationships.customer`. The part is `models.orm.g.dart`.
 
+## What you call
+
 ```dart
-final connection = await MutableDatabaseConnection.openMemory();
 final context = DbContext(connection, generatedModel);
 await context.migrations.ensureCreated();
 
@@ -79,6 +80,7 @@ final purchase = purchases.add(Purchase(total: 22.5));
 purchases.add(Purchase(total: 4));
 purchases.add(Purchase(total: 30));
 purchase.reference(PurchaseRelationships.customer).set(ada);
+
 final notes = context.set(NoteMapping.instance);
 notes.add(Note(document: '{"title":"kept"}'));
 final articles = context.set(ArticleMapping.instance);
@@ -96,80 +98,50 @@ final note = (await NoteQuery(notes.query)
         .toList())
     .single;
 final article = (await ArticleQuery(articles.query).search('kept').toList()).single;
-final inside = await PlaceQuery(places.query)
-    .filter((row) => row.bounds.intersects(
-        const Rect(minX: 0, minY: 0, maxX: 1, maxY: 1)))
-    .toList();
+final inside = (await PlaceQuery(places.query)
+        .filter((row) => row.bounds.intersects(
+            const Rect(minX: 0, minY: 0, maxX: 1, maxY: 1)))
+        .toList())
+    .single;
 final buyer = await purchase.reference(PurchaseRelationships.customer).load();
 ```
 
-`expensive` is `22.5` then `30.0`. `note.document` is `{"title":"kept"}`. `article.body` is `alpha kept`. `inside` is place `1`. `buyer` is `Ada`. The checked-in example also stores the rows that do not match, ten in all, and prints:
+`expensive` is `22.5` then `30.0`. `note.document` is `{"title":"kept"}`. `article.body` is `alpha kept`. `inside` is place `1`. `buyer` is `Ada`.
 
-```text
-Ada bought [22.5, 30.0]; {"title":"kept"}; alpha kept; place 1 of 2
+After the first `ensureCreated`, a new nullable field is an up migration:
+
+```sh
+dart run sqlite_plus_generator --input lib/models.dart
 ```
+
+```dart
+final plan = await context.migrations.plan();
+await context.migrations.applySafe(plan);
+```
+
+A renamed SQL column is not guessed. Keep `@DbColumn(name: 'title')` when only the Dart name changes. When the column itself changes, write the `ALTER` and approve that plan. The reverse statement is the down migration. The ORM page shows both.
 
 ## The engine underneath
 
-These pictures are the `sqlite_plus` engine on one arm64 phone, Bench versionCode 2009, Asia/Hebron 14:00 on 2026-10-29. One thousand rows, the same SQL, every checksum matched. Each bar is that row's measured time. In memory, a transaction of inserts was 39× and search was 17×. On a file, search was 11× and a point lookup was 14×. One sample. The phone model was not in the log.
+1,000 rows on Linux, release build. The same SQL, and every checksum matched. In memory, a transaction of inserts was 263× and search was 107×. On a file, search was 142× and a point lookup was 104×.
 
-![Memory round, 1000 rows. Bar length matches measured time.](doc/bench-time.png)
+![Memory, 1,000 rows.](doc/bench-time.png)
 
-![File round, 1000 rows. Bar length matches measured time.](doc/bench-file.png)
+![File, 1,000 rows.](doc/bench-file.png)
 
-## What one class becomes
+## What the part contains
 
 | You write | The part contains |
 |---|---|
 | A concrete public class | `EntityType`, columns, `filter`, `orderByFields` |
 | `id` or `<ClassName>Id` | The primary key |
-| `@DbColumn` | The SQL name |
+| `@DbColumn(name: ...)` | That SQL name |
 | `@DbIgnore` | The field left out of the table |
-| `@DbKey` | Key order, or `generated: true` |
+| `@DbKey(generated: true)` | A key assigned on insert |
 | `@DbVersion()` | The revision column |
 | `<Parent>Id` or `@DbReference` | `reference` and `collection` |
-| `@DbJson()` on one `String` | `path(String path)` |
-| `@DbEntity(module: 'fts5')` | `USING fts5` and `search(String text)` |
+| `@DbJson()` on one `String` | `path` |
+| `@DbEntity(module: 'fts5')` | `USING fts5` and `search` |
 | `@DbEntity(module: 'rtree')` | `USING rtree` and `bounds` |
 
-SQL names default to the exact Dart names. The write is deterministic and formatted. Hand-written files and symbolic links stay in place. The FTS key is `rowid`. The R-tree key is the integer `id`, then `minX`, `maxX`, `minY`, and `maxY`.
-
-From a checkout, after `dart pub get` at the repository root:
-
-```sh
-cd example
-dart run sqlite_plus_generator --input lib/models.dart --check
-dart run bin/main.dart
-```
-
-## Field rules
-
-| Field | Accepted |
-|---|---|
-| `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, `DateTime` | Yes, including nullable aliases |
-| Constructor | Must be able to rebuild persisted state |
-| Mutable field | Assigned after construction |
-| Immutable generated key | Reconstructed after save |
-| Nullable assigned key | A non-null value when the entity is tracked |
-| Composite key | Yes |
-| Composite relationship, custom codec, index | Manual metadata on `sqlite_plus_orm` |
-
-| Diagnostic | Examples |
-|---|---|
-| Located, before any write | Generic, inherited, or mixin storage |
-| Located, before any write | Collection fields, unsupported types, ambiguous constructors, unmappable final state |
-
-Tests cover golden output, conventions, annotations, aliases, constructors, diagnostics, CLI ownership, and compiled consumers. Those consumers run migrations, linked CRUD, revisions, queries, relationships, and a reopen. The tool resolves `analyzer` 14 and `dart_style` 3. The ORM runtime depends on `sqlite_plus`.
-
-## Where the generated code runs
-
-The generator stays on the development machine. The ORM runtime it writes was executed on Android 15, API 35, `x86_64`: two inserts, one revision update, and an idle save of `0`. The line is `packages/sqlite_plus/tool/android_probe_api35_x86_64.log`. An iOS simulator run is planned.
-
-## Planned
-
-| Area | Next |
-|---|---|
-| Storage | A durable browser store |
-| Platforms | iOS |
-| SQL | `json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable two-database commit, more journal modes, extended FTS, ICU and locale collations |
-| Scale | Benchmarks at 100000 and 1000000 rows |
+The write is deterministic and formatted. Hand-written files and symbolic links stay in place. Fields are `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, and `DateTime`, including nullable aliases. A generic, an inherited field, or an unsupported type is reported before any file is written.

@@ -1684,6 +1684,11 @@ result=pass
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.1`. The package pages lead with short practical samples. The phone charts are the versionCode 2009 memory round and file round, each row on its own linear scale. The numbers are the same one-phone sample. No engine, ORM, or generator behavior changed, and the suites were not re-run.
 - M9 stays unchecked. Item 108 stays open.
 
+## 2026-10-31 — Version 0.1.2
+
+- `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.
+- M9 stays unchecked. Item 108 stays open.
+
 ## 2026-10-29 — Version 0.1.0
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.0`. The ORM depends on `sqlite_plus: ^0.1.0`. The generator depends on `sqlite_plus_orm: ^0.1.0`. `openInMemory` and `openDatabase` are the familiar names in this release. The previous names remain. `0.0.3` is still the newest version on pub.dev until this release is uploaded.

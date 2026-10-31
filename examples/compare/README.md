@@ -2,7 +2,7 @@
 
 Bench is a Flutter application that runs the same SQL on Android SQLite and on sqlite_plus, then keeps a log of both. Every operation runs twice. The memory round opens both engines in memory. The file round opens both engines on a database file. The screen is English, left to right, and set in IBM Plex Sans Arabic under the SIL Open Font License. See `assets/fonts/OFL.txt`. Copy log places the whole log on the clipboard, oldest entry first, with a comparison line for each finished pair.
 
-The application is `publish_to: none`. It is not a workspace member, because the workspace is resolved with the Dart SDK and this project needs the Flutter SDK. `dependency_overrides` points `sqlite_plus` at the package in this repository. Android SQLite is opened with `sqflite` inside this application only.
+The application is `publish_to: none`. It is not a workspace member, because the workspace is resolved with the Dart SDK and this project needs the Flutter SDK. `dependency_overrides` points `sqlite_plus` at the package in this repository. Android SQLite is opened with `sqflite`. On Linux, `sqflite_common_ffi` supplies that same native SQLite.
 
 ## What a run measures
 
@@ -65,7 +65,7 @@ Preparation, export, file size, process CPU, and process RSS from the same log:
 
 ## Phone log, versionCode 2009
 
-One 1000-row sample of the arm64 package, Asia/Hebron 14:00 on 2026-10-29. Every pair matched. sqlite_plus was faster on every operation. The native interval is first. The ratio is sqlite_plus divided by native. File size is taken before close, so the sqlite_plus file includes the redo. The first chart is the memory round, the second is the file round, and the third is file size before close. Each row has its own scale.
+One 1000-row sample of the arm64 package. Every pair matched. sqlite_plus was faster on every operation. The native interval is first. The ratio is sqlite_plus divided by native. File size is taken before close, so the sqlite_plus file includes the redo. The first chart is the memory round, the second is the file round, and the third is file size before close. Each row has its own scale.
 
 ![Memory round, 1000 rows. Each row uses its own linear scale.](../../packages/sqlite_plus/doc/bench-time.png)
 
@@ -98,7 +98,7 @@ Separate insert, transaction insert, search, point lookup, and VACUUM sums are 5
 
 ## Phone log, versionCode 2008
 
-One 1000-row sample of the arm64 package, Asia/Hebron 13:11 on 2026-10-29. Every pair matched. The native interval is first. File size includes the redo log.
+One earlier 1000-row sample of the arm64 package. Every pair matched. The native interval is first. File size includes the redo log.
 
 | Operation | Storage | native | sqlite_plus | ratio | sqlite_plus size |
 |---|---|---:|---:|---:|---:|
@@ -123,7 +123,7 @@ One 1000-row sample of the arm64 package, Asia/Hebron 13:11 on 2026-10-29. Every
 
 Separate insert sums are 500500. Separate update and bulk update sums are 501500. Deletes leave 0 rows and sum 0. VACUUM hits are 1. The other hit counts are 1000. This is one sample. The phone model was not in the log.
 
-On this 13:11 sample, file separate insert, file bulk update, and file separate delete were still slower than native, at ratios 1.09, 10.41, and 1.09. The versionCode 2009 section above is the later phone log.
+On that earlier sample, file separate insert, file bulk update, and file separate delete were still slower than native, at ratios 1.09, 10.41, and 1.09. The versionCode 2009 section above is the later phone log.
 
 ## Run the tests
 
@@ -147,4 +147,4 @@ Each release APK holds one ABI. Flutter signs them with the debug keystore, so a
 | armeabi-v7a | `dist/bench-armeabi-v7a.apk` | 17286013 | 1009 | `2ec2f0aee1e65875e01bc5b0fa477aa303b90701a664212647e92290932d9e6b` |
 | x86_64 | `dist/bench-x86_64.apk` | 21227050 | 4009 | `293896d63ec03c81425b439dee4409d97864e42e777f77a975e5a1c338294b27` |
 
-A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The versionCode 2003 tables above are native file against sqlite_plus memory. The charts and the versionCode 2009 table are one arm64 phone sample at 14:00 Asia/Hebron on 2026-10-29. The armeabi-v7a and x86_64 files were not part of that sample. VersionCode 2007 synced the journal, the database, and the journal invalidation on every autocommit. VersionCode 2008 syncs a redo of the changed pages once and still writes those pages before the statement returns. VersionCode 2009 syncs the redo once and writes the database pages when the log passes 16 MiB or the pager closes. The armeabi-v7a and x86_64 files in this directory are the same engine, versionCodes 1009 and 4009. VersionCode 2004 opened the sqlite_plus file through `DatabaseOwner`, and a phone rejected its loopback socket. VersionCode 2005 opened the file but left hot autocommit changes in memory. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.
+A phone uses the arm64-v8a package. An older 32-bit phone uses armeabi-v7a. The versionCode 2003 tables above are native file against sqlite_plus memory. The charts and the versionCode 2009 table are one arm64 phone sample. The armeabi-v7a and x86_64 files were not part of that sample. VersionCode 2007 synced the journal, the database, and the journal invalidation on every autocommit. VersionCode 2008 syncs a redo of the changed pages once and still writes those pages before the statement returns. VersionCode 2009 syncs the redo once and writes the database pages when the log passes 16 MiB or the pager closes. The armeabi-v7a and x86_64 files in this directory are the same engine, versionCodes 1009 and 4009. VersionCode 2004 opened the sqlite_plus file through `DatabaseOwner`, and a phone rejected its loopback socket. VersionCode 2005 opened the file but left hot autocommit changes in memory. An earlier x86_64 package was installed on an API 35 emulator. The compatibility matrix records both.

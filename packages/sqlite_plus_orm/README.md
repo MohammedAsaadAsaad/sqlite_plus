@@ -1,163 +1,115 @@
+![sqlite_plus](doc/logo.png)
+
 # sqlite_plus_orm
 
-Change tracking for Dart objects on `sqlite_plus`. You name the fields. The runtime writes the SQL, opens one transaction per save, and bumps a revision when a row changes.
-
-Version `0.1.1`.
+Dart objects on `sqlite_plus`. You change a field. `saveChanges` writes one transaction and bumps the revision. You change the class. The migrator creates the table, or asks you for the SQL when a change would drop data.
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.1
+  sqlite_plus_orm: ^0.1.2
 ```
 
 ## Save two books, rename one
 
-`bookType`, `bookTitle`, and `bookNote` are the mapping. The generator writes them from a class. The reading log declares the same columns by hand.
+The generator writes `BookMapping` from this class. `title` and `revision` are mutable, so the same object receives the stored revision.
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+part 'models.orm.g.dart';
+
+@DbEntity(table: 'books')
+class Book {
+  Book({this.id, required this.title, this.revision = 0});
+
+  final BigInt? id;
+  String title;
+  @DbVersion()
+  int revision;
+}
+```
 
 ```dart
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
 final connection = await MutableDatabaseConnection.openMemory();
-final context = DbContext(connection, DbModel([bookType]));
+final context = DbContext(connection, generatedModel);
 await context.migrations.ensureCreated();
 
-final books = context.set(bookType);
-final book = Book(BigInt.one, 'Kept Garden', '{"shelf":"north"}', 0);
-books.add(book);
-books.add(Book(BigInt.two, 'Other Atlas', '{"shelf":"south"}', 0));
+final books = context.set(BookMapping.instance);
+final book = books.add(Book(title: 'Kept Garden'));
+books.add(Book(title: 'Other Atlas'));
 await context.saveChanges(); // 2
 
 book.title = 'Kept Garden Revised';
-await context.saveChanges(); // 1, and revision becomes 1
-await context.saveChanges(); // 0, nothing changed
+await context.saveChanges(); // 1
+await context.saveChanges(); // 0
 
 final stored = await books.query
-    .where(bookTitle.eq('Kept Garden Revised') &
-        MappedField(bookNote).at(r'$.shelf').equalTo('north'))
+    .filter((row) => row.title.equalTo('Kept Garden Revised'))
     .single();
 ```
 
-`stored.revision` is `1`. The other book stays at revision `0`. A second `migrations.plan()` is empty. `example/lib/reading_log.dart` prints:
+`stored.revision` is 1. An idle save writes nothing. The other book stays at revision 0.
 
-```text
-Kept Garden Revised on north, revision 1; Other Atlas stays at revision 0; 1 match; idle save 0
-```
+## Create the table
 
-With a generated mapping the filter is a closure, and a purchase points at its customer before the save:
+`ensureCreated` is the first up. On an empty database it creates every mapped table.
 
 ```dart
-final rows = await purchases.query
-    .filter((row) => row.total > 20.0)
-    .orderByFields((row) => [row.total.ascending])
-    .toList();
-
-final parent = customers.add(Customer(name: 'Ada'));
-final child = purchases.add(Purchase(total: 12.5));
-child.reference(PurchaseRelationships.customer).set(parent);
-await context.saveChanges();
-final loaded = await child.reference(PurchaseRelationships.customer).load();
+await context.migrations.ensureCreated();
 ```
 
-`loaded` is the same `Ada` the context already tracks. A plain save keeps the loaded rows until the image is exported or queried. Many deleted rows of one table leave in one `DELETE`.
+![Create, add, or review.](doc/migrations.png)
 
-## The engine underneath
+## Up: add a column
 
-These pictures are the `sqlite_plus` engine on one arm64 phone, Bench versionCode 2009, Asia/Hebron 14:00 on 2026-10-29. One thousand rows, the same SQL, every checksum matched. Each bar is that row's measured time. In memory, a transaction of inserts was 39× and search was 17×. On a file, search was 11× and a point lookup was 14×. One sample. The phone model was not in the log.
-
-![Memory round, 1000 rows. Bar length matches measured time.](doc/bench-time.png)
-
-![File round, 1000 rows. Bar length matches measured time.](doc/bench-file.png)
-
-## Predicates
-
-| On `Column` | On `MappedField` | SQL |
-|---|---|---|
-| `eq` / `notEq` | `equalTo` / `notEqualTo` | `=` / `<>` |
-| `lt` `lte` `gt` `gte` | `<` `<=` `>` `>=` | the same operator |
-| `isNull` / `isNotNull` | `isNull` / `isNotNull` | `IS NULL` / `IS NOT NULL` |
-| `inValues` | `oneOf` | `IN` |
-| `asc` / `desc` | `ascending` / `descending` | `ORDER BY`, optional `NULLS FIRST` or `NULLS LAST` |
-| | `at(path)` | `json_extract` with the path bound |
-
-Combine predicates with `&`, `|`, and `not()`. `where`, `orderBy`, `skip`, `take`, `firstOrNull`, `single`, `count`, `any`, and `asNoTracking` stay on `TypedQuery`. `count` returns `BigInt`.
-
-| Query call | Behavior |
-|---|---|
-| `single` | One row |
-| `firstOrNull` | The first row, or null |
-| `any` | Whether a row exists |
-| `asNoTracking` | Read without putting the row in the identity map |
-| `skip` / `take` | Portable nonnegative bounds |
-
-A closure builds a predicate from these operators, and those operators become the SQL. Columns belong to the exact mapping.
-
-## Codecs
-
-| Dart type | Stored as |
-|---|---|
-| `BigInt` | Signed 64-bit integer |
-| `int` | Portable 53-bit integer |
-| `double` | Finite double |
-| `String` | Text |
-| `bool` | Integer `0` or `1` |
-| `Uint8List` | A copied blob |
-| `DateTime` | Canonical UTC |
-| Nullable of any of those | SQL `NULL` preserved |
-
-Custom codecs and manual metadata are supported. A failure names the mapped property and keeps its cause.
-
-## Tracking
-
-| Rule | Behavior |
-|---|---|
-| Identity | One object per key inside the context |
-| Snapshot | Encoded values are copied, including in-place blob edits |
-| Save | Values freeze before the first await. One transaction. Generated keys publish after commit |
-| Later edits | A field changed after the snapshot stays dirty |
-| Idle save | `saveChanges` returns `0` |
-| Revision | One non-nullable `int` or `BigInt` that is not the key. Insert keeps the supplied value. Update increments it |
-| Stale revision | The whole save aborts |
-| Concurrency | A second save, or a membership change during a save, rejects. Queries serialize |
-| Poison | An indeterminate commit or a failed rollback makes the context unusable |
-
-The version column needs a write setter when the same object should receive the stored revision. SQL defaults describe the schema. An explicit mapped null is SQL `NULL`.
-
-## Relationships
-
-The generator infers an unambiguous `<parentName>Id`, or it reads `@DbReference(...)`. Composite relationships use manual metadata.
+Add a nullable field and generate again.
 
 ```dart
-final parent = customers.add(Customer(name: 'Ada'));
-final child = purchases.add(Purchase(total: 12.5));
-child.reference(PurchaseRelationships.customer).set(parent);
-await context.saveChanges();
-final loaded = await child.reference(PurchaseRelationships.customer).load();
-final orders = await parent.collection(PurchaseRelationships.customer).load();
+@DbEntity(table: 'books')
+class Book {
+  Book({this.id, required this.title, this.subtitle, this.revision = 0});
+
+  final BigInt? id;
+  String title;
+  String? subtitle;
+  @DbVersion()
+  int revision;
+}
 ```
 
-| Call | Result |
-|---|---|
-| `reference(...).set` | Points the child at the parent before save |
-| `reference(...).load` | The same parent instance the context already tracks |
-| `collection(...).load` | The children, preserving identity |
-| `loadReferences` / `loadCollections` | The same loads, batched |
+```dart
+final plan = await context.migrations.plan();
+await context.migrations.applySafe(plan);
+```
 
-Linked inserts and deletes follow dependencies. Required, optional, and composite keys, deferred cycles, and tracked `CASCADE` and `SET NULL` refreshes are covered by the package tests.
+Stored rows stay. `subtitle` is null. A second `plan()` is empty.
 
-## Migrations
+`applySafe` accepts a new table, a new nullable column, and a new non-unique index. A required column, a unique index, a type change, or a new foreign key is not applied this way.
 
-| Call | When |
-|---|---|
-| `ensureCreated` | Empty database. The examples use this |
-| `plan` | Diff the live schema against the model |
-| `applySafe` | New tables, ordinary nullable columns, nonunique indexes |
-| `apply` + `MigrationApproval.forPlan` | A reviewed statement, such as a rename |
+## Up: rename the column
+
+Renaming the Dart field and keeping `@DbColumn(name: 'title')` does not change the table. Changing the SQL name does. The migrator will not guess which old column matches the new one.
 
 ```dart
-final proposed = await context.migrations.plan();
-final reviewed = proposed.withOperations([
+@DbEntity(table: 'books')
+class Book {
+  Book({this.id, required this.name, this.revision = 0});
+
+  final BigInt? id;
+  @DbColumn(name: 'name')
+  String name;
+  @DbVersion()
+  int revision;
+}
+```
+
+```dart
+final reviewed = (await context.migrations.plan()).withOperations([
   MigrationOperation.sql(
-    'ALTER TABLE people RENAME COLUMN old TO current',
-    reason: 'Reviewed property rename; preserve existing values',
+    'ALTER TABLE books RENAME COLUMN title TO name',
+    reason: 'Keep the stored titles',
   ),
 ]);
 await context.migrations.apply(
@@ -166,44 +118,89 @@ await context.migrations.apply(
 );
 ```
 
-| Rule | Behavior |
+`MigrationApproval.forPlan` binds that exact plan. A copied plan needs a new approval. If the statement fails, the transaction rolls back and the schema is unchanged.
+
+## Down
+
+Point the model at the previous column, then supply the reverse statement. Nothing is reversed for you.
+
+```dart
+final down = (await context.migrations.plan()).withOperations([
+  MigrationOperation.sql(
+    'ALTER TABLE books RENAME COLUMN name TO title',
+    reason: 'Restore the previous column',
+  ),
+]);
+await context.migrations.apply(
+  down,
+  approval: MigrationApproval.forPlan(down),
+);
+```
+
+Removing a class is the same shape. `plan()` stops until you retain the table or drop it.
+
+```dart
+final dropped = (await context.migrations.plan()).withOperations([
+  MigrationOperation.sql(
+    'DROP TABLE books',
+    reason: 'The model no longer maps this table',
+  ),
+]);
+await context.migrations.apply(
+  dropped,
+  approval: MigrationApproval.forPlan(dropped),
+);
+```
+
+`MigrationOperation.retainTable('books')` keeps the table and its rows, and stops managing it. A type change is a rebuild you write: create the new table, `INSERT SELECT` with your cast, drop the old table, and rename.
+
+## Read it back
+
+A JSON document is a path on the `@DbJson` field.
+
+```dart
+final notes = context.set(NoteMapping.instance);
+final north = await notes.query
+    .filter((row) => row.path(r'$.shelf').equalTo('north'))
+    .toList();
+```
+
+A purchase points at its customer before the save. `load` returns the same instance the context already tracks.
+
+```dart
+final ada = customers.add(Customer(name: 'Ada'));
+final order = purchases.add(Purchase(total: 12.5));
+order.reference(PurchaseRelationships.customer).set(ada);
+await context.saveChanges();
+final buyer = await order.reference(PurchaseRelationships.customer).load();
+```
+
+With a generated mapping the filter is a closure:
+
+```dart
+final expensive = await purchases.query
+    .filter((row) => row.total > 20.0)
+    .orderByFields((row) => [row.total.ascending])
+    .toList();
+```
+
+## The engine underneath
+
+1,000 rows on Linux, release build. The same SQL, and every checksum matched. In memory, a transaction of inserts was 263× and search was 107×. On a file, search was 142× and a point lookup was 104×.
+
+![Memory, 1,000 rows.](doc/bench-time.png)
+
+![File, 1,000 rows.](doc/bench-file.png)
+
+## Rules worth knowing
+
+| Change | What happens |
 |---|---|
-| Approval | Binds that exact plan |
-| Stale plan | A schema or model change requires a new plan |
-| Apply | Rereads the baseline inside the transaction and validates foreign keys |
-| Legacy table | A matching table can be adopted |
-| Unmanaged objects | Stay in the database |
-| Second plan | Empty when the stored SQL still matches, including FTS5 and R-tree |
+| First schema | `ensureCreated` |
+| Nullable column, new table, non-unique index | `plan` then `applySafe` |
+| Unique index | `apply` with approval. Duplicates roll the save back |
+| Rename, drop, type change, required column | You write the SQL, then approve that plan |
+| Down | The reverse statement, after the model points at the old shape |
+| Second `plan()` | Empty when the stored schema matches, including FTS5 and R-tree |
 
-## Connections
-
-| Connection | Opens |
-|---|---|
-| `MutableDatabaseConnection.openMemory` | The in-memory engine. The reading log uses this |
-| `MutableDatabaseConnection(database)` | An existing `MutableSqliteDatabase` |
-| `BrowserDatabaseConnection.open` | An `OpenedStorage`. `close` writes the exported image |
-
-Development tools `verify_orm.py`, `verify_orm_queries.py`, and `verify_orm_migrations.py` pin native SQLite for cross-open, query, and migration comparisons. Native SQLite stays in those tools. The runtime is the Pure Dart engine.
-
-The JavaScript smoke runs the engine and ORM in memory with `BigInt` keys and relationships. The current browser round trip uses an in-process `MemoryBrowserByteStore`: save two notes, filter, close, reopen, and filter again. The Chrome session on Linux is `tool/chrome_orm_linux_x64.log`: placement `browser`, two saved notes, and `reopenBody=kept`.
-
-## Android
-
-The same runtime ran inside a debug APK on Android 15, API 35, `x86_64`. Two books were inserted, one title change bumped the revision to `1`, and the idle save returned `0`. The line is `packages/sqlite_plus/tool/android_probe_api35_x86_64.log`. An iOS simulator run is planned.
-
-| Step | Result on device |
-|---|---|
-| `saveChanges` after two adds | `2` |
-| `saveChanges` after the rename | `1`, revision `1` |
-| Idle `saveChanges` | `0` |
-| Stored title | `Kept Garden Revised` |
-
-## Planned
-
-| Area | Next |
-|---|---|
-| Engine follow-up | `json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`, a durable two-database commit, more journal modes |
-| FTS and collations | Extended FTS, ICU and locale collations |
-| Storage | A durable browser store |
-| Platforms | iOS |
-| Scale | Benchmarks at 100000 and 1000000 rows |
+One object per key lives in the context. `saveChanges` freezes values before the first await and publishes generated keys after commit. A stale revision aborts the whole save. `count` returns `BigInt`.

@@ -1,8 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+Performance work and a Linux desktop experiment. A release build compared 1,000 rows with sqflite. Every checksum matched. The charts are that sample. The logo is the feather, the database, and the plus.
+
 ## 0.1.1
 
-The package page leads with short SQL, JSON, search, and file samples. The phone charts are the versionCode 2009 memory round and file round, each row on its own linear scale.
+Package page: short SQL, JSON, search, and file samples, plus the measured 1,000-row comparison.
 
 ## 0.1.0
 
@@ -10,7 +14,7 @@ The package page leads with short SQL, JSON, search, and file samples. The phone
 
 ## 0.0.3
 
-Release number for the versionCode 2009 phone sample. Android APKs stay out of git.
+Published release.
 
 ## 0.0.2
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+Depends on `sqlite_plus_orm` 0.1.2. The page uses the Linux release-build sample and the new logo.
+
 ## 0.1.1
 
 The package page leads with the five classes and the generated filter, JSON path, search, and bounds. Depends on `sqlite_plus_orm` 0.1.1.

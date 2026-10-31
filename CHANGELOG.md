@@ -1,8 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. This release records performance work and a Linux desktop experiment: a release build, 1,000 rows, every checksum matched. The package pages show that sample and the new logo.
+
 ## 0.1.1
 
-`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.1`. The package pages lead with short practical samples. The phone charts are the versionCode 2009 memory round and file round.
+`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.1`. The package pages lead with practical samples.
 
 ## 0.1.0
 
