@@ -3,8 +3,12 @@ import 'dart:typed_data';
 import '../format/database_header.dart';
 import '../storage/storage_backend.dart';
 
-/// Read-only view of a stable, journal-free, rollback-format database copy.
-/// No locking, recovery, WAL reconciliation, or concurrent-writer protection.
+/// Read-only pages of one database image.
+///
+/// A non-vacuum rollback image is read as stored. An auto-vacuum image is
+/// read through its B-tree pointers; pointer-map pages are not B-tree pages.
+/// Write version 2 is the checkpointed or already recovered WAL image.
+/// Sidecar recovery and the SQLite lock protocol belong to the file open.
 /// Owns the backend after a successful open; failed opens leave it to the caller.
 final class ReadOnlyPager {
   ReadOnlyPager._(this._storage, this.header, this.pageCount);
@@ -17,12 +21,8 @@ final class ReadOnlyPager {
   static Future<ReadOnlyPager> open(StorageBackend storage) async {
     final bytes = await _readExact(storage, 0, 100);
     final header = DatabaseHeader.decode(bytes);
-    if (header.largestRootPage != 0) {
-      throw UnsupportedError('auto_vacuum databases are not supported');
-    }
-    if (header.readVersion != 1 || header.writeVersion != 1) {
-      throw UnsupportedError(
-          'WAL databases require checkpointing to rollback format');
+    if (header.readVersion != header.writeVersion) {
+      throw UnsupportedError('Mismatched read and write versions');
     }
     final physicalPages = header.validateFileLength(await storage.length());
     final pages =

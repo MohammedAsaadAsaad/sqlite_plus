@@ -47,8 +47,8 @@ file's application source has no SQL text. `MutableDatabaseConnection.openMemory
 opens the in-memory engine.
 
 `COMPATIBILITY_MATRIX.md` records the tested surface. Planned next are
-`json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`,
-a durable two-database commit, more journal modes, extended FTS, ICU and locale
+`json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4 planning,
+auto-vacuum writes, a durable two-database commit, more journal modes, extended FTS, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
 rows on Linux x64. Version `0.1.2` is the release in this tree. See
@@ -94,8 +94,12 @@ reconcile WAL or establish database integrity.
 
 ## Read-only database traversal
 
-Use a stable database copy with no concurrent writer, hot journal or pending WAL.
-The reader does not lock or recover databases and rejects WAL-format headers.
+`ReadOnlyFileStorageBackend` expects a stable database copy with no concurrent
+writer, hot journal, or pending WAL. It does not lock or recover sidecars.
+`openReadOnlyFile` does that recovery in memory and leaves the files unchanged.
+A checkpointed write version 2 image opens. Mismatched read and write versions
+are rejected.
+
 The backend becomes owned by the pager after a successful open; close the backend
 yourself if opening fails. This example is for dart:io platforms:
 

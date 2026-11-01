@@ -308,7 +308,8 @@ void main() {
     if (file.existsSync()) file.deleteSync();
     final created = await Process.run(cli, [
       file.path,
-      "CREATE VIRTUAL TABLE t USING fts5(title, body);"
+      "PRAGMA auto_vacuum=NONE;"
+          "CREATE VIRTUAL TABLE t USING fts5(title, body);"
           "INSERT INTO t(title, body) VALUES('Hello World', 'sqlite database');"
     ]);
     expect(created.exitCode, 0, reason: created.stderr.toString());
@@ -343,7 +344,8 @@ void main() {
     if (file.existsSync()) file.deleteSync();
     final created = await Process.run(cli, [
       file.path,
-      "CREATE VIRTUAL TABLE t USING fts4(title, body);"
+      "PRAGMA auto_vacuum=NONE;"
+          "CREATE VIRTUAL TABLE t USING fts4(title, body);"
           "INSERT INTO t(title, body) VALUES('hello world', 'sqlite');"
     ]);
     expect(created.exitCode, 0, reason: created.stderr.toString());

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import '../btree/database_image_builder.dart';
+import '../format/database_header.dart';
 import 'image_mutations.dart';
 import '../pager/image_pager.dart';
 import '../pager/rollback_journal_pager.dart';
@@ -102,6 +103,15 @@ final class MutableSqliteDatabase {
 
   /// Reopens a database from [exportImage] bytes.
   static Future<MutableSqliteDatabase> fromImage(Uint8List image) async {
+    if (image.length >= 100) {
+      final header = DatabaseHeader.decode(image);
+      if (header.largestRootPage != 0 ||
+          header.writeVersion != 1 ||
+          header.readVersion != 1) {
+        throw UnsupportedError(
+            'Writer requires a complete rollback-format database image');
+      }
+    }
     final storage = MemoryStorageBackend();
     await storage.write(0, image);
     final database = await SqliteDatabase.openReadOnly(storage);

@@ -2312,7 +2312,7 @@ final class SqliteDatabase {
         'UTF-16be'
       ][header.textEncoding],
       'journal_mode': sqlJournalMode(header.writeVersion),
-      'auto_vacuum': BigInt.zero,
+      'auto_vacuum': BigInt.from(header.autoVacuumMode),
     };
     if (values.containsKey(name) && argument == null) {
       return QueryResult([

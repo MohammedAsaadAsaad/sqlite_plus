@@ -44,11 +44,12 @@ and the attached image together.
 
 `journal_mode` reads header byte 18. Writing the current mode changes nothing.
 `memory`, `off`, `delete`, `persist`, `truncate`, and a rollback/wal switch
-are rejected before the bytes change. A write-version 2 image is not opened
-for a query. `cache_size` defaults to -2000, `busy_timeout` to 0, and
-`synchronous` to 2. Those three values stay off the image. `auto_vacuum` reads
-0, and a write is rejected. An image whose largest root page is not 0 fails
-at open.
+are rejected before the bytes change. A read-only open accepts write version 2
+when it matches the read version. `MutableSqliteDatabase.fromImage` still
+rejects any other write version. `cache_size` defaults to -2000, `busy_timeout`
+to 0, and `synchronous` to 2. Those three values stay off the image. A read-only
+`PRAGMA auto_vacuum` is 0, 1, or 2 from the header. A writer still reads 0, a
+write is rejected, and `fromImage` rejects a non-zero largest root page.
 
 `createCollation` registers one connection-local text collation. The test
 covers ORDER BY, UNIQUE, and an index on that collation. REINDEX of a custom
@@ -56,8 +57,10 @@ collation name has no separate oracle. EXPLAIN QUERY PLAN returns this
 engine's `detail` text. EXPLAIN bytecode is rejected. Two or three comma joins
 with ORDER BY and sqlite_stat1 counts can be reordered; the test compares
 rows. A covering index skips the table when every referenced column is in the
-index or is a rowid alias, and that read uses fewer pages. `sqlite_stat4`
-fails closed at open. Double quotes remain identifiers.
+index or is a rowid alias, and that read uses fewer pages. `sqlite_stat4` opens
+and its samples are not read. A stat1 plan and its query page-read count stayed
+the same with an opposite stat4 sample. No wall-clock timing was run. Double
+quotes remain identifiers.
 
 The gap ledger has 25 UTF-8 cases from the pinned CLI. A case matches the CLI
 or names the rejection. The recorded differences include DQS, `json_pretty`,
@@ -78,7 +81,9 @@ key is visible through both indexes. Crash recovery for the incremental
 insert, delete, and overflow update restores the previous rollback image. A
 WAL commit of one row recovers that row after a crash on the next insert.
 WITHOUT ROWID, views, triggers, and the other unhandled shapes keep their
-existing writers. An auto-vacuum file is still rejected at open.
+existing writers. The writer still rejects an auto-vacuum file. A read-only
+open accepts it. A NONE delete does not shrink. VACUUM does. FULL auto-vacuum
+delete shrink is not implemented.
 
 `benchmark_results/page_writes_linux_x64.json` is this revision's Linux x64
 AOT sample: three batch inserts of 10,000 rows, one batch insert of 100,000
