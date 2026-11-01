@@ -1754,6 +1754,14 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10663 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The rest of B3 stays unchecked: closer EXPLAIN QUERY PLAN text, ICU and locale collations, FTS3/FTS4 writes, FTS5 porter, trigram, detail, tokendata, locale, and multi-page leaves, `VACUUM INTO`, `journal_mode` switches, `auto_vacuum` writes, one durable commit across two attached databases, and the remaining DML syntax. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 EXPLAIN QUERY PLAN still differs
+
+- The gap-ledger case `explain-query-plan` stays a difference. The pinned row for `EXPLAIN QUERY PLAN SELECT a FROM t WHERE a=1` on `t(a INTEGER PRIMARY KEY)` is `id=2`, `parent=0`, `notused=33`, `detail=SEARCH t USING INTEGER PRIMARY KEY (rowid=?)`. A full scan is `2,0,216,'SCAN t'`. `WHERE a>1` is `2,0,196,'SEARCH t USING INTEGER PRIMARY KEY (rowid>?)'`. `EXPLAIN QUERY PLAN SELECT 1` is `1,0,0,'SCAN CONSTANT ROW'`. `EXPLAIN QUERY PLAN SELECT * FROM missing` is `no such table: missing` on the CLI.
+- This engine still returns one `detail` column. It does not invent opcode address 2 or the `rRun` cost 33. `db_browser_b3_eqp_test.dart` compares those CLI rows with `/tmp/sqlite-build/sqlite3` and checks that the engine text is not that detail. A covering plan still contains `COVERING`. `EXPLAIN SELECT 1` still returns bytecode.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10665 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The EQP sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.
