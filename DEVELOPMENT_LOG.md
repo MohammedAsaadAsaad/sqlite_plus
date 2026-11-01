@@ -1815,8 +1815,15 @@ result=pass
 - `INSERT INTO aux.u SELECT v FROM t` is an empty result on the pinned CLI. The same session then reads `count(*)` = 1 and `v` = `m` from `aux.u`, and `t` still holds `m`. Inserting into a missing `aux.u` is `no such table: aux.u` on the CLI.
 - This engine throws `cross-database statement is not supported`. `aux.u` stays empty. `t` still holds `m`, and a later insert of `n` is visible. The gap case `cross-insert` stays rejected. `db_browser_b3_cross_insert_test.dart` records the comparison. No second durable commit was added.
 - That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
-- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed COUNT tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10679 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The cross-database commit stays unchecked. Remaining DML, B4, and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 remaining gap-ledger DML
+
+- The gap ledger's only other DML write is `cross-insert`, and that case stays rejected. `db_browser_b3_dml_test.dart` matches `/tmp/sqlite-build/sqlite3` for `INSERT DEFAULT VALUES`, `REPLACE`, `ON CONFLICT DO NOTHING`, `UPDATE ... RETURNING`, `DELETE ... RETURNING`, `SET v=v||'x'`, and `INSERT ... SELECT`. This is not a claim that every DML form was compared.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10681 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
 ## 2026-10-31 — Version 0.1.2
 
