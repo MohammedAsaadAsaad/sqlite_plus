@@ -86,7 +86,7 @@ Uint8List encodeVarints(List<int> values) {
   return out.takeBytes();
 }
 
-Uint8List encodeDoclist(List<FtsRowPosting> rows) {
+Uint8List encodeDoclist(List<FtsRowPosting> rows, {bool positions = true}) {
   if (rows.isEmpty) return Uint8List(0);
   final ordered = [...rows]..sort((a, b) => a.rowId.compareTo(b.rowId));
   final out = BytesBuilder(copy: false);
@@ -99,6 +99,15 @@ Uint8List encodeDoclist(List<FtsRowPosting> rows) {
     }
     previous = row.rowId;
     writeVarint(out, delta.toInt());
+    // detail=none stores no positions. A delete is a single 0x00, then
+    // another 0x00 when the row also had a position list.
+    if (!positions) {
+      if (row.delete) {
+        out.addByte(0);
+        if (row.positions.isNotEmpty) out.addByte(0);
+      }
+      continue;
+    }
     final body = BytesBuilder(copy: false);
     if (!row.delete) {
       final columns = row.positions.keys.toList()..sort();
@@ -124,7 +133,9 @@ Uint8List encodeDoclist(List<FtsRowPosting> rows) {
   return out.takeBytes();
 }
 
-List<FtsRowPosting> decodeDoclist(Uint8List bytes, int start, int end) {
+List<FtsRowPosting> decodeDoclist(Uint8List bytes, int start, int end,
+    {String detail = 'full'}) {
+  if (detail == 'none') return _decodeDetailNone(bytes, start, end);
   final rows = <FtsRowPosting>[];
   var index = start;
   var rowId = BigInt.zero;
@@ -178,7 +189,42 @@ List<FtsRowPosting> decodeDoclist(Uint8List bytes, int start, int end) {
   return rows;
 }
 
-Uint8List encodeLeaf(List<FtsPosting> terms) {
+/// A `detail=none` doclist is rowid deltas. A following `0x00` is a delete.
+List<FtsRowPosting> _decodeDetailNone(Uint8List bytes, int start, int end) {
+  final rows = <FtsRowPosting>[];
+  var index = start;
+  var rowId = BigInt.zero;
+  final holder = <int>[];
+  while (index < end) {
+    holder.clear();
+    index = readVarint(bytes, index, holder);
+    rowId = rows.isEmpty
+        ? BigInt.from(holder.single)
+        : rowId + BigInt.from(holder.single);
+    var delete = false;
+    var present = true;
+    if (index < end && bytes[index] == 0) {
+      delete = true;
+      index++;
+      if (index < end && bytes[index] == 0) {
+        index++;
+      } else {
+        present = false;
+      }
+    }
+    rows.add(FtsRowPosting(
+        rowId,
+        present
+            ? {
+                0: [0]
+              }
+            : <int, List<int>>{},
+        delete: delete));
+  }
+  return rows;
+}
+
+Uint8List encodeLeaf(List<FtsPosting> terms, {bool positions = true}) {
   final ordered = [...terms]..sort((a, b) => _compareBytes(a.term, b.term));
   final body = BytesBuilder(copy: false);
   final starts = <int>[];
@@ -201,7 +247,7 @@ Uint8List encodeLeaf(List<FtsPosting> terms) {
       writeVarint(body, suffix.length);
       body.add(suffix);
     }
-    body.add(encodeDoclist(term.rows));
+    body.add(encodeDoclist(term.rows, positions: positions));
     previous = term.term;
   }
   final footer = BytesBuilder(copy: false);
@@ -224,7 +270,7 @@ Uint8List encodeLeaf(List<FtsPosting> terms) {
   return page.takeBytes();
 }
 
-List<FtsPosting> decodeLeaf(Uint8List page) {
+List<FtsPosting> decodeLeaf(Uint8List page, {String detail = 'full'}) {
   if (page.length < 4) throw const SqlException('Truncated FTS5 leaf');
   final header = ByteData.sublistView(page);
   final rowidOffset = header.getUint16(0);
@@ -267,7 +313,8 @@ List<FtsPosting> decodeLeaf(Uint8List page) {
       term.setRange(keep, term.length, page.sublist(cursor, cursor + fresh));
       cursor += fresh;
     }
-    terms.add(FtsPosting(term, decodeDoclist(page, cursor, end)));
+    terms.add(
+        FtsPosting(term, decodeDoclist(page, cursor, end, detail: detail)));
     previous = term;
   }
   return terms;

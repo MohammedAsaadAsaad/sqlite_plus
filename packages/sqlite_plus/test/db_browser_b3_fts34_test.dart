@@ -118,8 +118,8 @@ void main() {
     await db.execute('CREATE VIRTUAL TABLE f USING fts4(body)');
     await expectLater(
         db.query('SELECT body FROM missing'),
-        throwsA(isA<SqlException>().having((error) => error.message, 'message',
-            'No such table: missing')));
+        throwsA(isA<SqlException>().having(
+            (error) => error.message, 'message', 'No such table: missing')));
     await expectLater(db.execute("INSERT INTO missing VALUES ('x')"),
         throwsA(isA<SqlException>()));
     final mismatch = await Process.run(tool, [

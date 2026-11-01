@@ -244,7 +244,7 @@ void main() {
     addTearDown(db.close);
     final before = db.exportImage();
     await expectLater(
-        db.execute("CREATE VIRTUAL TABLE t USING fts5(body, detail='column')"),
+        db.execute("CREATE VIRTUAL TABLE t USING fts5(body, nope=1)"),
         throwsA(isA<SqlException>()));
     expect(db.exportImage(), before);
   });

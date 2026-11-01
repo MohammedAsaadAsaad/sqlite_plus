@@ -471,8 +471,15 @@ extension _SearchMutations on ImageMutations {
         'CREATE TABLE ${_q('${table}_idx')}(segid, term, pgno, PRIMARY KEY(segid, term)) WITHOUT ROWID',
         const []);
     if (!spec.contentless && !spec.external) {
-      final columns =
-          [for (var i = 0; i < spec.columns.length; i++) 'c$i'].join(', ');
+      final names = <String>[
+        for (var i = 0; i < spec.columns.length; i++) 'c$i',
+      ];
+      if (spec.locale) {
+        for (var i = 0; i < spec.columns.length; i++) {
+          if (!spec.columns[i].unindexed) names.add('l$i');
+        }
+      }
+      final columns = names.join(', ');
       await execute(
           'CREATE TABLE ${_q('${table}_content')}(id INTEGER PRIMARY KEY, $columns)',
           const []);
@@ -606,7 +613,7 @@ extension _SearchMutations on ImageMutations {
       for (final entry in terms.entries)
         FtsPosting(Uint8List.fromList(entry.key.codeUnits),
             [FtsRowPosting(doc.id, entry.value)])
-    ]);
+    ], positions: spec.detail != 'none');
   }
 
   List<_SearchDoc> _loadFts(Fts5Spec spec, {bool liveExternal = false}) {

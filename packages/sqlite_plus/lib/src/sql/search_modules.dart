@@ -137,8 +137,8 @@ final class _Fts5Cursor extends VirtualTableCursor {
     final pending = _pendingQuery(scan?.$1, scan?.$2 ?? const [], spec);
     final state = FtsTableState(spec, documents);
     if (pending != null) {
-      final query =
-          parseFtsQuery(pending.$1, spec.tokenizer, spec.visibleNames);
+      final query = parseFtsQuery(pending.$1, spec.tokenizer, spec.visibleNames,
+          detail: spec.detail);
       state.query = query;
       state.column = pending.$2;
       state.bm25 = FtsBm25.build(query, documents.values.toList(), pending.$2);
@@ -330,7 +330,7 @@ Map<BigInt, List<List<FtsToken>>> _indexedTokens(
       if (block == null || block.length < 4) continue;
       List<FtsPosting> terms;
       try {
-        terms = decodeLeaf(block);
+        terms = decodeLeaf(block, detail: spec.detail);
       } on SqlException {
         continue;
       }
@@ -346,6 +346,17 @@ Map<BigInt, List<List<FtsToken>>> _indexedTokens(
                 _clear(columns, posting, position);
               }
             }
+            continue;
+          }
+          if (spec.detail == 'none') {
+            while (columns.isEmpty) {
+              columns.add({});
+            }
+            var slot = 0;
+            while (columns[0].containsKey(slot)) {
+              slot++;
+            }
+            columns[0][slot] = token;
             continue;
           }
           for (final entry in posting.positions.entries) {
