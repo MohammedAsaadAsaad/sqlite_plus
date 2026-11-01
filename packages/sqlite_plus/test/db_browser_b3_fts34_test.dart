@@ -1,7 +1,11 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
+
+import 'rollback_pager_test.dart'
+    show CrashController, ModelFile, SimulatedCrash;
 
 const _pin =
     '2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9';
@@ -151,7 +155,146 @@ void main() {
     expect(await engine(both), await pinned(both));
   });
 
-  test('regression FTS5 writes and native FTS4 bytes stay put', () async {
+  test('exported FTS3 and FTS4 images pass the pinned integrity check',
+      () async {
+    final cases = <(List<String>, String, String)>[
+      (
+        [
+          'CREATE VIRTUAL TABLE f USING fts4(body)',
+          "INSERT INTO f VALUES ('hello world')",
+        ],
+        "PRAGMA integrity_check; SELECT body FROM f WHERE f MATCH 'hello';",
+        'ok\nhello world'
+      ),
+      (
+        [
+          'CREATE VIRTUAL TABLE f USING fts3(body)',
+          "INSERT INTO f VALUES ('hello')",
+        ],
+        "PRAGMA integrity_check; SELECT body FROM f WHERE f MATCH 'hello';",
+        'ok\nhello'
+      ),
+      (
+        [
+          'CREATE VIRTUAL TABLE f USING fts4(body)',
+          "INSERT INTO f VALUES ('')",
+        ],
+        'PRAGMA integrity_check; SELECT count(*) FROM f;',
+        'ok\n1'
+      ),
+      (
+        [
+          'CREATE VIRTUAL TABLE f USING fts4(body)',
+          "INSERT INTO f VALUES ('hello')",
+          "DELETE FROM f WHERE f MATCH 'hello'",
+        ],
+        'PRAGMA integrity_check; SELECT count(*) FROM f;',
+        'ok\n0'
+      ),
+      (
+        [
+          'CREATE VIRTUAL TABLE f USING fts4()',
+          "INSERT INTO f VALUES ('hello')",
+        ],
+        "PRAGMA integrity_check; SELECT content FROM f WHERE f MATCH 'hello';",
+        'ok\nhello'
+      ),
+      (
+        [
+          'CREATE VIRTUAL TABLE f USING fts4(title, body)',
+          "INSERT INTO f(docid, title, body) VALUES (5, 'Hello World', 'sqlite hello')",
+          "INSERT INTO f(docid, title, body) VALUES (9, 'other', NULL)",
+        ],
+        "PRAGMA integrity_check; SELECT title FROM f WHERE f MATCH 'hello';"
+            " SELECT title FROM f WHERE f MATCH 'other';",
+        'ok\nHello World\nother'
+      ),
+    ];
+    for (final entry in cases) {
+      final image = await _export(entry.$1);
+      expect(await _pinFile(tool, image, entry.$2), entry.$3,
+          reason: entry.$1.join('; '));
+    }
+  });
+
+  test('a damaged FTS4 root fails the pinned integrity check', () async {
+    final image = await _export([
+      'CREATE VIRTUAL TABLE f USING fts4(body)',
+      "INSERT INTO f VALUES ('hello world')",
+    ]);
+    final bytes = Uint8List.fromList(image);
+    const needle = [0x00, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f];
+    final at = _findBytes(bytes, needle);
+    expect(at, greaterThanOrEqualTo(0));
+    bytes[at + needle.length - 1] = 0x78;
+    final file = File('${Directory.systemTemp.path}/sqlite_plus_fts4_bad.db');
+    await file.writeAsBytes(bytes, flush: true);
+    final damaged =
+        await Process.run(tool, [file.path, 'PRAGMA integrity_check;']);
+    expect(damaged.exitCode, 0);
+    expect(damaged.stdout.toString().trim(),
+        'malformed inverted index for FTS4 table main.f');
+    final db = await MutableSqliteDatabase.fromImage(bytes);
+    addTearDown(db.close);
+    expect((await db.query('SELECT body FROM f')).rows, [
+      ['hello world']
+    ]);
+  });
+
+  test('a crash during an FTS4 insert recovers a pinned-valid image', () async {
+    final seed = await MutableSqliteDatabase.create();
+    await seed.execute('CREATE VIRTUAL TABLE f USING fts4(body)');
+    final original = seed.exportImage();
+    await seed.close();
+    final baseline = CrashController();
+    final baselinePager = await RollbackJournalPager.open(
+        ModelFile(original, baseline), ModelFile(Uint8List(0), baseline));
+    final writer = await MutableSqliteDatabase.fromJournalPager(baselinePager);
+    await writer.execute("INSERT INTO f VALUES ('hello world')");
+    final operations = baseline.operations;
+    await writer.close();
+    expect(operations, greaterThan(0));
+    var sawOld = false;
+    var sawNew = false;
+    for (var point = 1; point <= operations; point++) {
+      final faults = CrashController()..crashAt = point;
+      final database = ModelFile(original, faults);
+      final log = ModelFile(Uint8List(0), faults);
+      final opened = await RollbackJournalPager.open(database, log);
+      final db = await MutableSqliteDatabase.fromJournalPager(opened);
+      await expectLater(db.execute("INSERT INTO f VALUES ('hello world')"),
+          throwsA(isA<SimulatedCrash>()),
+          reason: 'operation $point');
+      database.crash();
+      log.crash();
+      faults.crashAt = null;
+      final recovered = await RollbackJournalPager.open(database, log);
+      final image = await recovered.readImage();
+      final reader = await MutableSqliteDatabase.fromImage(image);
+      expect(
+          (await reader.query('PRAGMA integrity_check')).rows,
+          [
+            ['ok']
+          ],
+          reason: 'operation $point');
+      final rows = (await reader.query('SELECT body FROM f')).rows;
+      final oldRows = rows.isEmpty;
+      final newRows = rows.length == 1 && rows.single.single == 'hello world';
+      expect(oldRows || newRows, isTrue, reason: 'operation $point $rows');
+      final pinned = await _pinFile(tool, image,
+          "PRAGMA integrity_check; SELECT count(*) FROM f WHERE f MATCH 'hello';");
+      expect(pinned, oldRows ? 'ok\n0' : 'ok\n1', reason: 'operation $point');
+      sawOld = sawOld || oldRows;
+      sawNew = sawNew || newRows;
+      await reader.close();
+      await recovered.close();
+    }
+    expect(sawOld, isTrue);
+    expect(sawNew, isTrue);
+  });
+
+  test('regression FTS5 writes and a native FTS4 insert stay readable',
+      () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
     await db.execute('CREATE VIRTUAL TABLE u USING fts5(body)');
@@ -176,11 +319,48 @@ void main() {
             .single
             .single,
         'hello world');
-    final before = native.exportImage();
-    await expectLater(
-        native.execute("INSERT INTO t(title, body) VALUES('more', 'text')"),
-        throwsA(isA<SqlException>().having((error) => error.message, 'message',
-            'FTS3 and FTS4 writes are not implemented')));
-    expect(native.exportImage(), before);
+    await native.execute("INSERT INTO t(title, body) VALUES('more', 'text')");
+    expect(
+        await _pinFile(
+            tool,
+            native.exportImage(),
+            "PRAGMA integrity_check; SELECT title FROM t WHERE t MATCH 'hello';"
+            " SELECT body FROM t WHERE t MATCH 'text';"),
+        'ok\nhello world\ntext');
   });
+}
+
+Future<Uint8List> _export(List<String> statements) async {
+  final db = await MutableSqliteDatabase.create();
+  try {
+    for (final sql in statements) {
+      await db.execute(sql);
+    }
+    return db.exportImage();
+  } finally {
+    await db.close();
+  }
+}
+
+Future<String> _pinFile(String tool, Uint8List image, String sql) async {
+  final file =
+      File('${Directory.systemTemp.path}/sqlite_plus_fts34_${image.length}.db');
+  await file.writeAsBytes(image, flush: true);
+  final result = await Process.run(tool, [file.path, sql]);
+  expect(result.exitCode, 0, reason: '${result.stderr}\n$sql');
+  return result.stdout.toString().trim();
+}
+
+int _findBytes(Uint8List bytes, List<int> needle) {
+  for (var i = 0; i + needle.length <= bytes.length; i++) {
+    var found = true;
+    for (var j = 0; j < needle.length; j++) {
+      if (bytes[i + j] != needle[j]) {
+        found = false;
+        break;
+      }
+    }
+    if (found) return i;
+  }
+  return -1;
 }

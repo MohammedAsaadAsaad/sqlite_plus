@@ -35,21 +35,20 @@ void main() {
         ]);
   });
 
-  test('cross insert rejects a missing source, a missing target, and UPDATE',
+  test(
+      'cross insert rejects a missing source, a missing target, and a value subquery',
       () async {
     final db = await _memory();
     await expectLater(db.execute('INSERT INTO aux.u SELECT v FROM missing'),
         throwsA(isA<SqlException>()));
     await expectLater(db.execute('INSERT INTO aux.missing SELECT v FROM t'),
         throwsA(isA<SqlException>()));
-    await expectLater(db.execute('INSERT INTO nope.u SELECT v FROM t'),
-        throwsA(isA<SqlException>()));
     await expectLater(
-        db.execute('UPDATE aux.u SET v = (SELECT v FROM t)'),
-        throwsA(isA<SqlException>().having((error) => error.message, 'message',
-            'cross-database statement is not supported')));
+        db.execute('INSERT INTO nope.u SELECT v FROM t'),
+        throwsA(isA<SqlException>().having(
+            (error) => error.message, 'message', 'no such table: nope.u')));
     await expectLater(
-        db.execute('DELETE FROM aux.u WHERE v IN (SELECT v FROM t)'),
+        db.execute('INSERT INTO aux.u VALUES ((SELECT v FROM t))'),
         throwsA(isA<SqlException>().having((error) => error.message, 'message',
             'cross-database statement is not supported')));
     expect((await db.query('SELECT count(*) FROM aux.u')).rows, [
@@ -57,6 +56,97 @@ void main() {
     ]);
     expect((await db.query('SELECT v FROM t')).rows, [
       ['m']
+    ]);
+  });
+
+  test('an unattached schema reports no such table with the written spelling',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    Future<void> expectTable(String sql, String message) {
+      return expectLater(
+          db.execute(sql),
+          throwsA(isA<SqlException>()
+              .having((error) => error.message, 'message', message)));
+    }
+
+    await expectTable('UPDATE aux.u SET v = 1', 'no such table: aux.u');
+    await expectTable('UPDATE AUX.U SET v = 1', 'no such table: AUX.U');
+    await expectTable('UPDATE "aux"."u" SET v = 1', 'no such table: aux.u');
+    await expectTable('DELETE FROM aux.u', 'no such table: aux.u');
+    await expectTable('INSERT INTO aux.u SELECT 1', 'no such table: aux.u');
+  });
+
+  test('cross-schema UPDATE and DELETE read the other schema and commit',
+      () async {
+    final db = await _memory();
+    await db.execute("INSERT INTO aux.u VALUES ('a')");
+    expect((await db.execute('UPDATE aux.u SET v = (SELECT v FROM t)')).changes,
+        1);
+    expect((await db.query('SELECT changes()')).rows, [
+      [BigInt.one]
+    ]);
+    expect((await db.query('SELECT v FROM aux.u')).rows, [
+      ['m']
+    ]);
+    expect((await db.query('SELECT v FROM t')).rows, [
+      ['m']
+    ]);
+    expect(
+        (await db.execute('UPDATE aux.u SET v = (SELECT v FROM t) WHERE 0'))
+            .changes,
+        0);
+    expect((await db.query('SELECT changes()')).rows, [
+      [BigInt.zero]
+    ]);
+    expect((await db.query('SELECT v FROM aux.u')).rows, [
+      ['m']
+    ]);
+    await db.execute("INSERT INTO aux.u VALUES ('z')");
+    expect(
+        (await db.execute('DELETE FROM aux.u WHERE v IN (SELECT v FROM t)'))
+            .changes,
+        1);
+    expect((await db.query('SELECT v FROM aux.u')).rows, [
+      ['z']
+    ]);
+    await db.execute('CREATE TABLE pair(k, v)');
+    await db.execute("INSERT INTO pair VALUES (1, 'main')");
+    await db.execute('CREATE TABLE aux.keyed(k, v)');
+    await db.execute("INSERT INTO aux.keyed VALUES (1, 'aux')");
+    await db.execute(
+        'UPDATE aux.keyed SET v = pair.v FROM pair WHERE aux.keyed.k = pair.k');
+    expect((await db.query('SELECT v FROM aux.keyed')).rows, [
+      ['main']
+    ]);
+    await db.execute("INSERT INTO t VALUES ('n')");
+    await db.execute(
+        "UPDATE aux.u SET v = v || (SELECT group_concat(v, '') FROM t)");
+    expect((await db.query('SELECT v FROM aux.u')).rows, [
+      ['zmn']
+    ]);
+    await db.execute('CREATE TABLE aux.same(v)');
+    await db.execute("INSERT INTO aux.same VALUES ('aux')");
+    await db.execute('UPDATE aux.same SET v = (SELECT v FROM t)');
+    expect((await db.query('SELECT v FROM aux.same ORDER BY v')).rows, [
+      ['m']
+    ]);
+    await db.execute("UPDATE t SET v = NULL WHERE v = 'm'");
+    await db.execute('UPDATE aux.u SET v = (SELECT v FROM t)');
+    expect((await db.query('SELECT v IS NULL FROM aux.u')).rows, [
+      [BigInt.one]
+    ]);
+    await db.execute(
+        'DELETE FROM aux.u WHERE v IS NULL AND (SELECT v FROM t) IS NULL');
+    expect((await db.query('SELECT count(*) FROM aux.u')).rows, [
+      [BigInt.zero]
+    ]);
+    await db.execute('BEGIN');
+    await db.execute("INSERT INTO aux.u VALUES ('z')");
+    await db.execute('UPDATE aux.u SET v = (SELECT v FROM t WHERE v IS NULL)');
+    await db.execute('ROLLBACK');
+    expect((await db.query('SELECT count(*) FROM aux.u')).rows, [
+      [BigInt.zero]
     ]);
   });
 
@@ -275,6 +365,125 @@ void main() {
         ];
         final oldPair = _same(mainRows, oldMain) && _same(auxRows, oldAux);
         final newPair = _same(mainRows, newMain) && _same(auxRows, newAux);
+        expect(oldPair || newPair, isTrue,
+            reason:
+                'persist=$persistUnsynced point=$point main=$mainRows aux=$auxRows');
+        sawOld = sawOld || oldPair;
+        sawNew = sawNew || newPair;
+      }
+      expect(sawOld, isTrue, reason: 'persist=$persistUnsynced');
+      expect(sawNew, isTrue, reason: 'persist=$persistUnsynced');
+    }
+  });
+
+  test('a file commit of a cross update reopens on both files', () async {
+    final faults = CrashController();
+    final opened = await _pair(faults);
+    await _seed(opened.db);
+    await opened.db.execute("INSERT INTO aux.u VALUES ('a')");
+    expect(
+        (await opened.db.execute('UPDATE aux.u SET v = (SELECT v FROM t)'))
+            .changes,
+        1);
+    await opened.db.close();
+    final main = await MutableSqliteDatabase.fromImage(
+        Uint8List.fromList(opened.mainFile.durable));
+    final aux = await MutableSqliteDatabase.fromImage(
+        Uint8List.fromList(opened.auxFile.durable));
+    addTearDown(main.close);
+    addTearDown(aux.close);
+    expect((await main.query('SELECT v FROM t')).rows, [
+      ['m']
+    ]);
+    expect((await aux.query('SELECT v FROM u')).rows, [
+      ['m']
+    ]);
+    expect((await main.query('PRAGMA integrity_check')).rows, [
+      ['ok']
+    ]);
+    expect((await aux.query('PRAGMA integrity_check')).rows, [
+      ['ok']
+    ]);
+  });
+
+  test('a crash between an update and a delete keeps both files together',
+      () async {
+    final setupFaults = CrashController();
+    final setup = await _pair(setupFaults);
+    await _seed(setup.db);
+    await setup.db.execute("INSERT INTO aux.u VALUES ('z')");
+    await setup.db.close();
+    final mainImage = Uint8List.fromList(setup.mainFile.durable);
+    final auxImage = Uint8List.fromList(setup.auxFile.durable);
+    final baselineFaults = CrashController();
+    final baseline =
+        await _pair(baselineFaults, mainImage: mainImage, auxImage: auxImage);
+    await baseline.db.execute("ATTACH 'aux' AS aux");
+    await baseline.db.execute('BEGIN');
+    await baseline.db.execute('UPDATE aux.u SET v = (SELECT v FROM t)');
+    await baseline.db.execute('DELETE FROM t WHERE v = (SELECT v FROM aux.u)');
+    expect(baselineFaults.operations, 0);
+    await baseline.db.execute('COMMIT');
+    final operations = baselineFaults.operations;
+    expect(operations, greaterThan(1));
+    await baseline.db.close();
+    expect((await _rows(baseline.mainFile.durable, 'SELECT count(*) FROM t')), [
+      [BigInt.zero]
+    ]);
+    expect((await _rows(baseline.auxFile.durable, 'SELECT v FROM u')), [
+      ['m']
+    ]);
+
+    for (final persistUnsynced in [false, true]) {
+      var sawOld = false;
+      var sawNew = false;
+      for (var point = 1; point <= operations; point++) {
+        final faults = CrashController()
+          ..persistUnsynced = persistUnsynced
+          ..crashAt = point;
+        final opened =
+            await _pair(faults, mainImage: mainImage, auxImage: auxImage);
+        await opened.db.execute("ATTACH 'aux' AS aux");
+        await opened.db.execute('BEGIN');
+        await opened.db.execute('UPDATE aux.u SET v = (SELECT v FROM t)');
+        await opened.db
+            .execute('DELETE FROM t WHERE v = (SELECT v FROM aux.u)');
+        await expectLater(
+            opened.db.execute('COMMIT'), throwsA(isA<SimulatedCrash>()),
+            reason: 'persist=$persistUnsynced point=$point');
+        await opened.db.close();
+        opened.mainFile.crash();
+        opened.mainLog.crash();
+        opened.auxFile.crash();
+        opened.auxLog.crash();
+        opened.superLog.crash();
+        faults.crashAt = null;
+        await SchemaCommit.recover(journal: opened.superLog, schemas: [
+          (name: 'main', database: opened.mainFile, redo: opened.mainLog),
+          (name: 'aux', database: opened.auxFile, redo: opened.auxLog),
+        ]);
+        final mainRows =
+            await _rows(opened.mainFile.volatile, 'SELECT v FROM t');
+        final auxRows = await _rows(opened.auxFile.volatile, 'SELECT v FROM u');
+        expect(
+            await _rows(opened.mainFile.volatile, 'PRAGMA integrity_check'),
+            [
+              ['ok']
+            ],
+            reason: 'persist=$persistUnsynced point=$point');
+        expect(await _rows(opened.auxFile.volatile, 'PRAGMA integrity_check'), [
+          ['ok']
+        ]);
+        final oldPair = _same(mainRows, [
+              ['m']
+            ]) &&
+            _same(auxRows, [
+              ['z']
+            ]);
+        final newPair = _same(mainRows, const <List<Object?>>[]) &&
+            _same(auxRows, [
+              ['m']
+            ]);
         expect(oldPair || newPair, isTrue,
             reason:
                 'persist=$persistUnsynced point=$point main=$mainRows aux=$auxRows');

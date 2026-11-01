@@ -43,9 +43,7 @@ one row `m` and main `t` still holds `m`. A file attachment can use its own
 rollback journal. A transaction that changes two of those journals syncs one
 schema-commit record first. A crash before that record leaves both files
 unchanged, and a crash after it restores both. That record is not an official
-SQLite master journal. `UPDATE` and `DELETE` that read another schema still
-throw `cross-database statement is not supported`. Without the attachment, the
-pin says `no such table: aux.u` and this engine says `Unknown database: aux`.
+SQLite master journal. `UPDATE aux.u SET v = (SELECT v FROM t)`, `UPDATE ... FROM`, and `DELETE FROM aux.u WHERE v IN (SELECT v FROM t)` match the pinned CLI, including `changes()`. A file commit reopens both files. A crash between an update and a delete recovers both old or both new. Without the attachment, `UPDATE aux.u SET v = 1` and `DELETE FROM aux.u` are `no such table: aux.u`. `UPDATE AUX.U SET v = 1` is `no such table: AUX.U`. `INSERT INTO aux.u VALUES ((SELECT v FROM t))` still throws `cross-database statement is not supported`.
 A cross-schema SELECT is copied into a scratch image. A memory attachment is
 not a second durable journal. A transaction snapshots main, temp, and the
 attached image together.
@@ -196,7 +194,7 @@ AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 | Grammar and errors | Closer native error text. Opt-in double-quoted strings match the pinned CLI in `db_browser_b3_dqs_test.dart`. The default stays off. Unquoted `a.title` beside a column named `a.title` returns the `title` column |
 | Table functions | More virtual-table modules |
 | Windows | Wider window execution and closer planner equivalence |
-| Extensions | FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI |
+| Extensions | Contentless FTS3/FTS4 writes still throw `FTS3 and FTS4 writes are not implemented`. Contentful FTS3/FTS4 writes pass the pinned `integrity_check`. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI |
 | Platforms and release | Benchmarks at 100000 and 1000000 rows, a fresh desktop run for each new revision, Android, iOS, power-loss durability, and publication when requested. The current 10000-row file is `benchmark_results/scenarios_10k_linux_x64.json`. The recorded desktop pass is commit `7afaaba` in run 40538509306 |
 
 The production runtime stays Pure Dart. The planned browser work is a durable

@@ -329,7 +329,7 @@ void main() {
     expect(check.stdout.toString(), contains('ok'));
   });
 
-  test('native FTS4 reads parentheses and rejects writes', () async {
+  test('native FTS4 reads parentheses and accepts a later insert', () async {
     final cli = Platform.environment['SQLITE_PLUS_SQLITE3'] ??
         '/tmp/sqlite-build/sqlite3';
     if (!File(cli).existsSync()) {
@@ -353,11 +353,17 @@ void main() {
     final rows = await db.query(
         "SELECT title FROM t WHERE t MATCH '(hello AND world) OR missing'");
     expect(rows.rows.single.single, 'hello world');
-    final before = db.exportImage();
-    await expectLater(
-        db.execute("INSERT INTO t(title, body) VALUES('more', 'text')"),
-        throwsA(isA<SqlException>()));
-    expect(db.exportImage(), before);
+    await db.execute("INSERT INTO t(title, body) VALUES('more', 'text')");
+    final rewritten =
+        File('${Directory.systemTemp.path}/sqlite_plus_fts4_out.db');
+    await rewritten.writeAsBytes(db.exportImage(), flush: true);
+    final check = await Process.run(cli, [
+      rewritten.path,
+      "PRAGMA integrity_check; SELECT title FROM t WHERE t MATCH 'hello';"
+          " SELECT body FROM t WHERE t MATCH 'text';"
+    ]);
+    expect(check.exitCode, 0, reason: check.stderr.toString());
+    expect(check.stdout.toString().trim(), 'ok\nhello world\ntext');
   });
 }
 

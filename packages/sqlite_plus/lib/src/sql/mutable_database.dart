@@ -634,7 +634,8 @@ final class MutableSqliteDatabase {
         }
         return _transaction(parser);
       }
-      final route = routeMutation(sql, await _schemaCatalog());
+      final names = await _schemaCatalog();
+      final route = routeMutation(sql, names);
       if (route.kind == 'attach') {
         await _attach(route.name!, route.argument!);
         return const MutationResult(0, null);
@@ -678,10 +679,13 @@ final class MutableSqliteDatabase {
           schema == 'main' && _journal == null && !maintenance;
       final MutationImage result;
       try {
-        result = await state.execute(statementSql, statementParameters,
-            foreignKeys: _foreignKeys,
-            inTransaction: inTransaction,
-            recursiveTriggers: _recursiveTriggers);
+        result = route.kind == 'cross-write'
+            ? await _runCrossWrite(state, sql, schema, parameters, names,
+                foreignKeys: _foreignKeys, inTransaction: inTransaction)
+            : await state.execute(statementSql, statementParameters,
+                foreignKeys: _foreignKeys,
+                inTransaction: inTransaction,
+                recursiveTriggers: _recursiveTriggers);
       } on MutationFailure catch (failure) {
         if (failure.rollbackTransaction) {
           if (inTransaction) {
@@ -1326,6 +1330,87 @@ final class MutableSqliteDatabase {
         snapshot.logical);
   }
 
+  /// Copies foreign tables into [state], runs the write, then drops the copies.
+  /// `changes()` stays the write's own count.
+  Future<MutationImage> _runCrossWrite(ImageMutations state, String sql,
+      String schema, List<Object?> parameters, SchemaNames names,
+      {required bool foreignKeys, required bool inTransaction}) async {
+    final plan = planCrossWrite(sql, names, schema);
+    if (plan.copies.isEmpty) {
+      return state.execute(stripSchema(sql, schema), parameters,
+          foreignKeys: foreignKeys, inTransaction: inTransaction);
+    }
+    final counters = SqlFunctionRegistry.current?.connectionState;
+    final savedTotal = counters?.totalChanges ?? BigInt.zero;
+    final savedLast = counters?.lastInsertRowid ?? BigInt.zero;
+    for (final copy in plan.copies) {
+      await _installCrossCopy(state, copy);
+    }
+    final updated = await state.execute(plan.sql, parameters,
+        foreignKeys: foreignKeys, inTransaction: inTransaction);
+    var image = updated.image;
+    for (final copy in plan.copies.reversed) {
+      final dropped = await state.execute(
+          'DROP TABLE ${_sqlQuote(copy.helper)}', const [],
+          foreignKeys: foreignKeys, inTransaction: inTransaction);
+      image = dropped.image;
+    }
+    if (counters != null) {
+      counters.changes = BigInt.from(updated.changes);
+      counters.totalChanges = savedTotal + BigInt.from(updated.changes);
+      counters.lastInsertRowid = savedLast;
+    }
+    return MutationImage(
+        image, updated.changes, updated.lastRowid, updated.returning);
+  }
+
+  Future<void> _installCrossCopy(ImageMutations state, CrossCopy copy) async {
+    final quoted = _sqlQuote(copy.table);
+    final info = await _readImage(copy.schema, 'PRAGMA table_info($quoted)');
+    final definitions = <String>[];
+    var primaryKeys = 0;
+    var integerKey = false;
+    for (final row in info.rows) {
+      final name = row[1].toString();
+      final type = row[2]?.toString() ?? '';
+      final key = row[5];
+      final primary =
+          key is BigInt ? key != BigInt.zero : key is int && key != 0;
+      if (primary) {
+        primaryKeys++;
+        if (type.toUpperCase() == 'INTEGER') integerKey = true;
+      }
+      definitions.add('${_sqlQuote(name)} $type'.trim());
+    }
+    await state.execute(
+        'CREATE TABLE ${_sqlQuote(copy.helper)}(${definitions.join(',')})',
+        const []);
+    final alias = integerKey && primaryKeys == 1;
+    QueryResult data;
+    var withRowid = false;
+    if (!alias) {
+      try {
+        data = await _readImage(copy.schema, 'SELECT rowid, * FROM $quoted');
+        withRowid = data.columns.isNotEmpty &&
+            asciiLower(data.columns.first) == 'rowid';
+      } on SqlException {
+        data = await _readImage(copy.schema, 'SELECT * FROM $quoted');
+      }
+    } else {
+      data = await _readImage(copy.schema, 'SELECT * FROM $quoted');
+    }
+    if (data.rows.isEmpty) return;
+    final columnSql =
+        (withRowid ? data.columns.skip(1) : data.columns).map(_sqlQuote);
+    final marks = List.filled(data.columns.length, '?').join(',');
+    final into = withRowid
+        ? 'INSERT INTO ${_sqlQuote(copy.helper)}(rowid, ${columnSql.join(',')}) VALUES($marks)'
+        : 'INSERT INTO ${_sqlQuote(copy.helper)} VALUES($marks)';
+    for (final row in data.rows) {
+      await state.execute(into, row);
+    }
+  }
+
   /// Reads the other schemas, then returns an insert the target image can run.
   /// An empty source writes nothing.
   Future<({String sql, List<Object?> parameters})?> _prepareCrossInsert(
@@ -1355,6 +1440,8 @@ final class MutableSqliteDatabase {
       ],
     );
   }
+
+  String _sqlQuote(String name) => '"${name.replaceAll('"', '""')}"';
 
   bool _endsWithSpace(String text) {
     if (text.isEmpty) return false;

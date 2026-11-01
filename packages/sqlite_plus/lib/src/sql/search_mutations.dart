@@ -160,6 +160,7 @@ extension _SearchMutations on ImageMutations {
         if (!update) continue;
         final texts = [...doc.texts];
         final row = _ftsRow(spec, doc);
+        var id = doc.id;
         for (final assignment in assignments) {
           final key = asciiLower(assignment.$1);
           if (key == asciiLower(spec.table)) {
@@ -167,14 +168,19 @@ extension _SearchMutations on ImageMutations {
           }
           final index = spec.visibleNames
               .indexWhere((column) => asciiLower(column) == key);
-          if (index < 0 && !['rowid', '_rowid_', 'oid'].contains(key)) {
+          final rowidKey = _ftsRowidName(spec, key);
+          if (index < 0 && !rowidKey) {
             throw SqlException('no such column: ${assignment.$1}');
           }
           final value = assignment.$2.evaluate(
               EvalContext(row, const <String, String>{}, parameters, encoding));
-          if (index >= 0) texts[index] = _searchText(value);
+          if (rowidKey) {
+            id = _rowidValue(value);
+          } else if (index >= 0) {
+            texts[index] = _searchText(value);
+          }
         }
-        kept.add(_SearchDoc(doc.id, texts, _tokens(spec, texts)));
+        kept.add(_SearchDoc(id, texts, _tokens(spec, texts)));
       }
       docs
         ..clear()
@@ -191,17 +197,19 @@ extension _SearchMutations on ImageMutations {
 
   Future<void> _installFts3(VirtualTableDeclaration declaration) async {
     final spec = fts3Spec(declaration.name, declaration.arguments);
-    final columns =
-        [for (var i = 0; i < spec.columns.length; i++) 'c$i'].join(', ');
+    final columns = [
+      for (var i = 0; i < spec.columns.length; i++)
+        _q(fts3ContentColumn(i, spec.columns[i].name))
+    ].join(', ');
     final table = spec.table;
     await execute(
-        'CREATE TABLE ${_q('${table}_content')}(id INTEGER PRIMARY KEY, $columns)',
+        'CREATE TABLE ${_q('${table}_content')}(docid INTEGER PRIMARY KEY, $columns)',
         const []);
     await execute(
         'CREATE TABLE ${_q('${table}_segments')}(blockid INTEGER PRIMARY KEY, block BLOB)',
         const []);
     await execute(
-        'CREATE TABLE ${_q('${table}_segdir')}(level INTEGER, idx INTEGER, start_block INTEGER, leaves_end_block INTEGER, end_block INTEGER, root BLOB, PRIMARY KEY(level, idx)) WITHOUT ROWID',
+        'CREATE TABLE ${_q('${table}_segdir')}(level INTEGER, idx INTEGER, start_block INTEGER, leaves_end_block INTEGER, end_block INTEGER, root BLOB, PRIMARY KEY(level, idx))',
         const []);
     if (asciiLower(declaration.module) == 'fts4') {
       await execute(
@@ -217,11 +225,15 @@ extension _SearchMutations on ImageMutations {
     final content = _tables[asciiLower('${spec.table}_content')];
     if (content == null) return false;
     final names = [for (final column in content.schema.columns) column.name];
-    if (names.isEmpty || names.first != 'id') return false;
     if (names.length != spec.columns.length + 1) return false;
+    if (asciiLower(names.first) != 'docid') return false;
     for (var i = 0; i < spec.columns.length; i++) {
-      if (names[i + 1] != 'c$i') return false;
+      if (names[i + 1] != fts3ContentColumn(i, spec.columns[i].name)) {
+        return false;
+      }
     }
+    if (_tables[asciiLower('${spec.table}_segments')] == null) return false;
+    if (_tables[asciiLower('${spec.table}_segdir')] == null) return false;
     return true;
   }
 
@@ -231,9 +243,94 @@ extension _SearchMutations on ImageMutations {
       for (final doc in ordered)
         (
           doc.id,
-          {for (var i = 0; i < doc.texts.length; i++) 'c$i': doc.texts[i]}
+          {
+            for (var i = 0; i < spec.columns.length; i++)
+              fts3ContentColumn(i, spec.columns[i].name):
+                  i < doc.texts.length ? doc.texts[i] : null
+          }
         )
     ]);
+    final terms = <String, Uint8List>{};
+    final hits = <String, List<Fts3Hit>>{};
+    final columnTokens = List<int>.filled(spec.columns.length, 0);
+    var textBytes = 0;
+    for (final doc in ordered) {
+      for (var column = 0; column < spec.columns.length; column++) {
+        final text = column < doc.texts.length ? doc.texts[column] : null;
+        if (text != null && text.isNotEmpty) {
+          textBytes += utf8.encode(text).length;
+        }
+        final tokens = column < doc.tokens.length
+            ? doc.tokens[column]
+            : const <FtsToken>[];
+        if (spec.columns[column].unindexed) continue;
+        columnTokens[column] += tokens.length;
+        for (var position = 0; position < tokens.length; position++) {
+          final bytes = fts3TermBytes(tokens[position].text);
+          final key = String.fromCharCodes(bytes);
+          terms[key] = bytes;
+          (hits[key] ??= []).add(Fts3Hit(doc.id, column, position));
+        }
+      }
+    }
+    _replace('${spec.table}_segments', const []);
+    final keys = terms.keys.toList()
+      ..sort((left, right) => _compareTermBytes(terms[left]!, terms[right]!));
+    if (keys.isEmpty) {
+      _replace('${spec.table}_segdir', const []);
+    } else {
+      final leaf = fts3RootLeaf(
+          [for (final key in keys) Fts3Term(terms[key]!, hits[key]!)]);
+      _replace('${spec.table}_segdir', [
+        (
+          BigInt.one,
+          {
+            'level': BigInt.zero,
+            'idx': BigInt.zero,
+            'start_block': BigInt.zero,
+            'leaves_end_block': BigInt.zero,
+            'end_block': '0 ${leaf.length}',
+            'root': leaf,
+          }
+        )
+      ]);
+    }
+    if (_tables.containsKey(asciiLower('${spec.table}_docsize'))) {
+      _replace('${spec.table}_docsize', [
+        for (final doc in ordered)
+          (
+            doc.id,
+            {
+              'size': fts3EncodeVarints([
+                for (var column = 0; column < spec.columns.length; column++)
+                  spec.columns[column].unindexed || column >= doc.tokens.length
+                      ? 0
+                      : doc.tokens[column].length
+              ])
+            }
+          )
+      ]);
+      _replace('${spec.table}_stat', [
+        (
+          BigInt.zero,
+          {
+            'value': fts3EncodeVarints([
+              ordered.length,
+              ...columnTokens,
+              textBytes,
+            ])
+          }
+        )
+      ]);
+    }
+  }
+
+  int _compareTermBytes(Uint8List left, Uint8List right) {
+    final limit = left.length < right.length ? left.length : right.length;
+    for (var i = 0; i < limit; i++) {
+      if (left[i] != right[i]) return left[i] - right[i];
+    }
+    return left.length - right.length;
   }
 
   Future<MutationImage> _writeFts5(SqlParser parser,
@@ -706,7 +803,7 @@ extension _SearchMutations on ImageMutations {
         final key = asciiLower(columns[i]);
         final value = tuple[i].evaluate(EvalContext(const <String, Object?>{},
             const <String, String>{}, parameters, encoding));
-        if (['rowid', '_rowid_', 'oid'].contains(key)) {
+        if (_ftsRowidName(spec, key)) {
           id = _rowidValue(value);
           continue;
         }
@@ -773,10 +870,16 @@ extension _SearchMutations on ImageMutations {
         true;
   }
 
+  bool _ftsRowidName(Fts5Spec spec, String key) =>
+      ['rowid', '_rowid_', 'oid', asciiLower(spec.contentRowid)].contains(key);
+
   Map<String, Object?> _ftsRow(Fts5Spec spec, _SearchDoc doc) => {
         'rowid': doc.id,
         '_rowid_': doc.id,
         'oid': doc.id,
+        if (!['rowid', '_rowid_', 'oid']
+            .contains(asciiLower(spec.contentRowid)))
+          asciiLower(spec.contentRowid): doc.id,
         for (var i = 0; i < spec.visibleNames.length; i++)
           asciiLower(spec.visibleNames[i]): doc.texts[i],
         asciiLower(spec.table): null,

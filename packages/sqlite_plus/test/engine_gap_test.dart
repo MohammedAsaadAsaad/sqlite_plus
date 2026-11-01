@@ -150,8 +150,7 @@ void main() {
         throwsA(isA<SqlException>()));
   });
 
-  test(
-      'qualified names resolve conflicts and one statement stays in one schema',
+  test('qualified names resolve conflicts and a temp update writes main',
       () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
@@ -170,10 +169,15 @@ void main() {
         [
           ['main', 'temp']
         ]);
-    await expectLater(db.execute("UPDATE main.t SET v=(SELECT v FROM temp.t)"),
-        throwsA(isA<SqlException>()));
+    expect(
+        (await db.execute("UPDATE main.t SET v=(SELECT v FROM temp.t)"))
+            .changes,
+        1);
     expect((await db.query('SELECT v FROM main.t')).rows, [
-      ['main']
+      ['temp']
+    ]);
+    expect((await db.query('SELECT v FROM temp.t')).rows, [
+      ['temp']
     ]);
   });
 

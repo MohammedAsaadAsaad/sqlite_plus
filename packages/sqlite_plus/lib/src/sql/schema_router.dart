@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'expressions.dart';
 import 'parser.dart';
 import 'tokenizer.dart';
@@ -84,12 +86,23 @@ StatementRoute routeMutation(String sql, SchemaNames names) {
   }
   final target = _mutationTarget(cursor, names);
   if (_referencesOtherSchema(sql, target.schema, names)) {
-    if (insertSelectParts(sql) == null) {
-      throw const SqlException('cross-database statement is not supported');
+    if (insertSelectParts(sql) != null) {
+      return StatementRoute('cross-insert', target.sql, schema: target.schema);
     }
-    return StatementRoute('cross-insert', target.sql, schema: target.schema);
+    if (_isUpdateOrDelete(sql)) {
+      return StatementRoute('cross-write', sql, schema: target.schema);
+    }
+    throw const SqlException('cross-database statement is not supported');
   }
   return StatementRoute('single', target.sql, schema: target.schema);
+}
+
+bool _isUpdateOrDelete(String sql) {
+  final cursor = _Cursor(sql);
+  _skipWith(cursor);
+  if (cursor.take('UPDATE')) return true;
+  if (!cursor.take('DELETE')) return false;
+  return true;
 }
 
 /// The pieces of an `INSERT ... SELECT`. Null for any other statement.
@@ -368,7 +381,7 @@ _Target _mutationTarget(_Cursor cursor, SchemaNames names) {
 }
 
 _Target _tableTarget(_Cursor cursor, SchemaNames names) {
-  final named = _qualified(cursor, names);
+  final named = _qualified(cursor, names, dml: true);
   final schema = named.schema ?? names.tableSchema(named.name.text) ?? 'main';
   return _Target(schema, imageSql(cursor.sql, schema));
 }
@@ -447,11 +460,16 @@ _Target _drop(_Cursor cursor, SchemaNames names) {
 }
 
 ({String? schema, SqlToken name, SqlToken? schemaToken}) _qualified(
-    _Cursor cursor, SchemaNames names) {
+    _Cursor cursor, SchemaNames names,
+    {bool dml = false}) {
   final first = cursor.identifier();
   if (!cursor.take('.')) return (schema: null, name: first, schemaToken: null);
   final schema = asciiLower(first.text);
   if (!names.order.contains(schema)) {
+    if (dml) {
+      final table = cursor.identifier();
+      throw SqlException('no such table: ${first.text}.${table.text}');
+    }
     throw SqlException('Unknown database: ${first.text}');
   }
   return (schema: schema, name: cursor.identifier(), schemaToken: first);
@@ -516,6 +534,331 @@ bool _referencesOtherSchema(String sql, String target, SchemaNames names) {
     }
   }
   return false;
+}
+
+/// One foreign table copied into the target schema for a cross-schema write.
+final class CrossCopy {
+  CrossCopy(this.schema, this.table, this.helper);
+  final String schema;
+  final String table;
+  final String helper;
+}
+
+/// An `UPDATE` or `DELETE` rewritten so the target image can run it.
+final class CrossWritePlan {
+  CrossWritePlan(this.sql, this.copies);
+  final String sql;
+  final List<CrossCopy> copies;
+}
+
+/// Copies every foreign table the statement reads and rewrites those names
+/// when the target schema already uses them.
+CrossWritePlan planCrossWrite(
+    String sql, SchemaNames names, String targetSchema) {
+  return runZoned(() => _planCrossWrite(sql, names, targetSchema), zoneValues: {
+    schemaNamesKey: {for (final name in names.order) name}
+  });
+}
+
+CrossWritePlan _planCrossWrite(
+    String sql, SchemaNames names, String targetSchema) {
+  final parser = SqlParser(sql);
+  final leadingCtes = <(String, SelectStatement)>[];
+  if (parser.take('WITH')) {
+    parser.take('RECURSIVE');
+    do {
+      final name = parser.identifier();
+      if (parser.take('(')) {
+        do {
+          parser.identifier();
+        } while (parser.take(','));
+        parser.require(')');
+      }
+      parser.require('AS');
+      if (parser.take('NOT')) parser.require('MATERIALIZED');
+      parser.take('MATERIALIZED');
+      parser.require('(');
+      leadingCtes.add((name, parser.select(nested: true)));
+      parser.require(')');
+    } while (parser.take(','));
+  }
+  final update = parser.take('UPDATE');
+  if (!update) {
+    parser.require('DELETE');
+    parser.require('FROM');
+  }
+  if (update && parser.take('OR')) parser.identifier();
+  var targetName = parser.identifier();
+  if (parser.take('.')) targetName = parser.identifier();
+  if (parser.take('AS')) parser.identifier();
+  if (parser.take('INDEXED')) {
+    parser.require('BY');
+    parser.identifier();
+  } else if (parser.take('NOT')) {
+    parser.require('INDEXED');
+  }
+  final owned = <Expr>[];
+  final from = <QuerySource>[];
+  if (update) {
+    parser.require('SET');
+    do {
+      if (parser.take('(')) {
+        var depth = 1;
+        while (depth > 0) {
+          if (parser.current.kind == SqlTokenKind.end) {
+            throw const SqlException('Expected )');
+          }
+          if (parser.current.text == '(') {
+            depth++;
+          } else if (parser.current.text == ')') {
+            depth--;
+          }
+          parser.position++;
+        }
+      } else {
+        parser.identifier();
+      }
+      parser.require('=');
+      owned.add(parser.expression());
+    } while (parser.take(','));
+    if (parser.take('FROM')) from.addAll(parser.joinedSources());
+  }
+  if (parser.take('WHERE')) owned.add(parser.expression());
+  if (parser.take('RETURNING')) {
+    do {
+      if (parser.take('*')) continue;
+      owned.add(parser.expression());
+    } while (parser.take(','));
+  }
+  final hits = <_ForeignUse>[];
+  final qualified = <_QualifiedColumn>[];
+  final seenCtes = <String>{};
+  for (final cte in leadingCtes) {
+    _walkSelect(cte.$2, seenCtes, names, targetSchema, hits, qualified);
+    seenCtes.add(asciiLower(cte.$1));
+  }
+  final scope = {...seenCtes};
+  for (final source in from) {
+    _walkSource(source, scope, names, targetSchema, hits, qualified);
+  }
+  for (final expr in owned) {
+    _walkExpr(expr, scope, names, targetSchema, hits, qualified);
+  }
+  final groups = <String, List<_ForeignUse>>{};
+  for (final hit in hits) {
+    groups
+        .putIfAbsent('${hit.schema}.${asciiLower(hit.table)}', () => [])
+        .add(hit);
+  }
+  final occupied = <String>{
+    ...?names.tables[targetSchema],
+    asciiLower(targetName),
+  };
+  final copies = <CrossCopy>[];
+  for (final group in groups.values) {
+    final sample = group.first;
+    final preferred = asciiLower(sample.table);
+    final String helper;
+    if (occupied.add(preferred)) {
+      helper = sample.table;
+    } else {
+      helper = _freshHelper(sample.schema, sample.table, occupied);
+    }
+    copies.add(CrossCopy(sample.schema, sample.table, helper));
+    for (final hit in group) {
+      hit.helper = helper;
+    }
+  }
+  final tokens = SqlTokenizer.tokenize(sql);
+  final edits = <(int, int, String)>[];
+  for (final hit in hits) {
+    if (asciiLower(hit.helper) == asciiLower(hit.table)) continue;
+    final index = _tokenIndexAt(tokens, hit.offset);
+    final start = index >= 2 && tokens[index - 1].text == '.'
+        ? tokens[index - 2].offset
+        : hit.offset;
+    final end = _tokenEnd(sql, tokens, index);
+    final quoted = _quoteIdent(hit.helper);
+    final replacement =
+        hit.alias == null ? '$quoted AS ${_quoteIdent(hit.table)}' : quoted;
+    edits.add((start, end, replacement));
+  }
+  for (final column in qualified) {
+    final helper = _helperFor(hits, column.schema, column.table);
+    if (helper == null || asciiLower(helper) == asciiLower(column.table)) {
+      continue;
+    }
+    final index = _tokenIndexAt(tokens, column.tableOffset);
+    final start = index >= 2 && tokens[index - 1].text == '.'
+        ? tokens[index - 2].offset
+        : column.tableOffset;
+    edits.add((start, column.columnOffset, '${_quoteIdent(helper)}.'));
+  }
+  for (var i = 0; i + 2 < tokens.length; i++) {
+    final token = tokens[i];
+    if (token.kind != SqlTokenKind.identifier ||
+        asciiLower(token.text) != targetSchema ||
+        tokens[i + 1].text != '.' ||
+        tokens[i + 2].kind != SqlTokenKind.identifier) {
+      continue;
+    }
+    edits.add((token.offset, tokens[i + 2].offset, ''));
+  }
+  return CrossWritePlan(_splice(sql, edits), copies);
+}
+
+String _freshHelper(String schema, String table, Set<String> occupied) {
+  var name = '__cross_${schema}_$table';
+  var suffix = 2;
+  while (!occupied.add(asciiLower(name))) {
+    name = '__cross_${schema}_${table}_$suffix';
+    suffix++;
+  }
+  return name;
+}
+
+String? _helperFor(List<_ForeignUse> hits, String schema, String table) {
+  for (final hit in hits) {
+    if (hit.schema == schema && asciiLower(hit.table) == asciiLower(table)) {
+      return hit.helper;
+    }
+  }
+  return null;
+}
+
+void _walkSelect(
+    SelectStatement statement,
+    Set<String> outerCtes,
+    SchemaNames names,
+    String targetSchema,
+    List<_ForeignUse> hits,
+    List<_QualifiedColumn> qualified) {
+  final scope = {...outerCtes, ...statement.ctes.keys};
+  for (final source in statement.sources) {
+    _walkSource(source, scope, names, targetSchema, hits, qualified);
+  }
+  void walk(Expr? expr) {
+    if (expr != null) {
+      _walkExpr(expr, scope, names, targetSchema, hits, qualified);
+    }
+  }
+
+  for (final item in statement.items) {
+    walk(item.expression);
+  }
+  walk(statement.where);
+  walk(statement.having);
+  for (final term in statement.groupBy) {
+    walk(term);
+  }
+  for (final term in statement.order) {
+    walk(term.expression);
+  }
+  walk(statement.limit);
+  walk(statement.offset);
+  var previous = outerCtes;
+  for (final cte in statement.ctes.entries) {
+    _walkSelect(cte.value.$2, previous, names, targetSchema, hits, qualified);
+    previous = {...previous, cte.key};
+  }
+  for (final part in statement.compounds) {
+    _walkSelect(part.$2, outerCtes, names, targetSchema, hits, qualified);
+  }
+}
+
+void _walkSource(
+    QuerySource source,
+    Set<String> ctes,
+    SchemaNames names,
+    String targetSchema,
+    List<_ForeignUse> hits,
+    List<_QualifiedColumn> qualified) {
+  if (source.query != null) {
+    _walkSelect(source.query!, ctes, names, targetSchema, hits, qualified);
+  }
+  for (final child in source.group) {
+    _walkSource(child, ctes, names, targetSchema, hits, qualified);
+  }
+  if (source.on != null) {
+    _walkExpr(source.on!, ctes, names, targetSchema, hits, qualified);
+  }
+  final table = source.table;
+  final offset = source.tableOffset;
+  if (table == null || offset == null) return;
+  final key = asciiLower(table);
+  if (source.schema == null &&
+      (ctes.contains(key) || pragmaTableColumns.containsKey(key))) {
+    return;
+  }
+  final schema = source.schema ?? names.tableSchema(table);
+  if (schema == null || schema == targetSchema) return;
+  if (names.tables[schema]?.contains(key) != true) return;
+  hits.add(_ForeignUse(schema, table, offset, source.alias));
+}
+
+void _walkExpr(
+    Expr expr,
+    Set<String> ctes,
+    SchemaNames names,
+    String targetSchema,
+    List<_ForeignUse> hits,
+    List<_QualifiedColumn> qualified) {
+  if (expr is SubqueryExpr) {
+    _walkSelect(expr.statement, ctes, names, targetSchema, hits, qualified);
+  } else if (expr is InSelectExpr) {
+    _walkSelect(expr.statement, ctes, names, targetSchema, hits, qualified);
+  } else if (expr is ColumnExpr && expr.qualifier != null) {
+    final parts = expr.qualifier!.split('.');
+    if (parts.length == 2 && expr.columnOffset != null) {
+      qualified.add(_QualifiedColumn(
+          asciiLower(parts[0]), parts[1], expr.offset!, expr.columnOffset!));
+    }
+  }
+  for (final child in expr.children) {
+    _walkExpr(child, ctes, names, targetSchema, hits, qualified);
+  }
+}
+
+int _tokenIndexAt(List<SqlToken> tokens, int offset) {
+  final index = tokens.indexWhere((token) => token.offset == offset);
+  if (index < 0) {
+    throw const SqlException('cross-database statement is not supported');
+  }
+  return index;
+}
+
+int _tokenEnd(String sql, List<SqlToken> tokens, int index) {
+  final token = tokens[index];
+  if (!token.quoted) return token.offset + token.text.length;
+  final next =
+      index + 1 < tokens.length ? tokens[index + 1].offset : sql.length;
+  var end = next;
+  while (end > token.offset) {
+    final unit = sql.codeUnitAt(end - 1);
+    if (unit != 9 && unit != 10 && unit != 13 && unit != 32) break;
+    end--;
+  }
+  return end;
+}
+
+String _quoteIdent(String name) => '"${name.replaceAll('"', '""')}"';
+
+final class _ForeignUse {
+  _ForeignUse(this.schema, this.table, this.offset, this.alias);
+  final String schema;
+  final String table;
+  final int offset;
+  final String? alias;
+  String helper = '';
+}
+
+final class _QualifiedColumn {
+  _QualifiedColumn(
+      this.schema, this.table, this.tableOffset, this.columnOffset);
+  final String schema;
+  final String table;
+  final int tableOffset;
+  final int columnOffset;
 }
 
 final class _Cursor {
