@@ -1775,8 +1775,16 @@ result=pass
 - The pinned CLI creates `fts4(body)`, inserts `hello world`, and `MATCH 'hello'` returns `hello world`. `fts3` returns `hello`. An empty insert leaves one row. `DELETE ... MATCH 'hello'` leaves zero rows. `SELECT` from a missing table is `no such table: missing` on the CLI.
 - This engine rejects `CREATE VIRTUAL TABLE ... USING fts3` and `fts4` with `FTS3 and FTS4 writes are not implemented`. The table is not created. An FTS5 `INSERT` of `kept` still matches. `db_browser_b3_fts34_test.dart` records the comparison.
 - That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
-- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed COUNT tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10669 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The FTS3/FTS4 write sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 FTS5 porter, trigram, detail, tokendata, and locale stay open
+
+- Porter `MATCH 'run'` returns `running` on the pinned CLI. Trigram `MATCH 'bcd'` returns `abcdef`, and `MATCH 'zz'` returns `0`. `detail=none` returns `hello`. `tokendata=1` and `locale=1` create successfully and return an empty result. An unknown tokenizer is `no such tokenizer: nope` on the CLI.
+- This engine says `no such tokenizer: porter`, `no such tokenizer: trigram`, and `fts5 option is not implemented` for `detail`, `tokendata`, and `locale`. A 2000-token `unicode61` insert returns the same `length(body)` on both. The FTS5 leaf pages were not compared, so multi-page leaves stay open. An ordinary FTS5 insert of `kept` still matches. `db_browser_b3_fts5_test.dart` records the comparison.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed COUNT tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- This sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
 ## 2026-10-31 — Version 0.1.2
 
