@@ -13,8 +13,10 @@ import '../storage/durable_storage_backend.dart';
 /// and syncs that redo log once. The database file is written when the log
 /// passes [checkpointBytes] or the pager closes. Restart applies the redo,
 /// so a commit is durable before those database bytes are on disk. Durability
-/// depends on [DurableStorageBackend]. No WAL, locks, concurrent readers, or
-/// multi-database transactions are provided. The redo magic is not an official
+/// depends on [DurableStorageBackend]. No WAL, locks, or concurrent readers
+/// are provided. A normal [commitImage] syncs one redo. A multi-database
+/// commit instead stages a pending redo that SchemaCommit applies only after
+/// its own commit record is durable. The redo magic is not an official
 /// SQLite journal header.
 final class RollbackJournalPager implements ImagePager {
   RollbackJournalPager._(this._database, this._journal, this.pageSize,
@@ -31,6 +33,7 @@ final class RollbackJournalPager implements ImagePager {
   int _chain = 0;
   int _salt = 0;
   bool _redoOpen = false;
+  bool _pending = false;
   final List<_Addend> _addends = [];
   static const checkpointBytes = 16 * 1024 * 1024;
   static const _magic = [0x53, 0x51, 0x52, 0x45, 0x44, 0x4f, 0x02, 0x00];
@@ -77,61 +80,140 @@ final class RollbackJournalPager implements ImagePager {
   /// until checkpoint. On any I/O failure this instance is poisoned; reopen
   /// to recover.
   @override
-  Future<void> commitImage(Uint8List image) => _exclusive(() async {
-        if (image.length > maxImageBytes) {
-          throw const FormatException('Image limit exceeded');
-        }
-        final header = DatabaseHeader.decode(image);
-        header.validateFileLength(image.length);
-        if (header.pageSize != pageSize ||
-            header.readVersion != 1 ||
-            header.writeVersion != 1 ||
-            !header.hasValidDatabaseSize ||
-            header.databaseSize * pageSize != image.length) {
-          throw const FormatException('Invalid replacement database image');
-        }
-        if (_addends.isNotEmpty) await _checkpoint();
-        final original = _cached;
-        final oldPages = original.length ~/ pageSize;
-        final nextPages = image.length ~/ pageSize;
-        final pages = <int>[];
-        final bodies = <Uint8List>[];
-        final limit = oldPages < nextPages ? oldPages : nextPages;
-        for (var page = 1; page <= limit; page++) {
-          final body = _extent(original, image, page);
-          if (body == null) continue;
-          pages.add(page);
-          bodies.add(body);
-        }
-        for (var page = oldPages + 1; page <= nextPages; page++) {
-          pages.add(page);
-          bodies.add(_fullPage(image, page));
-        }
-        if (pages.isEmpty) {
-          if (image.length == original.length) {
-            _cached = image;
-            return;
-          }
-          // A shrink or grow with no changed overlapping bytes still has to
-          // record the new page count on a frame.
-          final page = nextPages < 1 ? 1 : nextPages;
-          pages.add(page);
-          bodies.add(_fullPage(image, page));
-        }
+  Future<void> commitImage(Uint8List image) =>
+      _exclusive(() => _writeImage(image, pending: false));
+
+  /// Syncs a redo that recovery ignores until [SchemaCommit] says committed.
+  Future<StagedRedo> stageImage(Uint8List image) => _exclusive(() async {
+        if (_pending) throw StateError('Staged redo already open');
+        if (_redoOpen) await _checkpoint();
+        await _writeImage(image, pending: true);
+        return StagedRedo(_salt, _redoEnd);
+      });
+
+  /// Writes the staged image to the database and drops the pending redo.
+  /// Call this only after the schema-commit record is durable.
+  Future<void> finishStaged() => _exclusive(() async {
+        if (!_pending) return;
         try {
-          final record = _encode(pages, bodies, nextPages);
-          await _append(record.bytes);
-          _salt = record.salt;
-          _chain = record.chain;
-          _redoEnd = record.end;
-          _redoOpen = true;
-          _cached = image;
-          if (_redoEnd > checkpointBytes) await _checkpoint();
+          await _checkpoint();
+          _pending = false;
         } catch (_) {
           _failed = true;
           rethrow;
         }
       });
+
+  /// Keeps the pending journal for recovery and refuses a later checkpoint.
+  void abandonStaged() {
+    _failed = true;
+  }
+
+  /// Applies or drops one pending redo. A normal redo is left untouched.
+  static Future<void> recoverStaged(
+      DurableStorageBackend database, DurableStorageBackend journal,
+      {int? applySalt,
+      int? applyEnd,
+      int maxImageBytes = 64 * 1024 * 1024}) async {
+    final length = await journal.length();
+    if (length == 0) return;
+    final log = await _all(journal, maxImageBytes);
+    if (log.every((byte) => byte == 0)) return;
+    if (log.length < _headerBytes || !_magicMatches(log) || log[20] != 1) {
+      return;
+    }
+    final fields = ByteData.sublistView(log);
+    final salt = fields.getUint32(12);
+    if (fields.getUint32(16) != _headerSum(log, salt)) return;
+    if (applySalt != null) {
+      if (salt != applySalt || log.length != applyEnd) {
+        throw const FormatException(
+            'Schema commit does not match the staged redo');
+      }
+      final replay = _decodeRedo(log);
+      if (replay == null) {
+        throw const FormatException(
+            'Schema commit does not match the staged redo');
+      }
+      final current = await _all(database, maxImageBytes);
+      final restored = _applyReplay(current, replay);
+      final header = DatabaseHeader.decode(restored);
+      if (header.pageSize != replay.pageSize) {
+        throw const FormatException('Redo page size mismatch');
+      }
+      header.validateFileLength(restored.length);
+      await database.write(0, restored);
+      await database.truncate(restored.length);
+      await database.sync();
+    }
+    await journal.truncate(0);
+    await journal.sync();
+  }
+
+  Future<void> _writeImage(Uint8List image, {required bool pending}) async {
+    if (_pending && !pending) {
+      throw StateError('Staged redo already open');
+    }
+    if (pending && _redoOpen) {
+      throw StateError('Pending redo needs a new journal header');
+    }
+    if (image.length > maxImageBytes) {
+      throw const FormatException('Image limit exceeded');
+    }
+    final header = DatabaseHeader.decode(image);
+    header.validateFileLength(image.length);
+    if (header.pageSize != pageSize ||
+        header.readVersion != 1 ||
+        header.writeVersion != 1 ||
+        !header.hasValidDatabaseSize ||
+        header.databaseSize * pageSize != image.length) {
+      throw const FormatException('Invalid replacement database image');
+    }
+    if (_addends.isNotEmpty) await _checkpoint();
+    final original = _cached;
+    final oldPages = original.length ~/ pageSize;
+    final nextPages = image.length ~/ pageSize;
+    final pages = <int>[];
+    final bodies = <Uint8List>[];
+    final limit = oldPages < nextPages ? oldPages : nextPages;
+    for (var page = 1; page <= limit; page++) {
+      final body = _extent(original, image, page);
+      if (body == null) continue;
+      pages.add(page);
+      bodies.add(body);
+    }
+    for (var page = oldPages + 1; page <= nextPages; page++) {
+      pages.add(page);
+      bodies.add(_fullPage(image, page));
+    }
+    if (pages.isEmpty) {
+      if (image.length == original.length) {
+        _cached = image;
+        if (pending) throw StateError('Staged image is unchanged');
+        return;
+      }
+      // A shrink or grow with no changed overlapping bytes still has to
+      // record the new page count on a frame.
+      final page = nextPages < 1 ? 1 : nextPages;
+      pages.add(page);
+      bodies.add(_fullPage(image, page));
+    }
+    if (pending) _pending = true;
+    try {
+      final record = _encode(pages, bodies, nextPages, pending: pending);
+      await _append(record.bytes);
+      _salt = record.salt;
+      _chain = record.chain;
+      _redoEnd = record.end;
+      _redoOpen = true;
+      _cached = image;
+      // A pending redo stays off the database file until finishStaged.
+      if (!pending && _redoEnd > checkpointBytes) await _checkpoint();
+    } catch (_) {
+      _failed = true;
+      rethrow;
+    }
+  }
 
   /// Records an integer-column addend without rewriting the leaves.
   ///
@@ -224,7 +306,8 @@ final class RollbackJournalPager implements ImagePager {
     return body;
   }
 
-  _RedoRecord _encode(List<int> pages, List<Uint8List> bodies, int pageCount) {
+  _RedoRecord _encode(List<int> pages, List<Uint8List> bodies, int pageCount,
+      {bool pending = false}) {
     final header = _redoOpen ? 0 : _headerBytes;
     var total = header;
     for (final body in bodies) {
@@ -236,6 +319,7 @@ final class RollbackJournalPager implements ImagePager {
     if (!_redoOpen) {
       salt = Random().nextInt(0x3fffffff) + 1;
       bytes.setRange(0, 8, _magic);
+      if (pending) bytes[20] = 1;
       final fields = ByteData.sublistView(bytes);
       fields.setUint32(8, pageSize);
       fields.setUint32(12, salt);
@@ -301,6 +385,14 @@ final class RollbackJournalPager implements ImagePager {
   DirectDurableIO? _direct(DurableStorageBackend storage) =>
       storage is DirectDurableIO ? storage as DirectDurableIO : null;
 
+  static bool _magicMatches(Uint8List log) {
+    if (log.length < 8) return false;
+    for (var i = 0; i < 8; i++) {
+      if (log[i] != _magic[i]) return false;
+    }
+    return true;
+  }
+
   static int _headerSum(Uint8List bytes, int salt) =>
       _mix(_mix(salt, bytes, 0, 16), bytes, 20, _headerBytes);
 
@@ -318,6 +410,13 @@ final class RollbackJournalPager implements ImagePager {
     if (length == 0) return;
     final log = await _all(journal, maxImageBytes);
     if (log.every((byte) => byte == 0)) return;
+    if (log.length >= _headerBytes && _magicMatches(log) && log[20] == 1) {
+      final fields = ByteData.sublistView(log);
+      final salt = fields.getUint32(12);
+      if (fields.getUint32(16) == _headerSum(log, salt)) {
+        throw StateError('Staged redo requires schema-commit recovery');
+      }
+    }
     final replay = _decodeRedo(log);
     if (replay == null) return;
     final current = await _all(database, maxImageBytes);
@@ -494,7 +593,7 @@ final class RollbackJournalPager implements ImagePager {
     if (_busy) throw StateError('Pager operation in progress');
     if (_closed) return;
     try {
-      if (!_failed && _redoOpen) await _checkpoint();
+      if (!_failed && _redoOpen && !_pending) await _checkpoint();
     } finally {
       _closed = true;
       try {
@@ -504,6 +603,13 @@ final class RollbackJournalPager implements ImagePager {
       }
     }
   }
+}
+
+/// Salt and length of one pending redo.
+final class StagedRedo {
+  StagedRedo(this.salt, this.end);
+  final int salt;
+  final int end;
 }
 
 final class _RedoRecord {

@@ -444,8 +444,7 @@ The current baseline and the planned follow-up are in
 objects, one attached database, the connection pragmas named in the matrix,
 one custom collation, this engine's EXPLAIN QUERY PLAN text, a bounded join
 reorder, covering-index reads, and incremental page writes for the tested
-shapes. `EXPLAIN SELECT 1` matches the pinned opcode rows. Planned next are EXPLAIN bytecode beyond a literal projection, STAT4, incremental auto-vacuum page movement, and a
-durable cross-database write. Items 77–82 add `openBrowserStorage` and
+shapes. `EXPLAIN SELECT 1` matches the pinned opcode rows. `INSERT INTO aux.u SELECT v FROM t` commits across the attached database, and a crash between the two rollback journals leaves both files old or both new. Planned next are EXPLAIN bytecode beyond a literal projection, STAT4, and incremental auto-vacuum page movement. Items 77–82 add `openBrowserStorage` and
 `BrowserDatabaseConnection`. The caller reads `canRead`, `canWrite`,
 `durabilityPromised`, and `placement`. The current round trip uses an
 in-process `MemoryBrowserByteStore`: close, then open, returns the row. A

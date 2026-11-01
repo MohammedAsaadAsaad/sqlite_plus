@@ -98,14 +98,9 @@ CASES = [
     },
     {
         "id": "cross-insert",
-        "disposition": "rejected",
         "kind": "execute",
         "setup": "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v)",
         "sql": "INSERT INTO aux.u SELECT v FROM t",
-        "reason": "One statement cannot mutate two schemas. The insert is rejected, so aux.u stays empty.",
-        "engine_message": "cross-database statement is not supported",
-        "unchanged_sql": "SELECT count(*) FROM aux.u",
-        "unchanged_rows": [[{"integer": "0"}]],
     },
     {
         "id": "journal-mode-read",

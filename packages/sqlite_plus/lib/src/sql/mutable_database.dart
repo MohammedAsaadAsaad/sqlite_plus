@@ -6,6 +6,8 @@ import '../format/database_header.dart';
 import 'image_mutations.dart';
 import '../pager/image_pager.dart';
 import '../pager/rollback_journal_pager.dart';
+import '../pager/schema_commit.dart';
+import '../storage/durable_storage_backend.dart';
 import '../storage/memory_storage_backend.dart';
 import 'database.dart';
 import 'explain_bytecode.dart';
@@ -67,6 +69,7 @@ final class MutableSqliteDatabase {
   Uint8List _image;
   Uint8List _temp = DatabaseImageBuilder.empty();
   final Map<String, Uint8List> _attached = {};
+  final Map<String, ImagePager> _attachedPagers = {};
   bool _tempUsed = false;
   final ImagePager? _journal;
   bool _busy = false;
@@ -87,8 +90,17 @@ final class MutableSqliteDatabase {
   final Set<String> _flexibleAutoVacuum = {};
 
   /// Reads ATTACH file paths. Memory ATTACH does not use it. A missing reader
-  /// rejects file paths. The bytes are a connection-local copy, not a second journal.
+  /// rejects file paths. The bytes are a connection-local copy when
+  /// [openAttachedPager] is null.
   Future<Uint8List> Function(String path)? attachFile;
+
+  /// Opens the durable store for `ATTACH 'path'`. When set, a file path uses
+  /// this instead of [attachFile]. The connection closes the pager.
+  Future<ImagePager> Function(String path)? openAttachedPager;
+
+  /// Commit record for a transaction that changes two rollback journals.
+  /// The caller owns the backend. A memory attachment does not use it.
+  DurableStorageBackend? schemaCommitJournal;
 
   /// When true, `VACUUM INTO` flushes its temporary file and stops before
   /// renaming it onto the destination.
@@ -354,68 +366,76 @@ final class MutableSqliteDatabase {
   }
 
   /// Runs one SQL statement and returns its rows.
-  Future<QueryResult> query(String sql,
-          [List<Object?> parameters = const []]) =>
-      _exclusive(() async {
-        final live = _liveMain;
-        if (live != null) {
-          final fast = live.tryFastRead(sql, parameters);
-          if (fast != null) return fast;
+  Future<QueryResult> query(String sql, [List<Object?> parameters = const []]) {
+    if (_startsWithRowWrite(sql)) return _queryWrite(sql, parameters);
+    return _exclusive(() => _queryUnlocked(sql, parameters));
+  }
+
+  Future<QueryResult> _queryWrite(String sql, List<Object?> parameters) async {
+    final result = await execute(sql, parameters);
+    return result.returning ?? QueryResult(const [], const []);
+  }
+
+  Future<QueryResult> _queryUnlocked(String sql,
+      [List<Object?> parameters = const []]) async {
+    final live = _liveMain;
+    if (live != null) {
+      final fast = live.tryFastRead(sql, parameters);
+      if (fast != null) return fast;
+    }
+    final explain = SqlParser(sql);
+    if (explain.take('EXPLAIN')) {
+      if (!(explain.take('QUERY') && explain.take('PLAN'))) {
+        if (parameters.isNotEmpty) {
+          throw const SqlException('EXPLAIN bytecode bindings unsupported');
         }
-        final explain = SqlParser(sql);
-        if (explain.take('EXPLAIN')) {
-          if (!(explain.take('QUERY') && explain.take('PLAN'))) {
-            if (parameters.isNotEmpty) {
-              throw const SqlException('EXPLAIN bytecode bindings unsupported');
-            }
-            final compiled =
-                compileLiteralExplain(sql.substring(explain.current.offset));
-            if (compiled == null) {
-              throw const SqlException('EXPLAIN bytecode is not implemented');
-            }
-            return compiled;
-          }
-          if (parameters.isNotEmpty) {
-            throw const SqlException('EXPLAIN QUERY PLAN bindings unsupported');
-          }
-          final inner = sql.substring(explain.current.offset);
-          final route = routeQuery(inner, await _schemaCatalog());
-          if (route.cross) {
-            throw const SqlException(
-                'cross-database EXPLAIN QUERY PLAN is not implemented');
-          }
-          if (route.schema == 'main' && _dirtyMain) _materializeMain();
-          final reader = await SqliteDatabase.openReadOnly(
-              ByteImageStorage(_imageFor(route.schema!)),
-              functions: functions);
-          try {
-            return _planResult(reader.explainQueryPlan(route.sql));
-          } finally {
-            await reader.close();
-          }
+        final compiled =
+            compileLiteralExplain(sql.substring(explain.current.offset));
+        if (compiled == null) {
+          throw const SqlException('EXPLAIN bytecode is not implemented');
         }
-        final pragma = SqlParser(sql);
-        if (pragma.take('PRAGMA')) {
-          return _queryPragma(pragma, sql, parameters);
-        }
-        final route = routeQuery(sql, await _schemaCatalog());
-        if (route.cross) {
-          if (Zone.current[_crossQueryKey] == true) {
-            throw const SqlException(
-                'cross-database query could not be assembled');
-          }
-          return runZoned(() => _crossQuery(route, parameters),
-              zoneValues: {_crossQueryKey: true});
-        }
-        const schemaTables = {
-          'sqlite_schema',
-          'sqlite_master',
-          'sqlite_temp_schema'
-        };
-        final schemaView = route.uses
-            .every((use) => schemaTables.contains(asciiLower(use.table)));
-        return _readImage(route.schema!, route.sql, parameters, schemaView);
-      });
+        return compiled;
+      }
+      if (parameters.isNotEmpty) {
+        throw const SqlException('EXPLAIN QUERY PLAN bindings unsupported');
+      }
+      final inner = sql.substring(explain.current.offset);
+      final route = routeQuery(inner, await _schemaCatalog());
+      if (route.cross) {
+        throw const SqlException(
+            'cross-database EXPLAIN QUERY PLAN is not implemented');
+      }
+      if (route.schema == 'main' && _dirtyMain) _materializeMain();
+      final reader = await SqliteDatabase.openReadOnly(
+          ByteImageStorage(_imageFor(route.schema!)),
+          functions: functions);
+      try {
+        return _planResult(reader.explainQueryPlan(route.sql));
+      } finally {
+        await reader.close();
+      }
+    }
+    final pragma = SqlParser(sql);
+    if (pragma.take('PRAGMA')) {
+      return _queryPragma(pragma, sql, parameters);
+    }
+    final route = routeQuery(sql, await _schemaCatalog());
+    if (route.cross) {
+      if (Zone.current[_crossQueryKey] == true) {
+        throw const SqlException('cross-database query could not be assembled');
+      }
+      return runZoned(() => _crossQuery(route, parameters),
+          zoneValues: {_crossQueryKey: true});
+    }
+    const schemaTables = {
+      'sqlite_schema',
+      'sqlite_master',
+      'sqlite_temp_schema'
+    };
+    final schemaView =
+        route.uses.every((use) => schemaTables.contains(asciiLower(use.table)));
+    return _readImage(route.schema!, route.sql, parameters, schemaView);
+  }
 
   /// A window of a single-table read. [query] is unchanged.
   Future<QueryResult> browse(String sql,
@@ -620,11 +640,19 @@ final class MutableSqliteDatabase {
         return const MutationResult(0, null);
       }
       if (route.kind == 'detach') {
-        _detach(route.name!);
+        await _detach(route.name!);
         return const MutationResult(0, null);
       }
       final schema = route.schema!;
-      final keyword = SqlParser(route.sql).current.keyword;
+      var statementSql = route.sql;
+      var statementParameters = parameters;
+      if (route.kind == 'cross-insert') {
+        final rewritten = await _prepareCrossInsert(schema, sql, parameters);
+        if (rewritten == null) return const MutationResult(0, null);
+        statementSql = rewritten.sql;
+        statementParameters = rewritten.parameters;
+      }
+      final keyword = SqlParser(statementSql).current.keyword;
       final maintenance =
           const {'REINDEX', 'ANALYZE', 'VACUUM'}.contains(keyword);
       final vacuumOnLive =
@@ -650,7 +678,7 @@ final class MutableSqliteDatabase {
           schema == 'main' && _journal == null && !maintenance;
       final MutationImage result;
       try {
-        result = await state.execute(route.sql, parameters,
+        result = await state.execute(statementSql, statementParameters,
             foreignKeys: _foreignKeys,
             inTransaction: inTransaction,
             recursiveTriggers: _recursiveTriggers);
@@ -861,16 +889,87 @@ final class MutableSqliteDatabase {
       _clearTransaction();
       rethrow;
     }
+    if (_attachedPagers.isEmpty) {
+      if (_journal != null) {
+        try {
+          _materializeMain();
+          await _journal.commitImage(_image);
+        } catch (_) {
+          _failed = true;
+          rethrow;
+        }
+      }
+    } else {
+      await _commitFileSchemas();
+    }
+    _clearTransaction();
+  }
+
+  Future<void> _commitFileSchemas() async {
+    _materializeMain();
+    final dirty =
+        <({String name, RollbackJournalPager pager, Uint8List image})>[];
+    void consider(
+        String name, ImagePager? pager, Uint8List image, Uint8List? original) {
+      if (pager is! RollbackJournalPager) return;
+      if (original != null && _sameImage(image, original)) return;
+      dirty.add((name: name, pager: pager, image: image));
+    }
+
+    if (_journal is RollbackJournalPager) {
+      consider('main', _journal, _image, _checkpoint!.main);
+    }
+    for (final name in _attachedPagers.keys) {
+      consider(name, _attachedPagers[name], _attached[name]!,
+          _checkpoint!.attached[name]);
+    }
+    final mainDirty = _journal != null &&
+        _journal is! RollbackJournalPager &&
+        !_sameImage(_image, _checkpoint!.main);
+    if (mainDirty && dirty.isNotEmpty) {
+      throw const SqlException(
+          'durable commit across databases requires rollback journals');
+    }
+    if (dirty.length >= 2) {
+      final journal = schemaCommitJournal;
+      if (journal == null) {
+        throw const SqlException(
+            'durable commit across databases requires a schema commit journal');
+      }
+      try {
+        await SchemaCommit.commit(journal: journal, schemas: dirty);
+      } catch (_) {
+        _failed = true;
+        rethrow;
+      }
+      return;
+    }
     if (_journal != null) {
       try {
-        _materializeMain();
         await _journal.commitImage(_image);
       } catch (_) {
         _failed = true;
         rethrow;
       }
     }
-    _clearTransaction();
+    for (final schema in dirty) {
+      if (schema.name == 'main') continue;
+      try {
+        await schema.pager.commitImage(schema.image);
+      } catch (_) {
+        _failed = true;
+        rethrow;
+      }
+    }
+  }
+
+  bool _sameImage(Uint8List left, Uint8List right) {
+    if (identical(left, right)) return true;
+    if (left.length != right.length) return false;
+    for (var i = 0; i < left.length; i++) {
+      if (left[i] != right[i]) return false;
+    }
+    return true;
   }
 
   /// Rolls back an open transaction and rejects later use.
@@ -886,7 +985,14 @@ final class MutableSqliteDatabase {
     _mainReader = null;
     _mainReaderImage = null;
     _closed = true;
-    await _journal?.close();
+    try {
+      await _journal?.close();
+    } finally {
+      for (final pager in _attachedPagers.values) {
+        await pager.close();
+      }
+      _attachedPagers.clear();
+    }
     if (reader != null) await reader.close();
   }
 
@@ -1069,12 +1175,15 @@ final class MutableSqliteDatabase {
   }
 
   Future<void> _commitSchema(String schema, Uint8List image) async {
-    if (schema == 'main' && _journal != null && !inTransaction) {
-      try {
-        await _journal.commitImage(image);
-      } catch (_) {
-        _failed = true;
-        rethrow;
+    if (!inTransaction) {
+      final pager = schema == 'main' ? _journal : _attachedPagers[schema];
+      if (pager != null) {
+        try {
+          await pager.commitImage(image);
+        } catch (_) {
+          _failed = true;
+          rethrow;
+        }
       }
     }
     _storeImage(schema, image);
@@ -1086,6 +1195,26 @@ final class MutableSqliteDatabase {
     }
     if (_attached.isNotEmpty) {
       throw const SqlException('too many attached databases');
+    }
+    if (path != ':memory:' && openAttachedPager != null) {
+      final pager = await openAttachedPager!(path);
+      try {
+        final bytes = Uint8List.fromList(await pager.readImage());
+        if (bytes.length > 64 * 1024 * 1024) {
+          throw const SqlException('attached database exceeds 64 MiB');
+        }
+        final storage = MemoryStorageBackend();
+        await storage.write(0, bytes);
+        final opened = await SqliteDatabase.openReadOnly(storage);
+        await opened.close();
+        _attachedPagers[name] = pager;
+        _attached[name] = bytes;
+      } catch (_) {
+        await pager.close();
+        rethrow;
+      }
+      _invalidateCatalog();
+      return;
     }
     final Uint8List bytes;
     if (path == ':memory:') {
@@ -1156,12 +1285,163 @@ final class MutableSqliteDatabase {
     await _commitSchema(schema, image);
   }
 
-  void _detach(String name) {
+  Future<void> _detach(String name) async {
     if (!_attached.containsKey(name)) {
       throw SqlException('no such database: $name');
     }
+    if (inTransaction) {
+      final original = _checkpoint!.attached[name];
+      final current = _attached[name];
+      if (original == null ||
+          current == null ||
+          !_sameImage(current, original)) {
+        throw SqlException('database $name is locked');
+      }
+    }
+    final pager = _attachedPagers.remove(name);
     _attached.remove(name);
+    _flexibleAutoVacuum.remove(name);
+    _journalModes.remove(name);
+    if (inTransaction) {
+      // DETACH is durable for the connection. Rollback does not reattach it.
+      _checkpoint = _withoutAttachment(_checkpoint!, name);
+      for (var i = 0; i < _savepoints.length; i++) {
+        final entry = _savepoints[i];
+        _savepoints[i] = (entry.$1, _withoutAttachment(entry.$2, name));
+      }
+    }
     _invalidateCatalog();
+    if (pager != null) await pager.close();
+  }
+
+  _ConnectionSnapshot _withoutAttachment(
+      _ConnectionSnapshot snapshot, String name) {
+    return _ConnectionSnapshot(
+        snapshot.main,
+        snapshot.temp,
+        {
+          for (final entry in snapshot.attached.entries)
+            if (entry.key != name) entry.key: entry.value
+        },
+        snapshot.logical);
+  }
+
+  /// Reads the other schemas, then returns an insert the target image can run.
+  /// An empty source writes nothing.
+  Future<({String sql, List<Object?> parameters})?> _prepareCrossInsert(
+      String schema, String sql, List<Object?> parameters) async {
+    final parts = insertSelectParts(sql);
+    if (parts == null) {
+      throw const SqlException('cross-database statement is not supported');
+    }
+    final select = SqlParser(parts.selectSql).select();
+    final count = select.parameterCount;
+    final selected = await _queryUnlocked(parts.selectSql,
+        parameters.length < count ? parameters : parameters.sublist(0, count));
+    if (selected.rows.isEmpty) return null;
+    final width = selected.rows.first.length;
+    final tuple = '(${List.filled(width, '?').join(',')})';
+    final values =
+        'VALUES ${List.filled(selected.rows.length, tuple).join(',')}';
+    final head = stripSchema(parts.head, schema);
+    final tail = stripSchema(parts.tail, schema);
+    final prefix = _endsWithSpace(head) ? head : '$head ';
+    final suffix = tail.isEmpty || _startsWithSpace(tail) ? tail : ' $tail';
+    return (
+      sql: '$prefix$values$suffix',
+      parameters: [
+        for (final row in selected.rows) ...row,
+        ...parameters.skip(count),
+      ],
+    );
+  }
+
+  bool _endsWithSpace(String text) {
+    if (text.isEmpty) return false;
+    final unit = text.codeUnitAt(text.length - 1);
+    return unit == 9 || unit == 10 || unit == 13 || unit == 32;
+  }
+
+  bool _startsWithSpace(String text) {
+    if (text.isEmpty) return false;
+    final unit = text.codeUnitAt(0);
+    return unit == 9 || unit == 10 || unit == 13 || unit == 32;
+  }
+
+  bool _startsWithRowWrite(String sql) {
+    final keyword = _leadingKeyword(sql);
+    if (keyword == null) return false;
+    if (keyword == 'INSERT' ||
+        keyword == 'REPLACE' ||
+        keyword == 'UPDATE' ||
+        keyword == 'DELETE') {
+      return true;
+    }
+    if (keyword != 'WITH') return false;
+    final tokens = SqlTokenizer.tokenize(sql);
+    var depth = 0;
+    for (final token in tokens) {
+      if (token.text == '(') {
+        depth++;
+      } else if (token.text == ')') {
+        depth--;
+      } else if (depth == 0 &&
+          (token.keyword == 'INSERT' ||
+              token.keyword == 'REPLACE' ||
+              token.keyword == 'UPDATE' ||
+              token.keyword == 'DELETE')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  String? _leadingKeyword(String sql) {
+    var index = 0;
+    final length = sql.length;
+    while (index < length) {
+      while (index < length) {
+        final unit = sql.codeUnitAt(index);
+        if (unit == 9 || unit == 10 || unit == 12 || unit == 13 || unit == 32) {
+          index++;
+          continue;
+        }
+        break;
+      }
+      if (index + 1 < length &&
+          sql.codeUnitAt(index) == 45 &&
+          sql.codeUnitAt(index + 1) == 45) {
+        index += 2;
+        while (index < length && sql.codeUnitAt(index) != 10) {
+          index++;
+        }
+        continue;
+      }
+      if (index + 1 < length &&
+          sql.codeUnitAt(index) == 47 &&
+          sql.codeUnitAt(index + 1) == 42) {
+        final end = sql.indexOf('*/', index + 2);
+        if (end < 0) return null;
+        index = end + 2;
+        continue;
+      }
+      break;
+    }
+    if (index >= length) return null;
+    final start = index;
+    var unit = sql.codeUnitAt(index);
+    var upper = unit >= 97 && unit <= 122 ? unit - 32 : unit;
+    if (upper < 65 || upper > 90) return null;
+    index++;
+    while (index < length) {
+      unit = sql.codeUnitAt(index);
+      upper = unit >= 97 && unit <= 122 ? unit - 32 : unit;
+      final letter = upper >= 65 && upper <= 90;
+      final digit = unit >= 48 && unit <= 57;
+      if (!(letter || digit || unit == 95)) break;
+      index++;
+    }
+    return sql.substring(start, index).toUpperCase();
   }
 
   Future<QueryResult> _crossQuery(
