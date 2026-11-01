@@ -15,6 +15,7 @@ import 'parser.dart';
 import 'tokenizer.dart';
 import 'triggers.dart';
 import 'function_registry.dart';
+import 'builtin_collations.dart';
 import 'values.dart';
 import 'index_definition.dart';
 import 'schema_rewriter.dart';
@@ -3446,6 +3447,8 @@ final class ImageMutations {
       }
       if (value is Uint8List) return 'b:${base64Encode(value)}';
       var text = value as String;
+      if (collation == 'decimal') return 'd:${decimalEqualityKey(text)}';
+      if (collation == 'uint') return 'u:${uintEqualityKey(text)}';
       if (collation == 'nocase') text = asciiLower(text);
       if (collation == 'rtrim') text = text.replaceFirst(RegExp(r' +$'), '');
       return 't:$text';

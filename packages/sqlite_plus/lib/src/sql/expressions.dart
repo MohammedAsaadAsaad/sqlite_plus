@@ -217,13 +217,16 @@ final class BoolNameExpr extends ColumnExpr {
 }
 
 final class CollateExpr extends Expr {
-  CollateExpr(this.operand, String name) : name = asciiLower(name) {
-    if (!knownCollation(this.name)) {
-      throw SqlException('No such collation: $name');
-    }
-  }
+  CollateExpr(this.operand, String written)
+      : name = asciiLower(written),
+        spelling = written;
   final Expr operand;
+
+  /// Lowercased lookup name. Expression signatures use this spelling.
   final String name;
+
+  /// Token text, including an empty quoted identifier and the original case.
+  final String spelling;
   @override
   Iterable<Expr> get children => [operand];
   @override
@@ -232,10 +235,11 @@ final class CollateExpr extends Expr {
   Object? evaluate(EvalContext context) => operand.evaluate(context);
   @override
   String affinity(EvalContext context) => operand.affinity(context);
+  String? get _active => knownCollation(name) ? name : spelling;
   @override
-  String? collation(EvalContext context) => name;
+  String? collation(EvalContext context) => _active;
   @override
-  String? explicitCollation(EvalContext context) => name;
+  String? explicitCollation(EvalContext context) => _active;
 }
 
 final class InExpr extends Expr {
@@ -311,10 +315,61 @@ final class BetweenExpr extends Expr {
   }
 }
 
+bool _foldedTrueOr(Expr expression) =>
+    expression is BinaryExpr &&
+    expression.op == 'OR' &&
+    [expression.left, expression.right].any((side) =>
+        side is Literal && side.integerBoolean && side.value != BigInt.zero);
+
+bool _treeHasCollate(Expr expression) {
+  if (expression is CollateExpr) return true;
+  for (final child in expression.children) {
+    if (_treeHasCollate(child)) return true;
+  }
+  return false;
+}
+
+void _requireTreeCollations(Expr expression, EvalContext context) {
+  if (_foldedTrueOr(expression)) return;
+  if (expression is BinaryExpr && isComparisonOperator(expression.op)) {
+    final collation = expression.left.explicitCollation(context) ??
+        expression.right.explicitCollation(context) ??
+        expression.left.collation(context) ??
+        expression.right.collation(context);
+    if (collation != null && collation != 'binary') {
+      requireKnownCollation(collation);
+    }
+  } else if (expression is InExpr) {
+    if (expression.operand.explicitCollation(context) case final name?) {
+      if (name != 'binary') requireKnownCollation(name);
+    }
+    for (final value in expression.values) {
+      if (value.explicitCollation(context) case final name?) {
+        if (name != 'binary') requireKnownCollation(name);
+      }
+    }
+  } else if (expression is BetweenExpr) {
+    for (final value in [expression.operand, expression.low, expression.high]) {
+      if (value.explicitCollation(context) case final name?) {
+        if (name != 'binary') requireKnownCollation(name);
+      }
+    }
+  }
+  for (final child in expression.children) {
+    _requireTreeCollations(child, context);
+  }
+}
+
 final class CaseExpr extends Expr {
-  CaseExpr(this.base, this.branches, this.otherwise);
+  CaseExpr(this.base, this.branches, this.otherwise)
+      : _hasCollate = [
+          if (base != null) base,
+          for (final branch in branches) ...[branch.$1, branch.$2],
+          if (otherwise != null) otherwise
+        ].any(_treeHasCollate);
   final Expr? base, otherwise;
   final List<(Expr, Expr)> branches;
+  final bool _hasCollate;
   @override
   Iterable<Expr> get children => [
         if (base != null) base!,
@@ -337,6 +392,14 @@ final class CaseExpr extends Expr {
 
   @override
   Object? evaluate(EvalContext context) {
+    if (_hasCollate) {
+      if (base != null) _requireTreeCollations(base!, context);
+      for (final branch in branches) {
+        _requireTreeCollations(branch.$1, context);
+        _requireTreeCollations(branch.$2, context);
+      }
+      if (otherwise != null) _requireTreeCollations(otherwise!, context);
+    }
     final left = base == null ? null : _snapshotRow(base!, context);
     for (final branch in branches) {
       final condition = left == null

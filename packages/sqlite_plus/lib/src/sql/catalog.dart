@@ -391,10 +391,11 @@ final class DatabaseCatalog {
         names.add(schemaName());
         String? collation;
         if (modifiers && parser.take('COLLATE')) {
-          collation = asciiLower(parser.identifier());
-          if (!knownCollation(collation)) {
-            throw const SqlException('Unknown collation');
+          final written = parser.identifier();
+          if (!knownCollation(written)) {
+            throw SqlException('no such collation sequence: $written');
           }
+          collation = asciiLower(written);
         }
         final desc = modifiers && parser.take('DESC');
         if (modifiers && !desc) parser.take('ASC');
@@ -638,10 +639,11 @@ final class DatabaseCatalog {
             generatedStored = parser.take('STORED');
             if (!generatedStored) parser.take('VIRTUAL');
           } else if (parser.take('COLLATE')) {
-            collation = asciiLower(parser.identifier());
-            if (!knownCollation(collation)) {
-              throw const SqlException('Unknown collation');
+            final written = parser.identifier();
+            if (!knownCollation(written)) {
+              throw SqlException('no such collation sequence: $written');
             }
+            collation = asciiLower(written);
           } else {
             throw SqlException(
                 'Unsupported column constraint', parser.current.offset);

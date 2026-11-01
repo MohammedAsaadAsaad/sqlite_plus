@@ -1841,6 +1841,15 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10559 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The EXPLAIN QUERY PLAN sub-item is checked. The B3 parent stays open. The other B3 parts stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 ICU and locale collations match the pin
+
+- This pin has no ICU library. `CREATE TABLE t(v TEXT COLLATE ICU)`, `'a'='A' COLLATE ICU`, and `CREATE INDEX ... COLLATE ICU` fail with `no such collation sequence: ICU`. `COLLATE en_US` fails with `no such collation sequence: en_US`. `COLLATE Icu` keeps that spelling. An empty name fails with `no such collation sequence:`. `SELECT 'a' COLLATE ICU` and `SELECT 'a' COLLATE ""` return `a`. `NULL='a' COLLATE ICU` and an untaken `CASE` comparison also raise that sequence error. `1 OR 'a'='b' COLLATE ICU` and `0 AND 'a'='b' COLLATE ICU` stay valid.
+- `PRAGMA collation_list` matches the pin: `decimal`, `BINARY`, `NOCASE`, `RTRIM`, `uint`. `decimal` and `uint` comparisons, column `ORDER BY`, and `GROUP BY` match, including `'1.50'='1.5' COLLATE decimal` = `1`, `'1E-2'='0.01' COLLATE decimal` = `0`, `'a10'<'a2' COLLATE uint` = `0`, and `'x00123y'='x123y' COLLATE uint` = `1`. `BINARY`, `NOCASE`, and `RTRIM` still match. A custom `rev` collation still orders `c`, `b`, `a`. `createCollation` rejects `decimal` and `uint`.
+- A `UNIQUE` column rejects a second decimal or uint spelling that compares equal. The pin's message is `UNIQUE constraint failed: t.v`. This engine still says `UNIQUE constraint failed`. Decimal text longer than 10,000,000 digits was not compared. No speedup is claimed.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10563 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The ICU and locale collation sub-item is checked. The B3 parent stays open. The other B3 parts stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.
