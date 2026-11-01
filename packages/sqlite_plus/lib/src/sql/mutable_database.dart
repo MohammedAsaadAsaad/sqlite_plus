@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import '../btree/database_image_builder.dart';
+import '../btree/incremental_vacuum.dart';
 import '../format/database_header.dart';
 import 'image_mutations.dart';
 import '../pager/image_pager.dart';
@@ -416,6 +417,36 @@ final class MutableSqliteDatabase {
                     column.defaultExpression != null ||
                     column.defaultValue != null
             ],
+            storedCount: table.columns
+                .where((column) =>
+                    column.generatedExpression == null ||
+                    column.generatedStored)
+                .length,
+            keyCollations: table.primaryKeyCollations,
+            keyExplicit: table.primaryKeyCollationExplicit,
+            keyDescending: table.primaryKeyDescending,
+            layout: [
+              for (var i = 0; i < table.columns.length; i++)
+                ExplainColumn(
+                  name: table.columns[i].name,
+                  declaredType: table.columns[i].declaredType,
+                  columnNumber: table.withoutRowid
+                      ? table.storageColumns.indexWhere((column) =>
+                          asciiLower(column.name) ==
+                          asciiLower(table.columns[i].name))
+                      : i,
+                  virtualGenerated:
+                      table.columns[i].generatedExpression != null &&
+                          !table.columns[i].generatedStored,
+                  generated: table.columns[i].generatedExpression != null &&
+                          !table.columns[i].generatedStored
+                      ? table.columns[i].generatedExpression
+                      : null,
+                  rowidAlias: table.rowidAlias != null &&
+                      asciiLower(table.rowidAlias!) ==
+                          asciiLower(table.columns[i].name),
+                ),
+            ],
           );
         },
       );
@@ -552,6 +583,13 @@ final class MutableSqliteDatabase {
     if (_closed || _failed || _busy) {
       throw StateError('Database closed or busy');
     }
+    // Incremental auto-vacuum has to publish the previous statement first.
+    // The freelist is the pages that statement grew and this one no longer uses.
+    if (_dirtyMain &&
+        _image.length >= 100 &&
+        DatabaseHeader.decode(_image).autoVacuumMode == 2) {
+      _materializeMain();
+    }
     final live = _liveMain;
     if (live != null) {
       _busy = true;
@@ -643,11 +681,11 @@ final class MutableSqliteDatabase {
           throw const SqlException('Unsupported writable PRAGMA');
         }
         if (name == 'incremental_vacuum') {
-          if (parser.current.text == '=' || parser.current.text == '(') {
-            _pragmaValue(parser);
-          } else {
-            parser.finish();
-          }
+          final value = parser.current.text == '=' || parser.current.text == '('
+              ? _pragmaValue(parser)
+              : null;
+          if (value == null) parser.finish();
+          await _applyIncrementalVacuum(parsed.$1, value);
           return const MutationResult(0, null);
         }
         final statePragma =
@@ -671,6 +709,8 @@ final class MutableSqliteDatabase {
           await _commitSchema(parsed.$1, image);
         } else if (name == 'auto_vacuum') {
           await _applyAutoVacuum(parsed.$1, value);
+        } else if (name == 'journal_mode') {
+          await _setJournalMode(parsed.$1, value);
         } else if (!statePragma) {
           _applyConnectionPragma(name, value, parsed.$1);
         }
@@ -727,6 +767,8 @@ final class MutableSqliteDatabase {
       state.deferMaterialize =
           schema == 'main' && _journal == null && !maintenance;
       final MutationImage result;
+      final previousTarget = state.reportedTarget;
+      state.reportedTarget = qualifiedDmlTarget(sql);
       try {
         result = route.kind == 'cross-write'
             ? await _runCrossWrite(state, sql, schema, parameters, names,
@@ -767,6 +809,8 @@ final class MutableSqliteDatabase {
           _dropLive();
         }
         rethrow;
+      } finally {
+        state.reportedTarget = previousTarget;
       }
       if (!identical(result.image, current)) {
         await _commitSchema(schema, result.image);
@@ -1085,8 +1129,9 @@ final class MutableSqliteDatabase {
     final connectionWrite =
         argument && connection.contains(name) && name != 'database_list';
     if (name == 'incremental_vacuum') {
-      if (argument) _pragmaValue(parser);
-      parser.finish();
+      final value = argument ? _pragmaValue(parser) : null;
+      if (!argument) parser.finish();
+      await _applyIncrementalVacuum(schema, value);
       return QueryResult([name], const []);
     }
     if (name == 'auto_vacuum' && argument) {
@@ -1097,7 +1142,11 @@ final class MutableSqliteDatabase {
     }
     if (connectionWrite) {
       final value = _pragmaValue(parser);
-      _applyConnectionPragma(name, value, schema);
+      if (name == 'journal_mode') {
+        await _setJournalMode(schema, value);
+      } else {
+        _applyConnectionPragma(name, value, schema);
+      }
     } else if (!argument) {
       parser.finish();
     }
@@ -1151,8 +1200,6 @@ final class MutableSqliteDatabase {
         _busyTimeout = timeout;
       case 'synchronous':
         _synchronous = _synchronousMode(value);
-      case 'journal_mode':
-        _setJournalMode(schema, value);
       default:
         throw SqlException('Unsupported writable PRAGMA');
     }
@@ -1168,9 +1215,10 @@ final class MutableSqliteDatabase {
   }
 
   /// In-memory main stays `memory`. A file keeps `delete` for `off` and for an
-  /// unknown name. `memory` and `delete` change only this connection. `wal`,
-  /// `persist`, and `truncate` are not switched.
-  void _setJournalMode(String schema, String value) {
+  /// unknown name. `memory` changes only this connection. `wal` rewrites header
+  /// bytes 18 and 19 and checkpoints. `persist` and `truncate` apply on the
+  /// next file commit.
+  Future<void> _setJournalMode(String schema, String value) async {
     final requested = asciiLower(value);
     if (schema == 'main' && _journal == null) {
       _journalModes[schema] = 'memory';
@@ -1179,12 +1227,56 @@ final class MutableSqliteDatabase {
     const known = {'delete', 'persist', 'off', 'truncate', 'memory', 'wal'};
     if (!known.contains(requested) || requested == 'off') return;
     if (requested == 'wal' && schema != 'main') return;
-    if (requested == 'wal' ||
-        requested == 'persist' ||
-        requested == 'truncate') {
-      throw SqlException('journal_mode $requested is not implemented');
+    final current = _journalModeFor(schema);
+    if (requested != current &&
+        (requested == 'wal' || current == 'wal') &&
+        inTransaction) {
+      throw SqlException(
+          'cannot change ${requested == 'wal' ? 'into' : 'out of'} wal mode from within a transaction');
+    }
+    if (requested == 'wal' && current != 'wal') {
+      await _writeJournalVersion(schema, 2);
+    } else if (current == 'wal' && requested != 'wal') {
+      await _writeJournalVersion(schema, 1);
     }
     _journalModes[schema] = requested;
+    final pager = _rollbackPager(schema);
+    if (pager == null) return;
+    final fileMode =
+        requested == 'persist' || requested == 'truncate' || requested == 'wal'
+            ? requested
+            : 'delete';
+    if (pager.fileJournalMode != fileMode) {
+      await pager.setFileJournalMode(fileMode);
+    }
+  }
+
+  RollbackJournalPager? _rollbackPager(String schema) {
+    final pager = schema == 'main' ? _journal : _attachedPagers[schema];
+    return pager is RollbackJournalPager ? pager : null;
+  }
+
+  /// Header bytes 18 and 19 and the change counter follow the pinned WAL switch.
+  Future<void> _writeJournalVersion(String schema, int version) async {
+    if (schema == 'main') _materializeMain();
+    final image = Uint8List.fromList(_imageFor(schema));
+    if (image.length < 100 || image[18] == version && image[19] == version) {
+      return;
+    }
+    image[18] = version;
+    image[19] = version;
+    final fields = ByteData.sublistView(image);
+    final counter = (fields.getUint32(24) + 1) & 0xffffffff;
+    fields.setUint32(24, counter);
+    fields.setUint32(92, counter);
+    final pager = _rollbackPager(schema);
+    if (pager != null) {
+      await pager.setFileJournalMode(version == 2 ? 'wal' : 'delete');
+      await _commitSchema(schema, image);
+      if (version == 1) await pager.setFileJournalMode('delete');
+      return;
+    }
+    await _commitSchema(schema, image);
   }
 
   int _synchronousMode(String value) {
@@ -1289,6 +1381,30 @@ final class MutableSqliteDatabase {
     _attached[name] = Uint8List.fromList(bytes);
     if (path == ':memory:') _flexibleAutoVacuum.add(name);
     _invalidateCatalog();
+  }
+
+  /// `PRAGMA incremental_vacuum` removes freelist pages from an incremental
+  /// database. No argument, `0`, and a negative count clear the whole freelist.
+  /// Any other database mode keeps its bytes.
+  Future<void> _applyIncrementalVacuum(String schema, String? value) async {
+    if (schema == 'main') _materializeMain();
+    final image = _imageFor(schema);
+    if (image.length < 100) return;
+    final header = DatabaseHeader.decode(image);
+    if (header.autoVacuumMode != 2 || header.freelistPages == 0) return;
+    final requested = value == null ? 0 : _pragmaInteger(value);
+    final next = IncrementalVacuum.apply(image, requested);
+    if (next.length == image.length) {
+      var same = true;
+      for (var i = 0; i < next.length; i++) {
+        if (next[i] != image[i]) {
+          same = false;
+          break;
+        }
+      }
+      if (same) return;
+    }
+    await _commitSchema(schema, next);
   }
 
   /// `none`/`full`/`incremental`, or an integer kept only when it is 0, 1, or 2.

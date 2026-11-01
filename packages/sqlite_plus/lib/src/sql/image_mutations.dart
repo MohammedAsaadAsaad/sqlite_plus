@@ -176,6 +176,9 @@ final class ImageMutations {
   /// True when the latest statement changed stored rows and left the image stale.
   bool wroteRows = false;
 
+  /// Qualified DML target from the user's SQL, before a schema image strips it.
+  String? reportedTarget;
+
   /// A whole-table delete of an ordinary rowid table should put the old leaf
   /// pages on the freelist before the statement returns. Constrained tables
   /// leave this false and compact on the next read.
@@ -523,6 +526,20 @@ final class ImageMutations {
             }
           }
         }
+      }
+      for (final object in state.other) {
+        final sql = object.sql;
+        if (sql == null || !object.virtualTable) continue;
+        if (!VirtualTableDeclaration.isVirtual(sql)) continue;
+        final declaration = VirtualTableDeclaration.parse(sql);
+        if (asciiLower(declaration.module) != 'fts4') continue;
+        if (!fts3Spec(declaration.name, declaration.arguments, fts4: true)
+            .contentless) {
+          continue;
+        }
+        return [
+          'unable to validate the inverted index for FTS4 table main.${object.name}: SQL logic error'
+        ];
       }
       return ['ok'];
     } on FormatException catch (error) {
@@ -2629,6 +2646,8 @@ final class ImageMutations {
     if (!insert && !update) p.require('FROM');
     final name = p.qualifiedIdentifier(
         allowQualified: !compileOnly && _triggerContexts.isEmpty);
+    final targetLabel = reportedTarget ??
+        (p.parsedQualifier == null ? name : '${p.parsedQualifier}.$name');
     final alias = p.take('AS') ? p.identifier() : name;
     String? requiredIndex;
     if (!insert) {
@@ -2650,7 +2669,7 @@ final class ImageMutations {
     }
     _targetAliases.last[asciiLower(name)] = asciiLower(alias);
     final table = await _target(name);
-    if (table == null) throw SqlException('No such table: $name');
+    if (table == null) throw SqlException('no such table: $targetLabel');
     if (table.view &&
         !other
             .where((o) =>
@@ -2787,7 +2806,8 @@ final class ImageMutations {
           } while (p.take(','));
           p.require(')');
           if (row.length != input.length) {
-            throw const SqlException('INSERT width mismatch');
+            throw SqlException(
+                'table $targetLabel has ${input.length} columns but ${row.length} values were supplied');
           }
           inserts.add(row);
         } while (p.take(','));

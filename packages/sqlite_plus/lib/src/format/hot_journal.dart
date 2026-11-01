@@ -2,10 +2,57 @@ import 'dart:typed_data';
 
 import 'database_header.dart';
 
-/// Official SQLite rollback-journal playback. This does not write the file.
+/// Official SQLite rollback-journal playback and encoding.
 /// A journal whose first byte is 0, or whose magic does not match, is not hot.
 abstract final class HotJournal {
   static const _magic = [0xd9, 0xd5, 0x05, 0xf9, 0x20, 0xa1, 0x63, 0xd7];
+
+  static bool matchesMagic(Uint8List journal) =>
+      journal.length >= _magic.length && _magicAt(journal, 0);
+
+  /// One sector header plus a record for each old page. The checksum is
+  /// [checksumInit] plus every 200th page byte, which is the pinned formula.
+  static Uint8List encode({
+    required List<(int, Uint8List)> pages,
+    required int originalPages,
+    required int sectorSize,
+    required int checksumInit,
+  }) {
+    if (pages.isEmpty) {
+      throw ArgumentError('Official journal needs a page');
+    }
+    final pageSize = pages.first.$2.length;
+    if (originalPages < 1 ||
+        sectorSize < 28 ||
+        pageSize < 512 ||
+        pages.any((page) => page.$2.length != pageSize)) {
+      throw ArgumentError('Invalid official journal');
+    }
+    final bytes = Uint8List(sectorSize + pages.length * (pageSize + 8));
+    bytes.setRange(0, _magic.length, _magic);
+    final fields = ByteData.sublistView(bytes);
+    fields.setUint32(8, pages.length);
+    fields.setUint32(12, checksumInit & 0xffffffff);
+    fields.setUint32(16, originalPages);
+    fields.setUint32(20, sectorSize);
+    fields.setUint32(24, pageSize);
+    var offset = sectorSize;
+    for (final page in pages) {
+      fields.setUint32(offset, page.$1);
+      bytes.setRange(offset + 4, offset + 4 + pageSize, page.$2);
+      fields.setUint32(offset + 4 + pageSize, _checksum(page.$2, checksumInit));
+      offset += pageSize + 8;
+    }
+    return bytes;
+  }
+
+  /// `journal_mode=persist` commits by clearing the 28-byte header.
+  static void invalidateHeader(Uint8List journal) {
+    final count = journal.length < 28 ? journal.length : 28;
+    for (var i = 0; i < count; i++) {
+      journal[i] = 0;
+    }
+  }
 
   static bool looksHot(Uint8List journal) =>
       journal.isNotEmpty && journal[0] != 0;

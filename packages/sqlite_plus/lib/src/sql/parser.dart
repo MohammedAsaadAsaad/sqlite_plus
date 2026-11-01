@@ -82,6 +82,9 @@ Object? resolveSqlValue(Object? value) {
   while (value is SqlValueBinding) {
     value = value.evaluate();
   }
+  if (value is ContentlessColumn) {
+    throw const SqlException('SQL logic error');
+  }
   return value;
 }
 
@@ -677,6 +680,9 @@ final class SqlParser {
   final List<SqlToken> tokens;
   int position = 0;
   int parameterCount = 0;
+
+  /// Schema written before the last [qualifiedIdentifier], when one was present.
+  String? parsedQualifier;
   final Map<String, int> parameterNames = {};
   SqlToken get current => tokens[position];
   bool take(String text) {
@@ -726,6 +732,7 @@ final class SqlParser {
   /// The engine has one persistent schema. Explicit qualifiers never resolve
   /// through a CTE or silently select an attached database.
   String qualifiedIdentifier({bool allowQualified = true}) {
+    parsedQualifier = null;
     final first = identifier();
     if (!take('.')) return first;
     if (!allowQualified) {
@@ -734,6 +741,7 @@ final class SqlParser {
     if (!activeSchemaNames().contains(asciiLower(first))) {
       throw SqlException('Unknown database: $first');
     }
+    parsedQualifier = first;
     return identifier();
   }
 

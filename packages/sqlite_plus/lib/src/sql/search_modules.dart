@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import '../btree/btree_reader.dart';
 import '../pager/read_only_pager.dart';
 import 'catalog.dart';
+import 'fts3_format.dart';
 import 'fts5_format.dart';
 import 'fts_text.dart';
 import 'functions.dart';
@@ -461,7 +462,7 @@ final class Fts3Module extends VirtualTableModule {
 
   @override
   void xCreate(String table, List<String> arguments) {
-    fts3Spec(table, arguments);
+    fts3Spec(table, arguments, fts4: fts4);
   }
 
   @override
@@ -472,12 +473,15 @@ final class Fts3Module extends VirtualTableModule {
   List<String> hiddenFor(String table, List<String> arguments) => [table];
 
   @override
-  List<String> shadowNames(String table, List<String> arguments) => [
-        '${table}_content',
-        '${table}_segments',
-        '${table}_segdir',
-        if (fts4) ...['${table}_docsize', '${table}_stat']
-      ];
+  List<String> shadowNames(String table, List<String> arguments) {
+    final contentless = fts3Spec(table, arguments, fts4: fts4).contentless;
+    return [
+      if (!contentless) '${table}_content',
+      '${table}_segments',
+      '${table}_segdir',
+      if (fts4) ...['${table}_docsize', '${table}_stat']
+    ];
+  }
 
   @override
   VirtualTableCursor xOpen(String table) => _Fts3Cursor(this);
@@ -491,14 +495,32 @@ final class Fts4Module extends Fts3Module {
   List<String> get columns => const ['fts4'];
 }
 
-Fts5Spec fts3Spec(String table, List<String> arguments) {
+Fts5Spec fts3Spec(String table, List<String> arguments, {bool fts4 = false}) {
   final columns = _fts3Columns(arguments);
+  var contentMode = 'normal';
+  if (fts4) {
+    for (final raw in arguments) {
+      final argument = raw.trim();
+      final split = argument.indexOf('=');
+      if (split <= 0) continue;
+      if (asciiLower(argument.substring(0, split).trim()) != 'content') {
+        continue;
+      }
+      var value = argument.substring(split + 1).trim();
+      if (value.length >= 2 &&
+          (value.startsWith("'") || value.startsWith('"')) &&
+          value.endsWith(value[0])) {
+        value = value.substring(1, value.length - 1);
+      }
+      if (value.isEmpty) contentMode = 'none';
+    }
+  }
   return Fts5Spec(
       table: table,
       columns: [for (final name in columns) Fts5Column(name)],
       tokenizer: _fts3Tokenizer(arguments),
       prefix: const [],
-      contentMode: 'normal',
+      contentMode: contentMode,
       contentTable: null,
       contentRowid: 'docid',
       contentlessDelete: false,
@@ -550,34 +572,60 @@ final class _Fts3Cursor extends VirtualTableCursor {
   final Fts3Module module;
   var _closed = false;
   var _index = 0;
+  var _contentless = false;
+  var _contentColumns = 0;
   List<(BigInt, List<Object?>)> _rows = const [];
 
   @override
   void filter(String table, List<String> arguments) {
-    final spec = fts3Spec(table, arguments);
+    final spec = fts3Spec(table, arguments, fts4: module.fts4);
+    _contentless = spec.contentless;
+    _contentColumns = spec.columns.length;
     final columns = spec.visibleNames;
     final tokenizer = spec.tokenizer;
-    final content = SearchSnapshot.current.table('${table}_content');
     final documents = <BigInt, FtsDocument>{};
-    if (content != null) {
-      for (final row in content.rows) {
-        final texts = [
-          for (var i = 0; i < columns.length; i++)
-            _text(row.values.length > i + 1 ? row.values[i + 1] : null)
-        ];
-        documents[row.rowId] = FtsDocument(
-            row.rowId,
-            texts,
-            [
-              for (final text in texts)
-                text == null ? const <FtsToken>[] : tokenizer.tokenize(text)
-            ],
+    final scan = module.scans[asciiLower(table)];
+    final pending = _pendingQuery(scan?.$1, scan?.$2 ?? const [], spec);
+    if (spec.contentless && pending == null) {
+      throw const SqlException('SQL logic error');
+    }
+    if (spec.contentless) {
+      final segdir = SearchSnapshot.current.table('${table}_segdir');
+      final roots = <Uint8List>[];
+      if (segdir != null) {
+        for (final row in segdir.rows) {
+          final root = segdir.value(row, 'root');
+          if (root is Uint8List && root.isNotEmpty) roots.add(root);
+        }
+      }
+      final indexed = fts3IndexDocuments(roots, columns.length);
+      for (final entry in indexed.entries) {
+        documents[entry.key] = FtsDocument(
+            entry.key,
+            List<String?>.filled(columns.length, null),
+            entry.value,
             List<bool>.filled(columns.length, false));
+      }
+    } else {
+      final content = SearchSnapshot.current.table('${table}_content');
+      if (content != null) {
+        for (final row in content.rows) {
+          final texts = [
+            for (var i = 0; i < columns.length; i++)
+              _text(row.values.length > i + 1 ? row.values[i + 1] : null)
+          ];
+          documents[row.rowId] = FtsDocument(
+              row.rowId,
+              texts,
+              [
+                for (final text in texts)
+                  text == null ? const <FtsToken>[] : tokenizer.tokenize(text)
+              ],
+              List<bool>.filled(columns.length, false));
+        }
       }
     }
     final state = FtsTableState(spec, documents);
-    final scan = module.scans[asciiLower(table)];
-    final pending = _pendingQuery(scan?.$1, scan?.$2 ?? const [], spec);
     if (pending != null) {
       state.query = parseFtsQuery(pending.$1, tokenizer, columns);
       state.column = pending.$2;
@@ -604,7 +652,13 @@ final class _Fts3Cursor extends VirtualTableCursor {
   @override
   bool get eof => _closed || _index >= _rows.length;
   @override
-  Object? column(int index) => _rows[_index].$2[index];
+  Object? column(int index) {
+    // Virtual-table scans read every column while building a record. A
+    // contentless column stays unread until a statement projects it.
+    if (_contentless && index < _contentColumns) return contentlessColumn;
+    return _rows[_index].$2[index];
+  }
+
   @override
   BigInt get rowid => _rows[_index].$1;
   @override

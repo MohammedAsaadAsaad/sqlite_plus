@@ -2636,7 +2636,8 @@ final class SqliteDatabase {
           return CatalogColumn('', '', affinityOverride: 'none');
         }
         if (columns.length != 1) {
-          throw const SqlException('Scalar subquery must return one column');
+          throw SqlException(
+              'sub-select returns ${columns.length} columns - expected 1');
         }
         return columns.single;
       }

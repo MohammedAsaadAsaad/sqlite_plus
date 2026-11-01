@@ -43,7 +43,7 @@ one row `m` and main `t` still holds `m`. A file attachment can use its own
 rollback journal. A transaction that changes two of those journals syncs one
 schema-commit record first. A crash before that record leaves both files
 unchanged, and a crash after it restores both. That record is not an official
-SQLite master journal. `UPDATE aux.u SET v = (SELECT v FROM t)`, `UPDATE ... FROM`, and `DELETE FROM aux.u WHERE v IN (SELECT v FROM t)` match the pinned CLI, including `changes()`. A file commit reopens both files. A crash between an update and a delete recovers both old or both new. Without the attachment, `UPDATE aux.u SET v = 1` and `DELETE FROM aux.u` are `no such table: aux.u`. `UPDATE AUX.U SET v = 1` is `no such table: AUX.U`. `INSERT INTO aux.u VALUES ((SELECT v FROM t))` inserts `m`. `changes()` is 1 and `last_insert_rowid()` is that row. An empty subquery inserts NULL. `db_browser_b3_cross_insert_test.dart` matches the pinned CLI for that statement, two columns, the first ordered row, a same-named table, `RETURNING`, an upsert, two VALUES rows, a CTE, and the reverse insert. The copied table is dropped. A missing table is `No such table: missing`; the CLI says `no such table: missing`. Two subquery columns are `Scalar subquery must return one column`; the CLI says `sub-select returns 2 columns - expected 1`. A short VALUES list is `INSERT width mismatch`; the CLI says `table aux.u has 2 columns but 1 values were supplied`.
+SQLite master journal. `UPDATE aux.u SET v = (SELECT v FROM t)`, `UPDATE ... FROM`, and `DELETE FROM aux.u WHERE v IN (SELECT v FROM t)` match the pinned CLI, including `changes()`. A file commit reopens both files. A crash between an update and a delete recovers both old or both new. Without the attachment, `UPDATE aux.u SET v = 1` and `DELETE FROM aux.u` are `no such table: aux.u`. `UPDATE AUX.U SET v = 1` is `no such table: AUX.U`. `INSERT INTO aux.u VALUES ((SELECT v FROM t))` inserts `m`. `changes()` is 1 and `last_insert_rowid()` is that row. An empty subquery inserts NULL. `db_browser_b3_cross_insert_test.dart` matches the pinned CLI for that statement, two columns, the first ordered row, a same-named table, `RETURNING`, an upsert, two VALUES rows, a CTE, and the reverse insert. The copied table is dropped. A missing table is `no such table: missing`. Two subquery columns are `sub-select returns 2 columns - expected 1`. A short VALUES list is `table aux.u has 2 columns but 1 values were supplied`.
 A cross-schema SELECT is copied into a scratch image. A memory attachment is
 not a second durable journal. A transaction snapshots main, temp, and the
 attached image together.
@@ -60,7 +60,7 @@ write is rejected, and `fromImage` rejects a non-zero largest root page.
 `createCollation` registers one connection-local text collation. The test
 covers ORDER BY, UNIQUE, and an index on that collation. REINDEX of a custom
 collation name has no separate oracle. EXPLAIN QUERY PLAN returns this
-engine's `detail` text. `EXPLAIN SELECT 1`, constant arithmetic and concatenation, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` or `REPLACE` match the pinned CLI opcode rows in `db_browser_b3_explain_test.dart`. A subquery, an `INTEGER PRIMARY KEY` scan, `WITHOUT ROWID`, a generated column, a typed `INSERT`, and a multi-row `VALUES` insert still throw `EXPLAIN bytecode is not implemented`. This is not a VDBE. Two or three comma joins
+engine's `detail` text. `EXPLAIN SELECT 1`, constant arithmetic and concatenation, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` or `REPLACE` match the pinned CLI opcode rows in `db_browser_b3_explain_test.dart`. A constant subquery, an `INTEGER PRIMARY KEY` scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert match the pinned opcode rows in that file. An `INTEGER PRIMARY KEY` insert and a join of two subqueries still throw `EXPLAIN bytecode is not implemented`. This is not a VDBE. Two or three comma joins
 with ORDER BY and sqlite_stat1 counts can be reordered; the test compares
 rows. A covering index skips the table when every referenced column is in the
 index or is a rowid alias, and that read uses fewer pages. `sqlite_stat4` opens
@@ -95,9 +95,11 @@ WAL commit of one row recovers that row after a crash on the next insert.
 WITHOUT ROWID, views, triggers, and the other unhandled shapes keep their
 existing writers. A valid auto-vacuum image opens for writing. NONE reads
 skip pointer maps, and a NONE delete does not shrink. VACUUM does. Compared
-FULL images match the pin's page counts. `incremental_vacuum` does not move
-pages, so an incremental overflow delete is compacted instead of leaving the
-pin's freelist page.
+FULL images match the pin's page counts. An incremental overflow delete
+leaves the pin's freelist page. `incremental_vacuum` moves a live end page
+onto that free page when it has to, then truncates. The compared
+`zeroblob(5000)` delete is page_count 4 and freelist_count 1 until
+`incremental_vacuum`, which reads 3 and 0.
 
 `benchmark_results/page_writes_linux_x64.json` is this revision's Linux x64
 AOT sample: three batch inserts of 10,000 rows, one batch insert of 100,000
@@ -188,13 +190,13 @@ AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 | Area | Planned follow-up |
 |---|---|
 | Schema state | Atomic commit of two durable databases, with temp and attached images included in that plan |
-| PRAGMA state | More journal modes, the auto-vacuum algorithm, and per-database cache, busy, and synchronous values |
-| Planning | EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`, `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`; fuller native costing, wider join reorder, built STAT4 statistics, and covering reads of a star or a generated column |
+| PRAGMA state | File `journal_mode=wal`, `persist`, and `truncate` match the compared rows. A multi-frame WAL log is not written. Per-database cache, busy, and synchronous values stay connection-local |
+| Planning | EXPLAIN bytecode for an `INTEGER PRIMARY KEY` insert and a join of two subqueries; fuller native costing, wider join reorder, built STAT4 statistics, and covering reads of a star or a generated column. A constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert match the pinned opcode rows |
 | Collations | ICU and locale collations. The pinned CLI says `no such collation sequence: ICU` and `no such collation sequence: en_US`. This engine says `Unknown collation` or `No such collation: ICU`. `decimal` and `uint` are on the pin's collation list and are not implemented. REINDEX of a custom collation still has no separate oracle |
 | Grammar and errors | Closer native error text. Opt-in double-quoted strings match the pinned CLI in `db_browser_b3_dqs_test.dart`. The default stays off. Unquoted `a.title` beside a column named `a.title` returns the `title` column |
 | Table functions | More virtual-table modules |
 | Windows | Wider window execution and closer planner equivalence |
-| Extensions | Contentless FTS3/FTS4 writes still throw `FTS3 and FTS4 writes are not implemented`. Contentful FTS3/FTS4 writes pass the pinned `integrity_check`. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI |
+| Extensions | Contentless FTS4 `content=''` matches the pinned `MATCH` rows and integrity text. FTS3 `content=''` is a column named `content`. Contentful FTS3/FTS4 writes pass the pinned `integrity_check`. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI |
 | Platforms and release | Benchmarks at 100000 and 1000000 rows, a fresh desktop run for each new revision, Android, iOS, power-loss durability, and publication when requested. The current 10000-row file is `benchmark_results/scenarios_10k_linux_x64.json`. The recorded desktop pass is commit `7afaaba` in run 40538509306 |
 
 The production runtime stays Pure Dart. The planned browser work is a durable

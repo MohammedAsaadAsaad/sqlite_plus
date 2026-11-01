@@ -44,8 +44,21 @@ final class JsonText {
   String toString() => text;
 }
 
-Object? publishSqlValue(Object? value) =>
-    value is JsonText ? value.text : value;
+/// An FTS4 contentless column. SQLite raises `SQL logic error` when a
+/// statement reads one. Scans may still carry the marker so `rowid` queries
+/// do not touch it.
+final class ContentlessColumn {
+  const ContentlessColumn();
+}
+
+const contentlessColumn = ContentlessColumn();
+
+Object? publishSqlValue(Object? value) {
+  if (value is ContentlessColumn) {
+    throw const SqlException('SQL logic error');
+  }
+  return value is JsonText ? value.text : value;
+}
 
 Object narrowInteger(BigInt value) =>
     value < _minInt || value > _maxInt ? value.toDouble() : value;

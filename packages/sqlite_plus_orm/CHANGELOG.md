@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+No API change. The package still depends on `sqlite_plus` 0.1.2. The engine comparisons are in the `sqlite_plus` changelog.
+
 ## 0.1.2
 
 Depends on `sqlite_plus` 0.1.2. The page uses the Linux release-build sample and the new logo.

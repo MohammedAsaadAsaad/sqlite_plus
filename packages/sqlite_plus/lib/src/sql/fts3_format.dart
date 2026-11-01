@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'fts_text.dart';
 import 'tokenizer.dart';
 
 /// Official content-column name: `c` + column index + the declared name.
@@ -110,6 +111,122 @@ Uint8List fts3RootLeaf(List<Fts3Term> terms) {
     previous = term.term;
   }
   return out.toBytes();
+}
+
+/// Terms stored in one `segdir.root` leaf.
+List<Fts3Term> fts3DecodeRoot(Uint8List root) {
+  final terms = <Fts3Term>[];
+  var offset = 0;
+  Uint8List? previous;
+  while (offset < root.length) {
+    final prefix = _fts3Varint(root, offset);
+    offset = prefix.$2;
+    final suffix = _fts3Varint(root, offset);
+    offset = suffix.$2;
+    final suffixLength = suffix.$1.toInt();
+    if (suffixLength < 0 || offset + suffixLength > root.length) {
+      throw const FormatException('Truncated FTS3 term');
+    }
+    final prefixLength = prefix.$1.toInt();
+    if (previous == null && prefixLength != 0 ||
+        previous != null && prefixLength > previous.length) {
+      throw const FormatException('Invalid FTS3 term prefix');
+    }
+    final term = Uint8List(prefixLength + suffixLength);
+    if (prefixLength > 0) {
+      term.setRange(0, prefixLength, previous!);
+    }
+    term.setRange(prefixLength, term.length, root, offset);
+    offset += suffixLength;
+    final length = _fts3Varint(root, offset);
+    offset = length.$2;
+    final doclistLength = length.$1.toInt();
+    if (doclistLength < 0 || offset + doclistLength > root.length) {
+      throw const FormatException('Truncated FTS3 doclist');
+    }
+    final doclist = Uint8List.sublistView(root, offset, offset + doclistLength);
+    offset += doclistLength;
+    terms.add(Fts3Term(term, _fts3Doclist(doclist)));
+    previous = term;
+  }
+  return terms;
+}
+
+/// Token lists keyed by docid. Column lists are position-aligned.
+Map<BigInt, List<List<FtsToken>>> fts3IndexDocuments(
+    Iterable<Uint8List> roots, int columns) {
+  final documents = <BigInt, List<List<FtsToken>>>{};
+  for (final root in roots) {
+    for (final term in fts3DecodeRoot(root)) {
+      final text = String.fromCharCodes(term.term);
+      for (final hit in term.hits) {
+        if (hit.column < 0 || hit.column >= columns) continue;
+        final lists = documents.putIfAbsent(
+            hit.docid, () => List.generate(columns, (_) => <FtsToken>[]));
+        final tokens = lists[hit.column];
+        while (tokens.length <= hit.position) {
+          tokens.add(const FtsToken('', 0, 0));
+        }
+        tokens[hit.position] = FtsToken(text, 0, text.length);
+      }
+    }
+  }
+  return documents;
+}
+
+(BigInt, int) _fts3Varint(Uint8List bytes, int offset) {
+  var result = BigInt.zero;
+  var cursor = offset;
+  for (var i = 0; i < 8; i++) {
+    if (cursor >= bytes.length) {
+      throw const FormatException('Truncated FTS3 varint');
+    }
+    final value = bytes[cursor++];
+    result = (result << 7) | BigInt.from(value & 0x7f);
+    if (value < 0x80) return (result, cursor);
+  }
+  if (cursor >= bytes.length) {
+    throw const FormatException('Truncated FTS3 varint');
+  }
+  return ((result << 8) | BigInt.from(bytes[cursor]), cursor + 1);
+}
+
+List<Fts3Hit> _fts3Doclist(Uint8List bytes) {
+  final hits = <Fts3Hit>[];
+  var offset = 0;
+  BigInt? docid;
+  while (offset < bytes.length) {
+    if (docid != null) {
+      if (bytes[offset] != 0) {
+        throw const FormatException('Invalid FTS3 doclist');
+      }
+      offset++;
+      if (offset >= bytes.length) break;
+    }
+    final delta = _fts3Varint(bytes, offset);
+    offset = delta.$2;
+    docid = docid == null
+        ? delta.$1
+        : (docid.toUnsigned(64) + delta.$1.toUnsigned(64)).toUnsigned(64);
+    var column = 0;
+    var position = 0;
+    while (offset < bytes.length && bytes[offset] != 0) {
+      final value = _fts3Varint(bytes, offset);
+      offset = value.$2;
+      if (value.$1 == BigInt.one) {
+        final next = _fts3Varint(bytes, offset);
+        offset = next.$2;
+        column = next.$1.toInt();
+        position = 0;
+        continue;
+      }
+      final code = value.$1.toInt();
+      if (code < 2) throw const FormatException('Invalid FTS3 position');
+      position += code - 2;
+      hits.add(Fts3Hit(docid, column, position));
+    }
+  }
+  return hits;
 }
 
 int _sharedPrefix(Uint8List left, Uint8List right) {

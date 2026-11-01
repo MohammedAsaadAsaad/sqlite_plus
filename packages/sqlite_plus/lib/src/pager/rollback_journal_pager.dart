@@ -5,6 +5,7 @@ import 'image_pager.dart';
 
 import '../btree/rowid_page_patch.dart';
 import '../format/database_header.dart';
+import '../format/hot_journal.dart';
 import '../storage/durable_storage_backend.dart';
 
 /// Single-writer pager for pre-provisioned durable files.
@@ -34,8 +35,14 @@ final class RollbackJournalPager implements ImagePager {
   int _salt = 0;
   bool _redoOpen = false;
   bool _pending = false;
+  var _fileJournalMode = 'delete';
   final List<_Addend> _addends = [];
   static const checkpointBytes = 16 * 1024 * 1024;
+  static const _officialSector = 512;
+
+  /// `delete` keeps the redo log. `persist`, `truncate`, and `wal` write the
+  /// database directly and leave the sidecar the pinned CLI leaves.
+  String get fileJournalMode => _fileJournalMode;
   static const _magic = [0x53, 0x51, 0x52, 0x45, 0x44, 0x4f, 0x02, 0x00];
   static const _headerBytes = 32;
   static const _framePrefix = 16;
@@ -49,16 +56,25 @@ final class RollbackJournalPager implements ImagePager {
     final image = Uint8List.fromList(await _all(database, maxImageBytes));
     final header = DatabaseHeader.decode(image);
     header.validateFileLength(image.length);
-    if (header.readVersion != 1 ||
-        header.writeVersion != 1 ||
+    final wal = header.readVersion == 2 && header.writeVersion == 2;
+    if ((!wal && (header.readVersion != 1 || header.writeVersion != 1)) ||
         !header.hasValidDatabaseSize ||
         header.databaseSize * header.pageSize != image.length) {
       throw UnsupportedError(
           'Writer requires a complete rollback-format database image');
     }
-    return RollbackJournalPager._(
+    final pager = RollbackJournalPager._(
         database, journal, header.pageSize, maxImageBytes, image);
+    if (wal) pager._fileJournalMode = 'wal';
+    return pager;
   }
+
+  /// Checkpoints an open redo, then records the mode used by later commits.
+  Future<void> setFileJournalMode(String mode) => _exclusive(() async {
+        if (_pending) throw StateError('Staged redo already open');
+        if (_redoOpen) await _checkpoint();
+        _fileJournalMode = mode;
+      });
 
   Future<T> _exclusive<T>(Future<T> Function() body) async {
     if (_closed || _failed) {
@@ -160,6 +176,11 @@ final class RollbackJournalPager implements ImagePager {
     if (image.length > maxImageBytes) {
       throw const FormatException('Image limit exceeded');
     }
+    if (!pending && _fileJournalMode != 'delete') {
+      await _commitOfficial(
+          _fileJournalMode == 'wal' ? _walImage(image) : image);
+      return;
+    }
     final header = DatabaseHeader.decode(image);
     header.validateFileLength(image.length);
     if (header.pageSize != pageSize ||
@@ -223,6 +244,15 @@ final class RollbackJournalPager implements ImagePager {
       _exclusive(() async {
         if (root < 2 || deltas.isEmpty) {
           throw ArgumentError('Invalid addend commit');
+        }
+        if (_fileJournalMode != 'delete') {
+          final applied = RowidPagePatch.addColumns(_view(), root, deltas);
+          if (applied == null) {
+            throw const FormatException('Redo addend could not be applied');
+          }
+          _addends.clear();
+          await _commitOfficial(applied);
+          return;
         }
         final body = Uint8List(16 + deltas.length * 12);
         body[0] = 2;
@@ -356,6 +386,103 @@ final class RollbackJournalPager implements ImagePager {
     await _journal.sync();
   }
 
+  Uint8List _walImage(Uint8List image) {
+    if (image.length < 100 || image[18] == 2 && image[19] == 2) return image;
+    final next = Uint8List.fromList(image);
+    next[18] = 2;
+    next[19] = 2;
+    return next;
+  }
+
+  /// Writes [image] and leaves a persist, truncate, or checkpointed wal sidecar.
+  Future<void> _commitOfficial(Uint8List image) async {
+    final header = DatabaseHeader.decode(image);
+    header.validateFileLength(image.length);
+    final wal = _fileJournalMode == 'wal';
+    if (header.pageSize != pageSize ||
+        image.length > maxImageBytes ||
+        (wal
+            ? header.readVersion != 2 || header.writeVersion != 2
+            : header.readVersion != 1 || header.writeVersion != 1) ||
+        !header.hasValidDatabaseSize ||
+        header.databaseSize * pageSize != image.length) {
+      throw const FormatException('Invalid replacement database image');
+    }
+    final original = _view();
+    _addends.clear();
+    if (_fileJournalMode == 'wal') {
+      await _writeDatabase(image);
+      await _journal.truncate(0);
+      await _journal.sync();
+      _cached = image;
+      _redoOpen = false;
+      _redoEnd = 0;
+      _chain = 0;
+      _salt = 0;
+      return;
+    }
+    final oldPages = original.length ~/ pageSize;
+    final nextPages = image.length ~/ pageSize;
+    final limit = oldPages < nextPages ? oldPages : nextPages;
+    final changed = <(int, Uint8List)>[];
+    for (var page = 1; page <= limit; page++) {
+      if (_samePage(original, image, page)) continue;
+      changed.add((page, _pageCopy(original, page)));
+    }
+    for (var page = nextPages + 1; page <= oldPages; page++) {
+      changed.add((page, _pageCopy(original, page)));
+    }
+    if (changed.isEmpty) {
+      _cached = image;
+      return;
+    }
+    final hot = HotJournal.encode(
+        pages: changed,
+        originalPages: oldPages < 1 ? 1 : oldPages,
+        sectorSize: _officialSector,
+        checksumInit: Random().nextInt(0x7fffffff) + 1);
+    await _journal.truncate(0);
+    await _journal.write(0, hot);
+    await _journal.sync();
+    try {
+      await _writeDatabase(image);
+    } catch (_) {
+      _failed = true;
+      rethrow;
+    }
+    if (_fileJournalMode == 'truncate') {
+      await _journal.truncate(0);
+    } else {
+      HotJournal.invalidateHeader(hot);
+      await _journal.write(0, hot.sublist(0, 28));
+    }
+    await _journal.sync();
+    _cached = image;
+    _redoOpen = false;
+    _redoEnd = 0;
+    _chain = 0;
+    _salt = 0;
+  }
+
+  Future<void> _writeDatabase(Uint8List image) async {
+    await _database.write(0, image);
+    await _database.truncate(image.length);
+    await _database.sync();
+  }
+
+  bool _samePage(Uint8List left, Uint8List right, int page) {
+    final start = (page - 1) * pageSize;
+    for (var i = 0; i < pageSize; i++) {
+      if (left[start + i] != right[start + i]) return false;
+    }
+    return true;
+  }
+
+  Uint8List _pageCopy(Uint8List image, int page) {
+    final start = (page - 1) * pageSize;
+    return Uint8List.fromList(image.sublist(start, start + pageSize));
+  }
+
   Future<void> _checkpoint() async {
     if (_addends.isNotEmpty) {
       _cached = _view();
@@ -410,6 +537,19 @@ final class RollbackJournalPager implements ImagePager {
     if (length == 0) return;
     final log = await _all(journal, maxImageBytes);
     if (log.every((byte) => byte == 0)) return;
+    if (log[0] == 0) return;
+    if (HotJournal.matchesMagic(log)) {
+      final current = await _all(database, maxImageBytes);
+      final restored = HotJournal.recover(current, log);
+      final header = DatabaseHeader.decode(restored);
+      header.validateFileLength(restored.length);
+      await database.write(0, restored);
+      await database.truncate(restored.length);
+      await database.sync();
+      await journal.truncate(0);
+      await journal.sync();
+      return;
+    }
     if (log.length >= _headerBytes && _magicMatches(log) && log[20] == 1) {
       final fields = ByteData.sublistView(log);
       final salt = fields.getUint32(12);

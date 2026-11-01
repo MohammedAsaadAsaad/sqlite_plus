@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+The package version stays `0.1.2`. Nothing here was uploaded. `packages/sqlite_plus` passed 10596 tests on Dart 3.13.7, Linux x64, against pinned SQLite 3.53.1 (`2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`).
+
+- Incremental auto-vacuum keeps the freelist page after an overflow delete. `incremental_vacuum` moves a live end page, then truncates.
+- Contentless FTS4 (`content=''`) stores no content table. `MATCH` returns the pinned docid. A scan or a content-column read is `SQL logic error`. An insert without a docid is `constraint failed`. FTS3 `content=''` is a column named `content`.
+- File `journal_mode` `wal`, `persist`, and `truncate` follow the pinned header and journal bytes. `wal` sets header bytes 18 and 19 to 2 and leaves no `-wal` file. `persist` leaves a journal whose first 28 bytes are 0. `truncate` leaves a zero-length journal. A hot official journal rolls back. This is not a multi-frame WAL log.
+- Cross-schema `VALUES` errors use the pinned text: `no such table: missing`, `sub-select returns 2 columns - expected 1`, and `table aux.u has 2 columns but 1 values were supplied`.
+- `EXPLAIN` matches the pinned opcode rows for a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries still throw `EXPLAIN bytecode is not implemented`. This is not a VDBE.
+- Margin notes exports CSV, imports those rows as new notes, and plots one bar per UTC update day. `examples/notes/tool/note_exchange_check.dart` passed. The Flutter widgets were not executed on this machine.
+
+Still open: the two-database commit record is the engine schema-commit file, not an official SQLite master journal. B5 stays unchecked until those Flutter widgets run. M9 stays unchecked. The scenario harness rejects a row count above 10000. iOS, macOS, Windows, power loss, and pub.dev were not run for this revision. Item 108 stays open.
+
 ## 0.1.2
 
 `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. This release records performance work and a Linux desktop experiment: a release build, 1,000 rows, every checksum matched. The package pages show that sample and the new logo.
@@ -66,27 +79,14 @@ pre-release.
 
 ### Planned
 
-- EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`,
-  `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`, plus
-  STAT4 and `auto_vacuum`. Constant arithmetic, a constant `WHERE`, one
-  ordinary table scan, and one constant `INSERT` match the pinned opcode rows
-  in `db_browser_b3_explain_test.dart`. `EXPLAIN SELECT 1+1` is `Add`. This is
-  not a VDBE.
-  `json_pretty` matches the pinned CLI for the cases in
-  `db_browser_b3_json_pretty_test.dart`. Correlated `json_each` matches the
-  pinned CLI for the cases in `db_browser_b3_json_each_test.dart`, including
-  `json_each(docs.label) RIGHT JOIN docs`, which returns 0 rows.
-  `doubleQuotedStrings` defaults to
-  off. When it is on, `db_browser_b3_dqs_test.dart` matches the pinned CLI.
-  Unquoted `a.title` beside a column named `a.title` returns the `title`
-  column, matching the pinned CLI.
-- A durable commit across two databases, and more journal modes.
-- FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and
-  FTS3/FTS4 writes.
+The comparisons recorded under Unreleased are in the tree. What remains:
+
+- `EXPLAIN` bytecode for an integer-primary-key insert and a join of two subqueries, plus STAT4. This is not a VDBE.
+- An official SQLite master journal for a two-database commit. The current record is the engine schema-commit file.
+- A multi-frame WAL log. File `wal`, `persist`, and `truncate` already match the pinned header and journal bytes.
 - ICU and locale collations, and further virtual-table modules.
 - A durable browser store, Android, and iOS.
-- Benchmarks at 100000 and 1000000 rows. The current AOT file measures 10000
-  rows.
-- A fresh macOS and Windows run for each new revision. The recorded desktop
-  pass is commit `7afaaba`.
+- Benchmarks at 100000 and 1000000 rows. The current AOT file measures 10000 rows.
+- A fresh macOS and Windows run for each new revision. The recorded desktop pass is commit `7afaaba`.
 - Publication on pub.dev when requested.
+- Flutter execution of the Margin notes CSV and plot screens. The data check passed. The widgets were not run here.

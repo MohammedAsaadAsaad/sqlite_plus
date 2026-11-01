@@ -7,6 +7,7 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
 import 'note.dart';
+import 'note_exchange.dart';
 import 'note_work.dart';
 
 /// ORM notes stored as one database image in [directory].
@@ -174,6 +175,58 @@ class NoteStore extends ChangeNotifier {
         progressLabel = '';
       }
     });
+  }
+
+  /// CSV for the notes currently loaded. Ids are text and are not keys on import.
+  String exportCsv() {
+    return exportNotesCsv([
+      for (final note in notes)
+        ExchangeNote(
+          id: note.id?.toString(),
+          title: note.title,
+          body: note.body,
+          pinned: note.pinned,
+          updated: note.updated.toUtc(),
+          tint: note.tint,
+        ),
+    ]);
+  }
+
+  /// Adds every CSV row as a new note. The file's id column is ignored.
+  Future<int> importCsv(String csv) {
+    final parsed = importNotesCsv(csv);
+    return _serializedValue(() async {
+      _checkIdle();
+      for (final row in parsed) {
+        _notes!.add(Note(
+          title: row.title,
+          body: row.body,
+          pinned: row.pinned,
+          updated: row.updated.toUtc(),
+          tint: row.tint,
+        ));
+      }
+      if (parsed.isNotEmpty) {
+        await _context!.saveChanges();
+        await _flush();
+        await _reload();
+      }
+      return parsed.length;
+    });
+  }
+
+  /// One bar per UTC day for the notes currently loaded.
+  List<PlotBar> plotByDay() {
+    return notesByUpdatedDay([
+      for (final note in notes)
+        ExchangeNote(
+          title: note.title,
+          body: note.body,
+          pinned: note.pinned,
+          updated: note.updated.toUtc(),
+          tint: note.tint,
+        ),
+    ]);
   }
 
   Future<DatabaseSnapshot> details() {

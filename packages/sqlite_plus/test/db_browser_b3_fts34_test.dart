@@ -123,7 +123,7 @@ void main() {
     await expectLater(
         db.query('SELECT body FROM missing'),
         throwsA(isA<SqlException>().having(
-            (error) => error.message, 'message', 'No such table: missing')));
+            (error) => error.message, 'message', 'no such table: missing')));
     await expectLater(db.execute("INSERT INTO missing VALUES ('x')"),
         throwsA(isA<SqlException>()));
     final mismatch = await Process.run(tool, [
@@ -291,6 +291,118 @@ void main() {
     }
     expect(sawOld, isTrue);
     expect(sawNew, isTrue);
+  });
+
+  test('contentless FTS4 writes match the pinned rows', () async {
+    expect(
+        await engine([
+          "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+          "INSERT INTO f(docid, body) VALUES(7, 'hello world')",
+          "SELECT rowid FROM f WHERE f MATCH 'hello'",
+        ]),
+        await pinned([
+          "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+          "INSERT INTO f(docid, body) VALUES(7, 'hello world')",
+          "SELECT rowid FROM f WHERE f MATCH 'hello'",
+        ]));
+    expect(
+        await engine([
+          "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+          "INSERT INTO f(docid, body) VALUES(7, 'hello world')",
+          "INSERT INTO f(docid, body) VALUES(8, 'other text')",
+          "SELECT rowid FROM f WHERE f MATCH 'other'",
+        ]),
+        '8');
+    expect(
+        await engine([
+          "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+          "INSERT INTO f(docid, body) VALUES(7, 'hello world')",
+          "SELECT rowid FROM f WHERE f MATCH 'missing'",
+        ]),
+        '');
+    expect(
+        await engine([
+          "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+          "INSERT INTO f(docid, body) VALUES(7, 'hello world')",
+          'PRAGMA integrity_check',
+        ]),
+        await pinned([
+          "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+          "INSERT INTO f(docid, body) VALUES(7, 'hello world')",
+          'PRAGMA integrity_check',
+        ]));
+
+    Future<String> engineError(List<String> statements) async {
+      try {
+        await engine(statements);
+      } on SqlException catch (error) {
+        return error.message;
+      }
+      fail('expected SQL error: $statements');
+    }
+
+    Future<String> pinError(String sql) async {
+      final result = await Process.run(tool, [':memory:', sql]);
+      expect(result.exitCode, isNot(0));
+      final text = result.stderr.toString().trim();
+      final marker = text.lastIndexOf(':');
+      return marker < 0 ? text : text.substring(marker + 1).trim();
+    }
+
+    const setup = "CREATE VIRTUAL TABLE f USING fts4(body, content=''); "
+        "INSERT INTO f(docid, body) VALUES(7, 'hello world'); ";
+    expect(
+        await engineError([
+          "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+          "INSERT INTO f(docid, body) VALUES(7, 'hello world')",
+          'SELECT rowid FROM f',
+        ]),
+        await pinError('${setup}SELECT rowid FROM f'));
+    expect(
+        await engineError([
+          "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+          "INSERT INTO f(docid, body) VALUES(7, 'hello world')",
+          "SELECT body FROM f WHERE f MATCH 'hello'",
+        ]),
+        await pinError("${setup}SELECT body FROM f WHERE f MATCH 'hello'"));
+    expect(
+        await engineError([
+          "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+          "INSERT INTO f(docid, body) VALUES(7, 'hello world')",
+          'DELETE FROM f WHERE docid=7',
+        ]),
+        await pinError('${setup}DELETE FROM f WHERE docid=7'));
+    expect(
+        await engineError([
+          "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+          "INSERT INTO f VALUES('hello')",
+        ]),
+        await pinError(
+            "CREATE VIRTUAL TABLE f USING fts4(body, content=''); INSERT INTO f VALUES('hello')"));
+
+    final file =
+        File('${Directory.systemTemp.path}/sqlite_plus_fts4_contentless.db');
+    if (file.existsSync()) file.deleteSync();
+    final created = await Process.run(tool, [
+      file.path,
+      "CREATE VIRTUAL TABLE f USING fts4(body, content='')",
+      "INSERT INTO f(docid, body) VALUES(7, 'hello world')",
+    ]);
+    expect(created.exitCode, 0, reason: created.stderr.toString());
+    final native =
+        await MutableSqliteDatabase.fromImage(await file.readAsBytes());
+    addTearDown(native.close);
+    expect(
+        (await native.query("SELECT rowid FROM f WHERE f MATCH 'hello'")).rows,
+        [
+          [BigInt.from(7)]
+        ]);
+    await native.execute("INSERT INTO f(docid, body) VALUES(9, 'later')");
+    expect(
+        (await native.query("SELECT rowid FROM f WHERE f MATCH 'later'")).rows,
+        [
+          [BigInt.from(9)]
+        ]);
   });
 
   test('regression FTS5 writes and a native FTS4 insert stay readable',

@@ -416,6 +416,91 @@ void main() {
         'CREATE TABLE t(a, b DEFAULT 2);',
         'EXPLAIN INSERT INTO t(a,b) VALUES (1,2)'
       ),
+      ('CREATE TABLE t(a INTEGER PRIMARY KEY);', 'EXPLAIN SELECT a FROM t'),
+      (
+        'CREATE TABLE t(a INTEGER PRIMARY KEY);',
+        'EXPLAIN SELECT a FROM t WHERE 0'
+      ),
+      ('CREATE TABLE t(a INTEGER PRIMARY KEY, b);', 'EXPLAIN SELECT * FROM t'),
+      ('CREATE TABLE t(a INTEGER PRIMARY KEY, b);', 'EXPLAIN SELECT b FROM t'),
+      ('CREATE TABLE t(a INTEGER PRIMARY KEY, b);', 'EXPLAIN SELECT a FROM t'),
+      ('CREATE TABLE t(v);', 'EXPLAIN SELECT rowid FROM t'),
+      ('CREATE TABLE t(v);', 'EXPLAIN SELECT oid, _rowid_ FROM t'),
+      ('CREATE TABLE t(rowid);', 'EXPLAIN SELECT rowid FROM t'),
+      (
+        'CREATE TABLE t(a PRIMARY KEY) WITHOUT ROWID;',
+        'EXPLAIN SELECT a FROM t'
+      ),
+      (
+        'CREATE TABLE t(a, b, PRIMARY KEY(a, b)) WITHOUT ROWID;',
+        'EXPLAIN SELECT a, b FROM t'
+      ),
+      (
+        'CREATE TABLE t(a PRIMARY KEY, b) WITHOUT ROWID;',
+        'EXPLAIN SELECT * FROM t'
+      ),
+      (
+        'CREATE TABLE t(b, a PRIMARY KEY) WITHOUT ROWID;',
+        'EXPLAIN SELECT b, a FROM t'
+      ),
+      (
+        'CREATE TABLE t(a PRIMARY KEY COLLATE NOCASE) WITHOUT ROWID;',
+        'EXPLAIN SELECT a FROM t'
+      ),
+      (
+        'CREATE TABLE t(a PRIMARY KEY DESC) WITHOUT ROWID;',
+        'EXPLAIN SELECT a FROM t'
+      ),
+      (
+        'CREATE TABLE t(a PRIMARY KEY COLLATE binary) WITHOUT ROWID;',
+        'EXPLAIN SELECT a FROM t'
+      ),
+      ('CREATE TABLE t(a, b AS (a+1));', 'EXPLAIN SELECT * FROM t'),
+      ('CREATE TABLE t(a, b AS (a+1));', 'EXPLAIN SELECT b FROM t'),
+      ('CREATE TABLE t(a, b AS (a+1));', 'EXPLAIN SELECT a FROM t'),
+      ('CREATE TABLE t(a, b AS (a+1) STORED);', 'EXPLAIN SELECT * FROM t'),
+      ('CREATE TABLE t(a, c, b AS (a+1));', 'EXPLAIN SELECT b FROM t'),
+      ('CREATE TABLE t(a, c, b AS (a+1));', 'EXPLAIN SELECT a FROM t'),
+      ('CREATE TABLE t(a, b AS (a));', 'EXPLAIN SELECT b FROM t'),
+      ('CREATE TABLE t(a, b AS (a+1), c AS (a*2));', 'EXPLAIN SELECT * FROM t'),
+      (
+        'CREATE TABLE t(a INTEGER PRIMARY KEY, b, c AS (b+1));',
+        'EXPLAIN SELECT * FROM t'
+      ),
+      ('CREATE TABLE t(a INT);', 'EXPLAIN INSERT INTO t VALUES (1)'),
+      ('CREATE TABLE t(a TEXT);', "EXPLAIN INSERT INTO t VALUES ('ab')"),
+      ('CREATE TABLE t(a REAL);', 'EXPLAIN INSERT INTO t VALUES (1.5)'),
+      ('CREATE TABLE t(a BLOB);', "EXPLAIN INSERT INTO t VALUES (x'61')"),
+      ('CREATE TABLE t(a, b INT);', 'EXPLAIN INSERT INTO t VALUES (1, 2)'),
+      ('CREATE TABLE t(a NUMERIC);', 'EXPLAIN INSERT INTO t VALUES (1)'),
+      ('CREATE TABLE t(a INTEGER);', 'EXPLAIN INSERT INTO t VALUES (1)'),
+      ('CREATE TABLE t(a FLOAT);', 'EXPLAIN INSERT INTO t VALUES (1.5)'),
+      ('CREATE TABLE t(a VARCHAR(10));', "EXPLAIN INSERT INTO t VALUES ('ab')"),
+      ('CREATE TABLE t(a BIGINT);', 'EXPLAIN INSERT INTO t VALUES (1)'),
+      ('CREATE TABLE t(a ANY);', 'EXPLAIN INSERT INTO t VALUES (1)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (1),(2)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (1),(2),(3)'),
+      (
+        'CREATE TABLE t(a, b);',
+        "EXPLAIN INSERT INTO t VALUES (1, 'x'),(2, 'y')"
+      ),
+      (
+        'CREATE TABLE t(a, b, c);',
+        'EXPLAIN INSERT INTO t VALUES (1, 2, 3),(4, 5, 6)'
+      ),
+      (
+        'CREATE TABLE t(a, b, c, d);',
+        'EXPLAIN INSERT INTO t VALUES (1, 2, 3, 4),(5, 6, 7, 8)'
+      ),
+      ('CREATE TABLE t(a INT);', 'EXPLAIN INSERT INTO t VALUES (1),(2)'),
+      (
+        'CREATE TABLE t(a INT, b TEXT);',
+        "EXPLAIN INSERT INTO t VALUES (1, 'x'),(2, 'y')"
+      ),
+      ('', 'EXPLAIN SELECT 1 FROM (SELECT 1)'),
+      ('', 'EXPLAIN SELECT 1 FROM (SELECT 1, 2)'),
+      ('', 'EXPLAIN SELECT x, y FROM (SELECT 1 AS x, 2 AS y)'),
+      ('', 'EXPLAIN SELECT x FROM (SELECT 1 AS x, 2 AS y)'),
     ];
     for (final (setup, sql) in cases) {
       final db = await MutableSqliteDatabase.create();
@@ -448,9 +533,8 @@ void main() {
     addTearDown(db.close);
     await db.execute('CREATE TABLE t(v)');
     const rejected = <String>[
-      'EXPLAIN SELECT 1 FROM (SELECT 1)',
+      'EXPLAIN SELECT 1 FROM (SELECT 1), (SELECT 2)',
       'EXPLAIN SELECT title',
-      'EXPLAIN SELECT rowid FROM t',
       'EXPLAIN SELECT 1 WHERE NOT 0.0',
       'EXPLAIN SELECT 1 WHERE a',
     ];
@@ -466,53 +550,22 @@ void main() {
               'message', 'EXPLAIN bytecode is not implemented')),
           reason: sql);
     }
-    final subquery =
-        await pinnedLines(tool!, 'EXPLAIN SELECT 1 FROM (SELECT 1)');
-    expect(subquery, isNotEmpty);
     final missing =
-        await Process.run(tool, [':memory:', 'EXPLAIN SELECT title']);
+        await Process.run(tool!, [':memory:', 'EXPLAIN SELECT title']);
     expect(missing.exitCode, isNonZero);
     expect(missing.stderr.toString(), contains('no such column: title'));
     final ipk = await MutableSqliteDatabase.create();
     addTearDown(ipk.close);
     await ipk.execute('CREATE TABLE t(a INTEGER PRIMARY KEY)');
     await expectLater(
-        ipk.query('EXPLAIN SELECT a FROM t'),
+        ipk.query('EXPLAIN INSERT INTO t VALUES (1)'),
         throwsA(isA<SqlException>().having((error) => error.message, 'message',
             'EXPLAIN bytecode is not implemented')));
     final ipkCli = await Process.run(tool, [
       ':memory:',
-      'CREATE TABLE t(a INTEGER PRIMARY KEY); EXPLAIN SELECT a FROM t'
+      'CREATE TABLE t(a INTEGER PRIMARY KEY); EXPLAIN INSERT INTO t VALUES (1)'
     ]);
     expect(ipkCli.exitCode, 0, reason: ipkCli.stderr.toString());
-    final wide = await MutableSqliteDatabase.create();
-    addTearDown(wide.close);
-    await wide.execute('CREATE TABLE t(a PRIMARY KEY) WITHOUT ROWID');
-    await expectLater(
-        wide.query('EXPLAIN SELECT a FROM t'),
-        throwsA(isA<SqlException>().having((error) => error.message, 'message',
-            'EXPLAIN bytecode is not implemented')));
-    final generated = await MutableSqliteDatabase.create();
-    addTearDown(generated.close);
-    await generated.execute('CREATE TABLE t(a, b AS (a+1))');
-    await expectLater(
-        generated.query('EXPLAIN SELECT * FROM t'),
-        throwsA(isA<SqlException>().having((error) => error.message, 'message',
-            'EXPLAIN bytecode is not implemented')));
-    final rows = await MutableSqliteDatabase.create();
-    addTearDown(rows.close);
-    await rows.execute('CREATE TABLE t(a)');
-    await expectLater(
-        rows.query('EXPLAIN INSERT INTO t VALUES (1),(2)'),
-        throwsA(isA<SqlException>().having((error) => error.message, 'message',
-            'EXPLAIN bytecode is not implemented')));
-    final typed = await MutableSqliteDatabase.create();
-    addTearDown(typed.close);
-    await typed.execute('CREATE TABLE t(a INT)');
-    await expectLater(
-        typed.query('EXPLAIN INSERT INTO t VALUES (1)'),
-        throwsA(isA<SqlException>().having((error) => error.message, 'message',
-            'EXPLAIN bytecode is not implemented')));
     await expectLater(
         db.query('EXPLAIN SELECT 1', [1]),
         throwsA(isA<SqlException>().having((error) => error.message, 'message',
