@@ -269,13 +269,112 @@
     },
     {
       "id": "explain-bytecode",
-      "disposition": "rejected",
+      "disposition": "match",
       "kind": "query",
       "sql": "EXPLAIN SELECT 1",
-      "reason": "EXPLAIN bytecode is not implemented. The statement is rejected. EXPLAIN QUERY PLAN prints this engine's plan text, which is not SQLite bytecode.",
-      "engine_message": "EXPLAIN bytecode is not implemented",
-      "sqlite_text": "addr  opcode         p1    p2    p3    p4             p5  comment      \n----  -------------  ----  ----  ----  -------------  --  -------------\n0     Init           0     4     0                    0   \n1     Integer        1     1     0                    0   \n2     ResultRow      1     1     0                    0   \n3     Halt           0     0     0                    0   \n4     Goto           0     1     0                    0   ",
-      "parse_error": "quote-mode row was not parsed"
+      "sqlite_text": "0,'Init',0,4,0,NULL,0,NULL\n1,'Integer',1,1,0,NULL,0,NULL\n2,'ResultRow',1,1,0,NULL,0,NULL\n3,'Halt',0,0,0,NULL,0,NULL\n4,'Goto',0,1,0,NULL,0,NULL",
+      "rows": [
+        [
+          {
+            "integer": "0"
+          },
+          "Init",
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "4"
+          },
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          null
+        ],
+        [
+          {
+            "integer": "1"
+          },
+          "Integer",
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          null
+        ],
+        [
+          {
+            "integer": "2"
+          },
+          "ResultRow",
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          null
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "Halt",
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          null
+        ],
+        [
+          {
+            "integer": "4"
+          },
+          "Goto",
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "1"
+          },
+          {
+            "integer": "0"
+          },
+          null,
+          {
+            "integer": "0"
+          },
+          null
+        ]
+      ]
     },
     {
       "id": "journal-mode-memory",
@@ -372,8 +471,21 @@
       "sqlite_text_contains": [
         "INTEGER PRIMARY KEY"
       ],
-      "sqlite_text": "QUERY PLAN\n`--SEARCH t USING INTEGER PRIMARY KEY (rowid=?)",
-      "parse_error": "quote-mode row was not parsed"
+      "sqlite_text": "2,0,33,'SEARCH t USING INTEGER PRIMARY KEY (rowid=?)'",
+      "rows": [
+        [
+          {
+            "integer": "2"
+          },
+          {
+            "integer": "0"
+          },
+          {
+            "integer": "33"
+          },
+          "SEARCH t USING INTEGER PRIMARY KEY (rowid=?)"
+        ]
+      ]
     }
   ]
 }

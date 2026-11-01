@@ -66,8 +66,10 @@ pre-release.
 
 ### Planned
 
-- EXPLAIN bytecode, STAT4, and
-  `auto_vacuum`. `json_pretty` matches the pinned CLI for the cases in
+- EXPLAIN bytecode beyond a literal projection, STAT4, and
+  `auto_vacuum`. `EXPLAIN SELECT 1` matches the pinned opcode rows in
+  `db_browser_b3_explain_test.dart`. `EXPLAIN SELECT 1+1` still throws.
+  `json_pretty` matches the pinned CLI for the cases in
   `db_browser_b3_json_pretty_test.dart`. Correlated `json_each` matches the
   pinned CLI for the cases in `db_browser_b3_json_each_test.dart`, including
   `json_each(docs.label) RIGHT JOIN docs`, which returns 0 rows.

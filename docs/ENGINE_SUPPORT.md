@@ -55,7 +55,7 @@ write is rejected, and `fromImage` rejects a non-zero largest root page.
 `createCollation` registers one connection-local text collation. The test
 covers ORDER BY, UNIQUE, and an index on that collation. REINDEX of a custom
 collation name has no separate oracle. EXPLAIN QUERY PLAN returns this
-engine's `detail` text. EXPLAIN bytecode is rejected. Two or three comma joins
+engine's `detail` text. `EXPLAIN SELECT 1` matches the pinned CLI opcode rows. Other EXPLAIN bytecode, including `EXPLAIN SELECT 1+1`, still throws. Two or three comma joins
 with ORDER BY and sqlite_stat1 counts can be reordered; the test compares
 rows. A covering index skips the table when every referenced column is in the
 index or is a rowid alias, and that read uses fewer pages. `sqlite_stat4` opens
@@ -70,7 +70,7 @@ column. `"a.title"` returns the dotted column. Both match the pinned CLI.
 
 The gap ledger has 25 UTF-8 cases from the pinned CLI. A case matches the CLI
 or names the rejection. The recorded differences include the default-off DQS
-case, EXPLAIN bytecode, `journal_mode` memory/off, `auto_vacuum`, a cross-database
+case, `journal_mode` memory/off, `auto_vacuum`, a cross-database
 insert, the fresh `journal_mode` name, and EXPLAIN QUERY PLAN text. `json_pretty`
 matches the pinned CLI, including a custom indent. Its output cap is 16 MiB. The CLI
 compiler is gcc-13.3.0. `manifest.json` still records clang-22.1.3. Stable
@@ -182,7 +182,7 @@ AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 |---|---|
 | Schema state | Atomic commit of two durable databases, with temp and attached images included in that plan |
 | PRAGMA state | More journal modes, the auto-vacuum algorithm, and per-database cache, busy, and synchronous values |
-| Planning | Native EXPLAIN bytecode, fuller native costing, wider join reorder, built STAT4 statistics, and covering reads of a star or a generated column |
+| Planning | EXPLAIN bytecode beyond a literal projection, fuller native costing, wider join reorder, built STAT4 statistics, and covering reads of a star or a generated column |
 | Collations | ICU and locale collations, and a separate oracle for REINDEX of a custom collation name |
 | Grammar and errors | Closer native error text. Opt-in double-quoted strings match the pinned CLI in `db_browser_b3_dqs_test.dart`. The default stays off. Unquoted `a.title` beside a column named `a.title` returns the `title` column |
 | Table functions | More virtual-table modules |

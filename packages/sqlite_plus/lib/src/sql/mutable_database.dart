@@ -8,6 +8,7 @@ import '../pager/image_pager.dart';
 import '../pager/rollback_journal_pager.dart';
 import '../storage/memory_storage_backend.dart';
 import 'database.dart';
+import 'explain_bytecode.dart';
 import 'parser.dart';
 import 'schema_router.dart';
 import 'tokenizer.dart';
@@ -332,7 +333,15 @@ final class MutableSqliteDatabase {
         final explain = SqlParser(sql);
         if (explain.take('EXPLAIN')) {
           if (!(explain.take('QUERY') && explain.take('PLAN'))) {
-            throw const SqlException('EXPLAIN bytecode is not implemented');
+            if (parameters.isNotEmpty) {
+              throw const SqlException('EXPLAIN bytecode bindings unsupported');
+            }
+            final compiled =
+                compileLiteralExplain(sql.substring(explain.current.offset));
+            if (compiled == null) {
+              throw const SqlException('EXPLAIN bytecode is not implemented');
+            }
+            return compiled;
           }
           if (parameters.isNotEmpty) {
             throw const SqlException('EXPLAIN QUERY PLAN bindings unsupported');
@@ -388,7 +397,15 @@ final class MutableSqliteDatabase {
         final explain = SqlParser(sql);
         if (explain.take('EXPLAIN')) {
           if (!(explain.take('QUERY') && explain.take('PLAN'))) {
-            throw const SqlException('EXPLAIN bytecode is not implemented');
+            if (parameters.isNotEmpty) {
+              throw const SqlException('EXPLAIN bytecode bindings unsupported');
+            }
+            final compiled =
+                compileLiteralExplain(sql.substring(explain.current.offset));
+            if (compiled == null) {
+              throw const SqlException('EXPLAIN bytecode is not implemented');
+            }
+            return compiled;
           }
           if (parameters.isNotEmpty) {
             throw const SqlException('EXPLAIN QUERY PLAN bindings unsupported');

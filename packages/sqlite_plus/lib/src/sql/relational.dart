@@ -644,6 +644,7 @@ extension _RelationalQueries on SqliteDatabase {
         (alias) => key.startsWith('$alias.') || key.startsWith('main.$alias.'));
     final onAffinities = <String, String>{};
     final onCollations = <String, String>{};
+
     /// A column named `a.title` must not replace the qualified slot `a.title`,
     /// which is column `title` of alias `a`. The dotted name stays under a
     /// private key for a double-quoted identifier.

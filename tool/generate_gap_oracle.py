@@ -81,10 +81,7 @@ CASES = [
     },
     {
         "id": "explain-bytecode",
-        "disposition": "rejected",
         "sql": "EXPLAIN SELECT 1",
-        "reason": "EXPLAIN bytecode is not implemented. The statement is rejected. EXPLAIN QUERY PLAN prints this engine's plan text, which is not SQLite bytecode.",
-        "engine_message": "EXPLAIN bytecode is not implemented",
     },
     {
         "id": "journal-mode-memory",
@@ -235,7 +232,10 @@ def _encode(value):
 
 
 def _run(setup, sql):
-    script = ".mode quote\n.headers off\n"
+    script = ""
+    if sql.lstrip().upper().startswith("EXPLAIN"):
+        script += ".explain off\n"
+    script += ".mode quote\n.headers off\n"
     if setup:
         script += setup + ";\n"
     script += ".print @@RESULT@@\n" + sql + ";\n"

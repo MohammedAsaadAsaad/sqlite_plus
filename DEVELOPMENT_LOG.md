@@ -1743,8 +1743,16 @@ result=pass
 
 - Unquoted `a.title` is column `title` of alias `a`. A column whose name is `a.title` no longer hides that slot. `"a.title"` and `a."a.title"` still read the dotted column. `db_browser_b3_dqs_test.dart` matches `/tmp/sqlite-build/sqlite3` for the pair, `main.a.title`, `SELECT *`, a join, and `title INT` plus one. Unquoted `a.title` when that is the only column raises `No such column: a.title`. The CLI text is `no such column: a.title`.
 - That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
-- The suite count for this note is filled in after `dart analyze --fatal-infos` and `dart test`. No wall-clock timing was run. No speedup is claimed.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10660 tests on Dart 3.13.7, Linux x64. The new checks are inside `db_browser_b3_dqs_test.dart`, so the count did not grow. No wall-clock timing was run. No speedup is claimed.
 - The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 literal EXPLAIN bytecode
+
+- `EXPLAIN SELECT 1` returns the pinned opcode rows. The columns are `addr`, `opcode`, `p1`, `p2`, `p3`, `p4`, `p5`, and `comment`. A result column that is one literal opcode uses `Integer`, `Int64`, `Real`, `String8`, `Blob`, or `Null`, then `ResultRow`, `Halt`, and `Goto`. The gap-ledger case `explain-bytecode` is a match. `db_browser_b3_explain_test.dart` also matches signed 32-bit edges, signed 64-bit edges, hex literals, `TRUE` and `FALSE`, reals including `Inf`, and blobs, on both `query` and `browse`.
+- `EXPLAIN SELECT 1+1`, `EXPLAIN SELECT 1 WHERE 1`, `EXPLAIN SELECT * FROM t`, and `EXPLAIN INSERT` still throw `EXPLAIN bytecode is not implemented`. The CLI program for `EXPLAIN SELECT 1+1` contains `Add`. `EXPLAIN SELECT title` is `no such column: title` on the CLI. This is not a VDBE. EXPLAIN QUERY PLAN is unchanged.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10663 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The rest of B3 stays unchecked: closer EXPLAIN QUERY PLAN text, ICU and locale collations, FTS3/FTS4 writes, FTS5 porter, trigram, detail, tokendata, locale, and multi-page leaves, `VACUUM INTO`, `journal_mode` switches, `auto_vacuum` writes, one durable commit across two attached databases, and the remaining DML syntax. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
 ## 2026-10-31 — Version 0.1.2
 

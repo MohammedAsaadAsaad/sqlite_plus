@@ -46,8 +46,8 @@ note, an FTS article, and an R-tree place through `sqlite_plus_orm` only. That
 file's application source has no SQL text. `MutableDatabaseConnection.openMemory`
 opens the in-memory engine.
 
-`COMPATIBILITY_MATRIX.md` records the tested surface. Planned next are
-EXPLAIN bytecode, STAT4 planning,
+`COMPATIBILITY_MATRIX.md` records the tested surface. `EXPLAIN SELECT 1` matches the pinned opcode rows. Planned next are
+EXPLAIN bytecode beyond a literal projection, STAT4 planning,
 auto-vacuum writes, a durable two-database commit, more journal modes, extended FTS, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
@@ -439,7 +439,7 @@ The current baseline and the planned follow-up are in
 objects, one attached database, the connection pragmas named in the matrix,
 one custom collation, this engine's EXPLAIN QUERY PLAN text, a bounded join
 reorder, covering-index reads, and incremental page writes for the tested
-shapes. Planned next are native EXPLAIN bytecode, STAT4, auto-vacuum, and a
+shapes. `EXPLAIN SELECT 1` matches the pinned opcode rows. Planned next are EXPLAIN bytecode beyond a literal projection, STAT4, auto-vacuum, and a
 durable cross-database write. Items 77–82 add `openBrowserStorage` and
 `BrowserDatabaseConnection`. The caller reads `canRead`, `canWrite`,
 `durabilityPromised`, and `placement`. The current round trip uses an
