@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'database_header.dart';
+import 'pointer_map.dart';
 
 /// Structural B-tree page framing only; cells and records are not decoded.
 final class BtreePageHeader {
@@ -28,6 +29,10 @@ final class BtreePageHeader {
     if (pageNumber < 1) throw RangeError.value(pageNumber, 'pageNumber');
     if (page.length != database.pageSize) {
       throw const FormatException('Incorrect page length');
+    }
+    if (database.largestRootPage != 0 &&
+        PointerMap.isPage(database, pageNumber)) {
+      throw const FormatException('Pointer-map page is not a b-tree page');
     }
     final start = pageNumber == 1 ? 100 : 0;
     final data = ByteData.sublistView(page);

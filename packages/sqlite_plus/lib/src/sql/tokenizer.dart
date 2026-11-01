@@ -1,5 +1,12 @@
 import 'dart:async';
 
+/// Zone flag set by a connection while a statement runs. Double-quoted
+/// identifiers stay identifiers unless this is true.
+final doubleQuotedStringsKey = Object();
+
+bool get doubleQuotedStringsEnabled =>
+    Zone.current[doubleQuotedStringsKey] == true;
+
 /// Stable classes for callers. The message text is not SQLite's text.
 enum SqlErrorCode { constraint, syntax, missingTable }
 

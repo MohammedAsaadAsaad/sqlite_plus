@@ -26,6 +26,7 @@ const jsonFunctionArities = <String, (int, int)>{
   'jsonb_object': (0, 1000),
   'json_patch': (2, 2),
   'jsonb_patch': (2, 2),
+  'json_pretty': (1, 2),
   'json_quote': (1, 1),
   'json_remove': (0, 1000),
   'jsonb_remove': (0, 1000),
@@ -123,6 +124,8 @@ Object? _dispatchJson(String name, List<Object?> args, int encoding) {
       return _extract(args, encoding, blob: blob);
     case 'json_quote':
       return _quote(args[0], encoding);
+    case 'json_pretty':
+      return _pretty(args, encoding);
     case 'json_array':
     case 'jsonb_array':
       return _publishNode(
@@ -376,6 +379,83 @@ String _render(JNode node) {
   final buffer = StringBuffer();
   _writeText(node, buffer);
   return buffer.toString();
+}
+
+Object? _pretty(List<Object?> args, int encoding) {
+  if (args[0] == null) return null;
+  final node = _readDocument(args[0], encoding);
+  final indent = args.length == 1 ? '    ' : _prettyIndent(args[1], encoding);
+  final buffer = StringBuffer();
+  _writePretty(node, buffer, indent, 0);
+  final text = buffer.toString();
+  if (text.length > FunctionOutputLimit.json) {
+    throw const SqlException('Function output limit exceeded');
+  }
+  return JsonText(text);
+}
+
+/// SQLite takes the indent as text and stops at the first NUL. A NULL indent
+/// is four spaces. A blob is its bytes, so one invalid UTF-8 byte stays a
+/// single code unit in the result string.
+String _prettyIndent(Object? value, int encoding) {
+  if (value == null) return '    ';
+  final text = value is String
+      ? value
+      : value is JsonText
+          ? value.text
+          : value is Uint8List
+              ? encoding == 1
+                  ? String.fromCharCodes(value)
+                  : decodeSqlText(value, encoding)
+              : value is double
+                  ? sqlRealText(value)
+                  : value.toString();
+  final nul = text.indexOf('\u0000');
+  return nul < 0 ? text : text.substring(0, nul);
+}
+
+void _writePretty(JNode node, StringBuffer buffer, String indent, int depth) {
+  switch (node) {
+    case JArr(:final items):
+      if (items.isEmpty) {
+        buffer.write('[]');
+        return;
+      }
+      buffer.write('[');
+      for (var i = 0; i < items.length; i++) {
+        if (i > 0) buffer.write(',');
+        _prettyBreak(buffer, indent, depth + 1);
+        _writePretty(items[i], buffer, indent, depth + 1);
+      }
+      _prettyBreak(buffer, indent, depth);
+      buffer.write(']');
+    case JObj(:final fields):
+      if (fields.isEmpty) {
+        buffer.write('{}');
+        return;
+      }
+      buffer.write('{');
+      for (var i = 0; i < fields.length; i++) {
+        if (i > 0) buffer.write(',');
+        _prettyBreak(buffer, indent, depth + 1);
+        buffer
+          ..write('"')
+          ..write(fields[i].key.raw)
+          ..write('": ');
+        _writePretty(fields[i].value, buffer, indent, depth + 1);
+      }
+      _prettyBreak(buffer, indent, depth);
+      buffer.write('}');
+    default:
+      _writeText(node, buffer);
+  }
+}
+
+void _prettyBreak(StringBuffer buffer, String indent, int depth) {
+  buffer.write('\n');
+  for (var i = 0; i < depth; i++) {
+    buffer.write(indent);
+  }
 }
 
 void _writeText(JNode node, StringBuffer buffer) {

@@ -122,6 +122,11 @@ final class SqliteDatabase {
 
   /// Scalar, aggregate, and collation callbacks for this connection.
   final SqlFunctionRegistry functions;
+
+  /// Unresolved double-quoted expression identifiers become strings when this
+  /// is true. The default is false.
+  bool get doubleQuotedStrings => functions.doubleQuotedStrings;
+  set doubleQuotedStrings(bool value) => functions.doubleQuotedStrings = value;
   bool _closed = false;
 
   /// Opens a read-only database on [storage].
@@ -262,6 +267,120 @@ final class SqliteDatabase {
         .rowCount(a.table!)!
         .compareTo(_statistics.rowCount(b.table!)!));
     return ordered;
+  }
+
+  /// Moves `json_each` and `json_tree` after the tables their arguments name
+  /// when every join in between is an inner join. Outer joins stay in place.
+  List<QuerySource> _orderCorrelatedTableFunctions(
+      List<QuerySource> sources, List<Object?> parameters) {
+    final ordered = [...sources];
+    for (var guard = 0; guard < ordered.length; guard++) {
+      var moved = false;
+      for (var index = 0; index < ordered.length; index++) {
+        final source = ordered[index];
+        if (!_correlatedJsonFunction(source, parameters)) continue;
+        final dependencies = <int>[];
+        for (final argument in source.pragmaArguments!) {
+          for (final name in argument.unaggregatedColumns) {
+            for (var other = 0; other < ordered.length; other++) {
+              if (other != index &&
+                  _sourceProvidesColumn(ordered[other], name)) {
+                dependencies.add(other);
+              }
+            }
+          }
+        }
+        if (dependencies.isEmpty) continue;
+        final destination = dependencies.reduce((a, b) => a > b ? a : b);
+        if (destination <= index) continue;
+        if (ordered
+            .sublist(index + 1, destination + 1)
+            .any((later) => !const {'INNER', 'CROSS'}.contains(later.join))) {
+          continue;
+        }
+        ordered.removeAt(index);
+        ordered.insert(destination, source);
+        moved = true;
+        break;
+      }
+      if (!moved) break;
+    }
+    return ordered;
+  }
+
+  bool _perCallTableFunction(QuerySource source) {
+    final name = asciiLower(source.table ?? '');
+    return source.pragmaArguments != null &&
+        (name == 'json_each' || name == 'json_tree');
+  }
+
+  bool _correlatedJsonFunction(QuerySource source, List<Object?> parameters) {
+    final arguments = source.pragmaArguments;
+    final table = source.table;
+    if (arguments == null || table == null) return false;
+    final name = asciiLower(table);
+    if (name != 'json_each' && name != 'json_tree') return false;
+    if (_isPragmaTableSource(source)) return false;
+    for (final argument in arguments) {
+      try {
+        evaluateVirtualArgument(argument, parameters);
+      } on SqlException {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// A later FROM item exposes [key] when the alias and the real column match.
+  /// An aliased table does not keep its original name.
+  bool _laterSourceHasColumn(QuerySource source, String key) {
+    final alias = asciiLower(source.alias ?? source.table ?? '');
+    if (alias.isEmpty || source.table == null || source.query != null) {
+      return false;
+    }
+    String? column;
+    if (key.startsWith('$alias.')) {
+      column = key.substring(alias.length + 1);
+    } else if (key.startsWith('main.$alias.')) {
+      column = key.substring(alias.length + 6);
+    } else if (!key.contains('.')) {
+      column = key;
+    }
+    if (column == null || column.isEmpty || column.contains('.')) return false;
+    try {
+      final table = catalog.table(source.table!);
+      if (table.columns.any((c) => asciiLower(c.name) == column)) return true;
+      return !table.withoutRowid &&
+          const {'rowid', '_rowid_', 'oid'}.contains(column) &&
+          !table.columns.any((c) => asciiLower(c.name) == column);
+    } on SqlException {
+      return false;
+    }
+  }
+
+  bool _sourceProvidesColumn(QuerySource source, String key) {
+    final alias = asciiLower(source.alias ?? source.table ?? '');
+    if (alias.isNotEmpty &&
+        (key == alias ||
+            key.startsWith('$alias.') ||
+            key.startsWith('main.$alias.'))) {
+      return true;
+    }
+    final table = source.table == null ? '' : asciiLower(source.table!);
+    if (table.isNotEmpty &&
+        alias != table &&
+        (key == table || key.startsWith('$table.'))) {
+      return true;
+    }
+    if (key.contains('.') || source.table == null) return false;
+    try {
+      return catalog
+          .table(source.table!)
+          .columns
+          .any((column) => asciiLower(column.name) == key);
+    } on SqlException {
+      return false;
+    }
   }
 
   QueryPlan _plan(
@@ -521,12 +640,26 @@ final class SqliteDatabase {
       if (module == null || !module.eponymous) {
         throw SqlException('$name is not a table-valued function');
       }
-      final values = [
-        for (final argument in arguments)
-          evaluateVirtualArgument(argument, parameters)
-      ];
-      if (values.length > module.hiddenColumns.length) {
+      if (arguments.length > module.hiddenColumns.length) {
         throw SqlException('Too many arguments for $name');
+      }
+      final jsonModule =
+          module.name == 'json_each' || module.name == 'json_tree';
+      final values = <Object?>[];
+      if (jsonModule) {
+        try {
+          for (final argument in arguments) {
+            values.add(evaluateVirtualArgument(argument, parameters));
+          }
+        } on SqlException {
+          // A column or other non-constant is evaluated once per outer row.
+          return virtualCatalogTable(module, source!.table ?? name,
+              argumentExprs: arguments);
+        }
+      } else {
+        for (final argument in arguments) {
+          values.add(evaluateVirtualArgument(argument, parameters));
+        }
       }
       return virtualCatalogTable(module, source!.table ?? name,
           positionals: values);
@@ -730,6 +863,148 @@ final class SqliteDatabase {
     return (await _prepareQuery(sql, parameters, outer)).materialize();
   }
 
+  /// One window of a single-table read. [query] still materializes its input.
+  ///
+  /// A `LIMIT`/`OFFSET` table or WITHOUT ROWID scan stops after the window.
+  /// Anything else uses [query]. Stored records may be as large as SQLite's
+  /// default `SQLITE_MAX_LENGTH` (1000000000 bytes). The size is rejected
+  /// before that buffer is allocated.
+  Future<QueryResult> browse(String sql,
+          [List<Object?> parameters = const []]) =>
+      functions.run(() => _browse(sql, parameters));
+
+  Future<QueryResult> _browse(String sql, List<Object?> parameters,
+      [EvalContext? outer]) async {
+    final paged = await _pageQuery(sql, parameters, outer);
+    if (paged != null) return paged;
+    return _query(sql, parameters, outer);
+  }
+
+  Future<QueryResult?> _pageQuery(String sql, List<Object?> parameters,
+      [EvalContext? outer]) async {
+    if (_closed || outer != null) return null;
+    final pragmaParser = SqlParser(sql);
+    if (pragmaParser.take('PRAGMA') || SqlParser(sql).take('EXPLAIN')) {
+      return null;
+    }
+    final statement = SqlParser(sql).select();
+    if (parameters.length != statement.parameterCount) {
+      throw const SqlException('Incorrect parameter count');
+    }
+    if (!_singleTablePage(statement)) return null;
+    final bound = parameters.map(sqlValue).toList();
+    final limit = _sqlCount(statement.limit, bound);
+    final offset =
+        statement.offset == null ? 0 : _sqlCount(statement.offset, bound);
+    if (limit == null || offset == null || limit < 0 || offset < 0) {
+      return null;
+    }
+    if (limit > 0x3fffffff || offset > 0x3fffffff) return null;
+    final table =
+        _resolveTable(statement.table!, statement.sources.single, bound);
+    final entry = catalog.entries
+        .where((entry) =>
+            entry.type == 'table' &&
+            asciiLower(entry.name) == asciiLower(table.name))
+        .firstOrNull;
+    if (entry == null) return null;
+    final plan = _plan(statement, table, bound);
+    if (plan.rootPage == null ||
+        (plan.access != 'table-scan' && plan.access != 'index-tree-scan')) {
+      return null;
+    }
+    if (statement.order.isNotEmpty) {
+      final physical = _physicalScanOrder(statement, table);
+      if (physical == null || physical.any((term) => term.$2)) return null;
+    }
+    if (limit == 0) {
+      return _evaluate(statement, bound, table, <RowValues>[]).materialize();
+    }
+    final need = offset + limit;
+    final reader = BtreeReader(_pager, maxPayloadBytes: 1000000000);
+    final input = <RowValues>[];
+    final stream = plan.access == 'index-tree-scan'
+        ? reader.scanIndex(plan.rootPage!)
+        : reader.scanTable(plan.rootPage!);
+    final stored = table.storageColumns;
+    final columns = table.columns;
+    await for (final record in stream) {
+      if (record.values.length > stored.length) {
+        throw const FormatException('More stored columns than catalog columns');
+      }
+      final row = <String, Object?>{};
+      for (var i = 0; i < stored.length; i++) {
+        final column = stored[i];
+        row[asciiLower(column.name)] = table.rowidAlias == column.name
+            ? record.rowId
+            : i < record.values.length
+                ? record.values[i]
+                : column.defaultValue;
+      }
+      row.updateAll(
+          (name, value) => value is double && value.isNaN ? null : value);
+      for (final column in columns) {
+        final type = column.declaredType.toUpperCase();
+        final key = asciiLower(column.name);
+        if (!type.contains('INT') &&
+            ['REAL', 'FLOA', 'DOUB'].any(type.contains) &&
+            row[key] is BigInt) {
+          row[key] = (row[key] as BigInt).toDouble();
+        }
+      }
+      if (!table.withoutRowid) {
+        for (final name in ['rowid', '_rowid_', 'oid']) {
+          row.putIfAbsent(name, () => record.rowId);
+        }
+      }
+      table.evaluateGenerated(row, _pager.header.textEncoding, lazy: true);
+      input.add(row);
+      if (input.length >= need) break;
+    }
+    return _evaluate(statement, bound, table, input).materialize();
+  }
+
+  bool _singleTablePage(SelectStatement statement) {
+    final source = statement.sources.singleOrNull;
+    return statement.table != null &&
+        source != null &&
+        source.query == null &&
+        source.group.isEmpty &&
+        statement.where == null &&
+        !statement.distinct &&
+        statement.groupBy.isEmpty &&
+        statement.having == null &&
+        statement.compounds.isEmpty &&
+        statement.ctes.isEmpty &&
+        !statement.valuesQuery &&
+        statement.windowDefinitions.isEmpty &&
+        statement.limit != null &&
+        statement.items.every((item) =>
+            item.expression?.containsAggregate != true &&
+            item.expression?.containsWindow != true) &&
+        statement.order.every((term) =>
+            !term.expression.containsAggregate &&
+            !term.expression.containsWindow);
+  }
+
+  int? _sqlCount(Expr? expr, List<Object?> bound) {
+    if (expr == null) return null;
+    var value =
+        expr.evaluate(EvalContext({}, {}, bound, _pager.header.textEncoding));
+    if (value is String) value = numeric(value);
+    if (value is double &&
+        value.isFinite &&
+        value == value.truncateToDouble()) {
+      value = BigInt.from(value);
+    }
+    if (value is! BigInt || value.bitLength > 63) {
+      throw const SqlException('LIMIT/OFFSET datatype mismatch');
+    }
+    if (value > BigInt.from(0x7fffffff)) return 0x7fffffff;
+    if (value < BigInt.from(-0x7fffffff)) return -0x7fffffff;
+    return value.toInt();
+  }
+
   /// Resolve physical table reads through view and CTE source scopes.
   bool queryReadsTable(SelectStatement query, String table) =>
       _queryReadsTable(query, table);
@@ -781,10 +1056,21 @@ final class SqliteDatabase {
       }
       return _relationalExecution(statement, bound, cache, outer);
     }
-    final table = statement.table == null
+    var table = statement.table == null
         ? null
         : _resolveTable(
             statement.table!, statement.sources.singleOrNull, bound);
+    if (table != null && table.virtualArgumentExprs != null) {
+      final context = EvalContext({}, {}, bound, _pager.header.textEncoding);
+      final values = [
+        for (final argument in table.virtualArgumentExprs!)
+          argument.evaluate(context)
+      ];
+      table = CatalogTable(table.name, table.rootPage, table.columns,
+          virtualModule: table.virtualModule,
+          virtualArguments: table.virtualArguments,
+          virtualPositionals: values);
+    }
     final columns = table?.columns ?? <CatalogColumn>[];
     final input = <RowValues>[];
     if (table == null) {
@@ -1954,6 +2240,12 @@ final class SqliteDatabase {
           return CatalogColumn(expr.name, '', affinityOverride: 'none');
         }
         if (column == null) {
+          if (scope.containsKey(expr.key)) {
+            throw SqlException('Ambiguous column: ${expr.name}');
+          }
+          if (expr.doubleQuoted && doubleQuotedStringsEnabled) {
+            return CatalogColumn(expr.name, 'TEXT', affinityOverride: 'none');
+          }
           throw SqlException('Unknown or ambiguous column: ${expr.name}');
         }
         return column;
@@ -2312,7 +2604,7 @@ final class SqliteDatabase {
         'UTF-16be'
       ][header.textEncoding],
       'journal_mode': sqlJournalMode(header.writeVersion),
-      'auto_vacuum': BigInt.zero,
+      'auto_vacuum': BigInt.from(header.autoVacuumMode),
     };
     if (values.containsKey(name) && argument == null) {
       return QueryResult([

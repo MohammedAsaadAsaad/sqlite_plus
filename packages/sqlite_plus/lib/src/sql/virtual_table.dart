@@ -392,7 +392,9 @@ abstract final class VirtualTableRows {
 }
 
 CatalogTable virtualCatalogTable(VirtualTableModule module, String name,
-    {List<String> arguments = const [], List<Object?>? positionals}) {
+    {List<String> arguments = const [],
+    List<Object?>? positionals,
+    List<Expr>? argumentExprs}) {
   return CatalogTable(
       name,
       0,
@@ -404,7 +406,8 @@ CatalogTable virtualCatalogTable(VirtualTableModule module, String name,
       ],
       virtualModule: module.name,
       virtualArguments: arguments,
-      virtualPositionals: positionals);
+      virtualPositionals: positionals,
+      virtualArgumentExprs: argumentExprs);
 }
 
 Object? evaluateVirtualArgument(Expr expression, List<Object?> parameters) {

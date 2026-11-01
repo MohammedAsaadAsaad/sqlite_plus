@@ -1,7 +1,6 @@
 import '../btree/btree_reader.dart';
 import '../pager/read_only_pager.dart';
 import 'catalog.dart';
-import 'tokenizer.dart';
 import 'values.dart';
 
 final class _IndexStatistics {
@@ -21,10 +20,8 @@ final class PlannerStatistics {
 
   static Future<PlannerStatistics> read(
       ReadOnlyPager pager, DatabaseCatalog catalog) async {
-    if (catalog.entries.any((entry) =>
-        entry.type == 'table' && asciiLower(entry.name) == 'sqlite_stat4')) {
-      throw const SqlException('STAT4 is not implemented');
-    }
+    // sqlite_stat4 may be present. Its samples are not read and do not change
+    // the stat1 estimates below.
     final entry = catalog.entries
         .where((entry) =>
             entry.type == 'table' && asciiLower(entry.name) == 'sqlite_stat1')

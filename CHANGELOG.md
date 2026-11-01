@@ -66,8 +66,17 @@ pre-release.
 
 ### Planned
 
-- `json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, and
-  `auto_vacuum`.
+- EXPLAIN bytecode beyond a literal projection, STAT4, and
+  `auto_vacuum`. `EXPLAIN SELECT 1` matches the pinned opcode rows in
+  `db_browser_b3_explain_test.dart`. `EXPLAIN SELECT 1+1` still throws.
+  `json_pretty` matches the pinned CLI for the cases in
+  `db_browser_b3_json_pretty_test.dart`. Correlated `json_each` matches the
+  pinned CLI for the cases in `db_browser_b3_json_each_test.dart`, including
+  `json_each(docs.label) RIGHT JOIN docs`, which returns 0 rows.
+  `doubleQuotedStrings` defaults to
+  off. When it is on, `db_browser_b3_dqs_test.dart` matches the pinned CLI.
+  Unquoted `a.title` beside a column named `a.title` returns the `title`
+  column, matching the pinned CLI.
 - A durable commit across two databases, and more journal modes.
 - FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and
   FTS3/FTS4 writes.

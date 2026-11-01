@@ -46,9 +46,9 @@ note, an FTS article, and an R-tree place through `sqlite_plus_orm` only. That
 file's application source has no SQL text. `MutableDatabaseConnection.openMemory`
 opens the in-memory engine.
 
-`COMPATIBILITY_MATRIX.md` records the tested surface. Planned next are
-`json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, `auto_vacuum`,
-a durable two-database commit, more journal modes, extended FTS, ICU and locale
+`COMPATIBILITY_MATRIX.md` records the tested surface. `EXPLAIN SELECT 1` matches the pinned opcode rows. Planned next are
+EXPLAIN bytecode beyond a literal projection, STAT4 planning,
+auto-vacuum writes, a durable two-database commit, more journal modes, extended FTS, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
 rows on Linux x64. Version `0.1.2` is the release in this tree. See
@@ -94,8 +94,12 @@ reconcile WAL or establish database integrity.
 
 ## Read-only database traversal
 
-Use a stable database copy with no concurrent writer, hot journal or pending WAL.
-The reader does not lock or recover databases and rejects WAL-format headers.
+`ReadOnlyFileStorageBackend` expects a stable database copy with no concurrent
+writer, hot journal, or pending WAL. It does not lock or recover sidecars.
+`openReadOnlyFile` does that recovery in memory and leaves the files unchanged.
+A checkpointed write version 2 image opens. Mismatched read and write versions
+are rejected.
+
 The backend becomes owned by the pager after a successful open; close the backend
 yourself if opening fails. This example is for dart:io platforms:
 
@@ -352,10 +356,14 @@ UPSERT supports one or more ON CONFLICT clauses, explicit column/rowid targets,
 DO NOTHING, DO UPDATE with `excluded` values and an optional WHERE, including
 INSERT SELECT and RETURNING. INSERT conflict policies compose with UPSERT; DO UPDATE always uses ABORT. Table renaming rewrites supported
 index/FK/sequence metadata and resolved references in dependent views/triggers.
-Column rename rewrites supported CHECK/key/index/FK references; explicit DROP
-COLUMN rewrites stored records and rejects key/index/CHECK/FK dependencies.
-Column rename also resolves dependent view/trigger fields and write targets.
-Drops validate dependent SQL against the proposed schema before committing. No automatic destructive migration is performed.
+Column rename rewrites supported CHECK/key/index/FK references and resolved
+view/trigger fields and write targets. DROP COLUMN rewrites stored records.
+It matches the pinned CLI for a primary key, a column UNIQUE, the last column,
+a secondary index, a table UNIQUE, a table CHECK, a generated column, a
+column-level foreign key, a table foreign key, and an INSERT or UPDATE target
+the CLI does not resolve. A rename fails when a view or trigger names a table
+that is already gone. Virtual tables are not reparsed by those checks. No
+automatic destructive migration is performed.
 
 RAISE(FAIL) reports an error while retaining prior rows and trigger effects;
 these partial images cross the pager commit boundary outside an explicit
@@ -435,7 +443,7 @@ The current baseline and the planned follow-up are in
 objects, one attached database, the connection pragmas named in the matrix,
 one custom collation, this engine's EXPLAIN QUERY PLAN text, a bounded join
 reorder, covering-index reads, and incremental page writes for the tested
-shapes. Planned next are native EXPLAIN bytecode, STAT4, auto-vacuum, and a
+shapes. `EXPLAIN SELECT 1` matches the pinned opcode rows. Planned next are EXPLAIN bytecode beyond a literal projection, STAT4, auto-vacuum, and a
 durable cross-database write. Items 77–82 add `openBrowserStorage` and
 `BrowserDatabaseConnection`. The caller reads `canRead`, `canWrite`,
 `durabilityPromised`, and `placement`. The current round trip uses an
@@ -513,7 +521,11 @@ windows. View queries and dynamic unary defaults do not execute during metadata
 parsing. NATURAL join rewrites follow the merged column origin for LEFT/RIGHT/FULL
 joins; renaming USING keys rejects when the resulting join becomes invalid, as
 in the reference. Real columns take precedence over implicit rowid aliases. More
-complex schema/DQS fallback behavior is outside the verified subset.
+complex schema changes are outside the verified subset. `doubleQuotedStrings`
+defaults to off, so `"missing"` stays an unknown column. With the flag on, that
+identifier is the string `missing`, and `db_browser_b3_dqs_test.dart` matches
+the pinned CLI. Unquoted `a.title` beside a column named `a.title` returns the `title`
+column. `"a.title"` returns the dotted column.
 
 M6 additionally supports row-value comparisons, IN/subqueries, BETWEEN and simple
 CASE with per-field affinity/collation. SELECT preparation checks wildcard subquery

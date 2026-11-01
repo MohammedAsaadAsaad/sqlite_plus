@@ -1689,6 +1689,150 @@ result=pass
 - `IMPLEMENTATION_PLAN.md` records B1–B5 for a Flutter browser that opens an official SQLite file. B1 is file open and recovery, B2 is paged reads, B3 is the pasted SQL statement, B4 is schema rebuilds, and B5 stays in the application. No engine behavior changed. No suite was re-run.
 - M9 stays unchecked. Item 108 stays open.
 
+## 2026-11-01 — B1 read path for official files
+
+- The read path opens an auto-vacuum image. Pointer-map pages are decoded and are not treated as B-tree pages. `PRAGMA auto_vacuum` on that path is 0, 1, or 2 from the header. A pinned SQLite 3.53.1 FULL auto-vacuum file, source id `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`, returned the same short rows as `/tmp/sqlite-build/sqlite3`. The file bytes were unchanged. The CLI reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `sqlite_stat4` opens and is not scanned for planning. The pin CLI without `SQLITE_ENABLE_STAT4` reserves that name, so the image was built with `/tmp/sqlite-build/sqlite3-stat4` from the same source id. The pin CLI then read the same `small` row and the same `sqlite_stat4` count. An engine image with opposite stat4 samples kept the stat1 plan, and the query page-read delta matched the image without stat4. No wall-clock timing was run. No speedup is claimed.
+- `openReadOnlyFile` recovers a pending `-wal` and a hot `-journal` in memory. The database, journal, and wal bytes stay unchanged, and `-shm` is not created. A pending WAL row was `pending` and `PRAGMA journal_mode` was `wal`. The same bytes alone have no table, which the pin CLI also reported. A valid hot journal restored `committed` for both. A torn journal shortened the image. A zeroed header was ignored. A bad checksum after growth left a truncated image that this engine rejects with `FormatException` and the pin CLI rejects as malformed. A bad checksum at the same size left `changed` for both.
+- Write version 2 is accepted only when the read version matches. `MutableSqliteDatabase.fromImage` still rejects a write version other than 1 and a non-zero largest root page. `PRAGMA auto_vacuum` writes still throw. FULL auto-vacuum delete shrink is not implemented.
+- A NONE delete does not shrink. Two hundred padded rows, a DELETE, and a VACUUM were page_count/freelist 4/0, 4/2, and 2/0 in this writer and in the pin CLI, with `integrity_check` ok. The freelist does not allow a shrink on that DELETE. VACUUM does shrink.
+- The shared lock is database byte 0x40000002. While `openReadOnlyFile` held it, the pin CLI `BEGIN EXCLUSIVE` failed with `locked` and `SELECT` returned the row. A pin CLI `BEGIN EXCLUSIVE` then made `openReadOnlyFile` throw `SqlException`. When `-shm` exists, one shared lock among bytes 123–127 is taken. Another process holding all five made the open throw. Holding one still allowed the pending WAL row to be read. A non-vacuum one-row query read 1 page at open and 2 pages after `SELECT`. That is the cost check. No AOT benchmark was run.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10533 tests on Dart 3.13.7, Linux x64. The two native FTS opens set `PRAGMA auto_vacuum=NONE` because this pin CLI defaults to FULL and the writer still rejects those images.
+- B2, B3, B4, and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B2 paged browse
+
+- `SqliteDatabase.browse` and `MutableSqliteDatabase.browse` read one single-table `LIMIT`/`OFFSET` window, including bound parameters and ascending `rowid` order, and stop after `offset + limit` rows. A join or any other shape still uses `query`. `query` itself is unchanged.
+- On an 80-row table, `query('SELECT v FROM t')` and `query('SELECT v FROM t LIMIT 100000')` read the same number of pages. `browse('SELECT v FROM t LIMIT 1')` reads fewer. `browse` of `LIMIT 0` adds no page reads. The pinned CLI at `/tmp/sqlite-build/sqlite3`, source id `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`, returned the same window, the same `ORDER BY rowid` window, the same empty offset, and the same one-row join.
+- `zeroblob(16777217)` makes `query` throw `FormatException`. `browse('SELECT v FROM t LIMIT 1')` returns that blob. The pinned CLI reports length 16777217 and zero bytes at both ends. A well-formed record larger than 1000000000 bytes was not created, so the CLI length-limit text was not compared. `browse` passes that cap to the B-tree reader, which rejects a larger declared payload before allocation.
+- No wall-clock timing was run. No speedup is claimed.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10536 tests on Dart 3.13.7, Linux x64.
+- B3, B4, and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 json_pretty
+
+- `json_pretty` formats a JSON value with a newline and a repeated indent. NULL input returns NULL. An omitted or NULL indent is four spaces. A text, number, or blob indent is that value's text, cut at the first NUL. Empty objects and arrays stay `{}` and `[]`. The result keeps the JSON subtype, so `->` and `json_type` see it.
+- The gap-ledger case `json-pretty` is a match. `db_browser_b3_json_pretty_test.dart` compared NULL, nested values, duplicate keys, comments, escapes, custom indents, numeric and blob indents, and a NUL-truncated indent with `/tmp/sqlite-build/sqlite3`. That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- Malformed JSON raises `malformed JSON`, which the CLI also reports. The engine rejects a bad arity with `Invalid arguments to json_pretty`. The CLI says `wrong number of arguments`. JSON input stays capped at 1 MiB. Pretty output stays capped at 16 MiB; the boundary test uses the indent string. An indent byte `0xFF` is kept as code unit U+00FF. Storing that string was not compared. No wall-clock timing was run. No speedup is claimed.
+- `packages/sqlite_plus`: `dart format` passed for the edited Dart files. `dart analyze --fatal-infos` passed. `dart test` of `db_browser_b3_json_pretty_test.dart`, `json_functions_test.dart`, and `gap_oracle_test.dart` passed 749 tests on Dart 3.13.7, Linux x64. The full package suite was not re-run for this note. `python3 tool/generate_gap_oracle.py --verify` passed.
+- The rest of B3 stays unchecked, including EXPLAIN bytecode, EXPLAIN QUERY PLAN text, the double-quoted-string mode, ICU and locale collations, FTS3/FTS4 writes, the named FTS5 options, `VACUUM INTO`, `journal_mode` switches, `auto_vacuum` writes, and a durable commit across two attached databases. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 correlated json_each
+
+- `json_each` and `json_tree` evaluate a column, a nested `json_each(j.value)`, or a scalar subquery once per outer row. Constant arguments are still read once. `generate_series` still rejects a non-constant argument. Two calls in one `FROM` no longer share one row set.
+- `db_browser_b3_json_each_test.dart` compared comma joins, an inner join, a left join, `docs RIGHT JOIN json_each`, a full join, `json_tree`, a nested call, and a scalar subquery with `/tmp/sqlite-build/sqlite3`. That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. Malformed JSON is rejected by both. `json_each(docs.label) RIGHT JOIN docs` throws `No such column: docs.label`. The same CLI statement returns `0`. That shape stays open.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` of the JSON, virtual-table, pragma-table, metadata, and gap-ledger files passed 782 tests on Dart 3.13.7, Linux x64. The full package suite was not re-run for this note. No wall-clock timing was run. No speedup is claimed.
+- The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 double-quoted strings
+
+- `doubleQuotedStrings` defaults to false. An unqualified double-quoted identifier that is not a column stays `No such column: missing`, so the gap-ledger case `dqs-fallback` stays rejected. The pinned CLI result is `'missing'`.
+- When the flag is on, that identifier is a string. `db_browser_b3_dqs_test.dart` matches `/tmp/sqlite-build/sqlite3` for a missing name, its original spelling, an empty identifier, an escaped quote, a space, a keyword, a real column including a different case, concatenation, `count(*)`, `GROUP BY`, `typeof`, a `CHECK`, a scalar subquery, a column whose name contains a dot, and a keyword or spaced column name. Brackets, backticks, qualified names, and `INSERT` column lists stay identifiers. Turning the flag off restores the column error. That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- Two visible columns with the same name raise `Ambiguous column: title`. The CLI says `ambiguous column name: title`. A failed `CHECK` is `CHECK constraint failed`. The CLI appends the expression. Unquoted `a.title`, when table `a` also has a column named `a.title`, still returns the dotted column. The CLI returns the `title` column (`bare`). That lookup was not changed.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10660 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The rest of B3 stays unchecked: native EXPLAIN bytecode, closer EXPLAIN QUERY PLAN text, `json_each(docs.label) RIGHT JOIN docs`, the unquoted `a.title` lookup above, ICU and locale collations, FTS3/FTS4 writes, FTS5 porter, trigram, detail, tokendata, locale, and multi-page leaves, `VACUUM INTO`, `journal_mode` switches, `auto_vacuum` writes, one durable commit across two attached databases, and the remaining DML syntax. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 json_each RIGHT JOIN
+
+- `json_each(docs.label) RIGHT JOIN docs` returns 0 rows. The table function is scanned with no JSON argument, and the preserved `docs` rows are not added. `json_tree`, `FULL JOIN`, `LEFT JOIN`, an unqualified `label`, and `main.docs.label` do the same. `json_each(missing)` and `json_each(docs.nope)` still raise `No such column`. The pinned CLI text is `no such column: missing` and `no such column: docs.nope`.
+- `db_browser_b3_json_each_test.dart` compared those statements with `/tmp/sqlite-build/sqlite3`. That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3. `docs RIGHT JOIN json_each` still matches the pin. Malformed JSON on a comma join is still rejected.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10660 tests on Dart 3.13.7, Linux x64. The new RIGHT JOIN checks are inside the existing comparison test, so the count did not grow. No wall-clock timing was run. No speedup is claimed.
+- The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 qualified a.title
+
+- Unquoted `a.title` is column `title` of alias `a`. A column whose name is `a.title` no longer hides that slot. `"a.title"` and `a."a.title"` still read the dotted column. `db_browser_b3_dqs_test.dart` matches `/tmp/sqlite-build/sqlite3` for the pair, `main.a.title`, `SELECT *`, a join, and `title INT` plus one. Unquoted `a.title` when that is the only column raises `No such column: a.title`. The CLI text is `no such column: a.title`.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10660 tests on Dart 3.13.7, Linux x64. The new checks are inside `db_browser_b3_dqs_test.dart`, so the count did not grow. No wall-clock timing was run. No speedup is claimed.
+- The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 literal EXPLAIN bytecode
+
+- `EXPLAIN SELECT 1` returns the pinned opcode rows. The columns are `addr`, `opcode`, `p1`, `p2`, `p3`, `p4`, `p5`, and `comment`. A result column that is one literal opcode uses `Integer`, `Int64`, `Real`, `String8`, `Blob`, or `Null`, then `ResultRow`, `Halt`, and `Goto`. The gap-ledger case `explain-bytecode` is a match. `db_browser_b3_explain_test.dart` also matches signed 32-bit edges, signed 64-bit edges, hex literals, `TRUE` and `FALSE`, reals including `Inf`, and blobs, on both `query` and `browse`.
+- `EXPLAIN SELECT 1+1`, `EXPLAIN SELECT 1 WHERE 1`, `EXPLAIN SELECT * FROM t`, and `EXPLAIN INSERT` still throw `EXPLAIN bytecode is not implemented`. The CLI program for `EXPLAIN SELECT 1+1` contains `Add`. `EXPLAIN SELECT title` is `no such column: title` on the CLI. This is not a VDBE. EXPLAIN QUERY PLAN is unchanged.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10663 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The rest of B3 stays unchecked: closer EXPLAIN QUERY PLAN text, ICU and locale collations, FTS3/FTS4 writes, FTS5 porter, trigram, detail, tokendata, locale, and multi-page leaves, `VACUUM INTO`, `journal_mode` switches, `auto_vacuum` writes, one durable commit across two attached databases, and the remaining DML syntax. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 EXPLAIN QUERY PLAN still differs
+
+- The gap-ledger case `explain-query-plan` stays a difference. The pinned row for `EXPLAIN QUERY PLAN SELECT a FROM t WHERE a=1` on `t(a INTEGER PRIMARY KEY)` is `id=2`, `parent=0`, `notused=33`, `detail=SEARCH t USING INTEGER PRIMARY KEY (rowid=?)`. A full scan is `2,0,216,'SCAN t'`. `WHERE a>1` is `2,0,196,'SEARCH t USING INTEGER PRIMARY KEY (rowid>?)'`. `EXPLAIN QUERY PLAN SELECT 1` is `1,0,0,'SCAN CONSTANT ROW'`. `EXPLAIN QUERY PLAN SELECT * FROM missing` is `no such table: missing` on the CLI.
+- This engine still returns one `detail` column. It does not invent opcode address 2 or the `rRun` cost 33. `db_browser_b3_eqp_test.dart` compares those CLI rows with `/tmp/sqlite-build/sqlite3` and checks that the engine text is not that detail. A covering plan still contains `COVERING`. `EXPLAIN SELECT 1` still returns bytecode.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10665 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The EQP sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 ICU and locale collations stay absent
+
+- The pinned CLI was built without ICU. `CREATE TABLE t(v TEXT COLLATE ICU)` and `'a'='A' COLLATE ICU` fail with `no such collation sequence: ICU`. `COLLATE en_US` fails with `no such collation sequence: en_US`. An empty collation name fails with `no such collation sequence:`. This engine says `Unknown collation` for the table and `No such collation: ICU` for the expression. `SELECT 'a' COLLATE ICU` returns `a` on the CLI and throws `No such collation: ICU` here.
+- `BINARY`, `NOCASE`, and `RTRIM` still match, including `'á'<'b' COLLATE NOCASE` which is `0` on both. The pin's `PRAGMA collation_list` also names `decimal` and `uint`. Those sequences are not implemented. `db_browser_b3_collation_test.dart` records the comparison.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10667 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The ICU sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 FTS3 and FTS4 writes stay rejected
+
+- The pinned CLI creates `fts4(body)`, inserts `hello world`, and `MATCH 'hello'` returns `hello world`. `fts3` returns `hello`. An empty insert leaves one row. `DELETE ... MATCH 'hello'` leaves zero rows. `SELECT` from a missing table is `no such table: missing` on the CLI.
+- This engine rejects `CREATE VIRTUAL TABLE ... USING fts3` and `fts4` with `FTS3 and FTS4 writes are not implemented`. The table is not created. An FTS5 `INSERT` of `kept` still matches. `db_browser_b3_fts34_test.dart` records the comparison.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10669 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The FTS3/FTS4 write sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 FTS5 porter, trigram, detail, tokendata, and locale stay open
+
+- Porter `MATCH 'run'` returns `running` on the pinned CLI. Trigram `MATCH 'bcd'` returns `abcdef`, and `MATCH 'zz'` returns `0`. `detail=none` returns `hello`. `tokendata=1` and `locale=1` create successfully and return an empty result. An unknown tokenizer is `no such tokenizer: nope` on the CLI.
+- This engine says `no such tokenizer: porter`, `no such tokenizer: trigram`, and `fts5 option is not implemented` for `detail`, `tokendata`, and `locale`. A 2000-token `unicode61` insert returns the same `length(body)` on both. The FTS5 leaf pages were not compared, so multi-page leaves stay open. An ordinary FTS5 insert of `kept` still matches. `db_browser_b3_fts5_test.dart` records the comparison.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10671 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- This sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 VACUUM INTO stays short of the pinned file
+
+- The pinned CLI `VACUUM INTO` writes a new database. `integrity_check` is `ok` and the copied rows are `1` and `3`. The source query still returns those rows. Writing the same path again is `output file already exists`. `VACUUM` inside a transaction is `cannot VACUUM from within a transaction`. `VACUUM main INTO` also writes the file.
+- This engine says `Unknown database: into` and does not create the file. `VACUUM main INTO` is `Unsupported or trailing SQL`. Plain `VACUUM` still returns the same rows. `db_browser_b3_vacuum_into_test.dart` records the comparison.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10673 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The `VACUUM INTO` sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 journal_mode switches stay listed
+
+- On pinned `:memory:`, `PRAGMA journal_mode` and assignments to `memory`, `off`, `delete`, and `wal` all return `memory`. On a file, the pin starts at `delete`, `journal_mode=off` stays `delete`, and `journal_mode=memory` returns `memory` while the inserted row remains `1`.
+- This engine reads `rollback`. `journal_mode=memory` throws `journal_mode memory is not implemented`. `journal_mode=off` throws `journal_mode off is not implemented`. `journal_mode=delete` throws `journal_mode delete is not implemented`. Assigning the current `rollback` mode still reads `rollback`. The gap cases `journal-mode-memory`, `journal-mode-off`, and `journal-mode-read` stay listed. `db_browser_b3_journal_test.dart` records the comparison. This is not the official journal.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10675 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The journal_mode sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 auto_vacuum writes stay rejected
+
+- `PRAGMA auto_vacuum=FULL` is an empty result on the pinned CLI. The same session then reads `1`. `INCREMENTAL` then reads `2`, and `incremental_vacuum` adds no further row. `NONE` and `auto_vacuum=3` then read `0`.
+- This engine throws `auto_vacuum is not implemented` for `FULL`, `INCREMENTAL`, `NONE`, and `3`. A later read stays `0`. A delete still leaves `count(*)` = 0, and no pointer-map shrink was added. The gap case `auto-vacuum-full` stays rejected. `db_browser_b3_autovacuum_test.dart` records the comparison.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10677 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The auto_vacuum sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 cross-database insert stays rejected
+
+- `INSERT INTO aux.u SELECT v FROM t` is an empty result on the pinned CLI. The same session then reads `count(*)` = 1 and `v` = `m` from `aux.u`, and `t` still holds `m`. Inserting into a missing `aux.u` is `no such table: aux.u` on the CLI.
+- This engine throws `cross-database statement is not supported`. `aux.u` stays empty. `t` still holds `m`, and a later insert of `n` is visible. The gap case `cross-insert` stays rejected. `db_browser_b3_cross_insert_test.dart` records the comparison. No second durable commit was added.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10679 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The cross-database commit stays unchecked. Remaining DML, B4, and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 remaining gap-ledger DML
+
+- The gap ledger's only other DML write is `cross-insert`, and that case stays rejected. `db_browser_b3_dml_test.dart` matches `/tmp/sqlite-build/sqlite3` for `INSERT DEFAULT VALUES`, `REPLACE`, `ON CONFLICT DO NOTHING`, `UPDATE ... RETURNING`, `DELETE ... RETURNING`, `SET v=v||'x'`, and `INSERT ... SELECT`. This is not a claim that every DML form was compared.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10681 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B4 structure-dialog rebuild
+
+- A structure-dialog rebuild creates the replacement table, copies the kept columns, drops the old table, renames the replacement, and recreates the index. `db_browser_b4_test.dart` matches `/tmp/sqlite-build/sqlite3` for `integrity_check`, the rows, and `sqlite_schema`. The engine image opens in that CLI. A CLI image built with `auto_vacuum=NONE` opens here, and a later insert still passes the CLI `integrity_check`. The writer still rejects a pointer-map file.
+- Renaming fails with `error in view v: no such table: main.t` when a view names a table that was dropped. The same script with a trigger is `error in trigger tr: no such table: main.t`. The bytes stay unchanged. `DROP COLUMN` matches the pin for a primary key, a column `UNIQUE`, the last column, a secondary index, a table `UNIQUE`, a table `CHECK`, a generated column, a column-level foreign key, a table foreign key, an `INSERT` or `UPDATE` target the pin does not resolve, and an edit beside an FTS5 table. This is not every schema form.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10686 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed. Storage bytes did not change format. A rejected rename keeps the previous image.
+- B3 stays open. Its unmatched parts stay listed with the CLI result. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

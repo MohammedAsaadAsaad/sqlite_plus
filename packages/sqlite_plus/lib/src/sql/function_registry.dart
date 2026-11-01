@@ -43,6 +43,11 @@ final class SqlFunctionRegistry {
   final SqlConnectionState connectionState = SqlConnectionState();
   final VirtualTableRegistry virtualTables = VirtualTableRegistry();
 
+  /// When true, an unresolved double-quoted expression identifier is a string.
+  /// Backticks, brackets, and qualified names stay identifiers. The default
+  /// is false, so existing statements keep double quotes as identifiers.
+  bool doubleQuotedStrings = false;
+
   SqlFunctionRegistry() {
     registerJsonTableFunctions(virtualTables);
     registerSearchModules(virtualTables);
@@ -95,6 +100,7 @@ final class SqlFunctionRegistry {
                 : DateTime.now().toUtc(),
             _zoneKey: this,
             collationKey: collations,
+            doubleQuotedStringsKey: doubleQuotedStrings,
           }));
   static RegisteredSqlFunction? resolve(String name, int count) {
     final overloads = current?._functions[asciiLower(name)];

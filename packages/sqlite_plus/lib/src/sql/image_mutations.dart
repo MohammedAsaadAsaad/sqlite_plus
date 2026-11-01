@@ -1693,7 +1693,10 @@ final class ImageMutations {
           )
       };
   List<DependentSchema> _dependentSchema(List<ImageObject> objects) => [
-        for (final object in objects.where((o) => o.sql != null))
+        for (final object in objects.where((o) =>
+            o.sql != null &&
+            !o.virtualTable &&
+            !o.sql!.trimLeft().toLowerCase().startsWith('create virtual')))
           (
             type: object.type,
             name: object.name,
@@ -2088,7 +2091,10 @@ final class ImageMutations {
             for (final object in other.where((o) => o.type == 'view'))
               asciiLower(object.name): object.sql!
           };
-          for (final object in other.where((o) => o.sql != null)) {
+          for (final object in other.where((o) =>
+              o.sql != null &&
+              !o.virtualTable &&
+              !o.sql!.trimLeft().toLowerCase().startsWith('create virtual'))) {
             dependencyEdits[object] = renamedColumnReferences(
                 object.sql!,
                 object.type,
@@ -2156,15 +2162,31 @@ final class ImageMutations {
                     null);
           }
         } else {
-          if (table.schema.columns.length == 1 ||
-              column.primaryKey != 0 ||
-              column.unique ||
-              table.schema.autoIndexKeys
-                  .any((cols) => cols.any((c) => asciiLower(c) == oldKey)) ||
-              _indexes.any((i) =>
+          if (column.primaryKey != 0) {
+            throw SqlException(
+                'cannot drop PRIMARY KEY column: "${column.name}"');
+          }
+          if (column.unique) {
+            throw SqlException('cannot drop UNIQUE column: "${column.name}"');
+          }
+          if (table.schema.columns.length == 1) {
+            throw SqlException(
+                'cannot drop column "${column.name}": no other columns exist');
+          }
+          final dependentIndex = _indexes
+              .where((i) =>
+                  i.sql != null &&
                   asciiLower(i.table) == key &&
-                  i.referencedColumns.contains(oldKey))) {
-            throw const SqlException('Cannot drop key/index column');
+                  i.referencedColumns.contains(oldKey))
+              .firstOrNull;
+          if (dependentIndex != null) {
+            throw SqlException(
+                'error in index ${dependentIndex.name} after drop column: no such column: ${column.name}');
+          }
+          if (table.schema.autoIndexKeys
+              .any((cols) => cols.any((c) => asciiLower(c) == oldKey))) {
+            throw SqlException(
+                'error in table ${table.schema.name} after drop column: no such column: ${column.name}');
           }
           for (final check in [
             ...table.schema.columns
@@ -2177,17 +2199,8 @@ final class ImageMutations {
           ]) {
             if (check.unaggregatedColumns
                 .any((c) => c.split('.').last == oldKey)) {
-              throw const SqlException('Column is used by CHECK');
-            }
-          }
-          for (final child in _tables.values) {
-            for (final fk in child.schema.foreignKeys) {
-              if (identical(child, table) &&
-                      fk.columns.any((c) => asciiLower(c) == oldKey) ||
-                  asciiLower(fk.table) == key &&
-                      fk.targetColumns.any((c) => asciiLower(c) == oldKey)) {
-                throw const SqlException('Column is used by foreign key');
-              }
+              throw SqlException(
+                  'error in table ${table.schema.name} after drop column: no such column: ${column.name}');
             }
           }
           final parts = _tableParts(table.sql);
@@ -2205,7 +2218,20 @@ final class ImageMutations {
                       .trim())
                   .join(', ') +
               table.sql.substring(tokens[parts.$3].offset);
-          final definition = DatabaseCatalog.parseTable(changed, 0);
+          final CatalogTable definition;
+          try {
+            definition = DatabaseCatalog.parseTable(changed, 0);
+          } on SqlException catch (error) {
+            if (error.message == 'At least one ordinary column required') {
+              throw SqlException(
+                  'error in table ${table.schema.name} after drop column: must have at least one non-generated column');
+            }
+            if (error.message == 'Unknown local foreign key column') {
+              throw SqlException(
+                  'error in table ${table.schema.name} after drop column: unknown column "${column.name}" in foreign key definition');
+            }
+            rethrow;
+          }
           final ordinal = table.schema.columns.indexOf(column);
           _tables[key] = _Table(definition, changed, [
             for (final row in table.rows)
@@ -2226,7 +2252,8 @@ final class ImageMutations {
                         quote: quotedRename))
                 : object
         ];
-        validateColumnDependencies(_schemaColumns, _dependentSchema(proposed));
+        validateColumnDependencies(_schemaColumns, _dependentSchema(proposed),
+            when: drop ? 'after drop column' : null);
         other
           ..clear()
           ..addAll(proposed);
@@ -2253,10 +2280,21 @@ final class ImageMutations {
                 (o) => o.type == 'view' && asciiLower(o.name) == renamedKey)) {
           throw const SqlException('Rename target exists');
         }
+        final relations = <String>{
+          ..._tables.keys,
+          for (final object in other)
+            if (object.type == 'view' || object.virtualTable)
+              asciiLower(object.name),
+          'sqlite_schema',
+          'sqlite_master',
+        };
         final dependentEdits = {
-          for (final object in other.where((o) => o.sql != null))
-            object:
-                renamedTableReferences(object.sql!, object.type, name, renamed)
+          for (final object in other.where((o) =>
+              o.sql != null &&
+              !o.virtualTable &&
+              !o.sql!.trimLeft().toLowerCase().startsWith('create virtual')))
+            object: renamedTableReferences(
+                object.sql!, object.type, object.name, name, renamed, relations)
         };
         final declaration = SqlParser(table.sql);
         declaration.require('CREATE');

@@ -146,7 +146,7 @@ The file size is taken before close, so it still includes the redo.
 | Windows | `ROW_NUMBER` `RANK` `DENSE_RANK` `LAG` `LEAD` `FIRST_VALUE` `LAST_VALUE` `NTH_VALUE` |
 | Writes | `INSERT` `UPDATE` `DELETE`, `ON CONFLICT`, `RETURNING`, `BEGIN` `COMMIT` `ROLLBACK`, savepoints |
 | Schema | Tables, indexes, views, triggers, `ALTER TABLE`, `CHECK`, `STRICT`, foreign keys, generated columns |
-| JSON | `json` `jsonb` `json_extract` `json_object` `json_set` `json_patch`, `->` `->>` |
+| JSON | `json` `jsonb` `json_pretty` `json_extract` `json_object` `json_set` `json_patch`, `->` `->>` |
 | Search | FTS5 `MATCH` `highlight` `snippet` `bm25`, R-tree, geopoly |
 | Your code | `registerScalar`, `registerAggregate`, `createCollation` |
 
@@ -154,4 +154,4 @@ The file size is taken before close, so it still includes the redo.
 
 `openInMemory` is `MutableSqliteDatabase.create`. `exportImage` is the byte image a file can hold. `openBrowserStorage` reports `canRead`, `canWrite`, `durabilityPromised`, and `placement`.
 
-Not in this release: `json_pretty`, correlated `json_each`, EXPLAIN bytecode, a durable two-database commit, and ICU collations.
+Not in this release: EXPLAIN bytecode beyond a literal projection, a durable two-database commit, and ICU collations. `EXPLAIN SELECT 1` matches the pinned opcode rows. Correlated `json_each` matches the pinned CLI, including `json_each(docs.label) RIGHT JOIN docs`, which returns 0 rows. Set `doubleQuotedStrings` to treat an unresolved double-quoted identifier as a string. The default is off. The comparison is `db_browser_b3_dqs_test.dart`. Unquoted `a.title` beside a column named `a.title` returns the `title` column.

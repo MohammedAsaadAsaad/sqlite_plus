@@ -122,8 +122,7 @@ void main() {
     expect(storage.closed, isTrue);
     await expectLater(pager.readPage(1), throwsStateError);
   });
-  test('pager rejects missing, truncated, misaligned, and WAL databases',
-      () async {
+  test('pager rejects missing, truncated, and misaligned databases', () async {
     for (final bytes in [
       Uint8List(0),
       Uint8List(99),
@@ -131,10 +130,16 @@ void main() {
     ]) {
       await expectLater(memoryPager(bytes), throwsFormatException);
     }
-    final bytes = fixture()
+  });
+  test('a checkpointed write-version 2 image opens for reading', () async {
+    final bytes = Uint8List.fromList(fixture())
       ..[18] = 2
       ..[19] = 2;
-    await expectLater(memoryPager(bytes), throwsUnsupportedError);
+    final pager = await memoryPager(bytes);
+    addTearDown(pager.close);
+    expect(pager.header.writeVersion, 2);
+    expect(pager.header.readVersion, 2);
+    expect((await pager.readPage(1))[0], 83);
   });
   test('logical size excludes trailing pages; stale size uses physical pages',
       () async {

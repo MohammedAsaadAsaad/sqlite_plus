@@ -266,7 +266,7 @@ void main() {
         db.execute('PRAGMA busy_timeout=-1'), throwsA(isA<SqlException>()));
   });
 
-  test('auto_vacuum stays rejected and is not read as success', () async {
+  test('auto_vacuum reads the header and writers still reject it', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
     final before = db.exportImage();
@@ -279,8 +279,10 @@ void main() {
     ByteData.sublistView(vacuum).setUint32(52, 2);
     await expectLater(
         MutableSqliteDatabase.fromImage(vacuum), throwsUnsupportedError);
-    await expectLater(
-        ReadOnlyPager.open(ByteImageStorage(vacuum)), throwsUnsupportedError);
+    final pager = await ReadOnlyPager.open(ByteImageStorage(vacuum));
+    addTearDown(pager.close);
+    expect(pager.header.autoVacuumMode, 1);
+    expect(pager.header.largestRootPage, 2);
   });
 
   test('a custom collation orders, indexes, and rejects duplicates', () async {
@@ -314,13 +316,27 @@ void main() {
     expect(plan.rows.single.single.toString(), isNot(contains('Opcode')));
   });
 
-  test('sqlite_stat4 is rejected instead of being ignored', () async {
+  test('sqlite_stat4 is stored and is not used for planning', () async {
     final image = DatabaseImageBuilder.build(DatabaseImageBuilder.empty(), [
+      ImageObject('table', 't', 't', 'CREATE TABLE t(v)', tableRows: [
+        TableRow(BigInt.one, ['kept'])
+      ]),
       ImageObject('table', 'sqlite_stat4', 'sqlite_stat4',
-          'CREATE TABLE sqlite_stat4(tbl,idx,neq,nlt,ndlt,sample)')
+          'CREATE TABLE sqlite_stat4(tbl,idx,neq,nlt,ndlt,sample)',
+          tableRows: [
+            TableRow(BigInt.one, ['t', null, '9', '9', '9', null])
+          ])
     ]);
-    await expectLater(
-        MutableSqliteDatabase.fromImage(image), throwsA(isA<SqlException>()));
+    final db = await MutableSqliteDatabase.fromImage(image);
+    addTearDown(db.close);
+    expect((await db.query('SELECT v FROM t')).rows, [
+      ['kept']
+    ]);
+    expect((await db.query('SELECT neq FROM sqlite_stat4')).rows, [
+      ['9']
+    ]);
+    final plan = await db.query('EXPLAIN QUERY PLAN SELECT v FROM t');
+    expect(plan.rows.single.single.toString(), isNot(contains('stat4')));
   });
 
   test('two comma joins reorder by sqlite_stat1 row counts', () async {

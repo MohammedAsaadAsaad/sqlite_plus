@@ -22,6 +22,14 @@ final class DatabaseHeader {
   int get textEncoding => _words[8];
   int get userVersion => _words[9];
   int get incrementalVacuum => _words[10];
+
+  /// `PRAGMA auto_vacuum`: 0 none, 1 full, 2 incremental.
+  int get autoVacuumMode {
+    if (largestRootPage == 0) return 0;
+    if (incrementalVacuum != 0) return 2;
+    return 1;
+  }
+
   int get applicationId => _words[11];
   int get versionValidFor => _words[17];
   int get sqliteVersion => _words[18];

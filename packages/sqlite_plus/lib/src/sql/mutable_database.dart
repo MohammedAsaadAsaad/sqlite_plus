@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import '../btree/database_image_builder.dart';
+import '../format/database_header.dart';
 import 'image_mutations.dart';
 import '../pager/image_pager.dart';
 import '../pager/rollback_journal_pager.dart';
 import '../storage/memory_storage_backend.dart';
 import 'database.dart';
+import 'explain_bytecode.dart';
 import 'parser.dart';
 import 'schema_router.dart';
 import 'tokenizer.dart';
@@ -79,6 +81,11 @@ final class MutableSqliteDatabase {
 
   /// Scalar, aggregate, and collation callbacks for this connection.
   final functions = SqlFunctionRegistry();
+
+  /// Unresolved double-quoted expression identifiers become strings when this
+  /// is true. The default is false.
+  bool get doubleQuotedStrings => functions.doubleQuotedStrings;
+  set doubleQuotedStrings(bool value) => functions.doubleQuotedStrings = value;
   _ConnectionSnapshot? _checkpoint;
   bool _explicitTransaction = false;
   final List<(String, _ConnectionSnapshot)> _savepoints = [];
@@ -102,6 +109,15 @@ final class MutableSqliteDatabase {
 
   /// Reopens a database from [exportImage] bytes.
   static Future<MutableSqliteDatabase> fromImage(Uint8List image) async {
+    if (image.length >= 100) {
+      final header = DatabaseHeader.decode(image);
+      if (header.largestRootPage != 0 ||
+          header.writeVersion != 1 ||
+          header.readVersion != 1) {
+        throw UnsupportedError(
+            'Writer requires a complete rollback-format database image');
+      }
+    }
     final storage = MemoryStorageBackend();
     await storage.write(0, image);
     final database = await SqliteDatabase.openReadOnly(storage);
@@ -279,7 +295,9 @@ final class MutableSqliteDatabase {
   }
 
   Future<QueryResult> _readImage(String schema, String sql,
-      [List<Object?> parameters = const [], bool schemaView = false]) async {
+      [List<Object?> parameters = const [],
+      bool schemaView = false,
+      bool browse = false]) async {
     if (schema == 'main' &&
         _dirtyMain &&
         (!schemaView || (_liveMain?.schemaChanged ?? false))) {
@@ -287,13 +305,17 @@ final class MutableSqliteDatabase {
     }
     if (schema == 'main') {
       final reader = await _cachedMainReader();
-      return reader.query(sql, parameters);
+      return browse
+          ? reader.browse(sql, parameters)
+          : reader.query(sql, parameters);
     }
     final reader = await SqliteDatabase.openReadOnly(
         ByteImageStorage(_imageFor(schema)),
         functions: functions);
     try {
-      return await reader.query(sql, parameters);
+      return browse
+          ? await reader.browse(sql, parameters)
+          : await reader.query(sql, parameters);
     } finally {
       await reader.close();
     }
@@ -311,7 +333,15 @@ final class MutableSqliteDatabase {
         final explain = SqlParser(sql);
         if (explain.take('EXPLAIN')) {
           if (!(explain.take('QUERY') && explain.take('PLAN'))) {
-            throw const SqlException('EXPLAIN bytecode is not implemented');
+            if (parameters.isNotEmpty) {
+              throw const SqlException('EXPLAIN bytecode bindings unsupported');
+            }
+            final compiled =
+                compileLiteralExplain(sql.substring(explain.current.offset));
+            if (compiled == null) {
+              throw const SqlException('EXPLAIN bytecode is not implemented');
+            }
+            return compiled;
           }
           if (parameters.isNotEmpty) {
             throw const SqlException('EXPLAIN QUERY PLAN bindings unsupported');
@@ -358,6 +388,71 @@ final class MutableSqliteDatabase {
         final schemaView = route.uses
             .every((use) => schemaTables.contains(asciiLower(use.table)));
         return _readImage(route.schema!, route.sql, parameters, schemaView);
+      });
+
+  /// A window of a single-table read. [query] is unchanged.
+  Future<QueryResult> browse(String sql,
+          [List<Object?> parameters = const []]) =>
+      _exclusive(() async {
+        final explain = SqlParser(sql);
+        if (explain.take('EXPLAIN')) {
+          if (!(explain.take('QUERY') && explain.take('PLAN'))) {
+            if (parameters.isNotEmpty) {
+              throw const SqlException('EXPLAIN bytecode bindings unsupported');
+            }
+            final compiled =
+                compileLiteralExplain(sql.substring(explain.current.offset));
+            if (compiled == null) {
+              throw const SqlException('EXPLAIN bytecode is not implemented');
+            }
+            return compiled;
+          }
+          if (parameters.isNotEmpty) {
+            throw const SqlException('EXPLAIN QUERY PLAN bindings unsupported');
+          }
+          final inner = sql.substring(explain.current.offset);
+          final route = routeQuery(inner, await _schemaCatalog());
+          if (route.cross) {
+            throw const SqlException(
+                'cross-database EXPLAIN QUERY PLAN is not implemented');
+          }
+          if (route.schema == 'main' && _dirtyMain) _materializeMain();
+          final reader = await SqliteDatabase.openReadOnly(
+              ByteImageStorage(_imageFor(route.schema!)),
+              functions: functions);
+          try {
+            final lines = reader.describeQueryPlan(route.sql);
+            return QueryResult([
+              'detail'
+            ], [
+              for (final line in lines) [line]
+            ]);
+          } finally {
+            await reader.close();
+          }
+        }
+        final pragma = SqlParser(sql);
+        if (pragma.take('PRAGMA')) {
+          return _queryPragma(pragma, sql, parameters);
+        }
+        final route = routeQuery(sql, await _schemaCatalog());
+        if (route.cross) {
+          if (Zone.current[_crossQueryKey] == true) {
+            throw const SqlException(
+                'cross-database query could not be assembled');
+          }
+          return runZoned(() => _crossQuery(route, parameters),
+              zoneValues: {_crossQueryKey: true});
+        }
+        const schemaTables = {
+          'sqlite_schema',
+          'sqlite_master',
+          'sqlite_temp_schema'
+        };
+        final schemaView = route.uses
+            .every((use) => schemaTables.contains(asciiLower(use.table)));
+        return _readImage(
+            route.schema!, route.sql, parameters, schemaView, true);
       });
 
   /// Runs one write statement inside the connection lock.

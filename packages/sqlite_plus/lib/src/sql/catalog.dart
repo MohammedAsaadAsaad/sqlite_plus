@@ -92,7 +92,8 @@ final class CatalogTable {
       this.rowidAlias,
       this.virtualModule,
       this.virtualArguments = const [],
-      this.virtualPositionals})
+      this.virtualPositionals,
+      this.virtualArgumentExprs})
       : columns = List.unmodifiable(columns);
 
   /// Object name as declared.
@@ -118,6 +119,9 @@ final class CatalogTable {
 
   /// Positional module arguments after bound evaluation, if prepared.
   final List<Object?>? virtualPositionals;
+
+  /// Table-function arguments that still depend on another row.
+  final List<Expr>? virtualArgumentExprs;
 
   /// Whether [virtualModule] is set.
   bool get virtual => virtualModule != null;

@@ -169,9 +169,16 @@ Future<GenerationResult> generateLibrary(
 
 /// Formats with the same `dart format` the repository check runs.
 Future<String> _format(String source, String outputPath) async {
-  final directory = await Directory(
-    p.dirname(outputPath),
-  ).createTemp('.sqlite-plus-format-');
+  var anchor = Directory(p.dirname(outputPath));
+  while (!anchor.existsSync()) {
+    final parent = anchor.parent;
+    if (parent.path == anchor.path) {
+      anchor = Directory.systemTemp;
+      break;
+    }
+    anchor = parent;
+  }
+  final directory = await anchor.createTemp('.sqlite-plus-format-');
   final file = File(p.join(directory.path, 'part.dart'));
   try {
     await file.writeAsString(source);
