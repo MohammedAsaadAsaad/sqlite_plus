@@ -1684,6 +1684,11 @@ result=pass
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.1`. The package pages lead with short practical samples. The phone charts are the versionCode 2009 memory round and file round, each row on its own linear scale. The numbers are the same one-phone sample. No engine, ORM, or generator behavior changed, and the suites were not re-run.
 - M9 stays unchecked. Item 108 stays open.
 
+## 2026-11-01 — DB Browser readiness sequence
+
+- `IMPLEMENTATION_PLAN.md` records B1–B5 for a Flutter browser that opens an official SQLite file. B1 is file open and recovery, B2 is paged reads, B3 is the pasted SQL statement, B4 is schema rebuilds, and B5 stays in the application. No engine behavior changed. No suite was re-run.
+- M9 stays unchecked. Item 108 stays open.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.
