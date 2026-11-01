@@ -341,7 +341,7 @@ final class DatabaseCatalog {
         CatalogColumn('sql', 'TEXT'),
       ]);
     }
-    if (matches.isEmpty) throw SqlException('No such table: $name');
+    if (matches.isEmpty) throw SqlException('no such table: $name');
     final entry = matches.single;
     if (entry.type != 'table' || entry.sql == null || entry.rootPage == 0) {
       throw SqlException('Unsupported table or view: $name');

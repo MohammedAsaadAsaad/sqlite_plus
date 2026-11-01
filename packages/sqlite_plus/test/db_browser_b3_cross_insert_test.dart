@@ -330,7 +330,7 @@ void main() {
           "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
           "INSERT INTO aux.u VALUES ((SELECT v FROM missing));",
       'no such table: missing',
-      'No such table: missing',
+      'no such table: missing',
     );
     await _expectWording(
       tool,
@@ -338,7 +338,7 @@ void main() {
           "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
           "INSERT INTO aux.u VALUES ((SELECT a, b FROM t));",
       'sub-select returns 2 columns - expected 1',
-      'Scalar subquery must return one column',
+      'sub-select returns 2 columns - expected 1',
     );
     await _expectWording(
       tool,
@@ -346,7 +346,7 @@ void main() {
           "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(a, b); "
           "INSERT INTO aux.u VALUES ((SELECT v FROM t));",
       'table aux.u has 2 columns but 1 values were supplied',
-      'INSERT width mismatch',
+      'table aux.u has 2 columns but 1 values were supplied',
     );
 
     for (final statement in [

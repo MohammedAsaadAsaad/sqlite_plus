@@ -222,6 +222,49 @@ InsertSelect? insertSelectParts(String sql) {
 String imageSql(String sql, String schema) =>
     schema == 'main' ? sql : stripSchema(sql, schema);
 
+/// `schema.table` as written on the DML target. Unqualified targets return null.
+String? qualifiedDmlTarget(String sql) {
+  final tokens = SqlTokenizer.tokenize(sql);
+  var depth = 0;
+  for (var i = 0; i < tokens.length; i++) {
+    final token = tokens[i];
+    if (token.text == '(') {
+      depth++;
+      continue;
+    }
+    if (token.text == ')') {
+      depth--;
+      continue;
+    }
+    if (depth != 0 ||
+        token.keyword != 'INSERT' &&
+            token.keyword != 'REPLACE' &&
+            token.keyword != 'UPDATE' &&
+            token.keyword != 'DELETE') {
+      continue;
+    }
+    var cursor = i + 1;
+    if (token.keyword == 'INSERT' &&
+        cursor < tokens.length &&
+        tokens[cursor].keyword == 'OR') {
+      cursor += 2;
+    }
+    if (cursor < tokens.length &&
+        (tokens[cursor].keyword == 'INTO' ||
+            tokens[cursor].keyword == 'FROM')) {
+      cursor++;
+    }
+    if (cursor + 2 < tokens.length &&
+        tokens[cursor].kind == SqlTokenKind.identifier &&
+        tokens[cursor + 1].text == '.' &&
+        tokens[cursor + 2].kind == SqlTokenKind.identifier) {
+      return '${tokens[cursor].text}.${tokens[cursor + 2].text}';
+    }
+    return null;
+  }
+  return null;
+}
+
 String stripSchema(String sql, String schema) {
   final tokens = SqlTokenizer.tokenize(sql);
   final edits = <(int, int, String)>[];

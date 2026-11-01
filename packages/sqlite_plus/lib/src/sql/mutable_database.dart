@@ -679,6 +679,8 @@ final class MutableSqliteDatabase {
           await _commitSchema(parsed.$1, image);
         } else if (name == 'auto_vacuum') {
           await _applyAutoVacuum(parsed.$1, value);
+        } else if (name == 'journal_mode') {
+          await _setJournalMode(parsed.$1, value);
         } else if (!statePragma) {
           _applyConnectionPragma(name, value, parsed.$1);
         }
@@ -735,6 +737,8 @@ final class MutableSqliteDatabase {
       state.deferMaterialize =
           schema == 'main' && _journal == null && !maintenance;
       final MutationImage result;
+      final previousTarget = state.reportedTarget;
+      state.reportedTarget = qualifiedDmlTarget(sql);
       try {
         result = route.kind == 'cross-write'
             ? await _runCrossWrite(state, sql, schema, parameters, names,
@@ -775,6 +779,8 @@ final class MutableSqliteDatabase {
           _dropLive();
         }
         rethrow;
+      } finally {
+        state.reportedTarget = previousTarget;
       }
       if (!identical(result.image, current)) {
         await _commitSchema(schema, result.image);
@@ -1106,7 +1112,11 @@ final class MutableSqliteDatabase {
     }
     if (connectionWrite) {
       final value = _pragmaValue(parser);
-      _applyConnectionPragma(name, value, schema);
+      if (name == 'journal_mode') {
+        await _setJournalMode(schema, value);
+      } else {
+        _applyConnectionPragma(name, value, schema);
+      }
     } else if (!argument) {
       parser.finish();
     }
@@ -1160,8 +1170,6 @@ final class MutableSqliteDatabase {
         _busyTimeout = timeout;
       case 'synchronous':
         _synchronous = _synchronousMode(value);
-      case 'journal_mode':
-        _setJournalMode(schema, value);
       default:
         throw SqlException('Unsupported writable PRAGMA');
     }
@@ -1177,9 +1185,10 @@ final class MutableSqliteDatabase {
   }
 
   /// In-memory main stays `memory`. A file keeps `delete` for `off` and for an
-  /// unknown name. `memory` and `delete` change only this connection. `wal`,
-  /// `persist`, and `truncate` are not switched.
-  void _setJournalMode(String schema, String value) {
+  /// unknown name. `memory` changes only this connection. `wal` rewrites header
+  /// bytes 18 and 19 and checkpoints. `persist` and `truncate` apply on the
+  /// next file commit.
+  Future<void> _setJournalMode(String schema, String value) async {
     final requested = asciiLower(value);
     if (schema == 'main' && _journal == null) {
       _journalModes[schema] = 'memory';
@@ -1188,12 +1197,56 @@ final class MutableSqliteDatabase {
     const known = {'delete', 'persist', 'off', 'truncate', 'memory', 'wal'};
     if (!known.contains(requested) || requested == 'off') return;
     if (requested == 'wal' && schema != 'main') return;
-    if (requested == 'wal' ||
-        requested == 'persist' ||
-        requested == 'truncate') {
-      throw SqlException('journal_mode $requested is not implemented');
+    final current = _journalModeFor(schema);
+    if (requested != current &&
+        (requested == 'wal' || current == 'wal') &&
+        inTransaction) {
+      throw SqlException(
+          'cannot change ${requested == 'wal' ? 'into' : 'out of'} wal mode from within a transaction');
+    }
+    if (requested == 'wal' && current != 'wal') {
+      await _writeJournalVersion(schema, 2);
+    } else if (current == 'wal' && requested != 'wal') {
+      await _writeJournalVersion(schema, 1);
     }
     _journalModes[schema] = requested;
+    final pager = _rollbackPager(schema);
+    if (pager == null) return;
+    final fileMode =
+        requested == 'persist' || requested == 'truncate' || requested == 'wal'
+            ? requested
+            : 'delete';
+    if (pager.fileJournalMode != fileMode) {
+      await pager.setFileJournalMode(fileMode);
+    }
+  }
+
+  RollbackJournalPager? _rollbackPager(String schema) {
+    final pager = schema == 'main' ? _journal : _attachedPagers[schema];
+    return pager is RollbackJournalPager ? pager : null;
+  }
+
+  /// Header bytes 18 and 19 and the change counter follow the pinned WAL switch.
+  Future<void> _writeJournalVersion(String schema, int version) async {
+    if (schema == 'main') _materializeMain();
+    final image = Uint8List.fromList(_imageFor(schema));
+    if (image.length < 100 || image[18] == version && image[19] == version) {
+      return;
+    }
+    image[18] = version;
+    image[19] = version;
+    final fields = ByteData.sublistView(image);
+    final counter = (fields.getUint32(24) + 1) & 0xffffffff;
+    fields.setUint32(24, counter);
+    fields.setUint32(92, counter);
+    final pager = _rollbackPager(schema);
+    if (pager != null) {
+      await pager.setFileJournalMode(version == 2 ? 'wal' : 'delete');
+      await _commitSchema(schema, image);
+      if (version == 1) await pager.setFileJournalMode('delete');
+      return;
+    }
+    await _commitSchema(schema, image);
   }
 
   int _synchronousMode(String value) {

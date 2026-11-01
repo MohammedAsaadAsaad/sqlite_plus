@@ -594,7 +594,7 @@ final class SubqueryExpr extends Expr {
   void validate(Set<String> columns) {
     final width = _rowWidth(this);
     if (!exists && width != null && width != 1) {
-      throw const SqlException('Scalar subquery must return one column');
+      throw SqlException('sub-select returns $width columns - expected 1');
     }
   }
 
@@ -617,7 +617,8 @@ final class SubqueryExpr extends Expr {
     final result = this.result(context);
     if (exists) return boolean(result.rows.isNotEmpty);
     if (result.columns.length != 1) {
-      throw const SqlException('Scalar subquery must return one column');
+      throw SqlException(
+          'sub-select returns ${result.columns.length} columns - expected 1');
     }
     return result.rows.isEmpty ? null : result.rows.first.single;
   }

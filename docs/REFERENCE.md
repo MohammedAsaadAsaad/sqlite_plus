@@ -48,7 +48,7 @@ opens the in-memory engine.
 
 `COMPATIBILITY_MATRIX.md` records the tested surface. Constant arithmetic, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` match the pinned opcode rows. Planned next are
 EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`, `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`, STAT4 planning,
-incremental auto-vacuum page movement, a durable two-database commit, more journal modes, extended FTS, ICU and locale
+an official SQLite master journal, a multi-frame WAL log, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
 rows on Linux x64. Version `0.1.2` is the release in this tree. See

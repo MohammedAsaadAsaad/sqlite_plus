@@ -104,7 +104,8 @@ extension _SearchMutations on ImageMutations {
       required bool update,
       required bool replace,
       required bool compileOnly}) async {
-    final spec = fts3Spec(declaration.name, declaration.arguments);
+    final spec = fts3Spec(declaration.name, declaration.arguments,
+        fts4: asciiLower(declaration.module) == 'fts4');
     if (!_engineFts3Content(spec)) {
       throw const SqlException('FTS3 and FTS4 writes are not implemented');
     }
@@ -112,6 +113,9 @@ extension _SearchMutations on ImageMutations {
         parser.current.keyword == 'ORDER' ||
         parser.current.keyword == 'LIMIT') {
       throw const SqlException('search statement is not implemented');
+    }
+    if (!insert && spec.contentless) {
+      throw const SqlException('SQL logic error');
     }
     final docs = _loadFts(spec);
     var changes = 0;
@@ -125,6 +129,9 @@ extension _SearchMutations on ImageMutations {
         throw SqlException('fts3 command is not implemented: ${plan.command}');
       }
       for (final row in plan.rows) {
+        if (spec.contentless && row.id == null) {
+          throw const SqlException('constraint failed');
+        }
         final id = row.id ?? _nextId(docs.map((doc) => doc.id));
         final existing = docs.indexWhere((doc) => doc.id == id);
         if (existing >= 0) {
@@ -196,15 +203,18 @@ extension _SearchMutations on ImageMutations {
   }
 
   Future<void> _installFts3(VirtualTableDeclaration declaration) async {
-    final spec = fts3Spec(declaration.name, declaration.arguments);
+    final spec = fts3Spec(declaration.name, declaration.arguments,
+        fts4: asciiLower(declaration.module) == 'fts4');
     final columns = [
       for (var i = 0; i < spec.columns.length; i++)
         _q(fts3ContentColumn(i, spec.columns[i].name))
     ].join(', ');
     final table = spec.table;
-    await execute(
-        'CREATE TABLE ${_q('${table}_content')}(docid INTEGER PRIMARY KEY, $columns)',
-        const []);
+    if (!spec.contentless) {
+      await execute(
+          'CREATE TABLE ${_q('${table}_content')}(docid INTEGER PRIMARY KEY, $columns)',
+          const []);
+    }
     await execute(
         'CREATE TABLE ${_q('${table}_segments')}(blockid INTEGER PRIMARY KEY, block BLOB)',
         const []);
@@ -222,6 +232,10 @@ extension _SearchMutations on ImageMutations {
   }
 
   bool _engineFts3Content(Fts5Spec spec) {
+    if (spec.contentless) {
+      return _tables[asciiLower('${spec.table}_segments')] != null &&
+          _tables[asciiLower('${spec.table}_segdir')] != null;
+    }
     final content = _tables[asciiLower('${spec.table}_content')];
     if (content == null) return false;
     final names = [for (final column in content.schema.columns) column.name];
@@ -239,17 +253,19 @@ extension _SearchMutations on ImageMutations {
 
   void _storeFts3(Fts5Spec spec, List<_SearchDoc> docs) {
     final ordered = [...docs]..sort((a, b) => a.id.compareTo(b.id));
-    _replace('${spec.table}_content', [
-      for (final doc in ordered)
-        (
-          doc.id,
-          {
-            for (var i = 0; i < spec.columns.length; i++)
-              fts3ContentColumn(i, spec.columns[i].name):
-                  i < doc.texts.length ? doc.texts[i] : null
-          }
-        )
-    ]);
+    if (!spec.contentless) {
+      _replace('${spec.table}_content', [
+        for (final doc in ordered)
+          (
+            doc.id,
+            {
+              for (var i = 0; i < spec.columns.length; i++)
+                fts3ContentColumn(i, spec.columns[i].name):
+                    i < doc.texts.length ? doc.texts[i] : null
+            }
+          )
+      ]);
+    }
     final terms = <String, Uint8List>{};
     final hits = <String, List<Fts3Hit>>{};
     final columnTokens = List<int>.filled(spec.columns.length, 0);
@@ -264,8 +280,9 @@ extension _SearchMutations on ImageMutations {
             ? doc.tokens[column]
             : const <FtsToken>[];
         if (spec.columns[column].unindexed) continue;
-        columnTokens[column] += tokens.length;
         for (var position = 0; position < tokens.length; position++) {
+          if (tokens[position].text.isEmpty) continue;
+          columnTokens[column]++;
           final bytes = fts3TermBytes(tokens[position].text);
           final key = String.fromCharCodes(bytes);
           terms[key] = bytes;
@@ -714,6 +731,10 @@ extension _SearchMutations on ImageMutations {
   }
 
   List<_SearchDoc> _loadFts(Fts5Spec spec, {bool liveExternal = false}) {
+    if (spec.contentless &&
+        _tables.containsKey(asciiLower('${spec.table}_segdir'))) {
+      return _loadFts3Index(spec);
+    }
     if (!spec.contentless && !spec.external) {
       final content = _tables[asciiLower('${spec.table}_content')];
       if (content == null) return [];
@@ -750,6 +771,25 @@ extension _SearchMutations on ImageMutations {
                   spec.columns.length, const <FtsToken>[]))
             _compact(column)
         ])
+    ];
+  }
+
+  List<_SearchDoc> _loadFts3Index(Fts5Spec spec) {
+    final segdir = _tables[asciiLower('${spec.table}_segdir')];
+    if (segdir == null) return const [];
+    final rootIndex = segdir.schema.columns
+        .indexWhere((column) => asciiLower(column.name) == 'root');
+    if (rootIndex < 0) return const [];
+    final roots = <Uint8List>[
+      for (final row in segdir.rows)
+        if (rootIndex < row.values.length && row.values[rootIndex] is Uint8List)
+          row.values[rootIndex] as Uint8List
+    ];
+    final indexed = fts3IndexDocuments(roots, spec.columns.length);
+    return [
+      for (final entry in indexed.entries)
+        _SearchDoc(entry.key, List<String?>.filled(spec.columns.length, null),
+            entry.value)
     ];
   }
 

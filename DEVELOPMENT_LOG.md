@@ -1939,6 +1939,30 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed for those files. `dart test` passed 10594 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run.
 - B5 stays unchecked. M9 stays unchecked. Item 108 stays open. Contentless FTS3/FTS4 writes, file `journal_mode=wal`/`persist`/`truncate`, and an official master journal stay open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — Contentless FTS4 matches the pin
+
+- `CREATE VIRTUAL TABLE f USING fts4(body, content='')` creates no `f_content` table. `INSERT INTO f(docid, body) VALUES(7, 'hello world')` then `SELECT rowid FROM f WHERE f MATCH 'hello'` returns 7. A second insert is visible to `MATCH`. A missing term returns no row. `PRAGMA integrity_check` is `unable to validate the inverted index for FTS4 table main.f: SQL logic error`. A scan without `MATCH`, `SELECT body`, and `DELETE` are `SQL logic error`. An insert without a docid is `constraint failed`. A native contentless file opens here, and a later insert of docid 9 is visible. FTS3 `content=''` is a second column named `content`, not a contentless table. FTS5 contentless behavior is unchanged.
+- `db_browser_b3_fts34_test.dart` matches `/tmp/sqlite-build/sqlite3` for those rows. This is one rebuilt segment. Byte-identical segment bytes were not compared.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. This run's binary reports `COMPILER=gcc-13.3.0`. `manifest.json` records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed for the edited files. `dart test` passed 10596 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run.
+- B5 stays unchecked. M9 stays unchecked. Item 108 stays open. File `journal_mode=wal`/`persist`/`truncate` and an official master journal stay open in the notes below. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — File journal_mode wal, persist, and truncate match the pin
+
+- On a file, `journal_mode=wal` returns `wal`. Header bytes 18 and 19 become 2. The change counter and the version-valid-for field each increase by 1. No `-wal` file is written. The pinned CLI reads that file as `wal`, the stored row, and `integrity_check` `ok`. Inside a transaction the errors are `cannot change into wal mode from within a transaction` and `cannot change out of wal mode from within a transaction`. Leaving `wal` restores bytes 18 and 19 to 1.
+- `journal_mode=persist` returns `persist`. The next commit leaves a journal whose first 28 bytes are 0. Its length is one 512-byte sector plus the changed pages. Header bytes 18 and 19 stay 1. The pinned CLI reads the new row and `integrity_check` `ok`. `journal_mode=truncate` returns `truncate` and leaves a 0-byte journal. The pinned CLI reads the new row. `temp.journal_mode=wal` stays `delete`. `temp` `persist` and `truncate` switch.
+- A hot official journal rolls the open file back to the old `user_version` and the journal is removed. Zeroing the first 28 bytes leaves the new `user_version` in place. Delete-mode commits still use this engine's redo log. The wal path checkpoints the database file. It does not write a multi-frame WAL. Persist page order was not compared with the pin.
+- `db_browser_b3_journal_test.dart` matches `/tmp/sqlite-build/sqlite3` for those rows. That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. This run's binary reports `COMPILER=gcc-13.3.0`. `manifest.json` records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed for the edited files. `dart test` passed 10596 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run.
+- B5 stays unchecked. M9 stays unchecked. Item 108 stays open. An official master journal stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — Cross-schema VALUES errors match the pin wording
+
+- `INSERT INTO aux.u VALUES ((SELECT v FROM missing))` is `no such table: missing`. `INSERT INTO aux.u VALUES ((SELECT a, b FROM t))` is `sub-select returns 2 columns - expected 1`. `CREATE TABLE aux.u(a, b)` then `INSERT INTO aux.u VALUES ((SELECT v FROM t))` is `table aux.u has 2 columns but 1 values were supplied`. `db_browser_b3_cross_insert_test.dart` matches `/tmp/sqlite-build/sqlite3` for those three texts. `SELECT body FROM missing` is `no such table: missing`.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. This run's binary reports `COMPILER=gcc-13.3.0`. `manifest.json` records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed for the edited files. `dart test` passed 10596 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run.
+- B5 stays unchecked. This machine has no Flutter SDK, so plots and CSV import or export were not added to the Flutter app. M9 stays unchecked. The scenario harness rejects a row count above 10000, and iOS, macOS, Windows, power loss, and pub.dev were not run here. Item 108 stays open. An official master journal stays open. Subqueries, joins, integer primary keys, `WITHOUT ROWID`, generated columns, and typed or multi-row `EXPLAIN` programs stay outside the checked bytecode. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

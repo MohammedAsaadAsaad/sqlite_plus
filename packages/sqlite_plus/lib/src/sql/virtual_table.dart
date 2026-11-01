@@ -382,6 +382,7 @@ abstract final class VirtualTableRows {
   }
 
   static Object? _value(Object? value) {
+    if (value is ContentlessColumn) return value;
     if (value == null || value is BigInt || value is String) return value;
     if (value is int) return BigInt.from(value);
     if (value is double) return value.isNaN ? null : value;
