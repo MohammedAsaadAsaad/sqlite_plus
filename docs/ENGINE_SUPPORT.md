@@ -10,8 +10,9 @@ The engine executes the documented main-schema SQL grammar in Pure Dart. The
 compatibility matrix records the tested expressions, joins, subqueries, CTEs,
 aggregates, windows, schema operations, constraints, triggers, DML, indexes,
 maintenance operations, functions and PRAGMAs. Unsupported syntax fails
-explicitly. SQL INTEGER values use BigInt. Public query results are materialized;
-internal row execution can resume between consumer writes.
+explicitly. SQL INTEGER values use BigInt. Public `query` results are materialized.
+`browse` materializes one single-table `LIMIT`/`OFFSET` window and does not
+change `query`. Internal row execution can resume between consumer writes.
 
 INSERT SELECT streams eligible source expressions into the writer. Reads of
 the target, target INSERT triggers and RETURNING introduce materialization
