@@ -35,9 +35,7 @@ void main() {
         ]);
   });
 
-  test(
-      'cross insert rejects a missing source, a missing target, and a value subquery',
-      () async {
+  test('cross insert rejects a missing source and a missing target', () async {
     final db = await _memory();
     await expectLater(db.execute('INSERT INTO aux.u SELECT v FROM missing'),
         throwsA(isA<SqlException>()));
@@ -47,15 +45,49 @@ void main() {
         db.execute('INSERT INTO nope.u SELECT v FROM t'),
         throwsA(isA<SqlException>().having(
             (error) => error.message, 'message', 'no such table: nope.u')));
-    await expectLater(
-        db.execute('INSERT INTO aux.u VALUES ((SELECT v FROM t))'),
-        throwsA(isA<SqlException>().having((error) => error.message, 'message',
-            'cross-database statement is not supported')));
     expect((await db.query('SELECT count(*) FROM aux.u')).rows, [
       [BigInt.zero]
     ]);
     expect((await db.query('SELECT v FROM t')).rows, [
       ['m']
+    ]);
+  });
+
+  test('INSERT VALUES reads a scalar subquery from the other schema', () async {
+    final db = await _memory();
+    await db.execute("INSERT INTO t VALUES ('n')");
+    expect((await db.query('SELECT last_insert_rowid()')).rows, [
+      [BigInt.two]
+    ]);
+    expect(
+        (await db.execute(
+                "INSERT INTO aux.u VALUES ((SELECT v FROM t WHERE v = 'm'))"))
+            .changes,
+        1);
+    expect((await db.query('SELECT changes()')).rows, [
+      [BigInt.one]
+    ]);
+    expect((await db.query('SELECT last_insert_rowid()')).rows, [
+      [BigInt.one]
+    ]);
+    expect((await db.query('SELECT v FROM aux.u')).rows, [
+      ['m']
+    ]);
+    expect((await db.query('SELECT v FROM t ORDER BY v')).rows, [
+      ['m'],
+      ['n']
+    ]);
+    expect(
+        (await db.execute(
+                'INSERT INTO aux.u VALUES ((SELECT v FROM t WHERE 0))'))
+            .changes,
+        1);
+    expect((await db.query('SELECT v FROM aux.u ORDER BY rowid')).rows, [
+      ['m'],
+      [null]
+    ]);
+    expect((await db.query('SELECT last_insert_rowid()')).rows, [
+      [BigInt.two]
     ]);
   });
 

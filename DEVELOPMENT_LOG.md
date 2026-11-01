@@ -1916,6 +1916,13 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10590 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The FTS3/FTS4 write sub-item is checked. The cross-schema `UPDATE` and `DELETE` rows are checked on the durable-commit sub-item. The B3 parent is checked. B1, B2, and B4 stay checked. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — Cross-schema INSERT VALUES matches the pin
+
+- `INSERT INTO aux.u VALUES ((SELECT v FROM t))` inserts `m`. `changes()` is 1. `last_insert_rowid()` is the inserted row, not the rowid left by the source insert. An empty subquery inserts NULL and still changes 1 row. Two scalar subqueries fill two columns. `ORDER BY` keeps the first row. `SELECT main.t.v FROM main.t` beside an `aux.t` returns `main` and leaves `aux.t` as `aux`. `RETURNING`, two VALUES rows, a CTE, `ON CONFLICT(id) DO UPDATE SET v = excluded.v`, and `INSERT INTO t VALUES ((SELECT v FROM aux.u))` match `/tmp/sqlite-build/sqlite3`. `aux.sqlite_schema` after the copy is only the destination tables. A missing table is `No such table: missing`; the CLI says `no such table: missing`. Two subquery columns are `Scalar subquery must return one column`; the CLI says `sub-select returns 2 columns - expected 1`. A short VALUES list is `INSERT width mismatch`; the CLI says `table aux.u has 2 columns but 1 values were supplied`.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. This run's binary reports `COMPILER=gcc-13.3.0`. `manifest.json` records clang-22.1.3. Explain comments are absent. `DQS=0` is not set.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10591 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- B1, B2, B3, and B4 stay checked. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. Contentless FTS3/FTS4 writes, file `journal_mode=wal`, `persist`, and `truncate`, `incremental_vacuum` page movement, `EXPLAIN` beyond a literal projection, and an official master journal stay open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.
