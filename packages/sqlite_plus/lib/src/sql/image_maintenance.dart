@@ -6,19 +6,92 @@ part of 'image_mutations.dart';
 extension _ImageMaintenance on ImageMutations {
   MutationImage _vacuum(SqlParser parser, List<Object?> parameters,
       {required bool inTransaction}) {
+    String? schema;
+    if (parser.current.kind == SqlTokenKind.identifier &&
+        parser.current.keyword != 'INTO') {
+      schema = parser.identifier();
+    }
+    // The temporary database is parsed and then skipped, including `INTO`.
+    if (schema != null && asciiLower(schema) == 'temp') {
+      if (parser.take('INTO')) parser.expression();
+      parser.finish();
+      return MutationImage(original, 0, null);
+    }
     if (inTransaction || _triggerContexts.isNotEmpty) {
-      throw const SqlException('VACUUM prohibited inside a transaction');
+      throw const SqlException('cannot VACUUM from within a transaction');
     }
-    if (parser.current.kind != SqlTokenKind.end && parser.current.text != ';') {
-      final schema = parser.identifier();
-      if (asciiLower(schema) != 'main') {
-        throw SqlException('Unknown database: $schema');
+    if (schema != null &&
+        parser.current.keyword != 'INTO' &&
+        asciiLower(schema) != 'main') {
+      throw SqlException('Unknown database: $schema');
+    }
+    String? intoPath;
+    if (parser.take('INTO')) {
+      final value = _vacuumFilename(parser, parameters);
+      if (value is! String) {
+        throw const SqlException('non-text filename');
       }
-    }
-    parser.finish();
-    if (parameters.isNotEmpty) {
+      intoPath = value;
+    } else if (parameters.isNotEmpty) {
       throw const SqlException('VACUUM bindings unsupported');
     }
+    parser.finish();
+    if (intoPath != null) return _vacuumInto(intoPath);
+    final renumbered = _compactVacuumRowids();
+    if (!renumbered && DatabaseHeader.decode(original).freelistPages == 0) {
+      // The live rows already are the compact database. Rebuilding the byte
+      // image here duplicated the work a later read performs.
+      return MutationImage(original, 0, null);
+    }
+    schemaChanged = true;
+    wroteRows = renumbered;
+    return MutationImage(serialize(rowConstraints: false), 0, null);
+  }
+
+  Object? _vacuumFilename(SqlParser parser, List<Object?> parameters) {
+    final expr = parser.expression();
+    try {
+      return resolveSqlValue(expr.evaluate(EvalContext(
+          const <String, Object?>{}, const <String, String>{}, parameters)));
+    } on RangeError {
+      return null;
+    }
+  }
+
+  /// Builds a compact copy without keeping the renumbered source rows.
+  MutationImage _vacuumInto(String path) {
+    final savedRows = <_Table, List<TableRow>>{
+      for (final table in _tables.values) table: table.rows.toList(),
+    };
+    final savedAddends = <_Table, Map<int, BigInt>?>{
+      for (final table in _tables.values)
+        table: table.columnAddends == null
+            ? null
+            : Map<int, BigInt>.of(table.columnAddends!),
+    };
+    final savedSchema = schemaChanged;
+    final savedWrote = wroteRows;
+    try {
+      _compactVacuumRowids();
+      schemaChanged = true;
+      final bytes = serialize(rowConstraints: false);
+      return MutationImage(original, 0, null, null, VacuumInto(path, bytes));
+    } finally {
+      for (final entry in savedRows.entries) {
+        entry.key.rows
+          ..clear()
+          ..addAll(entry.value);
+        final addends = savedAddends[entry.key];
+        entry.key.columnAddends =
+            addends == null ? null : Map<int, BigInt>.of(addends);
+        entry.key.invalidateResidentKeys();
+      }
+      schemaChanged = savedSchema;
+      wroteRows = savedWrote;
+    }
+  }
+
+  bool _compactVacuumRowids() {
     var renumbered = false;
     for (final table in _tables.values) {
       if (table.schema.withoutRowid ||
@@ -48,14 +121,7 @@ extension _ImageMaintenance on ImageMutations {
         ]);
       table.invalidateResidentKeys();
     }
-    if (!renumbered && DatabaseHeader.decode(original).freelistPages == 0) {
-      // The live rows already are the compact database. Rebuilding the byte
-      // image here duplicated the work a later read performs.
-      return MutationImage(original, 0, null);
-    }
-    schemaChanged = true;
-    wroteRows = renumbered;
-    return MutationImage(serialize(rowConstraints: false), 0, null);
+    return renumbered;
   }
 
   MutationImage _maintenance(SqlParser parser, List<Object?> parameters,

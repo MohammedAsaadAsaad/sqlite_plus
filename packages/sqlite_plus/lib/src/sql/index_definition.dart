@@ -174,6 +174,7 @@ final class IndexDefinition {
             .name;
       }
       final collation = expression.collation(context) ?? 'binary';
+      requireKnownCollation(collation);
       final descending = p.take('DESC');
       if (!descending) p.take('ASC');
       terms.add(IndexTerm(expression, column, collation, descending));

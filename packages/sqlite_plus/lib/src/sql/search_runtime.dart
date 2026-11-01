@@ -79,8 +79,9 @@ Object? ftsMatchValue(String? columnName, Object? pattern, Object? rowid) {
   if (state == null || text == null || rowid is! BigInt) return BigInt.zero;
   final document = state.documents[rowid];
   if (document == null) return BigInt.zero;
-  final query =
-      parseFtsQuery(text, state.spec.tokenizer, state.spec.visibleNames);
+  final query = parseFtsQuery(
+      text, state.spec.tokenizer, state.spec.visibleNames,
+      detail: state.spec.detail);
   final column = _column(state, columnName);
   return boolean(query.matches(document, column: column));
 }

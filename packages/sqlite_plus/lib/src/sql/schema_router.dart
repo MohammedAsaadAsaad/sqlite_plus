@@ -83,8 +83,117 @@ StatementRoute routeMutation(String sql, SchemaNames names) {
     return StatementRoute('detach', sql, name: name);
   }
   final target = _mutationTarget(cursor, names);
-  _rejectCrossDatabase(sql, target.schema, names);
+  if (_referencesOtherSchema(sql, target.schema, names)) {
+    if (insertSelectParts(sql) == null) {
+      throw const SqlException('cross-database statement is not supported');
+    }
+    return StatementRoute('cross-insert', target.sql, schema: target.schema);
+  }
   return StatementRoute('single', target.sql, schema: target.schema);
+}
+
+/// The pieces of an `INSERT ... SELECT`. Null for any other statement.
+final class InsertSelect {
+  InsertSelect(this.head, this.selectSql, this.tail);
+  final String head;
+  final String selectSql;
+  final String tail;
+}
+
+InsertSelect? insertSelectParts(String sql) {
+  final tokens = SqlTokenizer.tokenize(sql);
+  var index = 0;
+  var depth = 0;
+  var insertAt = -1;
+  while (index < tokens.length && tokens[index].kind != SqlTokenKind.end) {
+    final token = tokens[index];
+    if (token.text == '(') {
+      depth++;
+    } else if (token.text == ')') {
+      depth--;
+    } else if (depth == 0 &&
+        (token.keyword == 'INSERT' || token.keyword == 'REPLACE')) {
+      insertAt = index;
+      break;
+    }
+    index++;
+  }
+  if (insertAt < 0) return null;
+  final ctePrefix =
+      insertAt == 0 ? '' : sql.substring(0, tokens[insertAt].offset);
+  index = insertAt + 1;
+  bool take(String word) {
+    if (index < tokens.length && tokens[index].keyword == word) {
+      index++;
+      return true;
+    }
+    return false;
+  }
+
+  if (tokens[insertAt].keyword == 'INSERT' && take('OR')) {
+    if (index >= tokens.length ||
+        tokens[index].kind != SqlTokenKind.identifier) {
+      return null;
+    }
+    index++;
+  }
+  if (!take('INTO')) return null;
+  if (index >= tokens.length || tokens[index].kind != SqlTokenKind.identifier) {
+    return null;
+  }
+  index++;
+  if (take('.')) {
+    if (index >= tokens.length ||
+        tokens[index].kind != SqlTokenKind.identifier) {
+      return null;
+    }
+    index++;
+  }
+  if (take('AS')) {
+    if (index >= tokens.length ||
+        tokens[index].kind != SqlTokenKind.identifier) {
+      return null;
+    }
+    index++;
+  }
+  if (index < tokens.length && tokens[index].text == '(') {
+    var columnDepth = 0;
+    while (index < tokens.length && tokens[index].kind != SqlTokenKind.end) {
+      if (tokens[index].text == '(') columnDepth++;
+      if (tokens[index].text == ')') columnDepth--;
+      index++;
+      if (columnDepth == 0) break;
+    }
+  }
+  if (index >= tokens.length) return null;
+  final source = tokens[index];
+  if (source.keyword != 'SELECT' && source.keyword != 'WITH') return null;
+  var sourceEnd = sql.length;
+  var sourceDepth = 0;
+  for (var i = index; i < tokens.length; i++) {
+    final token = tokens[i];
+    if (token.kind == SqlTokenKind.end ||
+        sourceDepth == 0 && token.text == ';') {
+      sourceEnd = token.offset;
+      break;
+    }
+    if (token.text == '(') {
+      sourceDepth++;
+    } else if (token.text == ')') {
+      sourceDepth--;
+    } else if (sourceDepth == 0 &&
+        (token.keyword == 'RETURNING' ||
+            token.keyword == 'ON' &&
+                i + 1 < tokens.length &&
+                tokens[i + 1].keyword == 'CONFLICT')) {
+      sourceEnd = token.offset;
+      break;
+    }
+  }
+  return InsertSelect(
+      sql.substring(tokens[insertAt].offset, source.offset),
+      '$ctePrefix${sql.substring(source.offset, sourceEnd)}',
+      sql.substring(sourceEnd));
 }
 
 /// SQL for one image. `main` qualifiers stay, because the image parser uses
@@ -227,13 +336,30 @@ _Target _mutationTarget(_Cursor cursor, SchemaNames names) {
     return _Target('main', cursor.sql);
   }
   if (cursor.take('VACUUM')) {
-    if (cursor.current.kind == SqlTokenKind.identifier) {
-      final schema = asciiLower(cursor.identifier().text);
+    if (cursor.current.kind == SqlTokenKind.identifier &&
+        cursor.current.keyword != 'INTO') {
+      final token = cursor.identifier();
+      final schema = asciiLower(token.text);
       if (!names.order.contains(schema)) {
         throw SqlException('Unknown database: $schema');
       }
+      if (cursor.current.keyword == 'INTO') {
+        if (schema == 'temp') {
+          // SQLite parses `VACUUM temp` and then skips it. The schema token
+          // stays so the image parser can do the same without writing a file.
+          return _Target(schema, cursor.sql);
+        }
+        // The image parser sees `VACUUM INTO ...`. The schema name already
+        // selected this image, including an attached database.
+        final sql =
+            _splice(cursor.sql, [(token.offset, cursor.current.offset, '')]);
+        return _Target(schema, sql);
+      }
       cursor.finish();
       return _Target(schema, imageSql(cursor.sql, schema));
+    }
+    if (cursor.current.keyword == 'INTO') {
+      return _Target('main', cursor.sql);
     }
     cursor.finish();
     return _Target('main', cursor.sql);
@@ -363,7 +489,7 @@ void _skipWith(_Cursor cursor) {
   }
 }
 
-void _rejectCrossDatabase(String sql, String target, SchemaNames names) {
+bool _referencesOtherSchema(String sql, String target, SchemaNames names) {
   final tokens = SqlTokenizer.tokenize(sql);
   const starters = {'FROM', 'JOIN', 'INTO', 'UPDATE'};
   for (var i = 0; i < tokens.length; i++) {
@@ -378,7 +504,7 @@ void _rejectCrossDatabase(String sql, String target, SchemaNames names) {
       final schemaTable = table == 'sqlite_schema' || table == 'sqlite_master';
       if (lower != target &&
           (schemaTable || names.tables[lower]?.contains(table) == true)) {
-        throw const SqlException('cross-database statement is not supported');
+        return true;
       }
       i += 2;
       continue;
@@ -386,11 +512,10 @@ void _rejectCrossDatabase(String sql, String target, SchemaNames names) {
     final previous = i == 0 ? '' : tokens[i - 1].keyword;
     if (starters.contains(previous)) {
       final resolved = names.tableSchema(token.text);
-      if (resolved != null && resolved != target) {
-        throw const SqlException('cross-database statement is not supported');
-      }
+      if (resolved != null && resolved != target) return true;
     }
   }
+  return false;
 }
 
 final class _Cursor {

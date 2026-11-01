@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'builtin_collations.dart';
 import 'tokenizer.dart';
 
 String asciiLower(String value) => String.fromCharCodes(
@@ -163,8 +164,13 @@ String sqlRealText(double value, [int precision = 15]) {
 int compareValues(Object? a, Object? b, [int encoding = 1, String? collation]) {
   if (a is JsonText) a = a.text;
   if (b is JsonText) b = b.text;
-  if (a == null) return b == null ? 0 : -1;
-  if (b == null) return 1;
+  if (a == null || b == null) {
+    if (collation != null && collation != 'binary') {
+      requireKnownCollation(collation);
+    }
+    if (a == null) return b == null ? 0 : -1;
+    return 1;
+  }
   int rank(Object value) => value is BigInt || value is double
       ? 0
       : value is String
@@ -189,21 +195,37 @@ int compareValues(Object? a, Object? b, [int encoding = 1, String? collation]) {
   if (a is double && b is BigInt) return -mixed(b, a);
   if (a is double && b is double) return a == b ? 0 : a.compareTo(b);
   if (a is String && b is String) {
-    if (collation != null &&
-        collation != 'binary' &&
-        collation != 'nocase' &&
-        collation != 'rtrim') {
-      final custom = compareRegisteredCollation(collation, a, b);
-      if (custom == null) throw SqlException('no such collation: $collation');
-      return custom;
-    }
-    if (collation == 'nocase') {
-      a = asciiLower(a).split('\u0000').first;
-      b = asciiLower(b).split('\u0000').first;
-    }
-    if (collation == 'rtrim') {
-      a = a.replaceFirst(RegExp(r' +$'), '');
-      b = b.replaceFirst(RegExp(r' +$'), '');
+    if (collation != null && collation != 'binary') {
+      if (collation == 'nocase') {
+        a = asciiLower(a).split('\u0000').first;
+        b = asciiLower(b).split('\u0000').first;
+      } else if (collation == 'rtrim') {
+        a = a.replaceFirst(RegExp(r' +$'), '');
+        b = b.replaceFirst(RegExp(r' +$'), '');
+      } else if (collation == 'decimal') {
+        return compareDecimal(a, b);
+      } else if (collation == 'uint') {
+        return compareUint(a, b);
+      } else {
+        final key = asciiLower(collation);
+        if (key == 'nocase') {
+          a = asciiLower(a).split('\u0000').first;
+          b = asciiLower(b).split('\u0000').first;
+        } else if (key == 'rtrim') {
+          a = a.replaceFirst(RegExp(r' +$'), '');
+          b = b.replaceFirst(RegExp(r' +$'), '');
+        } else if (key == 'decimal') {
+          return compareDecimal(a, b);
+        } else if (key == 'uint') {
+          return compareUint(a, b);
+        } else if (key != 'binary') {
+          final custom = compareRegisteredCollation(key, a, b);
+          if (custom == null) {
+            throw SqlException('no such collation sequence: $collation');
+          }
+          return custom;
+        }
+      }
     }
   }
   final List<int> aa =

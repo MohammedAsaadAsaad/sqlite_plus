@@ -3093,19 +3093,31 @@
           {
             "integer": "0"
           },
-          "RTRIM"
+          "decimal"
         ],
         [
           {
             "integer": "1"
           },
-          "NOCASE"
+          "BINARY"
         ],
         [
           {
             "integer": "2"
           },
-          "BINARY"
+          "NOCASE"
+        ],
+        [
+          {
+            "integer": "3"
+          },
+          "RTRIM"
+        ],
+        [
+          {
+            "integer": "4"
+          },
+          "uint"
         ]
       ]
     },

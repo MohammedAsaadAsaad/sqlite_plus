@@ -189,9 +189,11 @@ extension _PragmaTableQueries on SqliteDatabase {
         'seq',
         'name'
       ], [
-        [BigInt.zero, 'RTRIM'],
-        [BigInt.one, 'NOCASE'],
-        [BigInt.two, 'BINARY']
+        [BigInt.zero, 'decimal'],
+        [BigInt.one, 'BINARY'],
+        [BigInt.two, 'NOCASE'],
+        [BigInt.from(3), 'RTRIM'],
+        [BigInt.from(4), 'uint']
       ]);
     }
     if (name == 'database_list') {

@@ -53,10 +53,27 @@ String _lower(String value) => String.fromCharCodes(
 
 bool knownCollation(String name) {
   final key = _lower(name);
-  if (const {'binary', 'nocase', 'rtrim'}.contains(key)) return true;
+  if (const {'binary', 'nocase', 'rtrim', 'decimal', 'uint'}.contains(key)) {
+    return true;
+  }
   final map = Zone.current[collationKey];
   return map is Map<String, int Function(String, String)> &&
       map.containsKey(key);
+}
+
+/// Throws when [name] is used and this connection cannot resolve it.
+/// Null and the built-in names return without a zone lookup.
+void requireKnownCollation(String? name) {
+  if (name == null ||
+      name == 'binary' ||
+      name == 'nocase' ||
+      name == 'rtrim' ||
+      name == 'decimal' ||
+      name == 'uint') {
+    return;
+  }
+  if (knownCollation(name)) return;
+  throw SqlException('no such collation sequence: $name');
 }
 
 int? compareRegisteredCollation(String name, String a, String b) {

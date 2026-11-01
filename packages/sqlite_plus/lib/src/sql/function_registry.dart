@@ -79,12 +79,12 @@ final class SqlFunctionRegistry {
   void unregister(String name, int argumentCount) =>
       _functions[asciiLower(name)]?.remove(argumentCount);
 
-  /// Registers a text collation. BINARY, NOCASE and RTRIM stay built in.
+  /// Registers a text collation. BINARY, NOCASE, RTRIM, decimal, and uint stay built in.
   void createCollation(String name, int Function(String, String) compare) {
     final key = asciiLower(name);
     if (key.isEmpty ||
         key.contains('\u0000') ||
-        const {'binary', 'nocase', 'rtrim'}.contains(key)) {
+        const {'binary', 'nocase', 'rtrim', 'decimal', 'uint'}.contains(key)) {
       throw ArgumentError('Invalid collation name');
     }
     collations[key] = compare;

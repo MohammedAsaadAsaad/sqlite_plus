@@ -209,28 +209,37 @@ void main() {
         reopened.query('SELECT * FROM u'), throwsA(isA<SqlException>()));
   });
 
-  test('journal_mode reports the header and rejects unimplemented modes',
+  test('journal_mode on memory stays memory without rewriting the image',
       () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
     final before = db.exportImage();
     expect(
-        (await db.query('PRAGMA journal_mode')).rows.single.single, 'rollback');
+        (await db.query('PRAGMA journal_mode')).rows.single.single, 'memory');
     expect(sqlJournalMode(before[18]), 'rollback');
-    await db.execute('PRAGMA journal_mode=rollback');
-    expect(db.exportImage(), before);
     for (final mode in [
       'memory',
       'off',
       'delete',
       'persist',
       'truncate',
-      'wal'
+      'wal',
+      'rollback',
+      'nope'
     ]) {
-      await expectLater(db.execute('PRAGMA journal_mode=$mode'),
-          throwsA(isA<SqlException>()));
-      expect(db.exportImage(), before);
+      expect((await db.query('PRAGMA journal_mode=$mode')).rows.single.single,
+          'memory',
+          reason: mode);
+      expect(db.exportImage(), before, reason: mode);
     }
+    expect((await db.query('PRAGMA temp.journal_mode')).rows.single.single,
+        'delete');
+    expect((await db.query('PRAGMA temp.journal_mode=off')).rows.single.single,
+        'delete');
+    expect(
+        (await db.query('PRAGMA temp.journal_mode=memory')).rows.single.single,
+        'memory');
+    expect(db.exportImage(), before);
     final wal = Uint8List.fromList(before);
     wal[18] = 2;
     wal[19] = 2;
@@ -266,16 +275,20 @@ void main() {
         db.execute('PRAGMA busy_timeout=-1'), throwsA(isA<SqlException>()));
   });
 
-  test('auto_vacuum reads the header and writers still reject it', () async {
+  test('auto_vacuum on a fresh connection is stored in the header', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
-    final before = db.exportImage();
     expect(
         (await db.query('PRAGMA auto_vacuum')).rows.single.single, BigInt.zero);
-    await expectLater(
-        db.execute('PRAGMA auto_vacuum=1'), throwsA(isA<SqlException>()));
-    expect(db.exportImage(), before);
-    final vacuum = Uint8List.fromList(before);
+    expect((await db.query('PRAGMA auto_vacuum=1')).rows, isEmpty);
+    expect(
+        (await db.query('PRAGMA auto_vacuum')).rows.single.single, BigInt.one);
+    expect(DatabaseHeader.decode(db.exportImage()).largestRootPage, 1);
+    final opened = await MutableSqliteDatabase.fromImage(db.exportImage());
+    addTearDown(opened.close);
+    expect((await opened.query('PRAGMA auto_vacuum')).rows.single.single,
+        BigInt.one);
+    final vacuum = Uint8List.fromList(DatabaseImageBuilder.empty());
     ByteData.sublistView(vacuum).setUint32(52, 2);
     await expectLater(
         MutableSqliteDatabase.fromImage(vacuum), throwsUnsupportedError);
@@ -311,9 +324,9 @@ void main() {
     await expectLater(
         db.query('EXPLAIN SELECT * FROM t'), throwsA(isA<SqlException>()));
     final plan = await db.query('EXPLAIN QUERY PLAN SELECT * FROM t');
-    expect(plan.columns, ['detail']);
-    expect(plan.rows.single.single.toString(), contains('t'));
-    expect(plan.rows.single.single.toString(), isNot(contains('Opcode')));
+    expect(plan.columns, ['id', 'parent', 'notused', 'detail']);
+    expect(plan.rows.single[3].toString(), 'SCAN t');
+    expect(plan.rows.single[3].toString(), isNot(contains('Opcode')));
   });
 
   test('sqlite_stat4 is stored and is not used for planning', () async {
@@ -336,7 +349,7 @@ void main() {
       ['9']
     ]);
     final plan = await db.query('EXPLAIN QUERY PLAN SELECT v FROM t');
-    expect(plan.rows.single.single.toString(), isNot(contains('stat4')));
+    expect(plan.rows.single[3].toString(), isNot(contains('stat4')));
   });
 
   test('two comma joins reorder by sqlite_stat1 row counts', () async {
@@ -352,8 +365,8 @@ void main() {
     await db.execute('ANALYZE');
     final plan = await db.query(
         'EXPLAIN QUERY PLAN SELECT big.v, small.v FROM big, small ORDER BY big.v');
-    expect(plan.rows.first.first.toString(), contains('small'));
-    expect(plan.rows.last.first.toString(), contains('big'));
+    expect(plan.rows.first[3].toString(), contains('small'));
+    expect(plan.rows.last[3].toString(), contains('big'));
     expect(
         (await db.query(
                 'SELECT big.v, small.v FROM big, small ORDER BY big.v LIMIT 2'))
@@ -385,7 +398,7 @@ void main() {
     expect(coveredPages, lessThan(full.pagesRead));
     final plan =
         await db.query('EXPLAIN QUERY PLAN SELECT a, b FROM t WHERE a=1');
-    expect(plan.rows.single.single.toString(), contains('COVERING'));
+    expect(plan.rows.single[3].toString(), contains('COVERING'));
   });
 
   test('double quotes stay identifiers while DQS is off', () async {

@@ -104,9 +104,11 @@ void main() {
       [BigInt.zero, 'main', '']
     ]);
     expect((await db.query('PRAGMA collation_list')).rows, [
-      [BigInt.zero, 'RTRIM'],
-      [BigInt.one, 'NOCASE'],
-      [BigInt.two, 'BINARY']
+      [BigInt.zero, 'decimal'],
+      [BigInt.one, 'BINARY'],
+      [BigInt.two, 'NOCASE'],
+      [BigInt.from(3), 'RTRIM'],
+      [BigInt.from(4), 'uint']
     ]);
     final names = (await db.query('PRAGMA pragma_list')).rows.map((r) => r[0]);
     expect(names, containsAll(['table_list', 'function_list', 'table_xinfo']));

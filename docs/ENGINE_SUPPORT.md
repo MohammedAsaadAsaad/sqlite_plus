@@ -38,10 +38,17 @@ does not see them. An unqualified name resolves temp, then main, then the one
 attached database. `ATTACH ':memory:'` is core. A file path uses the optional
 `attachFile` callback and must be at most 64 MiB. A second attachment, a
 duplicate name, `main`, `temp`, a missing file, and a missing reader are
-rejected. One statement that mutates two schemas is rejected before a partial
-write. A cross-schema SELECT is copied into a scratch image. Temp and attached
-images are not a second durable journal. A transaction snapshots main, temp,
-and the attached image together.
+rejected. `INSERT INTO aux.u SELECT v FROM t` returns no row, then `aux.u` has
+one row `m` and main `t` still holds `m`. A file attachment can use its own
+rollback journal. A transaction that changes two of those journals syncs one
+schema-commit record first. A crash before that record leaves both files
+unchanged, and a crash after it restores both. That record is not an official
+SQLite master journal. `UPDATE` and `DELETE` that read another schema still
+throw `cross-database statement is not supported`. Without the attachment, the
+pin says `no such table: aux.u` and this engine says `Unknown database: aux`.
+A cross-schema SELECT is copied into a scratch image. A memory attachment is
+not a second durable journal. A transaction snapshots main, temp, and the
+attached image together.
 
 `journal_mode` reads header byte 18. Writing the current mode changes nothing.
 `memory`, `off`, `delete`, `persist`, `truncate`, and a rollback/wal switch
@@ -70,8 +77,8 @@ column. `"a.title"` returns the dotted column. Both match the pinned CLI.
 
 The gap ledger has 25 UTF-8 cases from the pinned CLI. A case matches the CLI
 or names the rejection. The recorded differences include the default-off DQS
-case, `journal_mode` memory/off, `auto_vacuum`, a cross-database
-insert, the fresh `journal_mode` name, and EXPLAIN QUERY PLAN text. `json_pretty`
+case. `cross-insert`, `auto-vacuum-full`, the compared
+`journal_mode` rows, and `explain-query-plan` match. `json_pretty`
 matches the pinned CLI, including a custom indent. Its output cap is 16 MiB. The CLI
 compiler is gcc-13.3.0. `manifest.json` still records clang-22.1.3. Stable
 error codes are `constraint`, `syntax`, and `missingTable`. The wording is not
@@ -88,9 +95,11 @@ key is visible through both indexes. Crash recovery for the incremental
 insert, delete, and overflow update restores the previous rollback image. A
 WAL commit of one row recovers that row after a crash on the next insert.
 WITHOUT ROWID, views, triggers, and the other unhandled shapes keep their
-existing writers. The writer still rejects an auto-vacuum file. A read-only
-open accepts it. A NONE delete does not shrink. VACUUM does. FULL auto-vacuum
-delete shrink is not implemented.
+existing writers. A valid auto-vacuum image opens for writing. NONE reads
+skip pointer maps, and a NONE delete does not shrink. VACUUM does. Compared
+FULL images match the pin's page counts. `incremental_vacuum` does not move
+pages, so an incremental overflow delete is compacted instead of leaving the
+pin's freelist page.
 
 `benchmark_results/page_writes_linux_x64.json` is this revision's Linux x64
 AOT sample: three batch inserts of 10,000 rows, one batch insert of 100,000

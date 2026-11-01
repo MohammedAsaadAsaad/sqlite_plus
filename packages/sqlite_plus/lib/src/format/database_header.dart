@@ -83,9 +83,8 @@ final class DatabaseHeader {
       throw const FormatException(
           'Unsupported schema, encoding or vacuum mode');
     }
-    if (words[10] != 0 && words[7] == 0) {
-      throw const FormatException('Incremental vacuum requires auto vacuum');
-    }
+    // An incremental cookie with no largest root is corrupt, but the file
+    // still opens. integrity_check reports it.
     for (var i = 72; i < 92; i++) {
       if (bytes[i] != 0) throw const FormatException('Nonzero reserved header');
     }

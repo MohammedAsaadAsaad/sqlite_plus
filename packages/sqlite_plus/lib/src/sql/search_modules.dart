@@ -137,8 +137,8 @@ final class _Fts5Cursor extends VirtualTableCursor {
     final pending = _pendingQuery(scan?.$1, scan?.$2 ?? const [], spec);
     final state = FtsTableState(spec, documents);
     if (pending != null) {
-      final query =
-          parseFtsQuery(pending.$1, spec.tokenizer, spec.visibleNames);
+      final query = parseFtsQuery(pending.$1, spec.tokenizer, spec.visibleNames,
+          detail: spec.detail);
       state.query = query;
       state.column = pending.$2;
       state.bm25 = FtsBm25.build(query, documents.values.toList(), pending.$2);
@@ -330,7 +330,7 @@ Map<BigInt, List<List<FtsToken>>> _indexedTokens(
       if (block == null || block.length < 4) continue;
       List<FtsPosting> terms;
       try {
-        terms = decodeLeaf(block);
+        terms = decodeLeaf(block, detail: spec.detail);
       } on SqlException {
         continue;
       }
@@ -346,6 +346,17 @@ Map<BigInt, List<List<FtsToken>>> _indexedTokens(
                 _clear(columns, posting, position);
               }
             }
+            continue;
+          }
+          if (spec.detail == 'none') {
+            while (columns.isEmpty) {
+              columns.add({});
+            }
+            var slot = 0;
+            while (columns[0].containsKey(slot)) {
+              slot++;
+            }
+            columns[0][slot] = token;
             continue;
           }
           for (final entry in posting.positions.entries) {
@@ -450,7 +461,7 @@ final class Fts3Module extends VirtualTableModule {
 
   @override
   void xCreate(String table, List<String> arguments) {
-    throw const SqlException('FTS3 and FTS4 writes are not implemented');
+    fts3Spec(table, arguments);
   }
 
   @override
@@ -480,6 +491,20 @@ final class Fts4Module extends Fts3Module {
   List<String> get columns => const ['fts4'];
 }
 
+Fts5Spec fts3Spec(String table, List<String> arguments) {
+  final columns = _fts3Columns(arguments);
+  return Fts5Spec(
+      table: table,
+      columns: [for (final name in columns) Fts5Column(name)],
+      tokenizer: _fts3Tokenizer(arguments),
+      prefix: const [],
+      contentMode: 'normal',
+      contentTable: null,
+      contentRowid: 'docid',
+      contentlessDelete: false,
+      columnSize: false);
+}
+
 List<String> _fts3Columns(List<String> arguments) {
   final columns = <String>[];
   for (final raw in arguments) {
@@ -490,9 +515,7 @@ List<String> _fts3Columns(List<String> arguments) {
       columns.add(name.replaceAll("'", '').replaceAll('"', ''));
     }
   }
-  if (columns.isEmpty) {
-    throw const SqlException('vtable constructor failed: fts');
-  }
+  if (columns.isEmpty) columns.add('content');
   return columns;
 }
 
@@ -531,8 +554,9 @@ final class _Fts3Cursor extends VirtualTableCursor {
 
   @override
   void filter(String table, List<String> arguments) {
-    final columns = _fts3Columns(arguments);
-    final tokenizer = _fts3Tokenizer(arguments);
+    final spec = fts3Spec(table, arguments);
+    final columns = spec.visibleNames;
+    final tokenizer = spec.tokenizer;
     final content = SearchSnapshot.current.table('${table}_content');
     final documents = <BigInt, FtsDocument>{};
     if (content != null) {
@@ -551,16 +575,6 @@ final class _Fts3Cursor extends VirtualTableCursor {
             List<bool>.filled(columns.length, false));
       }
     }
-    final spec = Fts5Spec(
-        table: table,
-        columns: [for (final name in columns) Fts5Column(name)],
-        tokenizer: tokenizer,
-        prefix: const [],
-        contentMode: 'normal',
-        contentTable: null,
-        contentRowid: 'docid',
-        contentlessDelete: false,
-        columnSize: false);
     final state = FtsTableState(spec, documents);
     final scan = module.scans[asciiLower(table)];
     final pending = _pendingQuery(scan?.$1, scan?.$2 ?? const [], spec);

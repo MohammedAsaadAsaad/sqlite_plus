@@ -101,6 +101,61 @@ final class QueryPlan {
   final BigInt? rowid;
 }
 
+/// One `EXPLAIN QUERY PLAN` row. [id] is the compared opcode address,
+/// [notused] is the compared `rRun` cost, and [detail] is the plan text.
+final class ExplainPlanRow {
+  const ExplainPlanRow(this.id, this.parent, this.notused, this.detail);
+  final int id;
+  final int parent;
+  final int notused;
+  final String detail;
+}
+
+/// Default `nRowLogEst` when `sqlite_stat1` is absent: `sqlite3LogEst(1048576)`.
+const _defaultRowLogEst = 200;
+
+/// SQLite 3.53.1 `sqlite3LogEst` for the costs compared in the B3 plan tests.
+int _sqliteLogEst(int value) {
+  const adjustments = <int>[0, 2, 3, 5, 6, 7, 8, 9];
+  var estimate = 40;
+  var number = value;
+  if (number < 2) return 0;
+  if (number < 8) {
+    while (number < 8) {
+      estimate -= 10;
+      number <<= 1;
+    }
+  } else {
+    while (number > 255) {
+      estimate += 40;
+      number >>= 4;
+    }
+    while (number > 15) {
+      estimate += 10;
+      number >>= 1;
+    }
+  }
+  return adjustments[number & 7] + estimate - 10;
+}
+
+/// SQLite 3.53.1 `sqlite3LogEstAdd`.
+int _sqliteLogEstAdd(int left, int right) {
+  const extra = <int>[
+    10, 10, 9, 9, 8, 8, 7, 7, 7, 6, 6, 6, 5, 5, 5, 4, 4, 4, 4, //
+    3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2
+  ];
+  if (left >= right) {
+    if (left > right + 49) return left;
+    if (left > right + 31) return left + 1;
+    return left + extra[left - right];
+  }
+  if (right > left + 49) return right;
+  if (right > left + 31) return right + 1;
+  return right + extra[right - left];
+}
+
+int _estLog(int rows) => rows <= 10 ? 0 : _sqliteLogEst(rows) - 33;
+
 final class _IndexAccess {
   _IndexAccess(this.name, this.compare,
       {this.table = false, this.empty = false});
@@ -803,30 +858,345 @@ final class SqliteDatabase {
   /// Pages fetched from storage since this database was opened.
   int get pagesRead => _pager.pagesRead;
 
-  /// This engine's plan text. It is not SQLite bytecode and not SQLite's
-  /// EXPLAIN QUERY PLAN detail strings.
+  /// Detail text for one statement. Callers that need the compared cost use
+  /// [explainQueryPlan].
   List<String> describeQueryPlan(String sql) =>
       functions.run(() => _describeQueryPlan(sql));
+
+  /// `EXPLAIN QUERY PLAN` rows for one statement.
+  ///
+  /// Costs use the SQLite 3.53.1 no-stat formulas for the single-table plans
+  /// compared against the pinned CLI. A multi-table row keeps this engine's
+  /// join order. Its address and cost were not compared.
+  List<ExplainPlanRow> explainQueryPlan(String sql) =>
+      functions.run(() => _explainQueryPlan(sql));
 
   /// Access path for one statement. [parameters] are bound values.
   QueryPlan explain(String sql, [List<Object?> parameters = const []]) =>
       functions.run(() => _explain(sql, parameters));
-  List<String> _describeQueryPlan(String sql) {
+  List<String> _describeQueryPlan(String sql) =>
+      [for (final row in _explainQueryPlan(sql)) row.detail];
+
+  List<ExplainPlanRow> _explainQueryPlan(String sql) {
     final statement = SqlParser(sql).select();
     final sources = _orderedJoinSources(statement);
-    if (sources.length <= 1) {
-      final table =
-          statement.table == null ? null : catalog.table(statement.table!);
-      final plan = _plan(statement, table, const []);
-      final index =
-          plan.indexName == null ? '' : ' USING INDEX ${plan.indexName}';
-      final covered = plan.covering ? ' COVERING' : '';
-      return ['${plan.access}$index$covered ${statement.table ?? ""}'.trim()];
+    if (sources.length > 1) {
+      return [
+        for (final source in sources)
+          ExplainPlanRow(2, 0, _defaultRowLogEst + 16,
+              'SCAN ${source.alias ?? source.table ?? ''}')
+      ];
     }
+    if (sources.isEmpty || sources.single.table == null) {
+      return const [ExplainPlanRow(1, 0, 0, 'SCAN CONSTANT ROW')];
+    }
+    final source = sources.single;
+    final table = _planTable(source.table!);
+    final name = source.alias ?? source.table!;
+    final plan = _plan(statement, table, const []);
+    final covering = _explainCovering(statement, table, plan);
     return [
-      for (final source in sources)
-        'SCAN ${source.table} (${_statistics.rowCount(source.table!)?.toInt() ?? 0} rows)'
+      ExplainPlanRow(
+          _planAddress(plan, covering),
+          0,
+          _planCost(statement, table, plan, covering),
+          _planDetail(statement, table, plan, name, covering))
     ];
+  }
+
+  /// `SELECT *` is covering when every stored column is the rowid or an index
+  /// column. The read path still uses [QueryPlan.covering].
+  bool _explainCovering(
+      SelectStatement statement, CatalogTable table, QueryPlan plan) {
+    if (plan.covering || plan.indexName == null) return plan.covering;
+    final star = statement.items.length == 1 &&
+        statement.items.single.expression == null &&
+        statement.items.single.label == '*';
+    if (!star || table.rowidAlias == null) return false;
+    final entry = catalog.entries
+        .where((item) =>
+            item.type == 'index' &&
+            asciiLower(item.name) == asciiLower(plan.indexName!))
+        .firstOrNull;
+    if (entry == null) return false;
+    final available = _indexDefinition(entry).$1.map(asciiLower).toSet();
+    for (final column in table.columns) {
+      if (column.generatedExpression != null) return false;
+      final key = asciiLower(column.name);
+      if (key == asciiLower(table.rowidAlias!)) continue;
+      if (!available.contains(key)) return false;
+    }
+    return true;
+  }
+
+  CatalogTable _planTable(String name) {
+    try {
+      return catalog.table(name);
+    } on SqlException catch (error) {
+      if (error.errorCode == SqlErrorCode.missingTable) {
+        throw SqlException(
+            'no such table: $name', error.offset, SqlErrorCode.missingTable);
+      }
+      rethrow;
+    }
+  }
+
+  int _planAddress(QueryPlan plan, bool covering) {
+    if (plan.access == 'constant' || plan.access == 'virtual-table-scan') {
+      return plan.access == 'constant' ? 1 : 2;
+    }
+    final opensTable = plan.access.startsWith('secondary-index') &&
+        !covering &&
+        plan.access != 'secondary-index-scan';
+    return opensTable ? 3 : 2;
+  }
+
+  int _planCost(SelectStatement statement, CatalogTable table, QueryPlan plan,
+      bool covering) {
+    switch (plan.access) {
+      case 'rowid-lookup':
+        return 33;
+      case 'rowid-range':
+        final bounds = _rowidBounds(statement, table);
+        return _rowidRangeCost(bounds.$1, bounds.$2);
+      case 'table-scan':
+      case 'index-tree-scan':
+      case 'virtual-table-scan':
+        return _defaultRowLogEst + 16;
+      case 'secondary-index-lookup':
+      case 'secondary-index-range':
+      case 'secondary-index-scan':
+        return _secondaryCost(statement, table, plan, covering);
+      default:
+        return _defaultRowLogEst + 16;
+    }
+  }
+
+  int _secondaryCost(SelectStatement statement, CatalogTable table,
+      QueryPlan plan, bool covering) {
+    final entry = catalog.entries
+        .where((item) =>
+            item.type == 'index' &&
+            asciiLower(item.name) == asciiLower(plan.indexName ?? ''))
+        .firstOrNull;
+    if (entry == null) return _defaultRowLogEst + 16;
+    final definition = _indexDefinition(entry);
+    final bounds = _indexBounds(statement, definition.$1);
+    final estimates = <int>[_defaultRowLogEst];
+    const selectivity = [33, 32, 30, 28, 26];
+    for (var i = 0; i < definition.$1.length; i++) {
+      estimates.add(i < selectivity.length ? selectivity[i] : 23);
+    }
+    if (definition.$5) estimates[definition.$1.length] = 0;
+    var visited = estimates[0];
+    for (var equal = 1; equal <= bounds.$1; equal++) {
+      visited += estimates[equal] - estimates[equal - 1];
+    }
+    if (bounds.$2 || bounds.$3) {
+      var narrowed = visited;
+      if (bounds.$2) narrowed -= 20;
+      if (bounds.$3) narrowed -= 20;
+      if (bounds.$2 && bounds.$3) narrowed -= 20;
+      var adjusted = visited - (bounds.$2 ? 1 : 0) - (bounds.$3 ? 1 : 0);
+      if (narrowed < 10) narrowed = 10;
+      if (narrowed < adjusted) adjusted = narrowed;
+      visited = adjusted;
+    }
+    final indexWidth = _indexWidth(table, definition.$1);
+    final tableWidth = _tableWidth(table);
+    var cost = visited + 1 + (15 * indexWidth) ~/ tableWidth;
+    cost = _sqliteLogEstAdd(_estLog(estimates[0]), cost);
+    if (!covering && plan.access != 'secondary-index-scan') {
+      cost = _sqliteLogEstAdd(cost, visited + 16);
+    }
+    return cost;
+  }
+
+  String _planDetail(SelectStatement statement, CatalogTable table,
+      QueryPlan plan, String name, bool explainCovering) {
+    switch (plan.access) {
+      case 'rowid-lookup':
+        return 'SEARCH $name USING INTEGER PRIMARY KEY (rowid=?)';
+      case 'rowid-range':
+        final bounds = _rowidBounds(statement, table);
+        final parts = <String>[
+          if (bounds.$1) 'rowid>?',
+          if (bounds.$2) 'rowid<?',
+        ];
+        return 'SEARCH $name USING INTEGER PRIMARY KEY (${parts.join(' AND ')})';
+      case 'table-scan':
+      case 'index-tree-scan':
+        return 'SCAN $name';
+      case 'virtual-table-scan':
+        return 'SCAN $name';
+      case 'secondary-index-lookup':
+      case 'secondary-index-range':
+      case 'secondary-index-scan':
+        final entry = catalog.entries
+            .where((item) =>
+                item.type == 'index' &&
+                asciiLower(item.name) == asciiLower(plan.indexName ?? ''))
+            .firstOrNull;
+        final index = plan.indexName ?? '';
+        final covering = explainCovering ? 'COVERING ' : '';
+        final search =
+            plan.access == 'secondary-index-scan' ? 'SCAN' : 'SEARCH';
+        if (entry == null) {
+          return '$search $name USING ${covering}INDEX $index';
+        }
+        final definition = _indexDefinition(entry);
+        final bounds = _indexBounds(statement, definition.$1);
+        final parts = <String>[];
+        for (var i = 0; i < bounds.$1 && i < definition.$1.length; i++) {
+          parts.add('${_declaredColumn(table, definition.$1[i])}=?');
+        }
+        if (bounds.$1 < definition.$1.length && (bounds.$2 || bounds.$3)) {
+          final column = _declaredColumn(table, definition.$1[bounds.$1]);
+          if (bounds.$2) parts.add('$column>?');
+          if (bounds.$3) parts.add('$column<?');
+        }
+        final constraint = parts.isEmpty ? '' : ' (${parts.join(' AND ')})';
+        return '$search $name USING ${covering}INDEX $index$constraint';
+      default:
+        return 'SCAN $name';
+    }
+  }
+
+  (bool, bool) _rowidBounds(SelectStatement statement, CatalogTable table) {
+    final names = <String>{
+      if (table.rowidAlias != null) asciiLower(table.rowidAlias!),
+      for (final alias in const ['rowid', '_rowid_', 'oid'])
+        if (!table.columns.any((column) => asciiLower(column.name) == alias))
+          alias,
+    };
+    var lower = false;
+    var upper = false;
+    for (final name in names) {
+      for (final op in _comparisonOps(statement.where, name)) {
+        if (op == '>' || op == '>=') lower = true;
+        if (op == '<' || op == '<=') upper = true;
+      }
+    }
+    return (lower, upper);
+  }
+
+  (int, bool, bool) _indexBounds(
+      SelectStatement statement, List<String> columns) {
+    var equalities = 0;
+    for (final column in columns) {
+      final ops = _comparisonOps(statement.where, column);
+      if (ops.any((op) => op == '=' || op == '==')) {
+        equalities++;
+        continue;
+      }
+      return (
+        equalities,
+        ops.any((op) => op == '>' || op == '>='),
+        ops.any((op) => op == '<' || op == '<='),
+      );
+    }
+    return (equalities, false, false);
+  }
+
+  List<String> _comparisonOps(Expr? where, String column) {
+    final key = asciiLower(column);
+    final ops = <String>[];
+    void visit(Expr? expr) {
+      if (expr is BinaryExpr && expr.op == 'AND') {
+        visit(expr.left);
+        visit(expr.right);
+        return;
+      }
+      if (expr is! BinaryExpr ||
+          !const {'=', '==', '<', '<=', '>', '>='}.contains(expr.op)) {
+        return;
+      }
+      Expr? other;
+      var op = expr.op;
+      if (expr.left is ColumnExpr && (expr.left as ColumnExpr).key == key) {
+        other = expr.right;
+      } else if (expr.right is ColumnExpr &&
+          (expr.right as ColumnExpr).key == key) {
+        other = expr.left;
+        op = const {
+          '<': '>',
+          '<=': '>=',
+          '>': '<',
+          '>=': '<=',
+          '=': '=',
+          '==': '=='
+        }[op]!;
+      } else {
+        return;
+      }
+      if (!_planningConstant(other)) return;
+      ops.add(op);
+    }
+
+    visit(where);
+    return ops;
+  }
+
+  String _declaredColumn(CatalogTable table, String name) {
+    for (final column in table.columns) {
+      if (asciiLower(column.name) == asciiLower(name)) return column.name;
+    }
+    return name;
+  }
+
+  int _columnSzEst(CatalogColumn column) {
+    final type = column.declaredType.trim();
+    if (type.isEmpty) return 1;
+    final open = type.indexOf('(');
+    if (open >= 0) {
+      final digits = RegExp(r'\d+').firstMatch(type.substring(open));
+      if (digits != null) {
+        final scaled = int.parse(digits.group(0)!) ~/ 4 + 1;
+        return scaled > 255 ? 255 : scaled;
+      }
+    }
+    final affinity = column.affinity;
+    if (affinity == 'text' || affinity == 'blob') return 5;
+    return 1;
+  }
+
+  int _tableWidth(CatalogTable table) {
+    var width = 0;
+    for (final column in table.columns) {
+      width += _columnSzEst(column);
+    }
+    if (table.rowidAlias == null && !table.withoutRowid) width++;
+    if (width < 1) width = 1;
+    return _sqliteLogEst(width * 4);
+  }
+
+  int _indexWidth(CatalogTable table, List<String> columns) {
+    var width = 0;
+    for (final name in columns) {
+      CatalogColumn? column;
+      for (final candidate in table.columns) {
+        if (asciiLower(candidate.name) == asciiLower(name)) {
+          column = candidate;
+          break;
+        }
+      }
+      width += column == null ? 1 : _columnSzEst(column);
+    }
+    if (!table.withoutRowid) width++;
+    if (width < 1) width = 1;
+    return _sqliteLogEst(width * 4);
+  }
+
+  int _rowidRangeCost(bool lower, bool upper) {
+    var visited = _defaultRowLogEst;
+    var narrowed = visited;
+    if (lower) narrowed -= 20;
+    if (upper) narrowed -= 20;
+    if (lower && upper) narrowed -= 20;
+    visited -= (lower ? 1 : 0) + (upper ? 1 : 0);
+    if (narrowed < 10) narrowed = 10;
+    if (narrowed < visited) visited = narrowed;
+    return _sqliteLogEstAdd(_estLog(_defaultRowLogEst), visited + 16);
   }
 
   QueryPlan _explain(String sql, List<Object?> parameters) {

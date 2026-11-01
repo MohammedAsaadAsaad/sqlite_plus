@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
 
@@ -298,29 +300,45 @@ void main() {
     ]);
   });
 
-  test('VACUUM rejects transactions, external targets and INTO atomically',
-      () async {
+  test('VACUUM rejects transactions and external targets atomically', () async {
     final db = await database();
     await db.execute('CREATE TABLE t(a)');
+    await db.execute('INSERT INTO t VALUES (1)');
     final before = db.exportImage();
-    for (final sql in [
-      'VACUUM other',
-      'VACUUM main.t',
-      "VACUUM INTO 'x.db'",
-      "VACUUM main INTO 'x.db'"
-    ]) {
+    for (final sql in ['VACUUM other', 'VACUUM main.t']) {
       await expectLater(db.execute(sql), throwsA(isA<SqlException>()));
       expect(db.exportImage(), before);
     }
+    final dir = await Directory.systemTemp.createTemp('sqlite-plus-vacuum-');
+    addTearDown(() => dir.delete(recursive: true));
+    final dest = '${dir.path}/copy.db';
+    expect((await db.execute("VACUUM INTO '$dest'")).changes, 0);
+    expect(db.exportImage(), before);
+    expect(File(dest).existsSync(), isTrue);
+    final named = '${dir.path}/main.db';
+    expect((await db.execute("VACUUM main INTO '$named'")).changes, 0);
+    expect(db.exportImage(), before);
+    expect(File(named).existsSync(), isTrue);
+    await expectLater(
+        db.execute("VACUUM INTO '$dest'"),
+        throwsA(isA<SqlException>().having((error) => error.message, 'message',
+            'output file already exists')));
+    expect(db.exportImage(), before);
     await expectLater(db.execute('VACUUM', [1]), throwsA(isA<SqlException>()));
     await db.execute('BEGIN');
-    await expectLater(db.execute('VACUUM'), throwsA(isA<SqlException>()));
+    await expectLater(
+        db.execute('VACUUM'),
+        throwsA(isA<SqlException>().having((error) => error.message, 'message',
+            'cannot VACUUM from within a transaction')));
     expect(db.inTransaction, isTrue);
     await db.execute('ROLLBACK');
     await db.execute('SAVEPOINT s');
     await expectLater(db.execute('VACUUM'), throwsA(isA<SqlException>()));
     await db.execute('ROLLBACK');
     await db.execute('VACUUM;');
+    expect((await db.query('SELECT a FROM t')).rows, [
+      [BigInt.one]
+    ]);
     expect((await db.query('PRAGMA integrity_check')).rows, [
       ['ok']
     ]);

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'porter_stemmer.dart';
 import 'tokenizer.dart';
 import 'unicode61_data.dart';
 import 'values.dart';
@@ -463,6 +464,8 @@ int _utf8CharCountToStringIndex(String token, int chars) {
 
 FtsTokenizer ftsTokenizer(String name, List<String> pairs) {
   final key = asciiLower(name);
+  if (key == 'porter') return _porterTokenizer(pairs);
+  if (key == 'trigram') return _trigramTokenizer(pairs);
   if (key != 'ascii' && key != 'unicode61' && key != 'simple') {
     throw SqlException('no such tokenizer: $name');
   }
@@ -502,6 +505,108 @@ FtsTokenizer ftsTokenizer(String name, List<String> pairs) {
       categories: values['categories'] ?? 'L* N* Co',
       tokenChars: values['tokenchars'] ?? '',
       separators: values['separators'] ?? '');
+}
+
+/// Wraps another tokenizer and stems each token the way FTS5 porter does.
+final class PorterTokenizer extends FtsTokenizer {
+  PorterTokenizer(this.parent);
+  final FtsTokenizer parent;
+
+  @override
+  String get name => 'porter';
+
+  @override
+  List<FtsToken> tokenize(String text) => [
+        for (final token in parent.tokenize(text))
+          FtsToken(stemPorterToken(token.text), token.start, token.end)
+      ];
+}
+
+FtsTokenizer _porterTokenizer(List<String> pairs) {
+  try {
+    final parent = pairs.isEmpty
+        ? Unicode61Tokenizer()
+        : _porterParent(pairs.first, pairs.sublist(1));
+    return PorterTokenizer(parent);
+  } on SqlException {
+    throw const SqlException('error in tokenizer constructor');
+  }
+}
+
+FtsTokenizer _porterParent(String name, List<String> pairs) {
+  // FTS5 does not register the FTS3 name "simple". The outer porter
+  // constructor reports that failure as an error in the constructor.
+  if (asciiLower(name) == 'simple') {
+    throw SqlException('no such tokenizer: $name');
+  }
+  return ftsTokenizer(name, pairs);
+}
+
+/// Three-character windows. The default folds case. `case_sensitive=1` does not.
+final class TrigramTokenizer extends FtsTokenizer {
+  TrigramTokenizer({required this.fold, required this.foldParam});
+  final bool fold;
+  final int foldParam;
+
+  @override
+  String get name => 'trigram';
+
+  @override
+  List<FtsToken> tokenize(String text) {
+    final bytes = utf8Bytes(text);
+    final codes = <(int, int)>[];
+    var index = 0;
+    while (index < bytes.length) {
+      final start = index;
+      final code = _peek(bytes, index);
+      if (code == null) break;
+      index += code.$2;
+      var value = code.$1;
+      if (fold) value = fts5UnicodeFold(value, foldParam);
+      if (value == 0) continue;
+      codes.add((value, start));
+    }
+    if (codes.length < 3) return const [];
+    final tokens = <FtsToken>[];
+    for (var i = 0; i + 2 < codes.length; i++) {
+      final folded = BytesBuilder(copy: false);
+      _writeUtf8(folded, codes[i].$1);
+      _writeUtf8(folded, codes[i + 1].$1);
+      _writeUtf8(folded, codes[i + 2].$1);
+      final end = i + 3 < codes.length ? codes[i + 3].$2 : bytes.length;
+      tokens.add(FtsToken(utf8.decode(folded.takeBytes()), codes[i].$2, end));
+    }
+    return tokens;
+  }
+}
+
+FtsTokenizer _trigramTokenizer(List<String> pairs) {
+  if (pairs.length.isOdd) {
+    throw const SqlException('error in tokenizer constructor');
+  }
+  var fold = true;
+  var foldParam = 0;
+  for (var i = 0; i < pairs.length; i += 2) {
+    final key = asciiLower(pairs[i]);
+    final value = pairs[i + 1];
+    if (key == 'case_sensitive') {
+      if (value != '0' && value != '1') {
+        throw const SqlException('error in tokenizer constructor');
+      }
+      fold = value == '0';
+    } else if (key == 'remove_diacritics') {
+      if (value != '0' && value != '1' && value != '2') {
+        throw const SqlException('error in tokenizer constructor');
+      }
+      foldParam = value == '0' ? 0 : 2;
+    } else {
+      throw const SqlException('error in tokenizer constructor');
+    }
+  }
+  if (foldParam != 0 && !fold) {
+    throw const SqlException('error in tokenizer constructor');
+  }
+  return TrigramTokenizer(fold: fold, foldParam: foldParam);
 }
 
 List<String> ftsOptionWords(String text) {
@@ -554,6 +659,9 @@ final class Fts5Spec {
     required this.contentRowid,
     required this.contentlessDelete,
     required this.columnSize,
+    this.detail = 'full',
+    this.tokenData = false,
+    this.locale = false,
   });
   final String table;
   final List<Fts5Column> columns;
@@ -564,6 +672,11 @@ final class Fts5Spec {
   final String contentRowid;
   final bool contentlessDelete;
   final bool columnSize;
+
+  /// `full`, `none`, or `columns`. `columns` is what `detail=column` selects.
+  final String detail;
+  final bool tokenData;
+  final bool locale;
 
   bool get contentless => contentMode == 'none';
   bool get external => contentMode == 'external';
@@ -580,6 +693,9 @@ final class Fts5Spec {
     var contentlessDelete = false;
     var columnSize = true;
     var sawContentlessDelete = false;
+    var detail = 'full';
+    var tokenData = false;
+    var locale = false;
     for (final raw in arguments) {
       final argument = raw.trim();
       final option = _option(argument);
@@ -591,6 +707,9 @@ final class Fts5Spec {
             final words = ftsOptionWords(value);
             if (words.isEmpty) {
               throw const SqlException('error in tokenizer constructor');
+            }
+            if (asciiLower(words.first) == 'simple') {
+              throw SqlException('no such tokenizer: ${words.first}');
             }
             tokenizer = ftsTokenizer(words.first, words.sublist(1));
           case 'prefix':
@@ -633,6 +752,18 @@ final class Fts5Spec {
               throw const SqlException('malformed columnsize=... directive');
             }
             columnSize = value == '1';
+          case 'detail':
+            detail = _detailMode(value);
+          case 'tokendata':
+            if (value != '0' && value != '1') {
+              throw const SqlException('malformed tokendata=... directive');
+            }
+            tokenData = value == '1';
+          case 'locale':
+            if (value != '0' && value != '1') {
+              throw const SqlException('malformed locale=... directive');
+            }
+            locale = value == '1';
           default:
             throw SqlException('fts5 option is not implemented: $key');
         }
@@ -681,8 +812,31 @@ final class Fts5Spec {
         contentTable: contentTable,
         contentRowid: contentRowid,
         contentlessDelete: contentlessDelete,
-        columnSize: columnSize);
+        columnSize: columnSize,
+        detail: detail,
+        tokenData: tokenData,
+        locale: locale);
   }
+}
+
+/// Prefix match of `none`, `full`, and `columns`, the way `fts5ConfigSetEnum` does.
+String _detailMode(String value) {
+  const names = ['none', 'full', 'columns'];
+  final given = asciiLower(value);
+  String? matched;
+  for (final name in names) {
+    final hit =
+        given.length <= name.length && name.substring(0, given.length) == given;
+    if (!hit) continue;
+    if (matched != null) {
+      throw const SqlException('malformed detail=... directive');
+    }
+    matched = name;
+  }
+  if (matched == null) {
+    throw const SqlException('malformed detail=... directive');
+  }
+  return matched;
 }
 
 (String, String)? _option(String argument) {
@@ -922,8 +1076,9 @@ final class FtsQuery {
 }
 
 FtsQuery parseFtsQuery(
-    String text, FtsTokenizer tokenizer, List<String> columns) {
-  final parser = _QueryParser(text, tokenizer, columns);
+    String text, FtsTokenizer tokenizer, List<String> columns,
+    {String detail = 'full'}) {
+  final parser = _QueryParser(text, tokenizer, columns, detail);
   final expression = parser.parseOr();
   if (!parser._done) {
     throw SqlException('fts5: syntax error near "${parser._peekText()}"');
@@ -932,12 +1087,13 @@ FtsQuery parseFtsQuery(
 }
 
 final class _QueryParser {
-  _QueryParser(this.text, this.tokenizer, this.columns) {
+  _QueryParser(this.text, this.tokenizer, this.columns, this.detail) {
     _scan();
   }
   final String text;
   final FtsTokenizer tokenizer;
   final List<String> columns;
+  final String detail;
   final List<_Tok> _tokens = [];
   var _index = 0;
   var _phrase = 0;
@@ -965,13 +1121,23 @@ final class _QueryParser {
           _current!.kind == 'minus' ||
           _current!.kind == 'lparen' ||
           _current!.kind == 'near') {
-        left = FtsAnd(left, parseUnary());
+        final right = parseUnary();
+        // An implicit AND drops a term the tokenizer turned into no tokens.
+        if (_blank(right)) continue;
+        if (_blank(left)) {
+          left = right;
+          continue;
+        }
+        left = FtsAnd(left, right);
       } else {
         break;
       }
     }
     return left;
   }
+
+  bool _blank(FtsExpr expression) =>
+      expression is FtsLeaf && expression.tokens.isEmpty;
 
   FtsExpr parseUnary() {
     if (_take('not') || _take('minus')) return FtsNot(parseUnary());
@@ -985,7 +1151,12 @@ final class _QueryParser {
       final name = _tokens[_index].text;
       final column = _column(name);
       _index += 2;
-      return _pin(parsePrimary(), column);
+      final inner = parsePrimary();
+      if (detail == 'none') {
+        throw const SqlException(
+            'fts5: column queries are not supported (detail=none)');
+      }
+      return _pin(inner, column);
     }
     return parsePrimary();
   }
@@ -999,6 +1170,10 @@ final class _QueryParser {
       return inner;
     }
     if (token.kind == 'near') {
+      if (detail != 'full') {
+        throw const SqlException(
+            'fts5: NEAR queries are not supported (detail!=full)');
+      }
       _index++;
       return _near();
     }
@@ -1007,7 +1182,10 @@ final class _QueryParser {
       final tokens = token.kind == 'phrase'
           ? token.tokens
           : tokenizer.tokenize(token.text).map((item) => item.text).toList();
-      if (tokens.isEmpty) throw const SqlException('fts5: syntax error');
+      if (tokens.length > 1 && detail != 'full') {
+        throw const SqlException(
+            'fts5: phrase queries are not supported (detail!=full)');
+      }
       return FtsLeaf(_phrase++, tokens, prefix: token.prefix);
     }
     throw SqlException('fts5: syntax error near "${token.text}"');

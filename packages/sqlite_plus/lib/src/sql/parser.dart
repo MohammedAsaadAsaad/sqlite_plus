@@ -421,29 +421,21 @@ final class BinaryExpr extends Expr {
         a = applyAffinity(a, 'text');
         b = applyAffinity(b, 'text');
       }
+      final collation = left.explicitCollation(context) ??
+          right.explicitCollation(context) ??
+          left.collation(context) ??
+          right.collation(context);
+      if (collation != null && collation != 'binary') {
+        requireKnownCollation(collation);
+      }
       if (op == 'IS' || op == 'IS NOT') {
         final equal = a == null || b == null
             ? a == b
-            : compareValues(
-                    a,
-                    b,
-                    context.encoding,
-                    left.explicitCollation(context) ??
-                        right.explicitCollation(context) ??
-                        left.collation(context) ??
-                        right.collation(context)) ==
-                0;
+            : compareValues(a, b, context.encoding, collation) == 0;
         return boolean(op == 'IS' ? equal : !equal);
       }
       if (a == null || b == null) return null;
-      final c = compareValues(
-          a,
-          b,
-          context.encoding,
-          left.explicitCollation(context) ??
-              right.explicitCollation(context) ??
-              left.collation(context) ??
-              right.collation(context));
+      final c = compareValues(a, b, context.encoding, collation);
       return boolean(switch (op) {
         '=' || '==' => c == 0,
         '!=' || '<>' => c != 0,
