@@ -92,8 +92,8 @@ Complete non-auto-vacuum images without reserved page bytes are required, with a
 64 MiB bound. Image mutation favors a simple atomic boundary over in-place
 splits; write scaling and all native schema edge cases remain open. Unsupported schema syntax or constraints may reject access; expression/partial
 indexes support the documented deterministic grammar and predicate proofs.
-ALTER supports ADD/RENAME/DROP COLUMN and table renaming (resolved view/trigger references rewritten; resolved column dependencies validated before commit; explicit DROP dependency checks remain) and never silently performs destructive
-migration. Schema/index comparisons are backed by native integrity_check for the
+ALTER supports ADD/RENAME/DROP COLUMN and table renaming. Resolved view and trigger references are rewritten. A rename is rejected when a view or trigger still names a missing table (`error in view v: no such table: main.t` on the pinned CLI). DROP COLUMN matches that CLI for a primary key, a column UNIQUE, the last column, a secondary index, a table UNIQUE, a table CHECK, a generated column, a column-level foreign key, a table foreign key, and an INSERT or UPDATE target that the CLI does not resolve. Virtual tables are left out of that reparse, so an edit beside FTS5 matches the CLI. A structure-dialog rebuild (copy, drop, rename, recreate the index) passes `integrity_check` on both sides. The engine image opens in the pinned CLI. A CLI image opens here when it was created with `auto_vacuum=NONE`, because the writer still rejects a pointer-map file. These snapshots are not a universal schema claim, and schema changes are never silently destructive.
+Schema/index comparisons are backed by native integrity_check for the
 specified snapshots, not a universal conformance claim.
 
 DurableStorageBackend requires distinct already durably provisioned main and

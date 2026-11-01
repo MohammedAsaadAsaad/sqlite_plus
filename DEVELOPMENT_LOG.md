@@ -1825,6 +1825,14 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10681 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B4 structure-dialog rebuild
+
+- A structure-dialog rebuild creates the replacement table, copies the kept columns, drops the old table, renames the replacement, and recreates the index. `db_browser_b4_test.dart` matches `/tmp/sqlite-build/sqlite3` for `integrity_check`, the rows, and `sqlite_schema`. The engine image opens in that CLI. A CLI image built with `auto_vacuum=NONE` opens here, and a later insert still passes the CLI `integrity_check`. The writer still rejects a pointer-map file.
+- Renaming fails with `error in view v: no such table: main.t` when a view names a table that was dropped. The same script with a trigger is `error in trigger tr: no such table: main.t`. The bytes stay unchanged. `DROP COLUMN` matches the pin for a primary key, a column `UNIQUE`, the last column, a secondary index, a table `UNIQUE`, a table `CHECK`, a generated column, a column-level foreign key, a table foreign key, an `INSERT` or `UPDATE` target the pin does not resolve, and an edit beside an FTS5 table. This is not every schema form.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10686 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed. Storage bytes did not change format. A rejected rename keeps the previous image.
+- B3 stays open. Its unmatched parts stay listed with the CLI result. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

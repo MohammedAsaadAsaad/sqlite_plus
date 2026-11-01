@@ -356,10 +356,14 @@ UPSERT supports one or more ON CONFLICT clauses, explicit column/rowid targets,
 DO NOTHING, DO UPDATE with `excluded` values and an optional WHERE, including
 INSERT SELECT and RETURNING. INSERT conflict policies compose with UPSERT; DO UPDATE always uses ABORT. Table renaming rewrites supported
 index/FK/sequence metadata and resolved references in dependent views/triggers.
-Column rename rewrites supported CHECK/key/index/FK references; explicit DROP
-COLUMN rewrites stored records and rejects key/index/CHECK/FK dependencies.
-Column rename also resolves dependent view/trigger fields and write targets.
-Drops validate dependent SQL against the proposed schema before committing. No automatic destructive migration is performed.
+Column rename rewrites supported CHECK/key/index/FK references and resolved
+view/trigger fields and write targets. DROP COLUMN rewrites stored records.
+It matches the pinned CLI for a primary key, a column UNIQUE, the last column,
+a secondary index, a table UNIQUE, a table CHECK, a generated column, a
+column-level foreign key, a table foreign key, and an INSERT or UPDATE target
+the CLI does not resolve. A rename fails when a view or trigger names a table
+that is already gone. Virtual tables are not reparsed by those checks. No
+automatic destructive migration is performed.
 
 RAISE(FAIL) reports an error while retaining prior rows and trigger effects;
 these partial images cross the pager commit boundary outside an explicit

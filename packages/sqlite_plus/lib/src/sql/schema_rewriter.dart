@@ -5,9 +5,14 @@ import 'triggers.dart';
 import 'values.dart';
 
 /// Token offsets identify resolved references for schema identifier rewriting.
-Map<int, String> renamedTableReferences(
-    String sql, String type, String oldName, String newName) {
-  final visitor = _TableRenameVisitor(asciiLower(oldName), newName);
+///
+/// [relations] are the tables, views, and virtual tables visible before the
+/// rename. The pinned CLI parses every view and trigger against that schema
+/// and rejects a missing table before the new name exists.
+Map<int, String> renamedTableReferences(String sql, String type,
+    String objectName, String oldName, String newName, Set<String> relations) {
+  final visitor = _TableRenameVisitor(asciiLower(oldName), newName, type,
+      objectName, {for (final name in relations) asciiLower(name)});
   if (type == 'view') {
     final p = SqlParser(sql);
     p.require('CREATE');
@@ -28,6 +33,10 @@ Map<int, String> renamedTableReferences(
   } else if (type == 'trigger') {
     visitor.inTrigger = true;
     final trigger = TriggerDefinition.parse(sql);
+    if (!visitor.relations.contains(asciiLower(trigger.table))) {
+      throw SqlException(
+          'error in trigger $objectName: no such table: main.${trigger.table}');
+    }
     if (asciiLower(trigger.table) == visitor.oldName) {
       visitor.put(trigger.tableOffset);
     }
@@ -49,8 +58,10 @@ Map<int, String> renamedTableReferences(
 }
 
 final class _TableRenameVisitor {
-  _TableRenameVisitor(this.oldName, this.newName);
-  final String oldName, newName;
+  _TableRenameVisitor(this.oldName, this.newName, this.objectType,
+      this.objectName, this.relations);
+  final String oldName, newName, objectType, objectName;
+  final Set<String> relations;
   final edits = <int, String>{};
   int base = 0;
   bool inTrigger = false;
@@ -105,6 +116,14 @@ final class _TableRenameVisitor {
       final name = source.table == null ? null : asciiLower(source.table!);
       final physical = source.table != null &&
           (source.schema != null || !visibleCtes.contains(name));
+      if (source.pragmaArguments == null &&
+          physical &&
+          name != null &&
+          !relations.contains(name) &&
+          !pragmaTableColumns.containsKey(name)) {
+        throw SqlException(
+            'error in $objectType $objectName: no such table: main.${source.table}');
+      }
       final renamed = name == oldName && physical;
       if (renamed) put(source.tableOffset);
       final alias = source.alias == null ? name : asciiLower(source.alias!);
@@ -185,7 +204,15 @@ final class _TableRenameVisitor {
     if (insert) p.require('INTO');
     if (!insert && !update) p.require('FROM');
     final tableOffset = p.current.offset;
-    final name = asciiLower(p.identifier());
+    final raw = p.identifier();
+    final name = asciiLower(raw);
+    final qualified = p.position < p.tokens.length &&
+        p.tokens[p.position].kind == SqlTokenKind.symbol &&
+        p.tokens[p.position].text == '.';
+    if (!qualified && !relations.contains(name)) {
+      throw SqlException(
+          'error in $objectType $objectName: no such table: main.$raw');
+    }
     if (name == oldName) put(tableOffset);
     final bindings = <String, bool>{name: name == oldName, 'excluded': false};
     void expr({bool target = true}) =>

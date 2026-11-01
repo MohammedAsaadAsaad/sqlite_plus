@@ -87,15 +87,29 @@ Map<int, String> renamedColumnReferences(
 }
 
 void validateColumnDependencies(
-    Map<String, SchemaColumns> tables, List<DependentSchema> objects) {
+    Map<String, SchemaColumns> tables, List<DependentSchema> objects,
+    {String? when}) {
   final resolver = _Columns(tables, {
     for (final object in objects.where((o) => o.type == 'view'))
       asciiLower(object.name): object.sql
   });
   for (final object in objects) {
-    _ColumnVisitor(resolver, null, '', '')
-        .object(object.sql, object.type, object.owner);
+    try {
+      _ColumnVisitor(resolver, null, '', '')
+          .object(object.sql, object.type, object.owner);
+    } on SqlException catch (error) {
+      final detail = _pinnedDropDetail(error.message);
+      if (when == null || detail == null) rethrow;
+      throw SqlException(
+          'error in ${object.type} ${object.name} $when: $detail');
+    }
   }
+}
+
+String? _pinnedDropDetail(String message) {
+  const prefix = 'Unknown dependent column: ';
+  if (!message.startsWith(prefix)) return null;
+  return 'no such column: ${message.substring(prefix.length)}';
 }
 
 (SelectStatement, List<String>) _view(String sql) {
@@ -630,10 +644,13 @@ final class _ColumnVisitor {
     final scope = _ColumnScope([target], pseudo);
     void field() {
       final offset = p.current.offset, column = asciiLower(p.identifier());
-      if (!target.names.contains(column)) {
-        throw const SqlException('Unknown dependent write column');
+      // The pinned CLI resolves expressions after a drop, not the names in an
+      // INSERT column list or on the left of SET.
+      if (target.names.contains(column) &&
+          target.target &&
+          column == oldColumn) {
+        put(offset);
       }
-      if (target.target && column == oldColumn) put(offset);
     }
 
     void expr(_ColumnScope bindings) =>
