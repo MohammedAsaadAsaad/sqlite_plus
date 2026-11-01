@@ -1867,6 +1867,15 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10566 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The FTS5 sub-item is checked. The B3 parent stays open. The FTS3/FTS4 inverted index, `VACUUM INTO`, `journal_mode`, `auto_vacuum`, and the cross-database commit stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 VACUUM INTO matches the pin
+
+- `VACUUM INTO` writes a new file. The pinned CLI `integrity_check` is `ok` and the copied rows are `1` and `3`. The source query still returns those rows. A second write is `output file already exists`. `VACUUM INTO NULL`, `VACUUM INTO 1`, `VACUUM INTO x'61'`, and an unbound `VACUUM INTO ?` are `non-text filename`. A missing parent directory and a directory path are `unable to open database:` followed by that path. Inside a transaction, `VACUUM` and `VACUUM INTO` are `cannot VACUUM from within a transaction`. `VACUUM main INTO` writes the file. `VACUUM INTO ('dir/' || 'name')` writes the file. An empty filename succeeds and writes no file. A zero-length existing file is replaced. `VACUUM aux INTO` copies the attached row `m`. `VACUUM temp` and `VACUUM temp INTO` succeed, write no file, and leave the temp row, including `VACUUM temp` inside a transaction and `VACUUM TEMP INTO NULL`.
+- A crash after the temporary file is flushed and before rename leaves the destination absent. That temporary file's pinned `integrity_check` is `ok` and the row is `3`. The source rows stay. A retry writes the destination and removes the temporary file. Plain `VACUUM` still returns `1` and `3`.
+- Page bytes of the output file were not compared with the pin. No speedup is claimed.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10566 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The `VACUUM INTO` sub-item is checked. The B3 parent stays open. The FTS3/FTS4 inverted index, `journal_mode`, `auto_vacuum`, and the cross-database commit stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

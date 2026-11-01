@@ -12,6 +12,7 @@ import 'explain_bytecode.dart';
 import 'parser.dart';
 import 'schema_router.dart';
 import 'tokenizer.dart';
+import 'vacuum_into.dart';
 import 'values.dart';
 import 'function_registry.dart';
 import 'virtual_table.dart';
@@ -78,6 +79,10 @@ final class MutableSqliteDatabase {
   /// Reads ATTACH file paths. Memory ATTACH does not use it. A missing reader
   /// rejects file paths. The bytes are a connection-local copy, not a second journal.
   Future<Uint8List> Function(String path)? attachFile;
+
+  /// When true, `VACUUM INTO` flushes its temporary file and stops before
+  /// renaming it onto the destination.
+  bool crashVacuumIntoBeforeRename = false;
 
   /// Scalar, aggregate, and collation callbacks for this connection.
   final functions = SqlFunctionRegistry();
@@ -663,6 +668,11 @@ final class MutableSqliteDatabase {
         }
       }
       _rememberSchema(sql);
+      final copy = result.vacuumInto;
+      if (copy != null) {
+        await publishVacuumInto(copy.path, copy.bytes,
+            crashBeforeRename: crashVacuumIntoBeforeRename);
+      }
       return MutationResult(result.changes, result.lastRowid, result.returning);
     });
   }

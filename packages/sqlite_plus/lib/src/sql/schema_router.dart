@@ -227,13 +227,30 @@ _Target _mutationTarget(_Cursor cursor, SchemaNames names) {
     return _Target('main', cursor.sql);
   }
   if (cursor.take('VACUUM')) {
-    if (cursor.current.kind == SqlTokenKind.identifier) {
-      final schema = asciiLower(cursor.identifier().text);
+    if (cursor.current.kind == SqlTokenKind.identifier &&
+        cursor.current.keyword != 'INTO') {
+      final token = cursor.identifier();
+      final schema = asciiLower(token.text);
       if (!names.order.contains(schema)) {
         throw SqlException('Unknown database: $schema');
       }
+      if (cursor.current.keyword == 'INTO') {
+        if (schema == 'temp') {
+          // SQLite parses `VACUUM temp` and then skips it. The schema token
+          // stays so the image parser can do the same without writing a file.
+          return _Target(schema, cursor.sql);
+        }
+        // The image parser sees `VACUUM INTO ...`. The schema name already
+        // selected this image, including an attached database.
+        final sql =
+            _splice(cursor.sql, [(token.offset, cursor.current.offset, '')]);
+        return _Target(schema, sql);
+      }
       cursor.finish();
       return _Target(schema, imageSql(cursor.sql, schema));
+    }
+    if (cursor.current.keyword == 'INTO') {
+      return _Target('main', cursor.sql);
     }
     cursor.finish();
     return _Target('main', cursor.sql);

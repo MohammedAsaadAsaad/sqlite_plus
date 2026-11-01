@@ -589,8 +589,9 @@ VACUUM compacts the main image outside transactions. The image writer currently
 reconstructs all indexes during a requested REINDEX. The single-table planner uses
 valid STAT1 prefix cardinalities to rank eligible indexes, with conservative range
 estimates and a heuristic fallback. Invalid, duplicate or stale statistics do not
-prune results. VACUUM INTO and native planner cost-model equivalence are not
-implemented.
+prune results. `VACUUM INTO` writes a new file when dart:io is available. The
+compared rows and errors match pinned SQLite 3.53.1. Page bytes of that file
+were not compared. Native planner cost-model equivalence is not implemented.
 
 Additional core functions include PRINTF/FORMAT, UNISTR/UNISTR_QUOTE, RANDOM/
 RANDOMBLOB, scalar LIKE/GLOB, and LIKELY/UNLIKELY/LIKELIHOOD. Malformed Unicode

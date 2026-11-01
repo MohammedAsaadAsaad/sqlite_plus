@@ -34,12 +34,22 @@ import 'virtual_table.dart';
 part 'image_maintenance.dart';
 part 'search_mutations.dart';
 
+/// A `VACUUM INTO` copy. The source image is unchanged; the connection writes
+/// [bytes] to [path] after the statement succeeds.
+final class VacuumInto {
+  VacuumInto(this.path, this.bytes);
+  final String path;
+  final Uint8List bytes;
+}
+
 final class MutationImage {
-  MutationImage(this.image, this.changes, this.lastRowid, [this.returning]);
+  MutationImage(this.image, this.changes, this.lastRowid,
+      [this.returning, this.vacuumInto]);
   final QueryResult? returning;
   final Uint8List image;
   final int changes;
   final BigInt? lastRowid;
+  final VacuumInto? vacuumInto;
 }
 
 /// A failed SQL statement may retain prior work (FAIL), or roll back its owner
