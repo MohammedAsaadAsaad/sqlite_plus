@@ -432,6 +432,9 @@ final class TypedQuery<T> {
         predicate: _predicate == null ? predicate : _predicate & predicate);
   }
 
+  /// Same as [where]. Generated field closures call this name.
+  TypedQuery<T> andWhere(SqlPredicate<T> predicate) => where(predicate);
+
   /// Binds [text] to `table MATCH ?` and orders by FTS rank first.
   TypedQuery<T> search(String text) {
     final predicate = _MatchPredicate<T>(type.tableName, text);
@@ -446,6 +449,9 @@ final class TypedQuery<T> {
     return _copy(ordering: List.unmodifiable(ordering));
   }
 
+  /// Same as [orderBy]. Generated field closures call this name.
+  TypedQuery<T> sortBy(List<SqlOrdering<T>> ordering) => orderBy(ordering);
+
   // A Dart int used as a row count must be exact on both VM and JavaScript.
   static const _maximumPagination = 9007199254740991;
   static void _validatePagination(int count) {
@@ -454,7 +460,7 @@ final class TypedQuery<T> {
     }
   }
 
-  /// Skips [count] rows. Combined with [take], the bounds stay portable.
+  /// Skips [count] rows. [offset] is the same operation.
   TypedQuery<T> skip(int count) {
     _validatePagination(count);
     final offset = BigInt.from(_offset) + BigInt.from(count);
@@ -469,11 +475,17 @@ final class TypedQuery<T> {
     return _copy(offset: offset.toInt(), limit: remaining);
   }
 
-  /// Limits the query to [count] rows.
+  /// Limits the query to [count] rows. [limit] is the same operation.
   TypedQuery<T> take(int count) {
     _validatePagination(count);
     return _copy(limit: _limit == null || count < _limit ? count : _limit);
   }
+
+  /// Same as [skip].
+  TypedQuery<T> offset(int count) => skip(count);
+
+  /// Same as [take].
+  TypedQuery<T> limit(int count) => take(count);
 
   /// Reads rows without placing them in the identity map.
   TypedQuery<T> asNoTracking() => _copy(noTracking: true);
@@ -530,10 +542,32 @@ final class TypedQuery<T> {
         return [for (final row in result.rows) _read(result, row)];
       });
 
+  /// Same as [toList].
+  Future<List<T>> select() => toList();
+
+  /// Same as [toList].
+  Future<List<T>> get() => toList();
+
+  /// Same as [toList].
+  Future<List<T>> findAll() => toList();
+
+  /// Same as [toList].
+  Future<List<T>> all() => toList();
+
   /// The first row, or null when the query is empty.
   Future<T?> firstOrNull() => _run(() async {
         final result = await take(1)._rows();
         return result.rows.isEmpty ? null : _read(result, result.rows.first);
+      });
+
+  /// The first row. Fails when the query is empty.
+  Future<T> first() => _run(() async {
+        final result = await take(1)._rows();
+        if (result.rows.isEmpty) {
+          throw const OrmStateException(
+              'Expected a first entity but the query returned none');
+        }
+        return _read(result, result.rows.first);
       });
 
   /// The only row. Fails when the query returns zero or more than one.
@@ -545,6 +579,16 @@ final class TypedQuery<T> {
               : 'Expected one entity but the query returned multiple');
         }
         return _read(result, result.rows.single);
+      });
+
+  /// The only row, or null when the query is empty. Fails when several match.
+  Future<T?> singleOrNull() => _run(() async {
+        final result = await take(2)._rows();
+        if (result.rows.length > 1) {
+          throw const OrmStateException(
+              'Expected one entity but the query returned multiple');
+        }
+        return result.rows.isEmpty ? null : _read(result, result.rows.single);
       });
 
   /// Number of rows matching the filter, as [BigInt].
@@ -562,7 +606,10 @@ final class TypedQuery<T> {
         return result.rows.single.single as BigInt;
       });
 
-  /// Whether at least one row matches.
+  /// Whether at least one row matches. [exists] is the same operation.
   Future<bool> any() =>
       _run(() async => (await take(1)._rows()).rows.isNotEmpty);
+
+  /// Same as [any].
+  Future<bool> exists() => any();
 }

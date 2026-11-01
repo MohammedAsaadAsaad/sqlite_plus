@@ -90,9 +90,9 @@ places.add(Place(id: BigInt.one, minX: 0, maxX: 1, minY: 0, maxY: 1));
 await context.saveChanges();
 
 final expensive = await purchases.query
-    .filter((row) => row.total > 20.0)
+    .selectWhere((row) => row.total > 20.0)
     .orderByFields((row) => [row.total.ascending])
-    .toList();
+    .select();
 final note = (await NoteQuery(notes.query)
         .filter((row) => row.path(r'$.title').equalTo('kept'))
         .toList())

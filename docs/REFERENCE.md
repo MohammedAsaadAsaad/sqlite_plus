@@ -34,10 +34,12 @@ A generated query filter stays in Dart. This is the call covered by
 
 ```dart
 final rows = await purchases.query
-    .filter((row) => row.total > 20.0)
+    .selectWhere((row) => row.total > 20.0)
     .orderByFields((row) => [row.total.ascending])
-    .toList();
+    .select();
 ```
+
+`filter` and `selectWhere` build the same bound predicate from the field closure. `where` and `andWhere` take that predicate directly. `toList`, `select`, `get`, `findAll`, and `all` read it. `orderBy` and `sortBy` take the ordering list.
 
 `packages/sqlite_plus_generator/test/search_consumer_test.dart` saves a JSON
 note, an FTS article, and an R-tree place through `sqlite_plus_orm` only. That

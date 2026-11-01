@@ -109,6 +109,8 @@ final class _RecordingConnection extends OrmConnection {
 
 Future<List<BigInt>> _ids(TypedQuery<_Item> query) async =>
     (await query.toList()).map((item) => item.id).toList();
+Future<List<BigInt>> _idsOf(Future<List<_Item>> rows) async =>
+    (await rows).map((item) => item.id).toList();
 List<BigInt> _integers(List<int> values) => values.map(BigInt.from).toList();
 
 void main() {
@@ -335,6 +337,52 @@ void main() {
         expect(await tracked.any(), isTrue);
       });
 
+      test('familiar names run the same query', () async {
+        final ordered = query.orderBy([mapping.id.asc()]);
+        final ids = await _ids(ordered);
+        expect(await _idsOf(ordered.select()), ids);
+        expect(await _idsOf(ordered.get()), ids);
+        expect(await _idsOf(ordered.findAll()), ids);
+        expect(await _idsOf(ordered.all()), ids);
+        expect(await ordered.exists(), await ordered.any());
+        expect((await ordered.first()).id, BigInt.one);
+        expect(
+            (await ordered.where(mapping.id.eq(BigInt.two)).singleOrNull())!.id,
+            BigInt.two);
+        expect(ordered.andWhere(mapping.id.gt(BigInt.one)).toSql().sql,
+            ordered.where(mapping.id.gt(BigInt.one)).toSql().sql);
+        expect(ordered.sortBy([mapping.id.desc()]).toSql().sql,
+            ordered.orderBy([mapping.id.desc()]).toSql().sql);
+        expect(ordered.offset(1).limit(2).toSql().sql,
+            ordered.skip(1).take(2).toSql().sql);
+        expect(ordered.offset(1).limit(2).toSql().parameters,
+            ordered.skip(1).take(2).toSql().parameters);
+        expect(await _ids(ordered.offset(1).limit(2)), _integers([2, 3]));
+      });
+
+      test('familiar cardinality rejects the empty and the extra row',
+          () async {
+        var mapped = 0;
+        final tracked = TypedQuery(
+            type: mapping.type,
+            connection: connection,
+            materialize: (row) {
+              mapped++;
+              return mapping.type.create(row);
+            });
+        final missing = tracked.where(mapping.id.eq(BigInt.from(99)));
+        await expectLater(missing.first(), throwsA(isA<OrmStateException>()));
+        expect(await missing.singleOrNull(), isNull);
+        expect(mapped, 0);
+        await expectLater(
+            tracked.singleOrNull(), throwsA(isA<OrmStateException>()));
+        expect(mapped, 0);
+        expect(() => query.offset(-1), throwsRangeError);
+        expect(() => query.limit(-1), throwsRangeError);
+        expect(await _ids(query.orderBy([mapping.id.asc()]).limit(0)), isEmpty);
+        expect(await query.offset(99).exists(), isFalse);
+      });
+
       test(
           'asNoTracking bypasses identity materialization without changing SQL',
           () async {
@@ -365,9 +413,13 @@ void main() {
         final other = _Mapping();
         expect(() => query.where(other.id.eq(BigInt.one)),
             throwsA(isA<OrmMappingException>()));
+        expect(() => query.andWhere(other.id.eq(BigInt.one)),
+            throwsA(isA<OrmMappingException>()));
         expect(() => query.where(other.score.inValues([])),
             throwsA(isA<OrmMappingException>()));
         expect(() => query.orderBy([other.id.asc()]),
+            throwsA(isA<OrmMappingException>()));
+        expect(() => query.sortBy([other.id.asc()]),
             throwsA(isA<OrmMappingException>()));
         expect(connection.queries, isEmpty);
       });
