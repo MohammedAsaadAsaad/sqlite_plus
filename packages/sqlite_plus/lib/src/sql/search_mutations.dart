@@ -22,6 +22,8 @@ extension _SearchMutations on ImageMutations {
     if (module is Fts5Module) {
       await _installFts5(
           Fts5Spec.parse(declaration.name, declaration.arguments));
+    } else if (module is Fts3Module) {
+      await _installFts3(declaration);
     } else if (module is RtreeModule || module is GeopolyModule) {
       await _installRtree(RtreeSpec.parse(
           declaration.name, declaration.arguments,
@@ -75,7 +77,11 @@ extension _SearchMutations on ImageMutations {
       throw SqlException('No such module: ${declaration.module}');
     }
     if (module is Fts3Module) {
-      throw const SqlException('FTS3 and FTS4 writes are not implemented');
+      return _writeFts3(parser, declaration, parameters,
+          insert: insert,
+          update: update,
+          replace: replace,
+          compileOnly: compileOnly);
     }
     if (module is Fts5Module) {
       return _writeFts5(parser, declaration, parameters,
@@ -90,6 +96,144 @@ extension _SearchMutations on ImageMutations {
         replace: replace,
         geopoly: module is GeopolyModule,
         compileOnly: compileOnly);
+  }
+
+  Future<MutationImage> _writeFts3(SqlParser parser,
+      VirtualTableDeclaration declaration, List<Object?> parameters,
+      {required bool insert,
+      required bool update,
+      required bool replace,
+      required bool compileOnly}) async {
+    final spec = fts3Spec(declaration.name, declaration.arguments);
+    if (!_engineFts3Content(spec)) {
+      throw const SqlException('FTS3 and FTS4 writes are not implemented');
+    }
+    if (parser.take('RETURNING') ||
+        parser.current.keyword == 'ORDER' ||
+        parser.current.keyword == 'LIMIT') {
+      throw const SqlException('search statement is not implemented');
+    }
+    final docs = _loadFts(spec);
+    var changes = 0;
+    BigInt? last;
+    if (insert) {
+      final plan = _ftsInsert(parser, spec, parameters);
+      parser.finish();
+      _parameterCount(parser, parameters);
+      if (compileOnly) return MutationImage(original, 0, null);
+      if (plan.command != null) {
+        throw SqlException('fts3 command is not implemented: ${plan.command}');
+      }
+      for (final row in plan.rows) {
+        final id = row.id ?? _nextId(docs.map((doc) => doc.id));
+        final existing = docs.indexWhere((doc) => doc.id == id);
+        if (existing >= 0) {
+          if (!replace) {
+            throw const SqlException('UNIQUE constraint failed: fts.rowid');
+          }
+          docs.removeAt(existing);
+        }
+        docs.add(_SearchDoc(id, row.texts, _tokens(spec, row.texts)));
+        last = id;
+        changes++;
+      }
+    } else {
+      final assignments =
+          update ? _assignments(parser) : const <(String, Expr)>[];
+      final where = parser.take('WHERE') ? parser.expression() : null;
+      if (parser.take('ORDER') ||
+          parser.take('LIMIT') ||
+          parser.take('RETURNING')) {
+        throw const SqlException('search statement is not implemented');
+      }
+      parser.finish();
+      _parameterCount(parser, parameters);
+      if (compileOnly) return MutationImage(original, 0, null);
+      ftsSession().tables[asciiLower(spec.table)] = _ftsState(spec, docs);
+      final kept = <_SearchDoc>[];
+      for (final doc in docs) {
+        if (!_matches(spec, doc, where, parameters)) {
+          kept.add(doc);
+          continue;
+        }
+        changes++;
+        if (!update) continue;
+        final texts = [...doc.texts];
+        final row = _ftsRow(spec, doc);
+        for (final assignment in assignments) {
+          final key = asciiLower(assignment.$1);
+          if (key == asciiLower(spec.table)) {
+            throw const SqlException('fts column cannot be updated');
+          }
+          final index = spec.visibleNames
+              .indexWhere((column) => asciiLower(column) == key);
+          if (index < 0 && !['rowid', '_rowid_', 'oid'].contains(key)) {
+            throw SqlException('no such column: ${assignment.$1}');
+          }
+          final value = assignment.$2.evaluate(
+              EvalContext(row, const <String, String>{}, parameters, encoding));
+          if (index >= 0) texts[index] = _searchText(value);
+        }
+        kept.add(_SearchDoc(doc.id, texts, _tokens(spec, texts)));
+      }
+      docs
+        ..clear()
+        ..addAll(kept);
+    }
+    if (changes == 0) return MutationImage(original, 0, null);
+    _beginCounters();
+    for (var i = 0; i < changes; i++) {
+      _changed(insertedRowid: last);
+    }
+    _storeFts3(spec, docs);
+    return MutationImage(serialize(), changes, insert ? last : null);
+  }
+
+  Future<void> _installFts3(VirtualTableDeclaration declaration) async {
+    final spec = fts3Spec(declaration.name, declaration.arguments);
+    final columns =
+        [for (var i = 0; i < spec.columns.length; i++) 'c$i'].join(', ');
+    final table = spec.table;
+    await execute(
+        'CREATE TABLE ${_q('${table}_content')}(id INTEGER PRIMARY KEY, $columns)',
+        const []);
+    await execute(
+        'CREATE TABLE ${_q('${table}_segments')}(blockid INTEGER PRIMARY KEY, block BLOB)',
+        const []);
+    await execute(
+        'CREATE TABLE ${_q('${table}_segdir')}(level INTEGER, idx INTEGER, start_block INTEGER, leaves_end_block INTEGER, end_block INTEGER, root BLOB, PRIMARY KEY(level, idx)) WITHOUT ROWID',
+        const []);
+    if (asciiLower(declaration.module) == 'fts4') {
+      await execute(
+          'CREATE TABLE ${_q('${table}_docsize')}(docid INTEGER PRIMARY KEY, size BLOB)',
+          const []);
+      await execute(
+          'CREATE TABLE ${_q('${table}_stat')}(id INTEGER PRIMARY KEY, value BLOB)',
+          const []);
+    }
+  }
+
+  bool _engineFts3Content(Fts5Spec spec) {
+    final content = _tables[asciiLower('${spec.table}_content')];
+    if (content == null) return false;
+    final names = [for (final column in content.schema.columns) column.name];
+    if (names.isEmpty || names.first != 'id') return false;
+    if (names.length != spec.columns.length + 1) return false;
+    for (var i = 0; i < spec.columns.length; i++) {
+      if (names[i + 1] != 'c$i') return false;
+    }
+    return true;
+  }
+
+  void _storeFts3(Fts5Spec spec, List<_SearchDoc> docs) {
+    final ordered = [...docs]..sort((a, b) => a.id.compareTo(b.id));
+    _replace('${spec.table}_content', [
+      for (final doc in ordered)
+        (
+          doc.id,
+          {for (var i = 0; i < doc.texts.length; i++) 'c$i': doc.texts[i]}
+        )
+    ]);
   }
 
   Future<MutationImage> _writeFts5(SqlParser parser,

@@ -239,16 +239,12 @@ void main() {
         'PRAGMA integrity_check; SELECT count(*) FROM rt;');
   });
 
-  test('unimplemented FTS5 options and FTS3 writes change nothing', () async {
+  test('unimplemented FTS5 options change nothing', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
     final before = db.exportImage();
     await expectLater(
         db.execute("CREATE VIRTUAL TABLE t USING fts5(body, detail='column')"),
-        throwsA(isA<SqlException>()));
-    await expectLater(db.execute('CREATE VIRTUAL TABLE f USING fts3(body)'),
-        throwsA(isA<SqlException>()));
-    await expectLater(db.execute('CREATE VIRTUAL TABLE g USING fts4(body)'),
         throwsA(isA<SqlException>()));
     expect(db.exportImage(), before);
   });

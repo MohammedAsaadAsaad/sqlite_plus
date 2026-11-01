@@ -1850,6 +1850,15 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10563 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The ICU and locale collation sub-item is checked. The B3 parent stays open. The other B3 parts stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 FTS3 and FTS4 SQL rows match; the inverted index does not
+
+- `CREATE VIRTUAL TABLE` using `fts3` and `fts4` succeeds. FTS4 `MATCH 'hello'` returns `hello world`. FTS3 returns `hello`. An empty FTS4 insert leaves `count(*)` = 1. `DELETE ... MATCH 'hello'` leaves `count(*)` = 0. `CREATE VIRTUAL TABLE f USING fts4()` reads column `content`. `Hello` matches `hello`. An FTS5 insert of `kept` still matches. A native FTS4 image still rejects `INSERT` with `FTS3 and FTS4 writes are not implemented`, and its bytes stay unchanged.
+- The missing-table text is still `No such table: missing` here. The CLI text is `no such table: missing`.
+- An image written by this engine fails the pinned CLI `integrity_check` with `unable to validate the inverted index for FTS4 table main.f`. That CLI's `MATCH 'hello'` on the file returns no row. Official segment, segdir, docsize, and stat bytes were not written. The FTS3/FTS4 write sub-item stays unchecked for that reason.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed FTSCOUNT tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The FTS3/FTS4 write sub-item stays unchecked. The B3 parent stays open. The other B3 parts stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

@@ -450,7 +450,7 @@ final class Fts3Module extends VirtualTableModule {
 
   @override
   void xCreate(String table, List<String> arguments) {
-    throw const SqlException('FTS3 and FTS4 writes are not implemented');
+    fts3Spec(table, arguments);
   }
 
   @override
@@ -480,6 +480,20 @@ final class Fts4Module extends Fts3Module {
   List<String> get columns => const ['fts4'];
 }
 
+Fts5Spec fts3Spec(String table, List<String> arguments) {
+  final columns = _fts3Columns(arguments);
+  return Fts5Spec(
+      table: table,
+      columns: [for (final name in columns) Fts5Column(name)],
+      tokenizer: _fts3Tokenizer(arguments),
+      prefix: const [],
+      contentMode: 'normal',
+      contentTable: null,
+      contentRowid: 'docid',
+      contentlessDelete: false,
+      columnSize: false);
+}
+
 List<String> _fts3Columns(List<String> arguments) {
   final columns = <String>[];
   for (final raw in arguments) {
@@ -490,9 +504,7 @@ List<String> _fts3Columns(List<String> arguments) {
       columns.add(name.replaceAll("'", '').replaceAll('"', ''));
     }
   }
-  if (columns.isEmpty) {
-    throw const SqlException('vtable constructor failed: fts');
-  }
+  if (columns.isEmpty) columns.add('content');
   return columns;
 }
 
@@ -531,8 +543,9 @@ final class _Fts3Cursor extends VirtualTableCursor {
 
   @override
   void filter(String table, List<String> arguments) {
-    final columns = _fts3Columns(arguments);
-    final tokenizer = _fts3Tokenizer(arguments);
+    final spec = fts3Spec(table, arguments);
+    final columns = spec.visibleNames;
+    final tokenizer = spec.tokenizer;
     final content = SearchSnapshot.current.table('${table}_content');
     final documents = <BigInt, FtsDocument>{};
     if (content != null) {
@@ -551,16 +564,6 @@ final class _Fts3Cursor extends VirtualTableCursor {
             List<bool>.filled(columns.length, false));
       }
     }
-    final spec = Fts5Spec(
-        table: table,
-        columns: [for (final name in columns) Fts5Column(name)],
-        tokenizer: tokenizer,
-        prefix: const [],
-        contentMode: 'normal',
-        contentTable: null,
-        contentRowid: 'docid',
-        contentlessDelete: false,
-        columnSize: false);
     final state = FtsTableState(spec, documents);
     final scan = module.scans[asciiLower(table)];
     final pending = _pendingQuery(scan?.$1, scan?.$2 ?? const [], spec);
