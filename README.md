@@ -58,9 +58,9 @@ class Purchase {
 await context.migrations.ensureCreated();
 
 final expensive = await purchases.query
-    .filter((row) => row.total > 20.0)
+    .selectWhere((row) => row.total > 20.0)
     .orderByFields((row) => [row.total.ascending])
-    .toList();
+    .select();
 ```
 
 `ensureCreated` builds the table. A later nullable field is `plan()` then `applySafe()`. A rename or a drop is a statement you write and approve. The reverse statement is the down migration.

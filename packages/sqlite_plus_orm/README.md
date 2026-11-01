@@ -175,13 +175,13 @@ await context.saveChanges();
 final buyer = await order.reference(PurchaseRelationships.customer).load();
 ```
 
-With a generated mapping the filter is a closure:
+With a generated mapping the filter is a closure. `selectWhere` is that same filter. `where` and `andWhere` take the predicate directly. `select`, `get`, `findAll`, and `all` read the rows. `orderBy` and `sortBy` take the ordering list. `orderByFields` takes the closure. `offset` and `limit` are `skip` and `take`. `exists` is `any`. `first` requires a row. `singleOrNull` is null when none match and fails when several do.
 
 ```dart
 final expensive = await purchases.query
-    .filter((row) => row.total > 20.0)
+    .selectWhere((row) => row.total > 20.0)
     .orderByFields((row) => [row.total.ascending])
-    .toList();
+    .select();
 ```
 
 ## The engine underneath

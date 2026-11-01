@@ -9,7 +9,6 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/error/error.dart';
-import 'package:dart_style/dart_style.dart';
 import 'package:path/path.dart' as p;
 
 import 'diagnostics.dart';
@@ -163,11 +162,30 @@ Future<GenerationResult> generateLibrary(
   return GenerationResult(
     input,
     output,
-    DartFormatter(
-      languageVersion: DartFormatter.latestLanguageVersion,
-    ).format(emitted),
+    await _format(emitted, output),
     models.map((model) => model.name),
   );
+}
+
+/// Formats with the same `dart format` the repository check runs.
+Future<String> _format(String source, String outputPath) async {
+  final directory = await Directory(
+    p.dirname(outputPath),
+  ).createTemp('.sqlite-plus-format-');
+  final file = File(p.join(directory.path, 'part.dart'));
+  try {
+    await file.writeAsString(source);
+    final result = await Process.run(Platform.resolvedExecutable, [
+      'format',
+      file.path,
+    ]);
+    if (result.exitCode != 0) {
+      throw StateError('dart format failed: ${result.stderr}');
+    }
+    return await file.readAsString();
+  } finally {
+    await directory.delete(recursive: true);
+  }
 }
 
 /// Write a validated generated part atomically, or compare it in [check] mode.
@@ -1167,11 +1185,13 @@ String _emit(
     code.writeln(
       'extension ${model.name}Query on ${prefix}TypedQuery<${model.name}> {',
     );
+    for (final name in ['filter', 'selectWhere']) {
+      code.writeln(
+        '${prefix}TypedQuery<${model.name}> $name(${prefix}SqlPredicate<${model.name}> Function(${model.name}Fields row) build) { return andWhere(build(${model.name}Fields.instance)); }',
+      );
+    }
     code.writeln(
-      '${prefix}TypedQuery<${model.name}> filter(${prefix}SqlPredicate<${model.name}> Function(${model.name}Fields row) build) => where(build(${model.name}Fields.instance));',
-    );
-    code.writeln(
-      '${prefix}TypedQuery<${model.name}> orderByFields($listName<${prefix}SqlOrdering<${model.name}>> Function(${model.name}Fields row) build) => orderBy(build(${model.name}Fields.instance));',
+      '${prefix}TypedQuery<${model.name}> orderByFields($listName<${prefix}SqlOrdering<${model.name}>> Function(${model.name}Fields row) build) { return sortBy(build(${model.name}Fields.instance)); }',
     );
     if (model.module == 'fts5') {
       code.writeln(
