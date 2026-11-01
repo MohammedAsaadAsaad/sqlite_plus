@@ -77,10 +77,7 @@ CASES = [
     },
     {
         "id": "json-pretty",
-        "disposition": "rejected",
         "sql": """SELECT json_pretty('{"a":1}')""",
-        "reason": "json_pretty is not implemented. The pinned CLI formats the object.",
-        "engine_message": "No such function: json_pretty",
     },
     {
         "id": "explain-bytecode",
@@ -168,6 +165,32 @@ def _parse_row(line):
         if line.startswith("NULL", index):
             values.append(None)
             index += 4
+        elif line.startswith("unistr('", index):
+            index += len("unistr('")
+            chars = []
+            while index < length:
+                if line[index] == "'":
+                    if index + 1 < length and line[index + 1] == "'":
+                        chars.append("'")
+                        index += 2
+                        continue
+                    index += 1
+                    if index < length and line[index] == ")":
+                        index += 1
+                    break
+                if line[index] == "\\" and index + 1 < length:
+                    mark = line[index + 1]
+                    if mark == "\\":
+                        chars.append("\\")
+                        index += 2
+                        continue
+                    if mark == "u" and index + 6 <= length:
+                        chars.append(chr(int(line[index + 2:index + 6], 16)))
+                        index += 6
+                        continue
+                chars.append(line[index])
+                index += 1
+            values.append("".join(chars))
         elif line.startswith("x'", index) or line.startswith("X'", index):
             end = line.index("'", index + 2)
             values.append(bytes.fromhex(line[index + 2:end]))

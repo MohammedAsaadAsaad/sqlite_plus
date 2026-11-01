@@ -63,7 +63,20 @@ A Flutter browser can list schema, page rows, edit cells, and run SQL only for f
 
 - [x] B1 Open the file. Read `auto_vacuum` pointer maps, open a database that contains `sqlite_stat4` without using those samples, recover a pending WAL and a hot journal on the read path, and accept write version 2 only after that recovery. Shrink the file when the freelist allows it. Share the SQLite lock protocol with another process. Gate: official images that include `auto_vacuum` or `sqlite_stat4` return the same rows as the pinned CLI.
 - [x] B2 Page the grid. A browse `SELECT` must not materialize the whole table. Records larger than the current 16 MiB bound need the same success or the same explicit limit as the pinned CLI. Gate: a paged read matches the CLI window, and an unbounded read is not required for the grid.
-- [ ] B3 Run the pasted statement. Native `EXPLAIN` bytecode, closer `EXPLAIN QUERY PLAN` text, `json_pretty`, correlated `json_each`, a double-quoted-string mode, ICU and locale collations, FTS3/FTS4 writes, FTS5 porter, trigram, detail, tokendata, locale, and multi-page leaves, `VACUUM INTO`, `journal_mode` switches, `auto_vacuum` writes, and one durable commit across two attached databases. Remaining DML syntax stays in this item. Gate: each recorded difference in the gap ledger becomes a match, or stays listed with the CLI result beside it.
+- [ ] B3 Run the pasted statement. Native `EXPLAIN` bytecode, closer `EXPLAIN QUERY PLAN` text, `json_pretty`, correlated `json_each`, a double-quoted-string mode, ICU and locale collations, FTS3/FTS4 writes, FTS5 porter, trigram, detail, tokendata, locale, and multi-page leaves, `VACUUM INTO`, `journal_mode` switches, `auto_vacuum` writes, and one durable commit across two attached databases. Remaining DML syntax stays in this item. Gate: each recorded difference in the gap ledger becomes a match, or stays listed with the CLI result beside it. The box stays open while any part below is open.
+  - [x] `json_pretty`. The gap-ledger case `json-pretty` matches pinned SQLite 3.53.1. NULL, empty containers, nested arrays and objects, duplicate keys, comments, escapes, a custom indent, a NULL indent, numeric and blob indents, and a NUL truncated indent match `/tmp/sqlite-build/sqlite3`. Malformed JSON is rejected. The engine's arity text is `Invalid arguments to json_pretty`; the CLI text is `wrong number of arguments`. JSON input stays capped at 1 MiB. Pretty output stays capped at 16 MiB. An indent byte `0xFF` is kept as a code unit. Storing that string was not compared.
+  - [ ] Native `EXPLAIN` bytecode.
+  - [ ] Closer `EXPLAIN QUERY PLAN` text. The gap-ledger case `explain-query-plan` still differs. The CLI text is stored beside it.
+  - [ ] Correlated `json_each`.
+  - [ ] A double-quoted-string mode. The gap-ledger case `dqs-fallback` stays rejected. The CLI result is `'missing'`.
+  - [ ] ICU and locale collations.
+  - [ ] FTS3/FTS4 writes.
+  - [ ] FTS5 porter, trigram, detail, tokendata, locale, and multi-page leaves.
+  - [ ] `VACUUM INTO`.
+  - [ ] `journal_mode` switches. The gap-ledger cases `journal-mode-memory`, `journal-mode-off`, and `journal-mode-read` stay listed with the CLI result beside each one.
+  - [ ] `auto_vacuum` writes. The gap-ledger case `auto-vacuum-full` stays rejected. The CLI result is an empty result.
+  - [ ] One durable commit across two attached databases. The gap-ledger case `cross-insert` stays rejected. The CLI result is an empty result, and `aux.u` stays empty in this engine.
+  - [ ] Remaining DML syntax.
 - [ ] B4 Edit the schema. Finish the open schema edge cases and the `DROP` dependency checks so a table rebuild emitted by a structure dialog matches the pinned CLI `integrity_check`. Gate: those snapshots cross-open.
 - [ ] B5 Leave plots and CSV import or export to the Flutter application. They do not change the engine.
 

@@ -66,8 +66,9 @@ pre-release.
 
 ### Planned
 
-- `json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4, and
-  `auto_vacuum`.
+- correlated `json_each`, EXPLAIN bytecode, STAT4, and
+  `auto_vacuum`. `json_pretty` matches the pinned CLI for the cases in
+  `db_browser_b3_json_pretty_test.dart`.
 - A durable commit across two databases, and more journal modes.
 - FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and
   FTS3/FTS4 writes.

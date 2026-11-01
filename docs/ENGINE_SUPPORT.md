@@ -64,9 +64,10 @@ the same with an opposite stat4 sample. No wall-clock timing was run. Double
 quotes remain identifiers.
 
 The gap ledger has 25 UTF-8 cases from the pinned CLI. A case matches the CLI
-or names the rejection. The recorded differences include DQS, `json_pretty`,
+or names the rejection. The recorded differences include DQS,
 EXPLAIN bytecode, `journal_mode` memory/off, `auto_vacuum`, a cross-database
-insert, the fresh `journal_mode` name, and EXPLAIN QUERY PLAN text. The CLI
+insert, the fresh `journal_mode` name, and EXPLAIN QUERY PLAN text. `json_pretty`
+matches the pinned CLI, including a custom indent. Its output cap is 16 MiB. The CLI
 compiler is gcc-13.3.0. `manifest.json` still records clang-22.1.3. Stable
 error codes are `constraint`, `syntax`, and `missingTable`. The wording is not
 claimed to be SQLite's. Record decoding rejects UTF-8 byte 0xFF, an unpaired
@@ -181,7 +182,7 @@ AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 | Grammar and errors | A double-quoted-string compatibility mode, and closer native error text |
 | Table functions | More virtual-table modules |
 | Windows | Wider window execution and closer planner equivalence |
-| Extensions | `json_pretty`, correlated `json_each`, FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes |
+| Extensions | correlated `json_each`, FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes |
 | Platforms and release | Benchmarks at 100000 and 1000000 rows, a fresh desktop run for each new revision, Android, iOS, power-loss durability, and publication when requested. The current 10000-row file is `benchmark_results/scenarios_10k_linux_x64.json`. The recorded desktop pass is commit `7afaaba` in run 40538509306 |
 
 The production runtime stays Pure Dart. The planned browser work is a durable

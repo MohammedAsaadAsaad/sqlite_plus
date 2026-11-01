@@ -111,7 +111,7 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 
 Joins through `FULL`, subqueries, `UNION` `INTERSECT` `EXCEPT`, CTEs, windows, `ON CONFLICT`, `RETURNING`, views, triggers, `CHECK`, `STRICT`, foreign keys, JSON, FTS5, R-tree, and geopoly. Integers are `BigInt`. `docs/REFERENCE.md` is the statement list.
 
-Not in this release: `json_pretty`, correlated `json_each`, EXPLAIN bytecode, a durable two-database commit, and ICU collations.
+Not in this release: correlated `json_each`, EXPLAIN bytecode, a durable two-database commit, and ICU collations. `json_pretty` is in the engine.
 
 ## Develop
 

@@ -257,13 +257,15 @@
     },
     {
       "id": "json-pretty",
-      "disposition": "rejected",
+      "disposition": "match",
       "kind": "query",
       "sql": "SELECT json_pretty('{\"a\":1}')",
-      "reason": "json_pretty is not implemented. The pinned CLI formats the object.",
-      "engine_message": "No such function: json_pretty",
       "sqlite_text": "unistr('{\\u000a    \"a\": 1\\u000a}')",
-      "parse_error": "quote-mode row was not parsed"
+      "rows": [
+        [
+          "{\n    \"a\": 1\n}"
+        ]
+      ]
     },
     {
       "id": "explain-bytecode",

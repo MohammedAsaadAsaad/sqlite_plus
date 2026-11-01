@@ -1709,6 +1709,14 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10536 tests on Dart 3.13.7, Linux x64.
 - B3, B4, and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 json_pretty
+
+- `json_pretty` formats a JSON value with a newline and a repeated indent. NULL input returns NULL. An omitted or NULL indent is four spaces. A text, number, or blob indent is that value's text, cut at the first NUL. Empty objects and arrays stay `{}` and `[]`. The result keeps the JSON subtype, so `->` and `json_type` see it.
+- The gap-ledger case `json-pretty` is a match. `db_browser_b3_json_pretty_test.dart` compared NULL, nested values, duplicate keys, comments, escapes, custom indents, numeric and blob indents, and a NUL-truncated indent with `/tmp/sqlite-build/sqlite3`. That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- Malformed JSON raises `malformed JSON`, which the CLI also reports. The engine rejects a bad arity with `Invalid arguments to json_pretty`. The CLI says `wrong number of arguments`. JSON input stays capped at 1 MiB. Pretty output stays capped at 16 MiB; the boundary test uses the indent string. An indent byte `0xFF` is kept as code unit U+00FF. Storing that string was not compared. No wall-clock timing was run. No speedup is claimed.
+- `packages/sqlite_plus`: `dart format` passed for the edited Dart files. `dart analyze --fatal-infos` passed. `dart test` of `db_browser_b3_json_pretty_test.dart`, `json_functions_test.dart`, and `gap_oracle_test.dart` passed 749 tests on Dart 3.13.7, Linux x64. The full package suite was not re-run for this note. `python3 tool/generate_gap_oracle.py --verify` passed.
+- The rest of B3 stays unchecked, including EXPLAIN bytecode, EXPLAIN QUERY PLAN text, correlated `json_each`, the double-quoted-string mode, ICU and locale collations, FTS3/FTS4 writes, the named FTS5 options, `VACUUM INTO`, `journal_mode` switches, `auto_vacuum` writes, and a durable commit across two attached databases. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

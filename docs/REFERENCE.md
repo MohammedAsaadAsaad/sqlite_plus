@@ -47,7 +47,7 @@ file's application source has no SQL text. `MutableDatabaseConnection.openMemory
 opens the in-memory engine.
 
 `COMPATIBILITY_MATRIX.md` records the tested surface. Planned next are
-`json_pretty`, correlated `json_each`, EXPLAIN bytecode, STAT4 planning,
+correlated `json_each`, EXPLAIN bytecode, STAT4 planning,
 auto-vacuum writes, a durable two-database commit, more journal modes, extended FTS, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
