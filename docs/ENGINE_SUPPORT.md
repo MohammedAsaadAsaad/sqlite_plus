@@ -183,7 +183,7 @@ AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 | Schema state | Atomic commit of two durable databases, with temp and attached images included in that plan |
 | PRAGMA state | More journal modes, the auto-vacuum algorithm, and per-database cache, busy, and synchronous values |
 | Planning | EXPLAIN bytecode beyond a literal projection, fuller native costing, wider join reorder, built STAT4 statistics, and covering reads of a star or a generated column |
-| Collations | ICU and locale collations, and a separate oracle for REINDEX of a custom collation name |
+| Collations | ICU and locale collations. The pinned CLI says `no such collation sequence: ICU` and `no such collation sequence: en_US`. This engine says `Unknown collation` or `No such collation: ICU`. `decimal` and `uint` are on the pin's collation list and are not implemented. REINDEX of a custom collation still has no separate oracle |
 | Grammar and errors | Closer native error text. Opt-in double-quoted strings match the pinned CLI in `db_browser_b3_dqs_test.dart`. The default stays off. Unquoted `a.title` beside a column named `a.title` returns the `title` column |
 | Table functions | More virtual-table modules |
 | Windows | Wider window execution and closer planner equivalence |
