@@ -12,6 +12,8 @@ The file on disk is `margin.db`, a snapshot from `exportImage`. Each save writes
 
 Search filters the notes already loaded. Pinning sorts a note ahead of the others.
 
+The tools screen exports the loaded notes as CSV, imports that CSV as new notes, and plots one bar per UTC update day. Quoting, a closed-quote failure, and the day counts live in `lib/note_exchange.dart`. `dart tool/note_exchange_check.dart` checks them without Flutter. The screens themselves need the Flutter SDK and were not executed on the machine that added them.
+
 The tools screen inserts a chosen number of random notes through `DbSet.add` and `saveChanges`. One switch keeps every note in a single `saveChanges` transaction. That save writes the added notes with multi-row `INSERT` statements. The other calls `saveChanges` once per note and reopens the context on the same database. Those saves keep the loaded rows until `exportImage` runs once at the end. The work runs in a separate isolate. The screen reports wall time, process CPU time from `/proc/self/stat`, and process RSS before, at the peak sample, and after. Delete-all removes every tracked note in one `saveChanges`, which sends one `DELETE`. The tools screen also opens Metrics, a page that samples process RSS and CPU twice a second. That button stays available while an insert, delete, or VACUUM is running. Another page shows the file path, image size, page and freelist counts, schema names, and rows. `VACUUM` runs through the ORM connection with the image stats before and after.
 
 ## Run the tests

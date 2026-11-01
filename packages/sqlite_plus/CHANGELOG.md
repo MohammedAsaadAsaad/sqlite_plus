@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+The version number stays `0.1.2`. Compared with pinned SQLite 3.53.1 on Dart 3.13.7, Linux x64. 10596 tests passed.
+
+- Incremental auto-vacuum keeps the freelist page after an overflow delete. `incremental_vacuum` moves a live end page, then truncates.
+- Contentless FTS4 stores no content table and returns the pinned `MATCH` row. FTS3 `content=''` is a column named `content`.
+- File `journal_mode` `wal`, `persist`, and `truncate` follow the pinned header and journal bytes. This is not a multi-frame WAL log.
+- Cross-schema `VALUES` errors use the pinned wording.
+- `EXPLAIN` matches the pinned opcode rows for a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries stay rejected. This is not a VDBE.
+
 ## 0.1.2
 
 Performance work and a Linux desktop experiment. A release build compared 1,000 rows with sqflite. Every checksum matched. The charts are that sample. The logo is the feather, the database, and the plus.
