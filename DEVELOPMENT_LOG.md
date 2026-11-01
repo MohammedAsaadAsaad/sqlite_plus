@@ -1856,7 +1856,7 @@ result=pass
 - The missing-table text is still `No such table: missing` here. The CLI text is `no such table: missing`.
 - An image written by this engine fails the pinned CLI `integrity_check` with `unable to validate the inverted index for FTS4 table main.f`. That CLI's `MATCH 'hello'` on the file returns no row. Official segment, segdir, docsize, and stat bytes were not written. The FTS3/FTS4 write sub-item stays unchecked for that reason.
 - That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
-- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed FTSCOUNT tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10566 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The FTS3/FTS4 write sub-item stays unchecked. The B3 parent stays open. The other B3 parts stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
 ## 2026-10-31 — Version 0.1.2
