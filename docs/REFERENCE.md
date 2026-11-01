@@ -47,7 +47,7 @@ file's application source has no SQL text. `MutableDatabaseConnection.openMemory
 opens the in-memory engine.
 
 `COMPATIBILITY_MATRIX.md` records the tested surface. Constant arithmetic, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` match the pinned opcode rows. Planned next are
-EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`, `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`, STAT4 planning,
+EXPLAIN bytecode for an integer-primary-key insert and a join of two subqueries, STAT4 planning,
 an official SQLite master journal, a multi-frame WAL log, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
@@ -444,7 +444,7 @@ The current baseline and the planned follow-up are in
 objects, one attached database, the connection pragmas named in the matrix,
 one custom collation, this engine's EXPLAIN QUERY PLAN text, a bounded join
 reorder, covering-index reads, and incremental page writes for the tested
-shapes. Constant arithmetic, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` match the pinned opcode rows. `INSERT INTO aux.u SELECT v FROM t` commits across the attached database, and a crash between the two rollback journals leaves both files old or both new. Planned next are EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`, `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`, and STAT4. Incremental auto-vacuum page movement matches the compared `zeroblob` deletes. Items 77–82 add `openBrowserStorage` and
+shapes. Constant arithmetic, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` match the pinned opcode rows. `INSERT INTO aux.u SELECT v FROM t` commits across the attached database, and a crash between the two rollback journals leaves both files old or both new. A constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert match the pinned opcode rows. Planned next are EXPLAIN bytecode for an integer-primary-key insert and a join of two subqueries, and STAT4. Incremental auto-vacuum page movement matches the compared `zeroblob` deletes. Items 77–82 add `openBrowserStorage` and
 `BrowserDatabaseConnection`. The caller reads `canRead`, `canWrite`,
 `durabilityPromised`, and `placement`. The current round trip uses an
 in-process `MemoryBrowserByteStore`: close, then open, returns the row. A

@@ -60,7 +60,7 @@ write is rejected, and `fromImage` rejects a non-zero largest root page.
 `createCollation` registers one connection-local text collation. The test
 covers ORDER BY, UNIQUE, and an index on that collation. REINDEX of a custom
 collation name has no separate oracle. EXPLAIN QUERY PLAN returns this
-engine's `detail` text. `EXPLAIN SELECT 1`, constant arithmetic and concatenation, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` or `REPLACE` match the pinned CLI opcode rows in `db_browser_b3_explain_test.dart`. A subquery, an `INTEGER PRIMARY KEY` scan, `WITHOUT ROWID`, a generated column, a typed `INSERT`, and a multi-row `VALUES` insert still throw `EXPLAIN bytecode is not implemented`. This is not a VDBE. Two or three comma joins
+engine's `detail` text. `EXPLAIN SELECT 1`, constant arithmetic and concatenation, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` or `REPLACE` match the pinned CLI opcode rows in `db_browser_b3_explain_test.dart`. A constant subquery, an `INTEGER PRIMARY KEY` scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert match the pinned opcode rows in that file. An `INTEGER PRIMARY KEY` insert and a join of two subqueries still throw `EXPLAIN bytecode is not implemented`. This is not a VDBE. Two or three comma joins
 with ORDER BY and sqlite_stat1 counts can be reordered; the test compares
 rows. A covering index skips the table when every referenced column is in the
 index or is a rowid alias, and that read uses fewer pages. `sqlite_stat4` opens
@@ -191,7 +191,7 @@ AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 |---|---|
 | Schema state | Atomic commit of two durable databases, with temp and attached images included in that plan |
 | PRAGMA state | File `journal_mode=wal`, `persist`, and `truncate` match the compared rows. A multi-frame WAL log is not written. Per-database cache, busy, and synchronous values stay connection-local |
-| Planning | EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`, `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`; fuller native costing, wider join reorder, built STAT4 statistics, and covering reads of a star or a generated column |
+| Planning | EXPLAIN bytecode for an `INTEGER PRIMARY KEY` insert and a join of two subqueries; fuller native costing, wider join reorder, built STAT4 statistics, and covering reads of a star or a generated column. A constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert match the pinned opcode rows |
 | Collations | ICU and locale collations. The pinned CLI says `no such collation sequence: ICU` and `no such collation sequence: en_US`. This engine says `Unknown collation` or `No such collation: ICU`. `decimal` and `uint` are on the pin's collation list and are not implemented. REINDEX of a custom collation still has no separate oracle |
 | Grammar and errors | Closer native error text. Opt-in double-quoted strings match the pinned CLI in `db_browser_b3_dqs_test.dart`. The default stays off. Unquoted `a.title` beside a column named `a.title` returns the `title` column |
 | Table functions | More virtual-table modules |

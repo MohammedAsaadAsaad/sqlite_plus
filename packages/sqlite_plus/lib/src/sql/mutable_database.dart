@@ -417,6 +417,36 @@ final class MutableSqliteDatabase {
                     column.defaultExpression != null ||
                     column.defaultValue != null
             ],
+            storedCount: table.columns
+                .where((column) =>
+                    column.generatedExpression == null ||
+                    column.generatedStored)
+                .length,
+            keyCollations: table.primaryKeyCollations,
+            keyExplicit: table.primaryKeyCollationExplicit,
+            keyDescending: table.primaryKeyDescending,
+            layout: [
+              for (var i = 0; i < table.columns.length; i++)
+                ExplainColumn(
+                  name: table.columns[i].name,
+                  declaredType: table.columns[i].declaredType,
+                  columnNumber: table.withoutRowid
+                      ? table.storageColumns.indexWhere((column) =>
+                          asciiLower(column.name) ==
+                          asciiLower(table.columns[i].name))
+                      : i,
+                  virtualGenerated:
+                      table.columns[i].generatedExpression != null &&
+                          !table.columns[i].generatedStored,
+                  generated: table.columns[i].generatedExpression != null &&
+                          !table.columns[i].generatedStored
+                      ? table.columns[i].generatedExpression
+                      : null,
+                  rowidAlias: table.rowidAlias != null &&
+                      asciiLower(table.rowidAlias!) ==
+                          asciiLower(table.columns[i].name),
+                ),
+            ],
           );
         },
       );

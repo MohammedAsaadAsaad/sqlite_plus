@@ -25,6 +25,7 @@ final class CatalogColumn {
       this.autoIncrement = false,
       this.checks = const [],
       this.primaryDescending = false,
+      this.explicitCollation = false,
       this.hidden = false});
 
   /// Column name as declared.
@@ -74,6 +75,9 @@ final class CatalogColumn {
 
   /// `CHECK` expressions written on this column.
   final List<Expr> checks;
+
+  /// True when the column definition wrote `COLLATE`, including `BINARY`.
+  final bool explicitCollation;
 
   /// Storage affinity used by comparisons and assignment.
   String get affinity {
@@ -146,6 +150,12 @@ final class CatalogTable {
 
   /// Descending flag of each primary-key column, in key order.
   final List<bool> primaryKeyDescending = [];
+
+  /// True when that primary-key collation was written with `COLLATE`.
+  final List<bool> primaryKeyCollationExplicit = [];
+
+  /// Parallel to [autoIndexCollations]. The first declaration wins.
+  final List<List<bool>> autoIndexCollationExplicit = [];
 
   /// Conflict policy of each automatic index.
   final List<String> autoIndexPolicies = [];
@@ -562,6 +572,7 @@ final class DatabaseCatalog {
         var unique = false;
         var autoIncrement = false;
         var collation = 'binary';
+        var explicitCollation = false;
         final columnChecks = <Expr>[];
         var notNull = false;
         var notNullPolicy = 'ABORT';
@@ -644,6 +655,7 @@ final class DatabaseCatalog {
               throw SqlException('no such collation sequence: $written');
             }
             collation = asciiLower(written);
+            explicitCollation = true;
           } else {
             throw SqlException(
                 'Unsupported column constraint', parser.current.offset);
@@ -668,6 +680,7 @@ final class DatabaseCatalog {
             defaultSql: defaultSql,
             unique: unique,
             collation: collation,
+            explicitCollation: explicitCollation,
             autoIncrement: autoIncrement,
             checks: columnChecks,
             primaryDescending: descending));
@@ -754,6 +767,7 @@ final class DatabaseCatalog {
     for (final key in autoKeys) {
       if (key.$1 && alias != null && !withoutRowid) continue;
       final collations = <String>[];
+      final explicit = <bool>[];
       for (var i = 0; i < key.$2.length; i++) {
         final column = columns
             .where((column) => asciiLower(column.name) == asciiLower(key.$2[i]))
@@ -762,6 +776,7 @@ final class DatabaseCatalog {
           throw const SqlException('Unknown constraint key column');
         }
         collations.add(key.$5[i] ?? column.collation);
+        explicit.add(key.$5[i] != null || column.explicitCollation);
       }
       // SQLite combines equivalent UNIQUE/PRIMARY KEY declarations even when
       // their sort directions differ; the first declaration supplies ordering.
@@ -773,6 +788,7 @@ final class DatabaseCatalog {
         seenKeys[identity] = result.autoIndexKeys.length;
         result.autoIndexKeys.add(key.$2);
         result.autoIndexCollations.add(collations);
+        result.autoIndexCollationExplicit.add(explicit);
         result.autoIndexDescending.add(key.$4);
         result.autoIndexPrimary.add(key.$1);
         result.autoIndexPolicies.add(key.$3);
@@ -791,6 +807,8 @@ final class DatabaseCatalog {
     if (primaryIndex >= 0) {
       result.primaryKeyCollations
           .addAll(result.autoIndexCollations[primaryIndex]);
+      result.primaryKeyCollationExplicit
+          .addAll(result.autoIndexCollationExplicit[primaryIndex]);
       result.primaryKeyDescending
           .addAll(result.autoIndexDescending[primaryIndex]);
     } else {
@@ -798,6 +816,8 @@ final class DatabaseCatalog {
         ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
       result.primaryKeyCollations
           .addAll(primaryColumns.map((c) => c.collation));
+      result.primaryKeyCollationExplicit
+          .addAll(primaryColumns.map((c) => c.explicitCollation));
       result.primaryKeyDescending
           .addAll(primaryColumns.map((c) => c.primaryDescending));
     }

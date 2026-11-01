@@ -23,7 +23,12 @@ final class ExplainTable {
       this.affinity = false,
       this.indexed = false,
       this.notNull = false,
-      this.defaults = const []});
+      this.defaults = const [],
+      this.layout = const [],
+      this.storedCount = 0,
+      this.keyCollations = const [],
+      this.keyExplicit = const [],
+      this.keyDescending = const []});
 
   /// Catalog name. `OP_Insert` stores it in p4.
   final String name;
@@ -54,6 +59,68 @@ final class ExplainTable {
 
   /// True when that column's explicit `DEFAULT` would be coded.
   final List<bool> defaults;
+
+  /// Declared columns, including virtual generated columns and the rowid alias.
+  final List<ExplainColumn> layout;
+
+  /// Columns stored in the record, including an integer primary key.
+  final int storedCount;
+
+  /// Primary-key collations in key order. Used by `WITHOUT ROWID` key info.
+  final List<String> keyCollations;
+
+  /// True when that key collation was written with `COLLATE`.
+  final List<bool> keyExplicit;
+
+  /// Descending flag of each primary-key column.
+  final List<bool> keyDescending;
+
+  /// `OP_OpenRead` p4 for a `WITHOUT ROWID` table, or null.
+  String? get keyInfo {
+    if (!withoutRowid || keyCollations.isEmpty) return null;
+    final parts = <String>[];
+    for (var i = 0; i < keyCollations.length; i++) {
+      final descending = i < keyDescending.length && keyDescending[i];
+      final explicit = i < keyExplicit.length && keyExplicit[i];
+      final collation = asciiLower(keyCollations[i]);
+      final mark = descending ? '-' : '';
+      final name = collation == 'binary'
+          ? (explicit ? 'B' : '')
+          : keyCollations[i].toUpperCase();
+      parts.add('$mark$name');
+    }
+    return 'k(${keyCollations.length},${parts.join(',')})';
+  }
+}
+
+/// One declared column the bytecode compiler can name.
+final class ExplainColumn {
+  const ExplainColumn({
+    required this.name,
+    required this.declaredType,
+    required this.columnNumber,
+    this.virtualGenerated = false,
+    this.generated,
+    this.rowidAlias = false,
+  });
+
+  /// Column name as declared.
+  final String name;
+
+  /// Declared type text. Empty when the column has no type.
+  final String declaredType;
+
+  /// `OP_Column` p2. Declaration index on a rowid table, storage index otherwise.
+  final int columnNumber;
+
+  /// A `VIRTUAL` generated column is an expression, not a stored field.
+  final bool virtualGenerated;
+
+  /// Generated expression, present only for a virtual column.
+  final Expr? generated;
+
+  /// This column is the `INTEGER PRIMARY KEY` alias of rowid.
+  final bool rowidAlias;
 }
 
 /// Schema cookie and table lookup for `EXPLAIN` programs that open a b-tree.
@@ -79,9 +146,10 @@ const _binaryOpcodes = {
 /// Bytecode for a bounded `EXPLAIN` program.
 ///
 /// Covered shapes are a literal projection, arithmetic and concatenation of
-/// constants, a constant `WHERE`, one ordinary table scan, and one
-/// `INSERT` or `REPLACE` of constants. Anything else returns null. The caller
-/// keeps the existing rejection. This is not a VDBE.
+/// constants, a constant `WHERE`, one table scan, one constant subquery in
+/// `FROM`, and one `INSERT` or `REPLACE` of constant `VALUES` rows. Anything
+/// else returns null. The caller keeps the existing rejection. This is not a
+/// VDBE.
 QueryResult? compileLiteralExplain(String sql, {ExplainSchema? schema}) {
   try {
     final head = SqlParser(sql);
@@ -107,6 +175,7 @@ QueryResult? compileLiteralExplain(String sql, {ExplainSchema? schema}) {
     if (_isPlainScan(statement)) {
       return schema == null ? null : _compileScan(statement, schema);
     }
+    if (_isLiteralSubquery(statement)) return _compileSubquery(statement);
     if (statement.sources.isNotEmpty || statement.table != null) return null;
     return _compileProjection(statement);
   } on SqlException {
@@ -158,6 +227,9 @@ final class _Coder {
   var _intoOnce = false;
   int? haltJump;
 
+  /// Codes a stored column into [dest]. Null while a scan is not active.
+  void Function(ColumnExpr expr, int dest)? emitColumn;
+
   List<_Op> get _out => _intoOnce ? once : main;
 
   int reserveResults(int count) {
@@ -207,6 +279,10 @@ final class _Coder {
   void codeTarget(Expr expr, int dest) {
     if (_literalOpcode(expr, dest) != null) {
       emitLiteral(expr, dest);
+      return;
+    }
+    if (expr is ColumnExpr && emitColumn != null) {
+      emitColumn!(expr, dest);
       return;
     }
     if (expr is UnaryExpr && expr.op == '+') {
@@ -353,13 +429,89 @@ QueryResult? _compileScan(SelectStatement statement, ExplainSchema schema) {
   if (_whereKind(statement.where) == _WhereKind.unsupported) return null;
   final source = statement.sources.single;
   final table = schema.table(source.table!);
-  if (table == null ||
-      table.rootPage <= 0 ||
-      table.withoutRowid ||
-      table.rowidAlias != null ||
-      table.generated) {
-    return null;
+  if (table == null || table.rootPage <= 0) return null;
+  if (table.layout.isEmpty) {
+    if (table.withoutRowid || table.rowidAlias != null || table.generated) {
+      return null;
+    }
+    return _compilePlainScan(statement, schema, table, source);
   }
+  final fields = _scanFields(statement, table, source);
+  if (fields == null || fields.isEmpty) return null;
+  final cursor = table.withoutRowid ? 1 : 0;
+  final virtual = table.layout.any((column) => column.virtualGenerated);
+  final storedNumbers = [
+    for (final field in fields)
+      if (!field.rowid && field.expression == null) field.number
+  ];
+  final width = table.withoutRowid
+      ? 0
+      : virtual
+          ? table.storedCount
+          : storedNumbers.isEmpty
+              ? 0
+              : storedNumbers.reduce((a, b) => a > b ? a : b) + 1;
+  final key = table.withoutRowid ? table.keyInfo : '$width';
+  if (key == null) return null;
+  final coder = _Coder();
+  _prepareWhere(coder, statement.where);
+  final start = coder.reserveResults(fields.length);
+  coder.main.add(_Op('OpenRead', BigInt.from(cursor),
+      BigInt.from(table.rootPage), BigInt.zero, key));
+  final rewind = coder.main.length;
+  coder.main.add(_Op(
+      'Rewind',
+      BigInt.from(cursor),
+      BigInt.zero,
+      BigInt.from(table.withoutRowid ? 1 : 0),
+      table.withoutRowid ? '0' : null));
+  coder.emitColumn = (expr, dest) {
+    final column = _layoutColumn(table, source, expr);
+    if (column == null || column.virtualGenerated || column.rowidAlias) {
+      throw const _Uncompiled();
+    }
+    coder.main.add(_Op('Column', BigInt.from(cursor),
+        BigInt.from(column.columnNumber), BigInt.from(dest), null));
+  };
+  for (var i = 0; i < fields.length; i++) {
+    final field = fields[i];
+    final dest = start + i;
+    if (field.expression != null) {
+      final marker = coder.main.length;
+      coder.main.add(_Op('IfNullRow', BigInt.from(cursor), BigInt.zero,
+          BigInt.from(dest), null));
+      coder.codeTarget(field.expression!, dest);
+      coder.main[marker] = _Op('IfNullRow', BigInt.from(cursor),
+          BigInt.from(coder.main.length + 1), BigInt.from(dest), null);
+    } else if (field.rowid) {
+      coder.main.add(_Op(
+          'Rowid', BigInt.from(cursor), BigInt.from(dest), BigInt.zero, null));
+    } else {
+      coder.main.add(_Op('Column', BigInt.from(cursor),
+          BigInt.from(field.number), BigInt.from(dest), null));
+    }
+  }
+  coder.emitColumn = null;
+  coder.main.add(_Op('ResultRow', BigInt.from(start),
+      BigInt.from(fields.length), BigInt.zero, null));
+  final next = coder.main.length;
+  coder.main.add(
+      _Op('Next', BigInt.from(cursor), BigInt.zero, BigInt.zero, null, p5: 1));
+  final halt = coder.main.length + 1;
+  coder.main[rewind] = _Op('Rewind', BigInt.from(cursor), BigInt.from(halt),
+      BigInt.from(table.withoutRowid ? 1 : 0), table.withoutRowid ? '0' : null);
+  coder.main[next] = _Op(
+      'Next', BigInt.from(cursor), BigInt.from(rewind + 2), BigInt.zero, null,
+      p5: 1);
+  coder.once.add(_Op(
+      'Transaction', BigInt.zero, BigInt.zero, BigInt.from(schema.cookie), '0',
+      p5: 1));
+  coder.flush();
+  return _finish(coder);
+}
+
+QueryResult? _compilePlainScan(SelectStatement statement, ExplainSchema schema,
+    ExplainTable table, QuerySource source) {
   final indexes = <int>[];
   if (statement.items.length == 1 &&
       statement.items.single.expression == null) {
@@ -424,6 +576,103 @@ QueryResult? _compileScan(SelectStatement statement, ExplainSchema schema) {
   return _finish(coder);
 }
 
+final class _Field {
+  _Field.column(this.number)
+      : expression = null,
+        rowid = false;
+  _Field.rowid()
+      : number = 0,
+        expression = null,
+        rowid = true;
+  _Field.generated(this.expression)
+      : number = 0,
+        rowid = false;
+  final int number;
+  final Expr? expression;
+  final bool rowid;
+}
+
+List<_Field>? _scanFields(
+    SelectStatement statement, ExplainTable table, QuerySource source) {
+  if (statement.items.length == 1 &&
+      statement.items.single.expression == null) {
+    final label = statement.items.single.label;
+    if (label != '*') {
+      final qualifier =
+          label.endsWith('.*') ? label.substring(0, label.length - 2) : null;
+      if (qualifier == null ||
+          (!_names(qualifier, table.name) &&
+              !_names(qualifier, source.alias ?? ''))) {
+        return null;
+      }
+    }
+    if (table.layout
+        .any((column) => column.virtualGenerated && column.generated == null)) {
+      return null;
+    }
+    return [
+      for (final column in table.layout) _fieldFor(column),
+    ];
+  }
+  final fields = <_Field>[];
+  for (final item in statement.items) {
+    final expression = item.expression;
+    if (expression is! ColumnExpr || expression is BoolNameExpr) return null;
+    final qualifier = expression.qualifier;
+    if (qualifier != null &&
+        !_names(qualifier, table.name) &&
+        !_names(qualifier, source.alias ?? '')) {
+      return null;
+    }
+    final columnName = qualifier == null
+        ? expression.name
+        : expression.name.substring(expression.name.lastIndexOf('.') + 1);
+    final column = _namedColumn(table, columnName);
+    if (column != null) {
+      if (column.virtualGenerated && column.generated == null) return null;
+      fields.add(_fieldFor(column));
+    } else if (!table.withoutRowid && _rowidName(columnName)) {
+      fields.add(_Field.rowid());
+    } else {
+      return null;
+    }
+  }
+  return fields;
+}
+
+_Field _fieldFor(ExplainColumn column) => column.rowidAlias
+    ? _Field.rowid()
+    : column.virtualGenerated
+        ? _Field.generated(column.generated!)
+        : _Field.column(column.columnNumber);
+
+ExplainColumn? _namedColumn(ExplainTable table, String name) {
+  for (final column in table.layout) {
+    if (asciiLower(column.name) == asciiLower(name)) return column;
+  }
+  return null;
+}
+
+ExplainColumn? _layoutColumn(
+    ExplainTable table, QuerySource source, ColumnExpr expr) {
+  if (expr is BoolNameExpr) return null;
+  final qualifier = expr.qualifier;
+  if (qualifier != null &&
+      !_names(qualifier, table.name) &&
+      !_names(qualifier, source.alias ?? '')) {
+    return null;
+  }
+  final columnName = qualifier == null
+      ? expr.name
+      : expr.name.substring(expr.name.lastIndexOf('.') + 1);
+  return _namedColumn(table, columnName);
+}
+
+bool _rowidName(String name) {
+  final lower = asciiLower(name);
+  return lower == 'rowid' || lower == 'oid' || lower == '_rowid_';
+}
+
 QueryResult? _compileInsert(String sql, ExplainSchema schema) {
   final parser = SqlParser(sql);
   final replace = parser.take('REPLACE');
@@ -442,7 +691,7 @@ QueryResult? _compileInsert(String sql, ExplainSchema schema) {
       table.withoutRowid ||
       table.rowidAlias != null ||
       table.generated ||
-      table.affinity ||
+      (table.affinity && table.layout.isEmpty) ||
       table.indexed ||
       table.notNull) {
     return null;
@@ -455,20 +704,28 @@ QueryResult? _compileInsert(String sql, ExplainSchema schema) {
     parser.require(')');
   }
   final defaults = parser.take('DEFAULT');
-  final values = <Expr>[];
+  final rows = <List<Expr>>[];
   if (defaults) {
     parser.require('VALUES');
   } else {
     parser.require('VALUES');
-    parser.require('(');
     do {
-      values.add(parser.expression());
+      parser.require('(');
+      final row = <Expr>[];
+      do {
+        row.add(parser.expression());
+      } while (parser.take(','));
+      parser.require(')');
+      rows.add(row);
     } while (parser.take(','));
-    parser.require(')');
-    if (parser.take(',')) return null;
   }
   if (parser.take('RETURNING') || parser.take('ON')) return null;
   parser.finish();
+  if (rows.length > 1) {
+    if (defaults || listed.isNotEmpty) return null;
+    return _compileMultiInsert(table, schema, rows);
+  }
+  final values = rows.isEmpty ? <Expr>[] : rows.single;
   final assigned = <int, Expr>{};
   if (defaults) {
     if (listed.isNotEmpty) return null;
@@ -505,8 +762,8 @@ QueryResult? _compileInsert(String sql, ExplainSchema schema) {
     }
   }
   coder.main.add(_Op('NewRowid', BigInt.zero, BigInt.one, BigInt.zero, null));
-  coder.main.add(_Op(
-      'MakeRecord', BigInt.two, BigInt.from(width), BigInt.from(record), null));
+  coder.main.add(_Op('MakeRecord', BigInt.two, BigInt.from(width),
+      BigInt.from(record), _recordAffinity(table)));
   coder.main.add(_Op(
       'Insert', BigInt.zero, BigInt.from(record), BigInt.one, table.name,
       p5: 57));
@@ -515,6 +772,206 @@ QueryResult? _compileInsert(String sql, ExplainSchema schema) {
       p5: 1));
   coder.flush();
   return _finish(coder);
+}
+
+QueryResult? _compileMultiInsert(
+    ExplainTable table, ExplainSchema schema, List<List<Expr>> rows) {
+  final width = table.columns.length;
+  if (rows.any((row) => row.length != width)) return null;
+  final affinity = _recordAffinity(table);
+  final coder = _Coder()..factor = false;
+  final initAt = coder.main.length;
+  coder.main
+      .add(_Op('InitCoroutine', BigInt.one, BigInt.zero, BigInt.two, null));
+  for (final row in rows) {
+    for (var i = 0; i < row.length; i++) {
+      if (_literalOpcode(row[i], 4 + i) == null) return null;
+      coder.emitLiteral(row[i], 4 + i);
+    }
+    coder.main.add(_Op('Yield', BigInt.one, BigInt.zero, BigInt.zero, null));
+  }
+  coder.main
+      .add(_Op('EndCoroutine', BigInt.one, BigInt.zero, BigInt.zero, null));
+  coder.main[initAt] = _Op('InitCoroutine', BigInt.one,
+      BigInt.from(coder.main.length + 1), BigInt.two, null);
+  coder.main.add(_Op('OpenWrite', BigInt.zero, BigInt.from(table.rootPage),
+      BigInt.zero, '$width'));
+  final loop = coder.main.length;
+  coder.main.add(_Op('Yield', BigInt.one, BigInt.zero, BigInt.zero, null));
+  coder.main
+      .add(_Op('NewRowid', BigInt.zero, BigInt.from(3), BigInt.zero, null));
+  final record = 5 + 3 * width;
+  coder.main.add(_Op('MakeRecord', BigInt.from(4), BigInt.from(width),
+      BigInt.from(record), affinity));
+  coder.main.add(_Op(
+      'Insert', BigInt.zero, BigInt.from(record), BigInt.from(3), table.name,
+      p5: 57));
+  coder.main
+      .add(_Op('Goto', BigInt.zero, BigInt.from(loop + 1), BigInt.zero, null));
+  coder.main[loop] = _Op('Yield', BigInt.one,
+      BigInt.from(coder.main.length + 1), BigInt.zero, null);
+  coder.once.add(_Op(
+      'Transaction', BigInt.zero, BigInt.one, BigInt.from(schema.cookie), '0',
+      p5: 1));
+  return _finish(coder);
+}
+
+bool _isLiteralSubquery(SelectStatement statement) {
+  if (statement.parameterCount != 0 ||
+      statement.sources.length != 1 ||
+      statement.where != null ||
+      statement.order.isNotEmpty ||
+      statement.limit != null ||
+      statement.offset != null ||
+      statement.distinct ||
+      statement.groupBy.isNotEmpty ||
+      statement.having != null ||
+      statement.compounds.isNotEmpty ||
+      statement.ctes.isNotEmpty ||
+      statement.windowDefinitions.isNotEmpty ||
+      statement.valuesQuery ||
+      statement.items.isEmpty) {
+    return false;
+  }
+  final source = statement.sources.single;
+  final inner = source.query;
+  if (inner == null ||
+      source.table != null ||
+      source.group.isNotEmpty ||
+      source.on != null ||
+      source.using.isNotEmpty ||
+      source.natural ||
+      source.notIndexed ||
+      source.indexedBy != null) {
+    return false;
+  }
+  return inner.parameterCount == 0 &&
+      inner.sources.isEmpty &&
+      inner.table == null &&
+      inner.where == null &&
+      inner.order.isEmpty &&
+      inner.limit == null &&
+      inner.offset == null &&
+      !inner.distinct &&
+      inner.groupBy.isEmpty &&
+      inner.having == null &&
+      inner.compounds.isEmpty &&
+      inner.ctes.isEmpty &&
+      inner.windowDefinitions.isEmpty &&
+      !inner.valuesQuery &&
+      inner.items.isNotEmpty;
+}
+
+QueryResult? _compileSubquery(SelectStatement statement) {
+  final source = statement.sources.single;
+  final inner = source.query!;
+  final used = List<bool>.filled(inner.items.length, false);
+  for (final item in statement.items) {
+    final expression = item.expression;
+    if (expression is ColumnExpr && expression is! BoolNameExpr) {
+      final qualifier = expression.qualifier;
+      if (qualifier != null && !_names(qualifier, source.alias ?? '')) {
+        return null;
+      }
+      final name = qualifier == null
+          ? expression.name
+          : expression.name.substring(expression.name.lastIndexOf('.') + 1);
+      final index = inner.items
+          .indexWhere((column) => asciiLower(column.label) == asciiLower(name));
+      if (index < 0) return null;
+      used[index] = true;
+    } else if (expression == null || _literalOpcode(expression, 1) == null) {
+      return null;
+    }
+  }
+  for (var i = 0; i < inner.items.length; i++) {
+    final expression = inner.items[i].expression;
+    if (expression == null) return null;
+    if (used[i] && _literalOpcode(expression, 1) == null) return null;
+  }
+  final coder = _Coder()..factor = false;
+  final initAt = coder.main.length;
+  coder.main
+      .add(_Op('InitCoroutine', BigInt.one, BigInt.zero, BigInt.two, null));
+  for (var i = 0; i < inner.items.length; i++) {
+    final register = 2 + i;
+    if (used[i]) {
+      coder.emitLiteral(inner.items[i].expression!, register);
+    } else {
+      coder.main.add(
+          _Op('Null', BigInt.zero, BigInt.from(register), BigInt.zero, null));
+    }
+  }
+  coder.main.add(_Op('Yield', BigInt.one, BigInt.zero, BigInt.zero, null));
+  coder.main
+      .add(_Op('EndCoroutine', BigInt.one, BigInt.zero, BigInt.zero, null));
+  coder.main[initAt] = _Op('InitCoroutine', BigInt.one,
+      BigInt.from(coder.main.length + 1), BigInt.two, null);
+  coder.main
+      .add(_Op('InitCoroutine', BigInt.one, BigInt.zero, BigInt.two, null));
+  final loop = coder.main.length;
+  coder.main.add(_Op('Yield', BigInt.one, BigInt.zero, BigInt.zero, null));
+  final outer = 2 + inner.items.length;
+  for (var i = 0; i < statement.items.length; i++) {
+    final expression = statement.items[i].expression!;
+    final dest = outer + i;
+    if (expression is ColumnExpr && expression is! BoolNameExpr) {
+      final name = expression.qualifier == null
+          ? expression.name
+          : expression.name.substring(expression.name.lastIndexOf('.') + 1);
+      final index = inner.items
+          .indexWhere((column) => asciiLower(column.label) == asciiLower(name));
+      coder.main.add(_Op(
+          'Copy', BigInt.from(2 + index), BigInt.from(dest), BigInt.zero, null,
+          p5: 2));
+    } else {
+      coder.emitLiteral(expression, dest);
+    }
+  }
+  coder.main.add(_Op('ResultRow', BigInt.from(outer),
+      BigInt.from(statement.items.length), BigInt.zero, null));
+  coder.main
+      .add(_Op('Goto', BigInt.zero, BigInt.from(loop + 1), BigInt.zero, null));
+  coder.main[loop] = _Op('Yield', BigInt.one,
+      BigInt.from(coder.main.length + 1), BigInt.zero, null);
+  return _finish(coder);
+}
+
+/// Affinity text on `OP_MakeRecord`. All-blob columns leave p4 empty.
+String? _recordAffinity(ExplainTable table) {
+  if (table.layout.isEmpty || table.layout.length != table.columns.length) {
+    return null;
+  }
+  final letters = [
+    for (final column in table.layout) _affinityChar(column.declaredType)
+  ];
+  if (letters.every((letter) => letter == 'A')) return null;
+  return letters.join();
+}
+
+/// One SQLite affinity character. An empty declared type is blob (`A`).
+String _affinityChar(String declared) {
+  if (declared.isEmpty) return 'A';
+  var hash = 0;
+  var affinity = 0x43;
+  for (final unit in declared.codeUnits) {
+    final lower = unit >= 0x41 && unit <= 0x5A ? unit + 0x20 : unit;
+    hash = ((hash << 8) + lower) & 0xFFFFFFFF;
+    if (hash == 0x63686172 || hash == 0x636C6F62 || hash == 0x74657874) {
+      affinity = 0x42;
+    } else if (hash == 0x626C6F62 && (affinity == 0x43 || affinity == 0x45)) {
+      affinity = 0x41;
+    } else if ((hash == 0x7265616C ||
+            hash == 0x666C6F61 ||
+            hash == 0x646F7562) &&
+        affinity == 0x43) {
+      affinity = 0x45;
+    } else if ((hash & 0x00FFFFFF) == 0x696E74) {
+      affinity = 0x44;
+      break;
+    }
+  }
+  return String.fromCharCode(affinity);
 }
 
 QueryResult _finish(_Coder coder) {

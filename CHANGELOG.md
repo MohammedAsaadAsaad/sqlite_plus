@@ -66,11 +66,11 @@ pre-release.
 
 ### Planned
 
-- EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`,
-  `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`, plus
-  STAT4 and `auto_vacuum`. Constant arithmetic, a constant `WHERE`, one
-  ordinary table scan, and one constant `INSERT` match the pinned opcode rows
-  in `db_browser_b3_explain_test.dart`. `EXPLAIN SELECT 1+1` is `Add`. This is
+- EXPLAIN bytecode for an integer-primary-key insert and a join of two
+  subqueries, plus STAT4. A constant subquery, an integer-primary-key scan,
+  `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a
+  multi-row `VALUES` insert match the pinned opcode rows in
+  `db_browser_b3_explain_test.dart`. `EXPLAIN SELECT 1+1` is `Add`. This is
   not a VDBE.
   `json_pretty` matches the pinned CLI for the cases in
   `db_browser_b3_json_pretty_test.dart`. Correlated `json_each` matches the

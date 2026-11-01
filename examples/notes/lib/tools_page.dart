@@ -5,6 +5,7 @@ import 'database_page.dart';
 import 'metrics_page.dart';
 import 'note_store.dart';
 import 'note_work.dart';
+import 'notes_plot_page.dart';
 
 class ToolsPage extends StatefulWidget {
   const ToolsPage({super.key, required this.store});
@@ -17,11 +18,13 @@ class ToolsPage extends StatefulWidget {
 
 class _ToolsPageState extends State<ToolsPage> {
   final _count = TextEditingController(text: '100');
+  final _csv = TextEditingController();
   var _singleTransaction = true;
 
   @override
   void dispose() {
     _count.dispose();
+    _csv.dispose();
     super.dispose();
   }
 
@@ -228,14 +231,71 @@ class _ToolsPageState extends State<ToolsPage> {
                 onPressed: store.busy
                     ? null
                     : () => _run(() async {
-                        final snapshot = await store.details();
-                        if (!context.mounted) return;
-                        await Navigator.of(context).push(
+                          final snapshot = await store.details();
+                          if (!context.mounted) return;
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => DatabasePage(snapshot: snapshot),
+                            ),
+                          );
+                        }),
+              ),
+              const SizedBox(height: 10),
+              _ToolButton(
+                buttonKey: const Key('export-csv'),
+                label: 'Export CSV',
+                onPressed: store.busy
+                    ? null
+                    : () => setState(() => _csv.text = store.exportCsv()),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                key: const Key('csv-text'),
+                controller: _csv,
+                enabled: !store.busy,
+                minLines: 4,
+                maxLines: 8,
+                style: const TextStyle(color: Color(0xFFF6EFE4), fontSize: 13),
+                cursorColor: const Color(0xFFE15A3A),
+                decoration: const InputDecoration(
+                  labelText: 'CSV',
+                  labelStyle: TextStyle(color: Color(0xFFB7A89A)),
+                  filled: true,
+                  fillColor: Color(0xFF1E1A16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _ToolButton(
+                buttonKey: const Key('import-csv'),
+                label: 'Import CSV',
+                onPressed: store.busy
+                    ? null
+                    : () => _run(() async {
+                          final count = await store.importCsv(_csv.text);
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Imported $count notes')),
+                          );
+                        }),
+              ),
+              const SizedBox(height: 10),
+              _ToolButton(
+                buttonKey: const Key('plot-notes'),
+                label: 'Plot by day',
+                onPressed: store.busy
+                    ? null
+                    : () {
+                        final bars = store.plotByDay();
+                        Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => DatabasePage(snapshot: snapshot),
+                            builder: (_) => NotesPlotPage(bars: bars),
                           ),
                         );
-                      }),
+                      },
               ),
               const SizedBox(height: 10),
               _ToolButton(
@@ -266,9 +326,8 @@ class _MeasureCard extends StatelessWidget {
         ? 0
         : (measurement.cpuMicros * 100) / measurement.elapsedMicros;
     return _Card(
-      title: measurement.singleTransaction
-          ? 'One transaction'
-          : 'Separate save',
+      title:
+          measurement.singleTransaction ? 'One transaction' : 'Separate save',
       lines: [
         'Inserted ${measurement.inserted}',
         'Time ${formatDuration(measurement.elapsedMicros)}',
