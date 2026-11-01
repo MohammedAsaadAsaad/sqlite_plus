@@ -1802,6 +1802,22 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10675 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The journal_mode sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 auto_vacuum writes stay rejected
+
+- `PRAGMA auto_vacuum=FULL` is an empty result on the pinned CLI. The same session then reads `1`. `INCREMENTAL` then reads `2`, and `incremental_vacuum` adds no further row. `NONE` and `auto_vacuum=3` then read `0`.
+- This engine throws `auto_vacuum is not implemented` for `FULL`, `INCREMENTAL`, `NONE`, and `3`. A later read stays `0`. A delete still leaves `count(*)` = 0, and no pointer-map shrink was added. The gap case `auto-vacuum-full` stays rejected. `db_browser_b3_autovacuum_test.dart` records the comparison.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10677 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The auto_vacuum sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 cross-database insert stays rejected
+
+- `INSERT INTO aux.u SELECT v FROM t` is an empty result on the pinned CLI. The same session then reads `count(*)` = 1 and `v` = `m` from `aux.u`, and `t` still holds `m`. Inserting into a missing `aux.u` is `no such table: aux.u` on the CLI.
+- This engine throws `cross-database statement is not supported`. `aux.u` stays empty. `t` still holds `m`, and a later insert of `n` is visible. The gap case `cross-insert` stays rejected. `db_browser_b3_cross_insert_test.dart` records the comparison. No second durable commit was added.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed COUNT tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The cross-database commit stays unchecked. Remaining DML, B4, and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.
