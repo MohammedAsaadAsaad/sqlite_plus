@@ -13,6 +13,13 @@ void main() {
       Platform.environment['SQLITE_PLUS_SQLITE3'] ??
       '/tmp/sqlite-build/sqlite3';
 
+  if (!File(cli()).existsSync()) {
+    test('pinned sqlite3 is not installed', () {
+      markTestSkipped('pinned sqlite3 is not installed');
+    });
+    return;
+  }
+
   Future<String?> pinnedCli() async {
     final tool = cli();
     if (!File(tool).existsSync()) return null;
