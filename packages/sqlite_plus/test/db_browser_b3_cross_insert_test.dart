@@ -181,6 +181,89 @@ void main() {
     await reopenedMain.close();
     await reopenedAux.close();
   });
+
+  test('cross-schema UPDATE and DELETE match the pinned CLI', () async {
+    final tool = cli();
+    const updated = "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ('a'); "
+        "UPDATE aux.u SET v = (SELECT v FROM t); "
+        "SELECT changes(); SELECT v FROM aux.u; SELECT v FROM t;";
+    expect(await _engine(updated), await _pinned(tool, ':memory:', updated));
+
+    const unchanged = "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ('a'); "
+        "UPDATE aux.u SET v = (SELECT v FROM t) WHERE 0; "
+        "SELECT changes(); SELECT v FROM aux.u;";
+    expect(
+        await _engine(unchanged), await _pinned(tool, ':memory:', unchanged));
+
+    const deleted = "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ('m'), ('z'); "
+        "DELETE FROM aux.u WHERE v IN (SELECT v FROM t); "
+        "SELECT changes(); SELECT v FROM aux.u;";
+    expect(await _engine(deleted), await _pinned(tool, ':memory:', deleted));
+
+    const joined = "CREATE TABLE t(k, v); INSERT INTO t VALUES (1, 'm'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(k, v); "
+        "INSERT INTO aux.u VALUES (1, 'a'); "
+        "UPDATE aux.u SET v = t.v FROM t WHERE aux.u.k = t.k; "
+        "SELECT v FROM aux.u;";
+    expect(await _engine(joined), await _pinned(tool, ':memory:', joined));
+
+    const concatenated =
+        "CREATE TABLE t(v); INSERT INTO t VALUES ('m'), ('n'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ('a'); "
+        "UPDATE aux.u SET v = v || (SELECT group_concat(v, '') FROM t); "
+        "SELECT v FROM aux.u;";
+    expect(await _engine(concatenated),
+        await _pinned(tool, ':memory:', concatenated));
+
+    const sameName = "CREATE TABLE t(v); INSERT INTO t VALUES ('main'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.t(v); "
+        "INSERT INTO aux.t VALUES ('aux'); "
+        "UPDATE aux.t SET v = (SELECT v FROM t); SELECT v FROM aux.t;";
+    expect(await _engine(sameName), await _pinned(tool, ':memory:', sameName));
+
+    const absent = "CREATE TABLE t(v); INSERT INTO t VALUES (NULL); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ('a'); "
+        "UPDATE aux.u SET v = (SELECT v FROM t); "
+        "SELECT v IS NULL FROM aux.u; "
+        "DELETE FROM aux.u WHERE v IS NULL AND (SELECT v FROM t) IS NULL; "
+        "SELECT count(*) FROM aux.u;";
+    expect(await _engine(absent), await _pinned(tool, ':memory:', absent));
+
+    const both = "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ('z'); "
+        "BEGIN; UPDATE aux.u SET v = (SELECT v FROM t); "
+        "DELETE FROM t WHERE v = (SELECT v FROM aux.u); COMMIT; "
+        "SELECT count(*) FROM t; SELECT v FROM aux.u;";
+    expect(await _engine(both), await _pinned(tool, ':memory:', both));
+
+    for (final statement in [
+      'UPDATE aux.u SET v = 1',
+      'UPDATE AUX.U SET v = 1',
+      'DELETE FROM aux.u',
+    ]) {
+      final missing = await Process.run(tool, [':memory:', statement]);
+      expect(missing.exitCode, isNonZero, reason: statement);
+      final message = statement.startsWith('UPDATE AUX')
+          ? 'no such table: AUX.U'
+          : 'no such table: aux.u';
+      expect(missing.stderr.toString(), contains(message), reason: statement);
+      final db = await MutableSqliteDatabase.create();
+      addTearDown(db.close);
+      await expectLater(
+          db.execute(statement),
+          throwsA(isA<SqlException>()
+              .having((error) => error.message, 'message', message)));
+    }
+  });
 }
 
 Future<String> _pinned(String tool, String path, String sql) async {

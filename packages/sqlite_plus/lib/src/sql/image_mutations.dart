@@ -25,6 +25,7 @@ import 'expressions.dart';
 import 'connection_state.dart';
 import 'functions.dart';
 import 'windows.dart';
+import 'fts3_format.dart';
 import 'fts5_format.dart';
 import 'fts_text.dart';
 import 'geopoly.dart';
