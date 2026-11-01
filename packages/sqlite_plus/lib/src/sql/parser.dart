@@ -230,6 +230,10 @@ class ColumnExpr extends Expr {
   Set<String> get unaggregatedColumns => {key};
   @override
   Object? evaluate(EvalContext context) {
+    final named = '\u0000col:$key';
+    if (doubleQuoted && context.row.containsKey(named)) {
+      return resolveSqlValue(context.row[named]);
+    }
     final names = {...context.row.keys, ...context.affinities.keys};
     if (context.row.containsKey(key) && !_ignoreStorageKey(names)) {
       return resolveSqlValue(context.row[key]);

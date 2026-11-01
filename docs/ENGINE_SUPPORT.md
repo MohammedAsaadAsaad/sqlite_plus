@@ -65,8 +65,8 @@ quotes remain identifiers unless `doubleQuotedStrings` is set. The default is
 off. With the flag on, an unresolved unqualified double-quoted identifier is a
 string and `db_browser_b3_dqs_test.dart` matches the pinned CLI. The engine
 says `Ambiguous column: title`. The CLI says `ambiguous column name: title`.
-Unquoted `a.title` beside a column named `a.title` still returns the dotted
-column. The CLI returns the `title` column.
+Unquoted `a.title` beside a column named `a.title` returns the `title`
+column. `"a.title"` returns the dotted column. Both match the pinned CLI.
 
 The gap ledger has 25 UTF-8 cases from the pinned CLI. A case matches the CLI
 or names the rejection. The recorded differences include the default-off DQS
@@ -184,7 +184,7 @@ AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 | PRAGMA state | More journal modes, the auto-vacuum algorithm, and per-database cache, busy, and synchronous values |
 | Planning | Native EXPLAIN bytecode, fuller native costing, wider join reorder, built STAT4 statistics, and covering reads of a star or a generated column |
 | Collations | ICU and locale collations, and a separate oracle for REINDEX of a custom collation name |
-| Grammar and errors | Closer native error text. Opt-in double-quoted strings match the pinned CLI in `db_browser_b3_dqs_test.dart`. The default stays off. Unquoted `a.title` beside a column named `a.title` still returns the dotted column |
+| Grammar and errors | Closer native error text. Opt-in double-quoted strings match the pinned CLI in `db_browser_b3_dqs_test.dart`. The default stays off. Unquoted `a.title` beside a column named `a.title` returns the `title` column |
 | Table functions | More virtual-table modules |
 | Windows | Wider window execution and closer planner equivalence |
 | Extensions | FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI |

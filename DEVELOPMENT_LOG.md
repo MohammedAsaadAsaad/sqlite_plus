@@ -1736,7 +1736,14 @@ result=pass
 
 - `json_each(docs.label) RIGHT JOIN docs` returns 0 rows. The table function is scanned with no JSON argument, and the preserved `docs` rows are not added. `json_tree`, `FULL JOIN`, `LEFT JOIN`, an unqualified `label`, and `main.docs.label` do the same. `json_each(missing)` and `json_each(docs.nope)` still raise `No such column`. The pinned CLI text is `no such column: missing` and `no such column: docs.nope`.
 - `db_browser_b3_json_each_test.dart` compared those statements with `/tmp/sqlite-build/sqlite3`. That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3. `docs RIGHT JOIN json_each` still matches the pin. Malformed JSON on a comma join is still rejected.
-- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` and the full `dart test` count are recorded after this run's suite. No wall-clock timing was run. No speedup is claimed.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10660 tests on Dart 3.13.7, Linux x64. The new RIGHT JOIN checks are inside the existing comparison test, so the count did not grow. No wall-clock timing was run. No speedup is claimed.
+- The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
+## 2026-11-01 — B3 qualified a.title
+
+- Unquoted `a.title` is column `title` of alias `a`. A column whose name is `a.title` no longer hides that slot. `"a.title"` and `a."a.title"` still read the dotted column. `db_browser_b3_dqs_test.dart` matches `/tmp/sqlite-build/sqlite3` for the pair, `main.a.title`, `SELECT *`, a join, and `title INT` plus one. Unquoted `a.title` when that is the only column raises `No such column: a.title`. The CLI text is `no such column: a.title`.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- The suite count for this note is filled in after `dart analyze --fatal-infos` and `dart test`. No wall-clock timing was run. No speedup is claimed.
 - The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
 ## 2026-10-31 — Version 0.1.2

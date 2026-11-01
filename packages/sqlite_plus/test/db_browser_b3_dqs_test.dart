@@ -151,7 +151,11 @@ void main() {
       CREATE TABLE kw("from");
       INSERT INTO kw VALUES('col');
       CREATE TABLE spaced("hello world");
-      INSERT INTO spaced VALUES('words')
+      INSERT INTO spaced VALUES('words');
+      CREATE TABLE n(title INT, "a.title" TEXT);
+      INSERT INTO n VALUES(10, 'dotted');
+      CREATE TABLE b(k);
+      INSERT INTO b VALUES(1)
     ''';
     for (final statement in setup.split(';')) {
       final text = statement.trim();
@@ -166,14 +170,20 @@ void main() {
     }
 
     await match('SELECT "a.title", "title" FROM a');
-    // Unquoted a.title still resolves to the column named "a.title".
-    // Pinned SQLite returns the title column. That shape stays unmatched.
-    final collision = await db.query('SELECT a.title FROM a');
-    expect(collision.rows.single.single, 'dotted');
-    final collisionCli =
-        await Process.run(tool, [':memory:', setup, 'SELECT a.title FROM a']);
-    expect(collisionCli.exitCode, 0, reason: collisionCli.stderr.toString());
-    expect(collisionCli.stdout.toString().trimRight(), 'bare');
+    await match('SELECT a.title, "a.title", "title", a."a.title" FROM a');
+    await match("SELECT a.title FROM a WHERE a.title='bare'");
+    await match('SELECT main.a.title, main.a."a.title" FROM a');
+    await match('SELECT * FROM a');
+    await match('SELECT a.title, "a.title", b.k FROM a, b');
+    await match('SELECT n.title+1, typeof(n.title), "a.title" FROM n');
+    await expectLater(
+        db.query('SELECT a.title FROM only'),
+        throwsA(isA<SqlException>().having(
+            (error) => error.message, 'message', 'No such column: a.title')));
+    final missingTail = await Process.run(
+        tool, [':memory:', setup, 'SELECT a.title FROM only']);
+    expect(missingTail.exitCode, isNot(0));
+    expect(missingTail.stderr.toString(), contains('no such column: a.title'));
     await match('SELECT "a.title" FROM only');
     await match('SELECT "from" FROM kw');
     await match('SELECT "hello world" FROM spaced');

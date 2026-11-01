@@ -644,13 +644,25 @@ extension _RelationalQueries on SqliteDatabase {
         (alias) => key.startsWith('$alias.') || key.startsWith('main.$alias.'));
     final onAffinities = <String, String>{};
     final onCollations = <String, String>{};
+    /// A column named `a.title` must not replace the qualified slot `a.title`,
+    /// which is column `title` of alias `a`. The dotted name stays under a
+    /// private key for a double-quoted identifier.
+    void publishBareColumn(Map<String, Object?> result, RowValues row,
+        String bare, List<String> targets) {
+      if (bare.contains('.')) {
+        if (targets.length == 1) {
+          result['\u0000col:$bare'] = row[targets.single];
+        }
+        return;
+      }
+      result.remove(bare);
+      if (targets.length == 1) result[bare] = row[targets.single];
+    }
+
     Map<String, Object?> scope(RowValues row) {
       final result = <String, Object?>{...?outer?.row, ...row};
       for (final entry in refs.entries) {
-        result.remove(entry.key);
-        if (entry.value.length == 1) {
-          result[entry.key] = row[entry.value.single];
-        }
+        publishBareColumn(result, row, entry.key, entry.value);
       }
       return result;
     }
@@ -678,10 +690,7 @@ extension _RelationalQueries on SqliteDatabase {
           if (!identityKey(entry.key)) entry.key: entry.value,
       };
       for (final name in refs.keys) {
-        visible.remove(name);
-        if (onRefs[name]?.length == 1) {
-          visible[name] = values[onRefs[name]!.single];
-        }
+        publishBareColumn(visible, values, name, onRefs[name] ?? const []);
       }
       return EvalContext(
           visible, onAffinities, bound, _pager.header.textEncoding)

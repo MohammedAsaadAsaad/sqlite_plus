@@ -73,8 +73,8 @@ pre-release.
   `json_each(docs.label) RIGHT JOIN docs`, which returns 0 rows.
   `doubleQuotedStrings` defaults to
   off. When it is on, `db_browser_b3_dqs_test.dart` matches the pinned CLI.
-  Unquoted `a.title` beside a column named `a.title` still returns the dotted
-  column.
+  Unquoted `a.title` beside a column named `a.title` returns the `title`
+  column, matching the pinned CLI.
 - A durable commit across two databases, and more journal modes.
 - FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and
   FTS3/FTS4 writes.
