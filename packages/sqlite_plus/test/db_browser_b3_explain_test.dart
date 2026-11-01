@@ -282,9 +282,9 @@ void main() {
       [BigInt.one]
     ]);
     final plan = await db.query('EXPLAIN QUERY PLAN SELECT v FROM t');
-    expect(plan.columns, ['detail']);
-    expect(plan.rows.single.single.toString(), contains('t'));
-    expect(plan.rows.single.single.toString(), isNot(contains('Opcode')));
-    expect(plan.rows.single.single.toString(), isNot(contains('Init')));
+    expect(plan.columns, ['id', 'parent', 'notused', 'detail']);
+    expect(plan.rows.single[3].toString(), contains('t'));
+    expect(plan.rows.single[3].toString(), isNot(contains('Opcode')));
+    expect(plan.rows.single[3].toString(), isNot(contains('Init')));
   });
 }

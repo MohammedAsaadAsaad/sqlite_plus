@@ -311,9 +311,9 @@ void main() {
     await expectLater(
         db.query('EXPLAIN SELECT * FROM t'), throwsA(isA<SqlException>()));
     final plan = await db.query('EXPLAIN QUERY PLAN SELECT * FROM t');
-    expect(plan.columns, ['detail']);
-    expect(plan.rows.single.single.toString(), contains('t'));
-    expect(plan.rows.single.single.toString(), isNot(contains('Opcode')));
+    expect(plan.columns, ['id', 'parent', 'notused', 'detail']);
+    expect(plan.rows.single[3].toString(), 'SCAN t');
+    expect(plan.rows.single[3].toString(), isNot(contains('Opcode')));
   });
 
   test('sqlite_stat4 is stored and is not used for planning', () async {
@@ -336,7 +336,7 @@ void main() {
       ['9']
     ]);
     final plan = await db.query('EXPLAIN QUERY PLAN SELECT v FROM t');
-    expect(plan.rows.single.single.toString(), isNot(contains('stat4')));
+    expect(plan.rows.single[3].toString(), isNot(contains('stat4')));
   });
 
   test('two comma joins reorder by sqlite_stat1 row counts', () async {
@@ -352,8 +352,8 @@ void main() {
     await db.execute('ANALYZE');
     final plan = await db.query(
         'EXPLAIN QUERY PLAN SELECT big.v, small.v FROM big, small ORDER BY big.v');
-    expect(plan.rows.first.first.toString(), contains('small'));
-    expect(plan.rows.last.first.toString(), contains('big'));
+    expect(plan.rows.first[3].toString(), contains('small'));
+    expect(plan.rows.last[3].toString(), contains('big'));
     expect(
         (await db.query(
                 'SELECT big.v, small.v FROM big, small ORDER BY big.v LIMIT 2'))
@@ -385,7 +385,7 @@ void main() {
     expect(coveredPages, lessThan(full.pagesRead));
     final plan =
         await db.query('EXPLAIN QUERY PLAN SELECT a, b FROM t WHERE a=1');
-    expect(plan.rows.single.single.toString(), contains('COVERING'));
+    expect(plan.rows.single[3].toString(), contains('COVERING'));
   });
 
   test('double quotes stay identifiers while DQS is off', () async {

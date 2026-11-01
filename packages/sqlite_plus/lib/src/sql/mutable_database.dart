@@ -357,12 +357,7 @@ final class MutableSqliteDatabase {
               ByteImageStorage(_imageFor(route.schema!)),
               functions: functions);
           try {
-            final lines = reader.describeQueryPlan(route.sql);
-            return QueryResult([
-              'detail'
-            ], [
-              for (final line in lines) [line]
-            ]);
+            return _planResult(reader.explainQueryPlan(route.sql));
           } finally {
             await reader.close();
           }
@@ -421,12 +416,7 @@ final class MutableSqliteDatabase {
               ByteImageStorage(_imageFor(route.schema!)),
               functions: functions);
           try {
-            final lines = reader.describeQueryPlan(route.sql);
-            return QueryResult([
-              'detail'
-            ], [
-              for (final line in lines) [line]
-            ]);
+            return _planResult(reader.explainQueryPlan(route.sql));
           } finally {
             await reader.close();
           }
@@ -963,6 +953,21 @@ final class MutableSqliteDatabase {
     }
     return number;
   }
+
+  QueryResult _planResult(List<ExplainPlanRow> rows) => QueryResult(const [
+        'id',
+        'parent',
+        'notused',
+        'detail'
+      ], [
+        for (final row in rows)
+          [
+            BigInt.from(row.id),
+            BigInt.from(row.parent),
+            BigInt.from(row.notused),
+            row.detail
+          ]
+      ]);
 
   QueryResult _databaseList() {
     final rows = <List<Object?>>[

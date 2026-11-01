@@ -127,15 +127,8 @@ CASES = [
     },
     {
         "id": "explain-query-plan",
-        "disposition": "differs",
         "setup": "CREATE TABLE t(a INTEGER PRIMARY KEY)",
         "sql": "EXPLAIN QUERY PLAN SELECT a FROM t WHERE a=1",
-        "reason": "EXPLAIN QUERY PLAN prints this engine's plan. It is not SQLite's plan text or bytecode.",
-        "engine_detail": {
-            "contains": ["t"],
-            "excludes": ["Opcode", "INTEGER PRIMARY KEY", "QUERY PLAN"],
-        },
-        "sqlite_text_contains": ["INTEGER PRIMARY KEY"],
     },
 ]
 

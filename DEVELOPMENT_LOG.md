@@ -1833,6 +1833,14 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10686 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed. Storage bytes did not change format. A rejected rename keeps the previous image.
 - B3 stays open. Its unmatched parts stay listed with the CLI result. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 EXPLAIN QUERY PLAN matches the compared rows
+
+- `EXPLAIN QUERY PLAN SELECT a FROM t WHERE a=1` matches the pinned CLI: `2,0,33,'SEARCH t USING INTEGER PRIMARY KEY (rowid=?)'`. A full scan is `2,0,216,'SCAN t'`. `WHERE a>1` is `2,0,196,'SEARCH t USING INTEGER PRIMARY KEY (rowid>?)'`. `WHERE a>=1` uses that same cost and `rowid>?`. `WHERE a<1` and `WHERE a<=1` are `2,0,196,'SEARCH t USING INTEGER PRIMARY KEY (rowid<?)'`. `WHERE a>1 AND a<9` is `2,0,156,'SEARCH t USING INTEGER PRIMARY KEY (rowid>? AND rowid<?)'`. `EXPLAIN QUERY PLAN SELECT 1` is `1,0,0,'SCAN CONSTANT ROW'`. `EXPLAIN QUERY PLAN SELECT * FROM missing` is `no such table: missing`.
+- A covering index predicate is `2,0,55,'SEARCH wide USING COVERING INDEX i (a=?)'`. Selecting the uncovered column is `3,0,62,'SEARCH wide USING INDEX i (a=?)'`. `SELECT *` through an index on the non-rowid column is `2,0,56,'SEARCH keyed USING COVERING INDEX ib (b=?)'`. That label does not change the read path. An aliased scan is `2,0,216,'SCAN x'`. The query spelling `T` is kept. The gap case `explain-query-plan` is a match. Multi-table addresses and stat1-adjusted costs were not compared. `EXPLAIN SELECT 1` still matches. `EXPLAIN SELECT 1+1` still throws.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10559 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The EXPLAIN QUERY PLAN sub-item is checked. The B3 parent stays open. The other B3 parts stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.
