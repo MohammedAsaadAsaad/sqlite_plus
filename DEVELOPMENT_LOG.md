@@ -1885,6 +1885,17 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10566 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The `journal_mode` sub-item is checked for those rows. File `wal`, `persist`, and `truncate` stay unswitched. The B3 parent stays open. The FTS3/FTS4 inverted index, `auto_vacuum`, and the cross-database commit stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 auto_vacuum writes match the compared pin rows
+
+- `PRAGMA auto_vacuum=FULL` is an empty result. The same session then reads `1`. `INCREMENTAL` reads `2`. `NONE` and `auto_vacuum=3` read `0`. `-1` and `nope` read `0`, and `Full` then reads `1`. `incremental_vacuum`, `incremental_vacuum(0)`, and `incremental_vacuum(-1)` add no row on that empty database. After `CREATE TABLE`, `FULL` stays `0`. After `user_version=3`, `FULL` stays `0` and `user_version` stays `3`. `FULL` then `INCREMENTAL` reads `2`, a later `NONE` stays `2`, and `1` reads `1`. `temp.auto_vacuum=FULL` reads `1` and `main` stays `0`.
+- The compared FULL, INCREMENTAL, and NONE images match `/tmp/sqlite-build/sqlite3` for `auto_vacuum`, `page_count`, `freelist_count`, `integrity_check`, and the selected value. The pointer-map bytes of the one-index image and the `zeroblob(5000)` image match that CLI. The gap case `auto-vacuum-full` matches.
+- A pointer-map byte `9` is `*** in database main ***` followed by `Failed to read ptrmap key=3`. `SELECT v` is still `1`. An incremental cookie with largest root `0` is `*** in database main ***` followed by `incremental_vacuum enabled with a max rootpage of zero`. `SELECT v` is still `1`, and `auto_vacuum` reads `0`.
+- A crash during the commit of a second insert on a FULL image recovers either the first row or both rows. `integrity_check` is `ok` and `auto_vacuum` stays `1`.
+- `incremental_vacuum` does not move pages. After `INCREMENTAL`, `INSERT` of `zeroblob(5000)`, and `DELETE`, this engine has `page_count` 3 and `freelist_count` 0. The pin keeps `page_count` 4 and `freelist_count` 1 until `incremental_vacuum`. NONE reads still skip pointer maps. No AOT timing was run. No speedup is claimed.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10575 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The `auto_vacuum` sub-item is checked for those rows. Incremental page movement stays unimplemented, with the freelist difference named above. The B3 parent stays open. The FTS3/FTS4 inverted index and the cross-database commit stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

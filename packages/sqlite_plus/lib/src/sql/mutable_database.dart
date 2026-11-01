@@ -61,7 +61,9 @@ Future<MutableSqliteDatabase> openInMemory({
 /// In-memory by default; an ImagePager supplies the durable commit boundary.
 /// Transactions and savepoints retain independent image snapshots.
 final class MutableSqliteDatabase {
-  MutableSqliteDatabase._(this._image, this._journal);
+  MutableSqliteDatabase._(this._image, this._journal) {
+    _flexibleAutoVacuum.add('temp');
+  }
   Uint8List _image;
   Uint8List _temp = DatabaseImageBuilder.empty();
   final Map<String, Uint8List> _attached = {};
@@ -79,6 +81,10 @@ final class MutableSqliteDatabase {
   /// Connection journal mode. Absent means the default: `memory` for an
   /// in-memory main database, otherwise `delete` (or `wal` when byte 18 is 2).
   final Map<String, String> _journalModes = {};
+
+  /// Schemas whose first page image has not been stored. A fresh connection
+  /// can still turn auto-vacuum on. An opened file cannot.
+  final Set<String> _flexibleAutoVacuum = {};
 
   /// Reads ATTACH file paths. Memory ATTACH does not use it. A missing reader
   /// rejects file paths. The bytes are a connection-local copy, not a second journal.
@@ -111,20 +117,36 @@ final class MutableSqliteDatabase {
   bool get inTransaction => _checkpoint != null;
 
   /// Creates an empty in-memory database.
+  ///
+  /// Auto-vacuum can still be turned on, as on a fresh SQLite connection,
+  /// until the first page image is stored.
   static Future<MutableSqliteDatabase> create(
-          {int pageSize = 4096, int encoding = 1}) =>
-      fromImage(
-          DatabaseImageBuilder.empty(pageSize: pageSize, encoding: encoding));
+      {int pageSize = 4096, int encoding = 1}) async {
+    final database = await fromImage(
+        DatabaseImageBuilder.empty(pageSize: pageSize, encoding: encoding));
+    database._flexibleAutoVacuum.add('main');
+    return database;
+  }
 
   /// Reopens a database from [exportImage] bytes.
   static Future<MutableSqliteDatabase> fromImage(Uint8List image) async {
     if (image.length >= 100) {
       final header = DatabaseHeader.decode(image);
-      if (header.largestRootPage != 0 ||
-          header.writeVersion != 1 ||
-          header.readVersion != 1) {
+      if (header.writeVersion != 1 ||
+          header.readVersion != 1 ||
+          header.largestRootPage > header.databaseSize) {
         throw UnsupportedError(
             'Writer requires a complete rollback-format database image');
+      }
+      if (header.largestRootPage != 0) {
+        try {
+          await ImageMutations.load(Uint8List.fromList(image));
+        } on UnsupportedError {
+          rethrow;
+        } catch (_) {
+          throw UnsupportedError(
+              'Writer requires a complete rollback-format database image');
+        }
       }
     }
     final storage = MemoryStorageBackend();
@@ -177,6 +199,7 @@ final class MutableSqliteDatabase {
   }
 
   void _storeImage(String schema, Uint8List image) {
+    _flexibleAutoVacuum.remove(schema);
     final copy = Uint8List.fromList(image);
     if (schema == 'main') {
       _image = copy;
@@ -544,10 +567,19 @@ final class MutableSqliteDatabase {
           'busy_timeout',
           'synchronous',
           'journal_mode',
-          'auto_vacuum'
+          'auto_vacuum',
+          'incremental_vacuum'
         };
         if (!writable.contains(name)) {
           throw const SqlException('Unsupported writable PRAGMA');
+        }
+        if (name == 'incremental_vacuum') {
+          if (parser.current.text == '=' || parser.current.text == '(') {
+            _pragmaValue(parser);
+          } else {
+            parser.finish();
+          }
+          return const MutationResult(0, null);
         }
         final statePragma =
             name == 'foreign_keys' || name == 'recursive_triggers';
@@ -568,6 +600,8 @@ final class MutableSqliteDatabase {
           fields.setUint32(24, counter);
           fields.setUint32(92, counter);
           await _commitSchema(parsed.$1, image);
+        } else if (name == 'auto_vacuum') {
+          await _applyAutoVacuum(parsed.$1, value);
         } else if (!statePragma) {
           _applyConnectionPragma(name, value, parsed.$1);
         }
@@ -885,11 +919,23 @@ final class MutableSqliteDatabase {
       'synchronous',
       'journal_mode',
       'auto_vacuum',
+      'incremental_vacuum',
       'database_list'
     };
     final argument = parser.current.text == '=' || parser.current.text == '(';
     final connectionWrite =
         argument && connection.contains(name) && name != 'database_list';
+    if (name == 'incremental_vacuum') {
+      if (argument) _pragmaValue(parser);
+      parser.finish();
+      return QueryResult([name], const []);
+    }
+    if (name == 'auto_vacuum' && argument) {
+      final value = _pragmaValue(parser);
+      parser.finish();
+      await _applyAutoVacuum(schema, value);
+      return QueryResult([name], const []);
+    }
     if (connectionWrite) {
       final value = _pragmaValue(parser);
       _applyConnectionPragma(name, value, schema);
@@ -922,7 +968,9 @@ final class MutableSqliteDatabase {
       case 'journal_mode':
         return _journalModeFor(schema);
       case 'auto_vacuum':
-        return BigInt.zero;
+        final image = _imageFor(schema);
+        if (image.length < 100) return BigInt.zero;
+        return BigInt.from(DatabaseHeader.decode(image).autoVacuumMode);
       default:
         throw SqlException('Unsupported PRAGMA $name');
     }
@@ -946,8 +994,6 @@ final class MutableSqliteDatabase {
         _synchronous = _synchronousMode(value);
       case 'journal_mode':
         _setJournalMode(schema, value);
-      case 'auto_vacuum':
-        throw const SqlException('auto_vacuum is not implemented');
       default:
         throw SqlException('Unsupported writable PRAGMA');
     }
@@ -1059,7 +1105,55 @@ final class MutableSqliteDatabase {
     final opened = await SqliteDatabase.openReadOnly(storage);
     await opened.close();
     _attached[name] = Uint8List.fromList(bytes);
+    if (path == ':memory:') _flexibleAutoVacuum.add(name);
     _invalidateCatalog();
+  }
+
+  /// `none`/`full`/`incremental`, or an integer kept only when it is 0, 1, or 2.
+  int _parseAutoVacuum(String value) {
+    switch (asciiLower(value)) {
+      case 'none':
+        return 0;
+      case 'full':
+        return 1;
+      case 'incremental':
+        return 2;
+    }
+    final number = _pragmaInteger(value);
+    if (number >= 0 && number <= 2) return number;
+    return 0;
+  }
+
+  /// Writes the auto-vacuum cookies when this connection is still flexible, or
+  /// switches full and incremental after the database is already auto-vacuum.
+  /// Turning auto-vacuum on or off is ignored once the page image is fixed.
+  /// The assignment itself returns no row.
+  Future<void> _applyAutoVacuum(String schema, String value) async {
+    final requested = _parseAutoVacuum(value);
+    if (schema == 'main') _materializeMain();
+    final image = Uint8List.fromList(_imageFor(schema));
+    if (image.length < 100) return;
+    final header = DatabaseHeader.decode(image);
+    final current = header.autoVacuumMode;
+    final flexible = _flexibleAutoVacuum.contains(schema);
+    if (flexible) {
+      if (requested == 0) return;
+    } else if (current == 0 || requested == 0) {
+      return;
+    }
+    final fields = ByteData.sublistView(image);
+    final oldLargest = fields.getUint32(52);
+    final oldIncremental = fields.getUint32(64);
+    if (oldLargest == 0) fields.setUint32(52, 1);
+    fields.setUint32(64, requested == 2 ? 1 : 0);
+    if (fields.getUint32(52) == oldLargest &&
+        fields.getUint32(64) == oldIncremental) {
+      return;
+    }
+    final counter = (fields.getUint32(24) + 1) & 0xffffffff;
+    fields.setUint32(24, counter);
+    fields.setUint32(92, counter);
+    await _commitSchema(schema, image);
   }
 
   void _detach(String name) {

@@ -7,6 +7,7 @@ import '../btree/page_patch.dart';
 import '../btree/rowid_page_patch.dart';
 import '../btree/table_image_writer.dart';
 import '../format/database_header.dart';
+import '../format/pointer_map.dart';
 import '../pager/read_only_pager.dart';
 import '../storage/memory_storage_backend.dart';
 import 'catalog.dart';
@@ -280,7 +281,7 @@ final class ImageMutations {
       if (image.length > 64 * 1024 * 1024 ||
           !header.hasValidDatabaseSize ||
           header.databaseSize * header.pageSize != image.length ||
-          header.largestRootPage != 0 ||
+          header.largestRootPage > header.databaseSize ||
           header.reservedBytes != 0) {
         throw UnsupportedError(
             'Writer requires complete non-auto-vacuum image without reserved bytes');
@@ -322,6 +323,14 @@ final class ImageMutations {
           freeCount++;
         }
         trunk = bytes.getUint32(0);
+      }
+      if (header.largestRootPage != 0) {
+        for (var page = 2; page <= pager.pageCount; page++) {
+          if (!PointerMap.isPage(header, page)) continue;
+          if (!owned.add(page)) {
+            throw const FormatException('Pointer map page is also a tree page');
+          }
+        }
       }
       if (freeCount != header.freelistPages ||
           owned.length != pager.pageCount) {
@@ -400,6 +409,66 @@ final class ImageMutations {
     }
   }
 
+  /// Pointer-map and auto-vacuum header errors, in the pin's integrity text.
+  /// None databases only look at the incremental cookie.
+  static Future<String?> _autoVacuumIntegrity(Uint8List image) async {
+    final header = DatabaseHeader.decode(image);
+    const prefix = '*** in database main ***\n';
+    if (header.largestRootPage == 0) {
+      if (header.incrementalVacuum != 0) {
+        return '${prefix}incremental_vacuum enabled with a max rootpage of zero';
+      }
+      return null;
+    }
+    final storage = MemoryStorageBackend();
+    await storage.write(0, image);
+    final pager = await ReadOnlyPager.open(storage);
+    try {
+      final catalog = await DatabaseCatalog.read(pager);
+      var maxRoot = 1;
+      final roots = <int>[];
+      for (final entry in catalog.entries) {
+        if (entry.rootPage == 0) continue;
+        roots.add(entry.rootPage);
+        if (entry.rootPage > maxRoot) maxRoot = entry.rootPage;
+      }
+      if (maxRoot != header.largestRootPage) {
+        return '${prefix}max rootpage ($maxRoot) disagrees with header '
+            '(${header.largestRootPage})';
+      }
+      String? check(int page, int type, int parent) {
+        final map = PointerMap.mapPage(header, page);
+        final offset = 5 * (page - map - 1);
+        if (map < 2 ||
+            map > pager.pageCount ||
+            offset < 0 ||
+            offset + 5 > header.usableSize) {
+          return '${prefix}Failed to read ptrmap key=$page';
+        }
+        final start = (map - 1) * header.pageSize + offset;
+        final got = image[start];
+        if (got < PointerMap.rootPage || got > PointerMap.btree) {
+          return '${prefix}Failed to read ptrmap key=$page';
+        }
+        final gotParent = ByteData.sublistView(image).getUint32(start + 1);
+        if (got != type || gotParent != parent) {
+          return '${prefix}Bad ptr map entry key=$page expected=($type,$parent) '
+              'got=($got,$gotParent)';
+        }
+        return null;
+      }
+
+      for (final root in roots) {
+        if (root <= 1) continue;
+        final error = check(root, PointerMap.rootPage, 0);
+        if (error != null) return error;
+      }
+      return null;
+    } finally {
+      await pager.close();
+    }
+  }
+
   /// Checks supported physical trees and compares persisted index records with
   /// records rebuilt from the table contents. The caller's image is unchanged.
   static Future<List<String>> integrity(Uint8List image,
@@ -407,6 +476,8 @@ final class ImageMutations {
     final pagers = <ReadOnlyPager>[];
     try {
       final state = await load(image);
+      final vacuumError = await _autoVacuumIntegrity(image);
+      if (vacuumError != null) return [vacuumError];
       state._validate();
       if (quick) return ['ok'];
       final expected = state.serialize();

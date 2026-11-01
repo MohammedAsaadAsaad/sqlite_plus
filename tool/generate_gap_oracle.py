@@ -93,11 +93,8 @@ CASES = [
     },
     {
         "id": "auto-vacuum-full",
-        "disposition": "rejected",
         "kind": "execute",
         "sql": "PRAGMA auto_vacuum=FULL",
-        "reason": "auto_vacuum is not implemented. A write is rejected. An image with a non-zero largest root page is not opened as success.",
-        "engine_message": "auto_vacuum is not implemented",
     },
     {
         "id": "cross-insert",

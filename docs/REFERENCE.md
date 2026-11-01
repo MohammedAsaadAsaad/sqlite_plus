@@ -48,7 +48,7 @@ opens the in-memory engine.
 
 `COMPATIBILITY_MATRIX.md` records the tested surface. `EXPLAIN SELECT 1` matches the pinned opcode rows. Planned next are
 EXPLAIN bytecode beyond a literal projection, STAT4 planning,
-auto-vacuum writes, a durable two-database commit, more journal modes, extended FTS, ICU and locale
+incremental auto-vacuum page movement, a durable two-database commit, more journal modes, extended FTS, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
 rows on Linux x64. Version `0.1.2` is the release in this tree. See
@@ -432,8 +432,9 @@ clock shifts, start/weekday modifiers, floor/ceiling and ISO week formatting.
 Closer host local-time behavior, more input modifiers, and extreme floating
 precision are planned.
 
-Integrity checks are bounded to complete supported images up to 64 MiB without
-auto-vacuum/reserved bytes. They verify tree/freelist ownership, constraints and
+Integrity checks are bounded to complete supported images up to 64 MiB.
+Reserved bytes stay unsupported. Auto-vacuum images report the compared
+pointer-map errors. They verify tree/freelist ownership, constraints and
 persisted index contents against table data. QUICK_CHECK omits index/table
 content comparison; FOREIGN_KEY_CHECK reports violating rows independently of
 foreign_keys enable state. Closer native error wording is planned.
@@ -443,7 +444,7 @@ The current baseline and the planned follow-up are in
 objects, one attached database, the connection pragmas named in the matrix,
 one custom collation, this engine's EXPLAIN QUERY PLAN text, a bounded join
 reorder, covering-index reads, and incremental page writes for the tested
-shapes. `EXPLAIN SELECT 1` matches the pinned opcode rows. Planned next are EXPLAIN bytecode beyond a literal projection, STAT4, auto-vacuum, and a
+shapes. `EXPLAIN SELECT 1` matches the pinned opcode rows. Planned next are EXPLAIN bytecode beyond a literal projection, STAT4, incremental auto-vacuum page movement, and a
 durable cross-database write. Items 77–82 add `openBrowserStorage` and
 `BrowserDatabaseConnection`. The caller reads `canRead`, `canWrite`,
 `durabilityPromised`, and `placement`. The current round trip uses an

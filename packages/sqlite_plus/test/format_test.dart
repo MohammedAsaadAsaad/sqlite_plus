@@ -75,7 +75,6 @@ void main() {
       [23, 31],
       [47, 5],
       [59, 4],
-      [67, 2],
       [72, 1],
       [91, 1],
     ]) {
@@ -84,6 +83,11 @@ void main() {
       expect(() => DatabaseHeader.decode(bytes), throwsFormatException,
           reason: 'offset ${edit[0]}');
     }
+    final incremental = fixture()..[67] = 2;
+    final header = DatabaseHeader.decode(incremental);
+    expect(header.incrementalVacuum, 2);
+    expect(header.largestRootPage, 0);
+    expect(header.autoVacuumMode, 0);
   });
   test('all legal page sizes and usable-size boundary', () {
     for (var size = 512; size <= 65536; size *= 2) {

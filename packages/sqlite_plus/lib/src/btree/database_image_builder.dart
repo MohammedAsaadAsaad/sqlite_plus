@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../format/database_header.dart';
+import '../format/pointer_map.dart';
 import '../format/record_encoder.dart';
 import '../sql/tokenizer.dart';
 import 'table_image_writer.dart';
@@ -72,29 +73,36 @@ abstract final class DatabaseImageBuilder {
       {bool schemaChanged = false, int maxImageBytes = 64 * 1024 * 1024}) {
     final header = DatabaseHeader.decode(original);
     final size = header.pageSize;
-    if (header.largestRootPage != 0 || header.reservedBytes != 0) {
-      throw UnsupportedError(
-          'Auto-vacuum/reserved-byte image rebuild is unsupported');
+    if (header.reservedBytes != 0) {
+      throw UnsupportedError('Reserved-byte image rebuild is unsupported');
     }
+    final vacuum = header.largestRootPage != 0;
     final roots = objects
         .where((object) =>
             !object.virtualTable &&
             (object.type == 'table' || object.type == 'index'))
         .toList();
-    final pages = <Uint8List>[
-      Uint8List(size),
-      for (final _ in roots) Uint8List(size)
-    ];
+    final pages = <Uint8List>[Uint8List(size)];
     pages[0].setRange(0, 100, original);
-    for (var i = 0; i < roots.length; i++) {
-      roots[i].rootPage = i + 2;
-    }
+    // Page number to pointer-map type and parent. Map pages are omitted.
+    final pointer = <int, (int, int)>{};
+    final overflowOf = Map<Uint8List, int>.identity();
     int allocate() {
-      if ((pages.length + 1) * size > maxImageBytes) {
-        throw const SqlException('Database image limit exceeded');
+      while (true) {
+        if ((pages.length + 1) * size > maxImageBytes) {
+          throw const SqlException('Database image limit exceeded');
+        }
+        pages.add(Uint8List(size));
+        final number = pages.length;
+        if (vacuum && PointerMap.isPage(header, number)) continue;
+        if (vacuum) pointer[number] = (PointerMap.btree, 0);
+        return number;
       }
-      pages.add(Uint8List(size));
-      return pages.length;
+    }
+
+    for (final root in roots) {
+      root.rootPage = allocate();
+      if (vacuum) pointer[root.rootPage] = (PointerMap.rootPage, 0);
     }
 
     Uint8List payloadCell(List<Object?> values, bool table, {BigInt? rowid}) {
@@ -128,6 +136,22 @@ abstract final class DatabaseImageBuilder {
       result.setRange(prefix.length, prefix.length + local, payload);
       if (first != 0) {
         ByteData.sublistView(result).setUint32(result.length - 4, first);
+        if (vacuum) {
+          overflowOf[result] = first;
+          var previous = 0;
+          var page = first;
+          while (page != 0) {
+            pointer[page] = (
+              previous == 0
+                  ? PointerMap.overflowFirst
+                  : PointerMap.overflowNext,
+              previous == 0 ? 0 : previous
+            );
+            final next = ByteData.sublistView(pages[page - 1]).getUint32(0);
+            previous = page;
+            page = next;
+          }
+        }
       }
       return result;
     }
@@ -151,6 +175,26 @@ abstract final class DatabaseImageBuilder {
         data.setUint16(start + length + 2 * i, end);
       }
       data.setUint16(start + 5, end == 65536 ? 0 : end);
+      if (vacuum) {
+        for (final cell in cells) {
+          final first = overflowOf[cell];
+          if (first == null) continue;
+          pointer[first] = (PointerMap.overflowFirst, number);
+        }
+      }
+      if (vacuum && right != null) {
+        for (final cell in cells) {
+          final child = ByteData.sublistView(cell).getUint32(0);
+          final role = pointer[child];
+          if (role != null && role.$1 == PointerMap.btree) {
+            pointer[child] = (PointerMap.btree, number);
+          }
+        }
+        final role = pointer[right];
+        if (role != null && role.$1 == PointerMap.btree) {
+          pointer[right] = (PointerMap.btree, number);
+        }
+      }
     }
 
     Uint8List tableSeparator(int child, BigInt key) {
@@ -346,6 +390,22 @@ abstract final class DatabaseImageBuilder {
     }
     data.setUint32(44, 4);
     data.setUint32(96, 3053001);
+    if (vacuum) {
+      var largest = 1;
+      for (final root in roots) {
+        if (root.rootPage > largest) largest = root.rootPage;
+      }
+      data.setUint32(52, largest);
+      data.setUint32(64, header.incrementalVacuum);
+      for (final entry in pointer.entries) {
+        final page = entry.key;
+        final map = PointerMap.mapPage(header, page);
+        final slot = 5 * (page - map - 1);
+        final mapBytes = pages[map - 1];
+        mapBytes[slot] = entry.value.$1;
+        ByteData.sublistView(mapBytes).setUint32(slot + 1, entry.value.$2);
+      }
+    }
     return Uint8List.fromList(pages.expand((p) => p).toList());
   }
 }

@@ -275,16 +275,20 @@ void main() {
         db.execute('PRAGMA busy_timeout=-1'), throwsA(isA<SqlException>()));
   });
 
-  test('auto_vacuum reads the header and writers still reject it', () async {
+  test('auto_vacuum on a fresh connection is stored in the header', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
-    final before = db.exportImage();
     expect(
         (await db.query('PRAGMA auto_vacuum')).rows.single.single, BigInt.zero);
-    await expectLater(
-        db.execute('PRAGMA auto_vacuum=1'), throwsA(isA<SqlException>()));
-    expect(db.exportImage(), before);
-    final vacuum = Uint8List.fromList(before);
+    expect((await db.query('PRAGMA auto_vacuum=1')).rows, isEmpty);
+    expect(
+        (await db.query('PRAGMA auto_vacuum')).rows.single.single, BigInt.one);
+    expect(DatabaseHeader.decode(db.exportImage()).largestRootPage, 1);
+    final opened = await MutableSqliteDatabase.fromImage(db.exportImage());
+    addTearDown(opened.close);
+    expect((await opened.query('PRAGMA auto_vacuum')).rows.single.single,
+        BigInt.one);
+    final vacuum = Uint8List.fromList(DatabaseImageBuilder.empty());
     ByteData.sublistView(vacuum).setUint32(52, 2);
     await expectLater(
         MutableSqliteDatabase.fromImage(vacuum), throwsUnsupportedError);
