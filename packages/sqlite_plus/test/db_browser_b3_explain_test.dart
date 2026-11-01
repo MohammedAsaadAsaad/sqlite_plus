@@ -236,6 +236,211 @@ void main() {
     expect(blob.rows[1][5], String.fromCharCode(0xff));
   });
 
+  test('constant arithmetic EXPLAIN matches the pinned CLI', () async {
+    final tool = await pinnedCli();
+    expect(tool, isNotNull);
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    const statements = <String>[
+      'EXPLAIN SELECT 1+1',
+      'EXPLAIN SELECT 5-2',
+      'EXPLAIN SELECT 2-5',
+      'EXPLAIN SELECT 8/2',
+      'EXPLAIN SELECT 8%3',
+      "EXPLAIN SELECT 'ab'||'c'",
+      'EXPLAIN SELECT (1+2)',
+      'EXPLAIN SELECT ((1+2))',
+      'EXPLAIN SELECT 1+2+3',
+      'EXPLAIN SELECT 1+2+3+4',
+      'EXPLAIN SELECT 1+2*3',
+      'EXPLAIN SELECT 1*2+3',
+      'EXPLAIN SELECT (1+2)*3',
+      'EXPLAIN SELECT 1*2*3',
+      'EXPLAIN SELECT 10/2/2',
+      'EXPLAIN SELECT 4-1-1',
+      'EXPLAIN SELECT 2*3+4*5',
+      'EXPLAIN SELECT (1+2)+(1+2)',
+      'EXPLAIN SELECT 1+1,1+1',
+      'EXPLAIN SELECT 1+2,3',
+      "EXPLAIN SELECT 'a'||'a'",
+      "EXPLAIN SELECT 'a'||'a', 'a'",
+      "EXPLAIN SELECT 'a'||'b'||'c'",
+      'EXPLAIN SELECT 1||2||3',
+      'EXPLAIN SELECT -(1)',
+      'EXPLAIN SELECT -(-1)',
+      'EXPLAIN SELECT -(-1)+1',
+      'EXPLAIN SELECT 1+-(-1)',
+      'EXPLAIN SELECT 1+1, 1',
+      'EXPLAIN SELECT 1+TRUE',
+      'EXPLAIN SELECT TRUE+1',
+      'EXPLAIN SELECT 8%3, 8/2, 5-2',
+      "EXPLAIN SELECT NULL||'a', 1+1",
+      'EXPLAIN SELECT 1e2+1',
+      'EXPLAIN SELECT 1/0',
+      'EXPLAIN SELECT 1 WHERE 1',
+      'EXPLAIN SELECT 1 WHERE TRUE',
+      'EXPLAIN SELECT 1 WHERE 2',
+      'EXPLAIN SELECT 1 WHERE (1)',
+      'EXPLAIN SELECT 1 WHERE 0x1',
+      'EXPLAIN SELECT 1 WHERE NOT 0',
+      'EXPLAIN SELECT 1 WHERE NOT NOT 1',
+      'EXPLAIN SELECT FALSE, 1 WHERE TRUE',
+      'EXPLAIN SELECT 1+1 WHERE 1',
+      'EXPLAIN SELECT 1 WHERE 0',
+      'EXPLAIN SELECT 1 WHERE FALSE',
+      'EXPLAIN SELECT 1 WHERE (0)',
+      'EXPLAIN SELECT 1 WHERE ((0))',
+      'EXPLAIN SELECT 1 WHERE 00',
+      'EXPLAIN SELECT 1 WHERE 0x0',
+      'EXPLAIN SELECT 1 WHERE NOT 1',
+      'EXPLAIN SELECT 1 WHERE NOT NOT 0',
+      'EXPLAIN SELECT 1,2 WHERE 0',
+      'EXPLAIN SELECT 1,2,3 WHERE 0',
+      'EXPLAIN SELECT TRUE WHERE FALSE',
+      'EXPLAIN SELECT TRUE, FALSE WHERE 0',
+      'EXPLAIN SELECT 1+1 WHERE 0',
+      'EXPLAIN SELECT 1+2*3 WHERE 0',
+      'EXPLAIN SELECT 1 WHERE NULL',
+      'EXPLAIN SELECT 1 WHERE 0.0',
+      'EXPLAIN SELECT 1 WHERE 1.0',
+      "EXPLAIN SELECT 1 WHERE 'a'",
+      "EXPLAIN SELECT 1 WHERE ''",
+      "EXPLAIN SELECT 1 WHERE '0'",
+      'EXPLAIN SELECT 1 WHERE -1',
+      'EXPLAIN SELECT 1 WHERE +0',
+      'EXPLAIN SELECT 1 WHERE -0',
+      'EXPLAIN SELECT 1 WHERE +1',
+      'EXPLAIN SELECT 1 WHERE -(1)',
+      'EXPLAIN SELECT 1 WHERE 0.5',
+      "EXPLAIN SELECT 1 WHERE x'61'",
+      "EXPLAIN SELECT 1 WHERE x''",
+      "EXPLAIN SELECT 1 WHERE x'00'",
+      'EXPLAIN SELECT 1 WHERE 1+1',
+      'EXPLAIN SELECT 1 WHERE (1+1)',
+      'EXPLAIN SELECT 1 WHERE 2+2',
+      'EXPLAIN SELECT 1 WHERE 1-1',
+      "EXPLAIN SELECT 1 WHERE 'a'||'b'",
+      "EXPLAIN SELECT 1 WHERE NULL||'a'",
+      'EXPLAIN SELECT 1 WHERE 1+0',
+      'EXPLAIN SELECT 1 WHERE 0+0',
+      'EXPLAIN SELECT 1 WHERE 5-5',
+      "EXPLAIN SELECT 1 WHERE 'a'||''",
+      'EXPLAIN SELECT 1+1 WHERE 0.0',
+      "EXPLAIN SELECT 1+1 WHERE 'a'",
+      'EXPLAIN SELECT 1+1 WHERE 1+1',
+      'EXPLAIN SELECT 1,2 WHERE 1+2',
+      'EXPLAIN SELECT 1+2 WHERE 1+2',
+      "EXPLAIN SELECT 1+1 WHERE 'a'||'b'",
+      'EXPLAIN SELECT 1 WHERE 2*3+4*5',
+      'EXPLAIN SELECT 1 WHERE -(-1)',
+      'EXPLAIN SELECT NULL WHERE NULL',
+      "EXPLAIN SELECT 1, NULL WHERE 'a'",
+      "EXPLAIN SELECT x'61' WHERE x'61'",
+    ];
+    for (final sql in statements) {
+      final engine = await db.query(sql);
+      final browsed = await db.browse(sql);
+      final rows = [
+        for (final line in await pinnedLines(tool!, sql)) parseQuote(line)
+      ];
+      expect(engine.columns,
+          ['addr', 'opcode', 'p1', 'p2', 'p3', 'p4', 'p5', 'comment'],
+          reason: sql);
+      expect(engine.rows, rows, reason: sql);
+      expect(browsed.rows, engine.rows, reason: sql);
+    }
+  });
+
+  test('table scan and literal INSERT EXPLAIN match the pinned CLI', () async {
+    final tool = await pinnedCli();
+    expect(tool, isNotNull);
+    const cases = <(String, String)>[
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT a FROM t'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN SELECT a FROM t'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN SELECT b FROM t'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN SELECT * FROM t'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN SELECT a,b FROM t'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN SELECT b,a FROM t'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN SELECT a,a FROM t'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT * FROM t'),
+      ('CREATE TABLE t(a); CREATE TABLE u(b);', 'EXPLAIN SELECT b FROM u'),
+      ('CREATE TABLE t(a); CREATE TABLE u(b);', 'EXPLAIN SELECT a FROM t'),
+      ('CREATE TABLE t(a,b,c);', 'EXPLAIN SELECT a,c FROM t'),
+      ('CREATE TABLE t(a,b,c);', 'EXPLAIN SELECT c,a FROM t'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT a FROM main.t'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT t.a FROM t'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT a FROM t AS x'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT x.a FROM t AS x'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT t.* FROM t'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT /*c*/ a FROM t'),
+      ('CREATE TABLE t("A b");', 'EXPLAIN SELECT "A b" FROM t'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT a FROM t WHERE 1'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT a FROM t WHERE 0'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT a FROM t WHERE 0.0'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT a FROM t WHERE 1+1'),
+      ('CREATE TABLE t(a INT, b TEXT);', 'EXPLAIN SELECT b, a FROM t'),
+      ('CREATE TABLE t(a INT PRIMARY KEY);', 'EXPLAIN SELECT a FROM t'),
+      ('', 'EXPLAIN SELECT name FROM sqlite_schema'),
+      ('', 'EXPLAIN SELECT type, name FROM sqlite_master'),
+      ('', 'EXPLAIN SELECT * FROM sqlite_schema'),
+      ('CREATE TABLE t(a);', 'EXPLAIN SELECT name FROM sqlite_schema'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (1)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (NULL)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (-1)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (-0)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (+1)'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN INSERT INTO t VALUES (1,2)'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN INSERT INTO t DEFAULT VALUES'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t DEFAULT VALUES'),
+      ('CREATE TABLE t(a,b,c);', 'EXPLAIN INSERT INTO t DEFAULT VALUES'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN INSERT INTO t(a,b) VALUES (1,2)'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN INSERT INTO t(b,a) VALUES (1,2)'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN INSERT INTO t(a) VALUES (1)'),
+      ('CREATE TABLE t(a,b);', 'EXPLAIN INSERT INTO t(a,b) VALUES (1, NULL)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO T VALUES (1)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO "t" VALUES (1)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO [t] VALUES (1)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO main.t VALUES (1)'),
+      ('CREATE TABLE "Hello"(a);', 'EXPLAIN INSERT INTO hello VALUES (1)'),
+      ('CREATE TABLE "T"(a);', 'EXPLAIN INSERT INTO t VALUES (1)'),
+      ('CREATE TABLE "T t"(a);', 'EXPLAIN INSERT INTO "T t" VALUES (1)'),
+      ('CREATE TABLE "T t"(a);', 'EXPLAIN SELECT a FROM "T t"'),
+      ('CREATE TABLE t(a);', 'EXPLAIN REPLACE INTO t VALUES (1)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (1+2*3)'),
+      ('CREATE TABLE t(a);', "EXPLAIN INSERT INTO t VALUES ('ab')"),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (1.5)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (/*c*/ 1)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (2147483648)'),
+      ('CREATE TABLE t(a);', 'EXPLAIN INSERT INTO t VALUES (0x10)'),
+      (
+        'CREATE TABLE t(a, b DEFAULT 2);',
+        'EXPLAIN INSERT INTO t(a,b) VALUES (1,2)'
+      ),
+    ];
+    for (final (setup, sql) in cases) {
+      final db = await MutableSqliteDatabase.create();
+      addTearDown(db.close);
+      for (final part in setup.split(';')) {
+        final statement = part.trim();
+        if (statement.isEmpty) continue;
+        await db.execute(statement);
+      }
+      final QueryResult engine;
+      try {
+        engine = await db.query(sql);
+      } catch (error) {
+        fail('$setup $sql\n$error');
+      }
+      final browsed = await db.browse(sql);
+      final script = setup.isEmpty ? sql : '$setup $sql';
+      final rows = [
+        for (final line in await pinnedLines(tool!, script)) parseQuote(line)
+      ];
+      expect(engine.rows, rows, reason: script);
+      expect(browsed.rows, engine.rows, reason: script);
+    }
+  });
+
   test('unsupported EXPLAIN stays rejected beside the CLI program', () async {
     final tool = await pinnedCli();
     expect(tool, isNotNull);
@@ -243,14 +448,11 @@ void main() {
     addTearDown(db.close);
     await db.execute('CREATE TABLE t(v)');
     const rejected = <String>[
-      'EXPLAIN SELECT 1+1',
-      'EXPLAIN SELECT -(-1)',
-      'EXPLAIN SELECT 1 WHERE 0',
-      'EXPLAIN SELECT 1 WHERE 1',
       'EXPLAIN SELECT 1 FROM (SELECT 1)',
-      'EXPLAIN SELECT * FROM t',
-      'EXPLAIN INSERT INTO t VALUES (1)',
       'EXPLAIN SELECT title',
+      'EXPLAIN SELECT rowid FROM t',
+      'EXPLAIN SELECT 1 WHERE NOT 0.0',
+      'EXPLAIN SELECT 1 WHERE a',
     ];
     for (final sql in rejected) {
       await expectLater(
@@ -258,22 +460,59 @@ void main() {
           throwsA(isA<SqlException>().having((error) => error.message,
               'message', 'EXPLAIN bytecode is not implemented')),
           reason: sql);
-    }
-    for (final sql in rejected) {
       await expectLater(
           db.browse(sql),
           throwsA(isA<SqlException>().having((error) => error.message,
               'message', 'EXPLAIN bytecode is not implemented')),
           reason: sql);
     }
-    final add = await pinnedLines(tool!, 'EXPLAIN SELECT 1+1');
-    expect(add.map(parseQuote).any((row) => row[1] == 'Add'), isTrue);
-    final where = await pinnedLines(tool, 'EXPLAIN SELECT 1 WHERE 1');
-    expect(where.length, 5);
+    final subquery =
+        await pinnedLines(tool!, 'EXPLAIN SELECT 1 FROM (SELECT 1)');
+    expect(subquery, isNotEmpty);
     final missing =
         await Process.run(tool, [':memory:', 'EXPLAIN SELECT title']);
     expect(missing.exitCode, isNonZero);
     expect(missing.stderr.toString(), contains('no such column: title'));
+    final ipk = await MutableSqliteDatabase.create();
+    addTearDown(ipk.close);
+    await ipk.execute('CREATE TABLE t(a INTEGER PRIMARY KEY)');
+    await expectLater(
+        ipk.query('EXPLAIN SELECT a FROM t'),
+        throwsA(isA<SqlException>().having((error) => error.message, 'message',
+            'EXPLAIN bytecode is not implemented')));
+    final ipkCli = await Process.run(tool, [
+      ':memory:',
+      'CREATE TABLE t(a INTEGER PRIMARY KEY); EXPLAIN SELECT a FROM t'
+    ]);
+    expect(ipkCli.exitCode, 0, reason: ipkCli.stderr.toString());
+    final wide = await MutableSqliteDatabase.create();
+    addTearDown(wide.close);
+    await wide.execute('CREATE TABLE t(a PRIMARY KEY) WITHOUT ROWID');
+    await expectLater(
+        wide.query('EXPLAIN SELECT a FROM t'),
+        throwsA(isA<SqlException>().having((error) => error.message, 'message',
+            'EXPLAIN bytecode is not implemented')));
+    final generated = await MutableSqliteDatabase.create();
+    addTearDown(generated.close);
+    await generated.execute('CREATE TABLE t(a, b AS (a+1))');
+    await expectLater(
+        generated.query('EXPLAIN SELECT * FROM t'),
+        throwsA(isA<SqlException>().having((error) => error.message, 'message',
+            'EXPLAIN bytecode is not implemented')));
+    final rows = await MutableSqliteDatabase.create();
+    addTearDown(rows.close);
+    await rows.execute('CREATE TABLE t(a)');
+    await expectLater(
+        rows.query('EXPLAIN INSERT INTO t VALUES (1),(2)'),
+        throwsA(isA<SqlException>().having((error) => error.message, 'message',
+            'EXPLAIN bytecode is not implemented')));
+    final typed = await MutableSqliteDatabase.create();
+    addTearDown(typed.close);
+    await typed.execute('CREATE TABLE t(a INT)');
+    await expectLater(
+        typed.query('EXPLAIN INSERT INTO t VALUES (1)'),
+        throwsA(isA<SqlException>().having((error) => error.message, 'message',
+            'EXPLAIN bytecode is not implemented')));
     await expectLater(
         db.query('EXPLAIN SELECT 1', [1]),
         throwsA(isA<SqlException>().having((error) => error.message, 'message',

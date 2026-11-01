@@ -111,7 +111,7 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 
 Joins through `FULL`, subqueries, `UNION` `INTERSECT` `EXCEPT`, CTEs, windows, `ON CONFLICT`, `RETURNING`, views, triggers, `CHECK`, `STRICT`, foreign keys, JSON, FTS5, R-tree, and geopoly. Integers are `BigInt`. `docs/REFERENCE.md` is the statement list.
 
-Not in this release: EXPLAIN bytecode beyond a literal projection, a durable two-database commit, and ICU collations. `EXPLAIN SELECT 1` matches the pinned opcode rows. `json_pretty` and correlated `json_each` are in the engine. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI. Double quotes stay identifiers unless `doubleQuotedStrings` is set. That mode matches the pinned CLI for the cases in `db_browser_b3_dqs_test.dart`. Unquoted `a.title` beside a column named `a.title` returns the `title` column, matching the pinned CLI.
+Not in this release: EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`, `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`, and ICU collations. Constant arithmetic, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` match the pinned opcode rows in `db_browser_b3_explain_test.dart`. This is not a VDBE. `json_pretty` and correlated `json_each` are in the engine. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI. Double quotes stay identifiers unless `doubleQuotedStrings` is set. That mode matches the pinned CLI for the cases in `db_browser_b3_dqs_test.dart`. Unquoted `a.title` beside a column named `a.title` returns the `title` column, matching the pinned CLI.
 
 ## Develop
 

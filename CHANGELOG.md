@@ -66,9 +66,12 @@ pre-release.
 
 ### Planned
 
-- EXPLAIN bytecode beyond a literal projection, STAT4, and
-  `auto_vacuum`. `EXPLAIN SELECT 1` matches the pinned opcode rows in
-  `db_browser_b3_explain_test.dart`. `EXPLAIN SELECT 1+1` still throws.
+- EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`,
+  `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`, plus
+  STAT4 and `auto_vacuum`. Constant arithmetic, a constant `WHERE`, one
+  ordinary table scan, and one constant `INSERT` match the pinned opcode rows
+  in `db_browser_b3_explain_test.dart`. `EXPLAIN SELECT 1+1` is `Add`. This is
+  not a VDBE.
   `json_pretty` matches the pinned CLI for the cases in
   `db_browser_b3_json_pretty_test.dart`. Correlated `json_each` matches the
   pinned CLI for the cases in `db_browser_b3_json_each_test.dart`, including
