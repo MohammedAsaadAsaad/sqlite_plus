@@ -1700,6 +1700,15 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10533 tests on Dart 3.13.7, Linux x64. The two native FTS opens set `PRAGMA auto_vacuum=NONE` because this pin CLI defaults to FULL and the writer still rejects those images.
 - B2, B3, B4, and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B2 paged browse
+
+- `SqliteDatabase.browse` and `MutableSqliteDatabase.browse` read one single-table `LIMIT`/`OFFSET` window, including bound parameters and ascending `rowid` order, and stop after `offset + limit` rows. A join or any other shape still uses `query`. `query` itself is unchanged.
+- On an 80-row table, `query('SELECT v FROM t')` and `query('SELECT v FROM t LIMIT 100000')` read the same number of pages. `browse('SELECT v FROM t LIMIT 1')` reads fewer. `browse` of `LIMIT 0` adds no page reads. The pinned CLI at `/tmp/sqlite-build/sqlite3`, source id `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`, returned the same window, the same `ORDER BY rowid` window, the same empty offset, and the same one-row join.
+- `zeroblob(16777217)` makes `query` throw `FormatException`. `browse('SELECT v FROM t LIMIT 1')` returns that blob. The pinned CLI reports length 16777217 and zero bytes at both ends. A well-formed record larger than 1000000000 bytes was not created, so the CLI length-limit text was not compared. `browse` passes that cap to the B-tree reader, which rejects a larger declared payload before allocation.
+- No wall-clock timing was run. No speedup is claimed.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10536 tests on Dart 3.13.7, Linux x64.
+- B3, B4, and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.
