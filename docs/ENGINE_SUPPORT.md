@@ -95,9 +95,11 @@ WAL commit of one row recovers that row after a crash on the next insert.
 WITHOUT ROWID, views, triggers, and the other unhandled shapes keep their
 existing writers. A valid auto-vacuum image opens for writing. NONE reads
 skip pointer maps, and a NONE delete does not shrink. VACUUM does. Compared
-FULL images match the pin's page counts. `incremental_vacuum` does not move
-pages, so an incremental overflow delete is compacted instead of leaving the
-pin's freelist page.
+FULL images match the pin's page counts. An incremental overflow delete
+leaves the pin's freelist page. `incremental_vacuum` moves a live end page
+onto that free page when it has to, then truncates. The compared
+`zeroblob(5000)` delete is page_count 4 and freelist_count 1 until
+`incremental_vacuum`, which reads 3 and 0.
 
 `benchmark_results/page_writes_linux_x64.json` is this revision's Linux x64
 AOT sample: three batch inserts of 10,000 rows, one batch insert of 100,000

@@ -4,6 +4,7 @@ import '../format/database_header.dart';
 import '../format/pointer_map.dart';
 import '../format/record_encoder.dart';
 import '../sql/tokenizer.dart';
+import 'incremental_vacuum.dart';
 import 'table_image_writer.dart';
 
 final class ImageObject {
@@ -378,13 +379,16 @@ abstract final class DatabaseImageBuilder {
           objects[i].sql
         ])
     ]);
+    final preserved = vacuum && header.incrementalVacuum != 0
+        ? IncrementalVacuum.preserve(pages, pointer, header)
+        : (trunk: 0, count: 0);
     final data = ByteData.sublistView(pages.first);
     final counter = (header.changeCounter + 1) % 0x100000000;
     data.setUint32(24, counter);
     data.setUint32(92, counter);
     data.setUint32(28, pages.length);
-    data.setUint32(32, 0);
-    data.setUint32(36, 0);
+    data.setUint32(32, preserved.trunk);
+    data.setUint32(36, preserved.count);
     if (schemaChanged) {
       data.setUint32(40, (header.schemaCookie + 1) % 0x100000000);
     }

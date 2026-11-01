@@ -444,7 +444,7 @@ The current baseline and the planned follow-up are in
 objects, one attached database, the connection pragmas named in the matrix,
 one custom collation, this engine's EXPLAIN QUERY PLAN text, a bounded join
 reorder, covering-index reads, and incremental page writes for the tested
-shapes. Constant arithmetic, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` match the pinned opcode rows. `INSERT INTO aux.u SELECT v FROM t` commits across the attached database, and a crash between the two rollback journals leaves both files old or both new. Planned next are EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`, `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`, STAT4, and incremental auto-vacuum page movement. Items 77–82 add `openBrowserStorage` and
+shapes. Constant arithmetic, a constant `WHERE`, one ordinary table scan, and one constant `INSERT` match the pinned opcode rows. `INSERT INTO aux.u SELECT v FROM t` commits across the attached database, and a crash between the two rollback journals leaves both files old or both new. Planned next are EXPLAIN bytecode for subqueries, joins, `INTEGER PRIMARY KEY`, `WITHOUT ROWID`, generated columns, and typed or multi-row `INSERT`, and STAT4. Incremental auto-vacuum page movement matches the compared `zeroblob` deletes. Items 77–82 add `openBrowserStorage` and
 `BrowserDatabaseConnection`. The caller reads `canRead`, `canWrite`,
 `durabilityPromised`, and `placement`. The current round trip uses an
 in-process `MemoryBrowserByteStore`: close, then open, returns the row. A

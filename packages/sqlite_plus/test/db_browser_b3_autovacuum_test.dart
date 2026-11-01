@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/src/btree/incremental_vacuum.dart';
 import 'package:test/test.dart';
 
 const _pin =
@@ -212,6 +213,85 @@ void main() {
             'INSERT INTO t VALUES (zeroblob(5000));');
     expect(overflow.exportImage().sublist(4096, 4126),
         nativeOverflow.sublist(4096, 4126));
+  });
+
+  test('incremental_vacuum moves or truncates free pages', () async {
+    const counted = [
+      'PRAGMA page_count',
+      'PRAGMA freelist_count',
+      'PRAGMA integrity_check',
+      'SELECT count(*) FROM t',
+    ];
+    Future<void> deleted(String vacuum) => expectScript([
+          'PRAGMA auto_vacuum=INCREMENTAL',
+          'CREATE TABLE t(v)',
+          'INSERT INTO t VALUES (zeroblob(5000))',
+          'DELETE FROM t',
+          if (vacuum.isNotEmpty) vacuum,
+          ...counted,
+        ]);
+    await deleted('');
+    await deleted('PRAGMA incremental_vacuum');
+    await deleted('PRAGMA incremental_vacuum(0)');
+    await deleted('PRAGMA incremental_vacuum(-1)');
+    String compact(String text) =>
+        text.split('\n').where((line) => line.isNotEmpty).join('\n');
+    Future<void> expectNumbers(List<String> statements) async {
+      final sql = statements.join('; ');
+      expect(compact(await engineScript(statements)),
+          compact(await pinScript(sql)),
+          reason: sql);
+    }
+
+    await expectNumbers([
+      'PRAGMA auto_vacuum=INCREMENTAL',
+      'CREATE TABLE t(v)',
+      'INSERT INTO t VALUES (zeroblob(20000))',
+      'DELETE FROM t',
+      'PRAGMA page_count',
+      'PRAGMA freelist_count',
+      'PRAGMA incremental_vacuum(1)',
+      'PRAGMA page_count',
+      'PRAGMA freelist_count',
+      'PRAGMA integrity_check',
+    ]);
+    await expectNumbers([
+      'PRAGMA auto_vacuum=INCREMENTAL',
+      'CREATE TABLE t(v)',
+      'INSERT INTO t VALUES (zeroblob(5000))',
+      'INSERT INTO t VALUES (zeroblob(5000))',
+      'DELETE FROM t WHERE rowid=1',
+      'PRAGMA incremental_vacuum(1)',
+      'PRAGMA page_count',
+      'PRAGMA freelist_count',
+      'PRAGMA integrity_check',
+      'SELECT length(v) FROM t',
+    ]);
+
+    final hole =
+        await pinFile('PRAGMA auto_vacuum=INCREMENTAL; CREATE TABLE t(v); '
+            'INSERT INTO t VALUES (zeroblob(5000)); '
+            'INSERT INTO t VALUES (zeroblob(5000)); '
+            'DELETE FROM t WHERE rowid=1;');
+    final opened = await MutableSqliteDatabase.fromImage(hole);
+    addTearDown(opened.close);
+    await opened.execute('PRAGMA incremental_vacuum(1)');
+    final moved = opened.exportImage();
+    const check = 'PRAGMA page_count; PRAGMA freelist_count; '
+        'PRAGMA integrity_check; SELECT length(v) FROM t';
+    expect(await pinOn(moved, check),
+        await pinOn(hole, 'PRAGMA incremental_vacuum(1); $check'));
+
+    final kept = await MutableSqliteDatabase.create();
+    addTearDown(kept.close);
+    await kept.execute('PRAGMA auto_vacuum=INCREMENTAL');
+    await kept.execute('CREATE TABLE t(v)');
+    await kept.execute('INSERT INTO t VALUES (zeroblob(5000))');
+    await kept.execute('DELETE FROM t');
+    final corrupt = Uint8List.fromList(kept.exportImage());
+    ByteData.sublistView(corrupt).setUint32(36, 99);
+    expect(() => IncrementalVacuum.apply(corrupt, 1), throwsFormatException);
+    expect(MutableSqliteDatabase.fromImage(corrupt), throwsUnsupportedError);
   });
 
   test('corrupt auto-vacuum images match the pinned integrity text', () async {

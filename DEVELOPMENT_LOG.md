@@ -1931,6 +1931,14 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10592 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The native `EXPLAIN` bytecode sub-item stays checked for these shapes. Subqueries, joins, integer primary keys, `WITHOUT ROWID`, generated columns, and typed or multi-row inserts stay outside it. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. Contentless FTS3/FTS4 writes, file `journal_mode=wal`/`persist`/`truncate`, and `incremental_vacuum` page movement stay open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — Incremental auto-vacuum page movement matches the pin
+
+- After `PRAGMA auto_vacuum=INCREMENTAL`, `INSERT` of `zeroblob(5000)`, and `DELETE`, `page_count` is 4 and `freelist_count` is 1. `PRAGMA incremental_vacuum`, `incremental_vacuum(0)`, and `incremental_vacuum(-1)` then read 3 and 0. `zeroblob(20000)` leaves 7 and 4. `incremental_vacuum(1)` leaves 6 and 3. A second blob whose overflow page sits past a free page is moved onto that free page. `length(v)` stays 5000. `integrity_check` is `ok`.
+- `db_browser_b3_autovacuum_test.dart` matches `/tmp/sqlite-build/sqlite3` for those rows, including a native hole image opened here and vacuumed by one page. A freelist count of 99 throws `FormatException`. Opening that image for writing is rejected. The commit still uses this engine's rollback redo. No separate crash injection was added for the vacuum statement. No AOT timing was run. No speedup is claimed.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. This run's binary reports `COMPILER=gcc-13.3.0`. `manifest.json` records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed for those files. `dart test` passed 10594 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run.
+- B5 stays unchecked. M9 stays unchecked. Item 108 stays open. Contentless FTS3/FTS4 writes, file `journal_mode=wal`/`persist`/`truncate`, and an official master journal stay open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

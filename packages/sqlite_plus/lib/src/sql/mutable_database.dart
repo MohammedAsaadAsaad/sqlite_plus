@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import '../btree/database_image_builder.dart';
+import '../btree/incremental_vacuum.dart';
 import '../format/database_header.dart';
 import 'image_mutations.dart';
 import '../pager/image_pager.dart';
@@ -552,6 +553,13 @@ final class MutableSqliteDatabase {
     if (_closed || _failed || _busy) {
       throw StateError('Database closed or busy');
     }
+    // Incremental auto-vacuum has to publish the previous statement first.
+    // The freelist is the pages that statement grew and this one no longer uses.
+    if (_dirtyMain &&
+        _image.length >= 100 &&
+        DatabaseHeader.decode(_image).autoVacuumMode == 2) {
+      _materializeMain();
+    }
     final live = _liveMain;
     if (live != null) {
       _busy = true;
@@ -643,11 +651,11 @@ final class MutableSqliteDatabase {
           throw const SqlException('Unsupported writable PRAGMA');
         }
         if (name == 'incremental_vacuum') {
-          if (parser.current.text == '=' || parser.current.text == '(') {
-            _pragmaValue(parser);
-          } else {
-            parser.finish();
-          }
+          final value = parser.current.text == '=' || parser.current.text == '('
+              ? _pragmaValue(parser)
+              : null;
+          if (value == null) parser.finish();
+          await _applyIncrementalVacuum(parsed.$1, value);
           return const MutationResult(0, null);
         }
         final statePragma =
@@ -1085,8 +1093,9 @@ final class MutableSqliteDatabase {
     final connectionWrite =
         argument && connection.contains(name) && name != 'database_list';
     if (name == 'incremental_vacuum') {
-      if (argument) _pragmaValue(parser);
-      parser.finish();
+      final value = argument ? _pragmaValue(parser) : null;
+      if (!argument) parser.finish();
+      await _applyIncrementalVacuum(schema, value);
       return QueryResult([name], const []);
     }
     if (name == 'auto_vacuum' && argument) {
@@ -1289,6 +1298,30 @@ final class MutableSqliteDatabase {
     _attached[name] = Uint8List.fromList(bytes);
     if (path == ':memory:') _flexibleAutoVacuum.add(name);
     _invalidateCatalog();
+  }
+
+  /// `PRAGMA incremental_vacuum` removes freelist pages from an incremental
+  /// database. No argument, `0`, and a negative count clear the whole freelist.
+  /// Any other database mode keeps its bytes.
+  Future<void> _applyIncrementalVacuum(String schema, String? value) async {
+    if (schema == 'main') _materializeMain();
+    final image = _imageFor(schema);
+    if (image.length < 100) return;
+    final header = DatabaseHeader.decode(image);
+    if (header.autoVacuumMode != 2 || header.freelistPages == 0) return;
+    final requested = value == null ? 0 : _pragmaInteger(value);
+    final next = IncrementalVacuum.apply(image, requested);
+    if (next.length == image.length) {
+      var same = true;
+      for (var i = 0; i < next.length; i++) {
+        if (next[i] != image[i]) {
+          same = false;
+          break;
+        }
+      }
+      if (same) return;
+    }
+    await _commitSchema(schema, next);
   }
 
   /// `none`/`full`/`incremental`, or an integer kept only when it is 0, 1, or 2.
