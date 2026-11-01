@@ -1770,6 +1770,14 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10667 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The ICU sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 FTS3 and FTS4 writes stay rejected
+
+- The pinned CLI creates `fts4(body)`, inserts `hello world`, and `MATCH 'hello'` returns `hello world`. `fts3` returns `hello`. An empty insert leaves one row. `DELETE ... MATCH 'hello'` leaves zero rows. `SELECT` from a missing table is `no such table: missing` on the CLI.
+- This engine rejects `CREATE VIRTUAL TABLE ... USING fts3` and `fts4` with `FTS3 and FTS4 writes are not implemented`. The table is not created. An FTS5 `INSERT` of `kept` still matches. `db_browser_b3_fts34_test.dart` records the comparison.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed COUNT tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The FTS3/FTS4 write sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

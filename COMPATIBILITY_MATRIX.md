@@ -132,7 +132,7 @@ two-database commit stay unsupported. Reading an auto-vacuum image and ignoring 
 the documented runtime/generator contract. M8 passes for the verified JSON,
 virtual-table, FTS, and R-tree subset recorded above. The omissions in that
 subset, including multi-page FTS5 leaves,
-porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes, stay open. Items
+porter/trigram/detail/tokendata/locale, and FTS3/FTS4 writes, stay open. The pinned `fts4` match returns `hello world` and the `fts3` match returns `hello`. This engine rejects the `CREATE` with `FTS3 and FTS4 writes are not implemented`. Items
 77–82 record an unpromised browser-storage subset above. The round trip is an
 in-process simulation, the OPFS/IndexedDB file was compiled and not run, and
 power loss is not claimed. That subset does not check M9. Items 83–90 record
