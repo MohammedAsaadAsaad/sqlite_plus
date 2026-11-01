@@ -80,6 +80,11 @@ final class MutableSqliteDatabase {
 
   /// Scalar, aggregate, and collation callbacks for this connection.
   final functions = SqlFunctionRegistry();
+
+  /// Unresolved double-quoted expression identifiers become strings when this
+  /// is true. The default is false.
+  bool get doubleQuotedStrings => functions.doubleQuotedStrings;
+  set doubleQuotedStrings(bool value) => functions.doubleQuotedStrings = value;
   _ConnectionSnapshot? _checkpoint;
   bool _explicitTransaction = false;
   final List<(String, _ConnectionSnapshot)> _savepoints = [];

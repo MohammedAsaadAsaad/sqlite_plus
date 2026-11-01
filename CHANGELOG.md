@@ -70,7 +70,10 @@ pre-release.
   `auto_vacuum`. `json_pretty` matches the pinned CLI for the cases in
   `db_browser_b3_json_pretty_test.dart`. Correlated `json_each` matches the
   pinned CLI for the cases in `db_browser_b3_json_each_test.dart`, except
-  `json_each(docs.label) RIGHT JOIN docs`.
+  `json_each(docs.label) RIGHT JOIN docs`. `doubleQuotedStrings` defaults to
+  off. When it is on, `db_browser_b3_dqs_test.dart` matches the pinned CLI.
+  Unquoted `a.title` beside a column named `a.title` still returns the dotted
+  column.
 - A durable commit across two databases, and more journal modes.
 - FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and
   FTS3/FTS4 writes.

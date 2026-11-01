@@ -61,11 +61,16 @@ rows. A covering index skips the table when every referenced column is in the
 index or is a rowid alias, and that read uses fewer pages. `sqlite_stat4` opens
 and its samples are not read. A stat1 plan and its query page-read count stayed
 the same with an opposite stat4 sample. No wall-clock timing was run. Double
-quotes remain identifiers.
+quotes remain identifiers unless `doubleQuotedStrings` is set. The default is
+off. With the flag on, an unresolved unqualified double-quoted identifier is a
+string and `db_browser_b3_dqs_test.dart` matches the pinned CLI. The engine
+says `Ambiguous column: title`. The CLI says `ambiguous column name: title`.
+Unquoted `a.title` beside a column named `a.title` still returns the dotted
+column. The CLI returns the `title` column.
 
 The gap ledger has 25 UTF-8 cases from the pinned CLI. A case matches the CLI
-or names the rejection. The recorded differences include DQS,
-EXPLAIN bytecode, `journal_mode` memory/off, `auto_vacuum`, a cross-database
+or names the rejection. The recorded differences include the default-off DQS
+case, EXPLAIN bytecode, `journal_mode` memory/off, `auto_vacuum`, a cross-database
 insert, the fresh `journal_mode` name, and EXPLAIN QUERY PLAN text. `json_pretty`
 matches the pinned CLI, including a custom indent. Its output cap is 16 MiB. The CLI
 compiler is gcc-13.3.0. `manifest.json` still records clang-22.1.3. Stable
@@ -179,7 +184,7 @@ AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 | PRAGMA state | More journal modes, the auto-vacuum algorithm, and per-database cache, busy, and synchronous values |
 | Planning | Native EXPLAIN bytecode, fuller native costing, wider join reorder, built STAT4 statistics, and covering reads of a star or a generated column |
 | Collations | ICU and locale collations, and a separate oracle for REINDEX of a custom collation name |
-| Grammar and errors | A double-quoted-string compatibility mode, and closer native error text |
+| Grammar and errors | Closer native error text. Opt-in double-quoted strings match the pinned CLI in `db_browser_b3_dqs_test.dart`. The default stays off. Unquoted `a.title` beside a column named `a.title` still returns the dotted column |
 | Table functions | More virtual-table modules |
 | Windows | Wider window execution and closer planner equivalence |
 | Extensions | FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes. `json_each(docs.label) RIGHT JOIN docs` still throws; the pinned CLI returns 0 rows |

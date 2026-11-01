@@ -23,7 +23,7 @@ void main() {
 
   test('correlated json_each and json_tree match the pinned CLI', () async {
     final tool = await pinnedCli();
-    expect(tool, isNotNull);
+    if (tool == null) fail('pinned sqlite3 is missing');
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
     const setup = '''
@@ -43,7 +43,7 @@ void main() {
     Future<void> match(String sql) async {
       final engine = (await db.query(sql)).rows.single.single?.toString() ?? '';
       final result = await Process.run(
-          tool!, [':memory:', '.mode list', '.headers off', setup, sql]);
+          tool, [':memory:', '.mode list', '.headers off', setup, sql]);
       expect(result.exitCode, 0, reason: '${result.stderr}\n$sql');
       expect(engine, result.stdout.toString().trimRight(), reason: sql);
     }
@@ -111,7 +111,7 @@ void main() {
             'SELECT count(*) FROM json_each(docs.label) e RIGHT JOIN docs ON 1'),
         throwsA(isA<SqlException>().having((error) => error.message, 'message',
             'No such column: docs.label')));
-    final rightCli = await Process.run(tool!, [
+    final rightCli = await Process.run(tool, [
       ':memory:',
       setup,
       'SELECT count(*) FROM json_each(docs.label) e RIGHT JOIN docs ON 1'
@@ -141,7 +141,7 @@ void main() {
         bad.query('SELECT docs.id, e.key FROM docs, json_each(docs.label) e'),
         throwsA(isA<SqlException>()
             .having((error) => error.message, 'message', 'malformed JSON')));
-    final cliBad = await Process.run(tool!, [
+    final cliBad = await Process.run(tool, [
       ':memory:',
       "CREATE TABLE docs(id INTEGER PRIMARY KEY, label TEXT); "
           "INSERT INTO docs VALUES(1,'{\"a\":1}'),(2,'nope'); "

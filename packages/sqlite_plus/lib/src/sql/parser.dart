@@ -178,43 +178,112 @@ BigInt? expressionOrdinal(Expr expression) {
 }
 
 class ColumnExpr extends Expr {
-  ColumnExpr(this.name, {this.offset, this.qualifier, this.columnOffset});
+  ColumnExpr(this.name,
+      {this.offset,
+      this.qualifier,
+      this.columnOffset,
+      this.doubleQuoted = false});
   final int? columnOffset;
   final int? offset;
   final String? qualifier;
   final String name;
+
+  /// True when this is an unqualified identifier written with double quotes.
+  final bool doubleQuoted;
   String get key => asciiLower(name);
+
+  bool get _quotedString => doubleQuoted && doubleQuotedStringsEnabled;
+
+  /// A double-quoted name is one identifier. `alias.column` storage keys are
+  /// not that identifier unless a declared column is actually named this.
+  bool _declaredDottedLabel(Set<String> names) {
+    final needle = '.$key';
+    for (final column in names) {
+      if (column.length <= key.length || !column.endsWith(needle)) continue;
+      final prefix = column.substring(0, column.length - needle.length);
+      if (prefix.contains('.') || activeSchemaNames().contains(prefix)) {
+        continue;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  bool _ignoreStorageKey(Set<String> names) =>
+      doubleQuoted && key.contains('.') && !_declaredDottedLabel(names);
+
+  bool _ambiguous(Set<String> columns) {
+    if (columns.contains(key)) return false;
+    var hits = 0;
+    for (final column in columns) {
+      if (column.endsWith('.$key')) hits++;
+    }
+    return hits > 1;
+  }
+
+  bool _matchesVisibleColumn(Set<String> columns) {
+    if (!columns.contains(key)) return false;
+    return !_ignoreStorageKey(columns);
+  }
+
   @override
   Set<String> get unaggregatedColumns => {key};
   @override
   Object? evaluate(EvalContext context) {
-    if (context.row.containsKey(key)) return resolveSqlValue(context.row[key]);
+    final names = {...context.row.keys, ...context.affinities.keys};
+    if (context.row.containsKey(key) && !_ignoreStorageKey(names)) {
+      return resolveSqlValue(context.row[key]);
+    }
     final alias = context.columnAliases[key];
     if (alias != null) return alias.evaluate(context);
+    if (_quotedString) return name;
     throw SqlException('No such column: $name');
   }
 
   @override
-  String affinity(EvalContext context) =>
-      context.affinities[key] ??
-      context.columnAliases[key]?.affinity(context) ??
-      'none';
+  String affinity(EvalContext context) {
+    final names = {...context.row.keys, ...context.affinities.keys};
+    if (_ignoreStorageKey(names)) return 'none';
+    return context.affinities[key] ??
+        context.columnAliases[key]?.affinity(context) ??
+        'none';
+  }
+
   @override
-  String? collation(EvalContext context) => context.collations.containsKey(key)
-      ? context.collations[key]?.isEmpty == true
-          ? null
-          : context.collations[key]
-      : context.row.containsKey(key) || context.affinities.containsKey(key)
-          ? null
-          : context.columnAliases[key]?.collation(context);
+  String? collation(EvalContext context) {
+    final names = {
+      ...context.row.keys,
+      ...context.affinities.keys,
+      ...context.collations.keys
+    };
+    if (_ignoreStorageKey(names)) return null;
+    return context.collations.containsKey(key)
+        ? context.collations[key]?.isEmpty == true
+            ? null
+            : context.collations[key]
+        : context.row.containsKey(key) || context.affinities.containsKey(key)
+            ? null
+            : context.columnAliases[key]?.collation(context);
+  }
+
   @override
-  String? explicitCollation(EvalContext context) =>
-      context.row.containsKey(key) || context.affinities.containsKey(key)
-          ? null
-          : context.columnAliases[key]?.explicitCollation(context);
+  String? explicitCollation(EvalContext context) {
+    final names = {
+      ...context.row.keys,
+      ...context.affinities.keys,
+      ...context.collations.keys
+    };
+    if (_ignoreStorageKey(names)) return null;
+    return context.row.containsKey(key) || context.affinities.containsKey(key)
+        ? null
+        : context.columnAliases[key]?.explicitCollation(context);
+  }
+
   @override
   void validate(Set<String> columns) {
-    if (!columns.contains(key)) throw SqlException('No such column: $name');
+    if (_matchesVisibleColumn(columns)) return;
+    if (_ambiguous(columns)) throw SqlException('Ambiguous column: $name');
+    if (!_quotedString) throw SqlException('No such column: $name');
   }
 }
 
@@ -1416,6 +1485,11 @@ final class SqlParser {
           }
         } else {
           var name = token.text;
+          final text = source;
+          final quotedString = token.quoted &&
+              text != null &&
+              token.offset < text.length &&
+              text.codeUnitAt(token.offset) == 0x22;
           String? qualifier;
           var columnOffset = token.offset;
           var referenceOffset = token.offset;
@@ -1438,7 +1512,8 @@ final class SqlParser {
           left = ColumnExpr(name,
               offset: referenceOffset,
               qualifier: qualifier,
-              columnOffset: columnOffset);
+              columnOffset: columnOffset,
+              doubleQuoted: qualifier == null && quotedString);
         }
       } else {
         throw SqlException('Expected expression', token.offset);

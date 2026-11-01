@@ -517,7 +517,11 @@ windows. View queries and dynamic unary defaults do not execute during metadata
 parsing. NATURAL join rewrites follow the merged column origin for LEFT/RIGHT/FULL
 joins; renaming USING keys rejects when the resulting join becomes invalid, as
 in the reference. Real columns take precedence over implicit rowid aliases. More
-complex schema/DQS fallback behavior is outside the verified subset.
+complex schema changes are outside the verified subset. `doubleQuotedStrings`
+defaults to off, so `"missing"` stays an unknown column. With the flag on, that
+identifier is the string `missing`, and `db_browser_b3_dqs_test.dart` matches
+the pinned CLI. Unquoted `a.title` beside a column named `a.title` still
+returns the dotted column. The CLI returns the `title` column.
 
 M6 additionally supports row-value comparisons, IN/subqueries, BETWEEN and simple
 CASE with per-field affinity/collation. SELECT preparation checks wildcard subquery

@@ -122,6 +122,11 @@ final class SqliteDatabase {
 
   /// Scalar, aggregate, and collation callbacks for this connection.
   final SqlFunctionRegistry functions;
+
+  /// Unresolved double-quoted expression identifiers become strings when this
+  /// is true. The default is false.
+  bool get doubleQuotedStrings => functions.doubleQuotedStrings;
+  set doubleQuotedStrings(bool value) => functions.doubleQuotedStrings = value;
   bool _closed = false;
 
   /// Opens a read-only database on [storage].
@@ -2208,6 +2213,12 @@ final class SqliteDatabase {
           return CatalogColumn(expr.name, '', affinityOverride: 'none');
         }
         if (column == null) {
+          if (scope.containsKey(expr.key)) {
+            throw SqlException('Ambiguous column: ${expr.name}');
+          }
+          if (expr.doubleQuoted && doubleQuotedStringsEnabled) {
+            return CatalogColumn(expr.name, 'TEXT', affinityOverride: 'none');
+          }
           throw SqlException('Unknown or ambiguous column: ${expr.name}');
         }
         return column;
