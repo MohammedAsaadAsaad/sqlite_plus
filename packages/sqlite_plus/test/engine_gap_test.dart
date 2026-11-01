@@ -325,8 +325,10 @@ void main() {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
     await db.execute('CREATE TABLE t(v)');
-    await expectLater(
-        db.query('EXPLAIN SELECT * FROM t'), throwsA(isA<SqlException>()));
+    final explained = await db.query('EXPLAIN SELECT * FROM t');
+    expect(explained.columns,
+        ['addr', 'opcode', 'p1', 'p2', 'p3', 'p4', 'p5', 'comment']);
+    expect(explained.rows.map((row) => row[1]), contains('OpenRead'));
     final plan = await db.query('EXPLAIN QUERY PLAN SELECT * FROM t');
     expect(plan.columns, ['id', 'parent', 'notused', 'detail']);
     expect(plan.rows.single[3].toString(), 'SCAN t');

@@ -9,6 +9,7 @@ import '../pager/rollback_journal_pager.dart';
 import '../pager/schema_commit.dart';
 import '../storage/durable_storage_backend.dart';
 import '../storage/memory_storage_backend.dart';
+import 'catalog.dart';
 import 'database.dart';
 import 'explain_bytecode.dart';
 import 'parser.dart';
@@ -376,6 +377,54 @@ final class MutableSqliteDatabase {
     return result.returning ?? QueryResult(const [], const []);
   }
 
+  Future<QueryResult?> _explainBytecode(String sql) async {
+    final direct = compileLiteralExplain(sql);
+    if (direct != null) return direct;
+    if (_dirtyMain) _materializeMain();
+    final reader = await SqliteDatabase.openReadOnly(ByteImageStorage(_image));
+    try {
+      final header = DatabaseHeader.decode(_image);
+      final catalog = reader.catalog;
+      final schema = ExplainSchema(
+        cookie: header.schemaCookie,
+        table: (name) {
+          final CatalogTable table;
+          try {
+            table = catalog.table(name);
+          } on SqlException {
+            return null;
+          }
+          if (table.virtual || table.rootPage <= 0) return null;
+          return ExplainTable(
+            table.name,
+            table.rootPage,
+            [for (final column in table.columns) column.name],
+            rowidAlias: table.rowidAlias,
+            withoutRowid: table.withoutRowid,
+            generated: table.columns
+                .any((column) => column.generatedExpression != null),
+            affinity: table.columns
+                .any((column) => column.declaredType.trim().isNotEmpty),
+            indexed: table.autoIndexKeys.isNotEmpty ||
+                table.uniqueKeys.isNotEmpty ||
+                table.rowidAlias != null,
+            notNull:
+                table.columns.any((column) => column.notNull || column.hidden),
+            defaults: [
+              for (final column in table.columns)
+                column.defaultSql != null ||
+                    column.defaultExpression != null ||
+                    column.defaultValue != null
+            ],
+          );
+        },
+      );
+      return compileLiteralExplain(sql, schema: schema);
+    } finally {
+      await reader.close();
+    }
+  }
+
   Future<QueryResult> _queryUnlocked(String sql,
       [List<Object?> parameters = const []]) async {
     final live = _liveMain;
@@ -390,7 +439,7 @@ final class MutableSqliteDatabase {
           throw const SqlException('EXPLAIN bytecode bindings unsupported');
         }
         final compiled =
-            compileLiteralExplain(sql.substring(explain.current.offset));
+            await _explainBytecode(sql.substring(explain.current.offset));
         if (compiled == null) {
           throw const SqlException('EXPLAIN bytecode is not implemented');
         }
@@ -448,7 +497,7 @@ final class MutableSqliteDatabase {
               throw const SqlException('EXPLAIN bytecode bindings unsupported');
             }
             final compiled =
-                compileLiteralExplain(sql.substring(explain.current.offset));
+                await _explainBytecode(sql.substring(explain.current.offset));
             if (compiled == null) {
               throw const SqlException('EXPLAIN bytecode is not implemented');
             }
