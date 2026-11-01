@@ -182,7 +182,7 @@ AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 | Grammar and errors | A double-quoted-string compatibility mode, and closer native error text |
 | Table functions | More virtual-table modules |
 | Windows | Wider window execution and closer planner equivalence |
-| Extensions | correlated `json_each`, FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes |
+| Extensions | FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes. `json_each(docs.label) RIGHT JOIN docs` still throws; the pinned CLI returns 0 rows |
 | Platforms and release | Benchmarks at 100000 and 1000000 rows, a fresh desktop run for each new revision, Android, iOS, power-loss durability, and publication when requested. The current 10000-row file is `benchmark_results/scenarios_10k_linux_x64.json`. The recorded desktop pass is commit `7afaaba` in run 40538509306 |
 
 The production runtime stays Pure Dart. The planned browser work is a durable

@@ -165,25 +165,38 @@ void main() {
             'Function output limit exceeded')));
   });
 
-  test('a constant json_each joins a user table and a column argument fails',
+  test('a constant json_each joins a user table and a column argument is read',
       () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
     await db.execute('CREATE TABLE docs(id INTEGER PRIMARY KEY, label TEXT)');
-    await db.execute("INSERT INTO docs VALUES(1,'a'),(2,'b'),(3,'c')");
+    await db.execute(
+        "INSERT INTO docs VALUES(1,'{\"a\":10,\"b\":20}'),(2,'[7]'),(3,NULL)");
     expect((await db.query('''
       SELECT docs.id, e.value
-      FROM docs JOIN json_each('{"a":10,"b":20}') AS e ON docs.label = e.key
+      FROM docs JOIN json_each('{"a":10,"b":20}') AS e ON docs.id = 1 AND e.key = 'a'
       ORDER BY docs.id
       ''')).rows, [
-      [BigInt.one, BigInt.from(10)],
-      [BigInt.two, BigInt.from(20)]
+      [BigInt.one, BigInt.from(10)]
     ]);
     expect((await db.query('SELECT key FROM json_each(?)', ['{"a":1}'])).rows, [
       ['a']
     ]);
+    expect(
+        (await db.query(
+                'SELECT docs.id, e.key, e.value FROM docs, json_each(docs.label) e ORDER BY docs.id, e.id'))
+            .rows,
+        [
+          [BigInt.one, 'a', BigInt.from(10)],
+          [BigInt.one, 'b', BigInt.from(20)],
+          [BigInt.two, BigInt.zero, BigInt.from(7)]
+        ]);
     await expectLater(
-        db.query('SELECT value FROM docs, json_each(docs.label)'),
+        db.query('SELECT value FROM json_each(missing)'),
+        throwsA(isA<SqlException>().having(
+            (error) => error.message, 'message', 'No such column: missing')));
+    await expectLater(
+        db.query("SELECT value FROM generate_series(docs.id, docs.id), docs"),
         throwsA(isA<SqlException>().having((error) => error.message, 'message',
             'Virtual table argument must be constant')));
     expect(

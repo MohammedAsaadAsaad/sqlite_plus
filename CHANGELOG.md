@@ -66,9 +66,11 @@ pre-release.
 
 ### Planned
 
-- correlated `json_each`, EXPLAIN bytecode, STAT4, and
+- EXPLAIN bytecode, STAT4, and
   `auto_vacuum`. `json_pretty` matches the pinned CLI for the cases in
-  `db_browser_b3_json_pretty_test.dart`.
+  `db_browser_b3_json_pretty_test.dart`. Correlated `json_each` matches the
+  pinned CLI for the cases in `db_browser_b3_json_each_test.dart`, except
+  `json_each(docs.label) RIGHT JOIN docs`.
 - A durable commit across two databases, and more journal modes.
 - FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and
   FTS3/FTS4 writes.

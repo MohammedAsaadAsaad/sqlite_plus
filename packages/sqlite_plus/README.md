@@ -154,4 +154,4 @@ The file size is taken before close, so it still includes the redo.
 
 `openInMemory` is `MutableSqliteDatabase.create`. `exportImage` is the byte image a file can hold. `openBrowserStorage` reports `canRead`, `canWrite`, `durabilityPromised`, and `placement`.
 
-Not in this release: correlated `json_each`, EXPLAIN bytecode, a durable two-database commit, and ICU collations.
+Not in this release: EXPLAIN bytecode, a durable two-database commit, and ICU collations. Correlated `json_each` matches the pinned CLI except `json_each(docs.label) RIGHT JOIN docs`, which throws here and returns 0 rows in the CLI.

@@ -264,6 +264,93 @@ final class SqliteDatabase {
     return ordered;
   }
 
+  /// Moves `json_each` and `json_tree` after the tables their arguments name
+  /// when every join in between is an inner join. Outer joins stay in place.
+  List<QuerySource> _orderCorrelatedTableFunctions(
+      List<QuerySource> sources, List<Object?> parameters) {
+    final ordered = [...sources];
+    for (var guard = 0; guard < ordered.length; guard++) {
+      var moved = false;
+      for (var index = 0; index < ordered.length; index++) {
+        final source = ordered[index];
+        if (!_correlatedJsonFunction(source, parameters)) continue;
+        final dependencies = <int>[];
+        for (final argument in source.pragmaArguments!) {
+          for (final name in argument.unaggregatedColumns) {
+            for (var other = 0; other < ordered.length; other++) {
+              if (other != index &&
+                  _sourceProvidesColumn(ordered[other], name)) {
+                dependencies.add(other);
+              }
+            }
+          }
+        }
+        if (dependencies.isEmpty) continue;
+        final destination = dependencies.reduce((a, b) => a > b ? a : b);
+        if (destination <= index) continue;
+        if (ordered
+            .sublist(index + 1, destination + 1)
+            .any((later) => !const {'INNER', 'CROSS'}.contains(later.join))) {
+          continue;
+        }
+        ordered.removeAt(index);
+        ordered.insert(destination, source);
+        moved = true;
+        break;
+      }
+      if (!moved) break;
+    }
+    return ordered;
+  }
+
+  bool _perCallTableFunction(QuerySource source) {
+    final name = asciiLower(source.table ?? '');
+    return source.pragmaArguments != null &&
+        (name == 'json_each' || name == 'json_tree');
+  }
+
+  bool _correlatedJsonFunction(QuerySource source, List<Object?> parameters) {
+    final arguments = source.pragmaArguments;
+    final table = source.table;
+    if (arguments == null || table == null) return false;
+    final name = asciiLower(table);
+    if (name != 'json_each' && name != 'json_tree') return false;
+    if (_isPragmaTableSource(source)) return false;
+    for (final argument in arguments) {
+      try {
+        evaluateVirtualArgument(argument, parameters);
+      } on SqlException {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _sourceProvidesColumn(QuerySource source, String key) {
+    final alias = asciiLower(source.alias ?? source.table ?? '');
+    if (alias.isNotEmpty &&
+        (key == alias ||
+            key.startsWith('$alias.') ||
+            key.startsWith('main.$alias.'))) {
+      return true;
+    }
+    final table = source.table == null ? '' : asciiLower(source.table!);
+    if (table.isNotEmpty &&
+        alias != table &&
+        (key == table || key.startsWith('$table.'))) {
+      return true;
+    }
+    if (key.contains('.') || source.table == null) return false;
+    try {
+      return catalog
+          .table(source.table!)
+          .columns
+          .any((column) => asciiLower(column.name) == key);
+    } on SqlException {
+      return false;
+    }
+  }
+
   QueryPlan _plan(
       SelectStatement statement, CatalogTable? table, List<Object?> bound) {
     if (table == null) return const QueryPlan('constant', null, null);
@@ -521,12 +608,26 @@ final class SqliteDatabase {
       if (module == null || !module.eponymous) {
         throw SqlException('$name is not a table-valued function');
       }
-      final values = [
-        for (final argument in arguments)
-          evaluateVirtualArgument(argument, parameters)
-      ];
-      if (values.length > module.hiddenColumns.length) {
+      if (arguments.length > module.hiddenColumns.length) {
         throw SqlException('Too many arguments for $name');
+      }
+      final jsonModule =
+          module.name == 'json_each' || module.name == 'json_tree';
+      final values = <Object?>[];
+      if (jsonModule) {
+        try {
+          for (final argument in arguments) {
+            values.add(evaluateVirtualArgument(argument, parameters));
+          }
+        } on SqlException {
+          // A column or other non-constant is evaluated once per outer row.
+          return virtualCatalogTable(module, source!.table ?? name,
+              argumentExprs: arguments);
+        }
+      } else {
+        for (final argument in arguments) {
+          values.add(evaluateVirtualArgument(argument, parameters));
+        }
       }
       return virtualCatalogTable(module, source!.table ?? name,
           positionals: values);
@@ -923,10 +1024,21 @@ final class SqliteDatabase {
       }
       return _relationalExecution(statement, bound, cache, outer);
     }
-    final table = statement.table == null
+    var table = statement.table == null
         ? null
         : _resolveTable(
             statement.table!, statement.sources.singleOrNull, bound);
+    if (table != null && table.virtualArgumentExprs != null) {
+      final context = EvalContext({}, {}, bound, _pager.header.textEncoding);
+      final values = [
+        for (final argument in table.virtualArgumentExprs!)
+          argument.evaluate(context)
+      ];
+      table = CatalogTable(table.name, table.rootPage, table.columns,
+          virtualModule: table.virtualModule,
+          virtualArguments: table.virtualArguments,
+          virtualPositionals: values);
+    }
     final columns = table?.columns ?? <CatalogColumn>[];
     final input = <RowValues>[];
     if (table == null) {

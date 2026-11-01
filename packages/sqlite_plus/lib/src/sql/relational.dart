@@ -65,9 +65,14 @@ extension _RelationalQueries on SqliteDatabase {
         continue;
       }
       final name = source.table!;
-      final key =
+      final shared =
           source.schema == null ? asciiLower(name) : 'main.${asciiLower(name)}';
-      if (source.schema == null && cteScope.contains(key)) {
+      // Two json_each(...) calls are different inputs. A shared name would
+      // make the second call reuse the first call's rows.
+      final key = _perCallTableFunction(source)
+          ? '$shared#${identityHashCode(source)}'
+          : shared;
+      if (source.schema == null && cteScope.contains(shared)) {
         if (source.pragmaArguments != null) {
           throw SqlException('${source.table} is not a table-valued function');
         }
@@ -157,6 +162,12 @@ extension _RelationalQueries on SqliteDatabase {
           );
         } else {
           final table = _resolveTable(name, source, parameters);
+          if (table.virtualArgumentExprs != null) {
+            cache[key] = (table, <RowValues>[]);
+            cache.putIfAbsent(shared, () => cache[key]!);
+            cache.putIfAbsent('main.${asciiLower(name)}', () => cache[key]!);
+            continue;
+          }
           final rows = <RowValues>[];
           final reader = BtreeReader(_pager);
           final records = table.virtual
@@ -209,6 +220,7 @@ extension _RelationalQueries on SqliteDatabase {
           }
           cache[key] = (table, rows);
         }
+        cache.putIfAbsent(shared, () => cache[key]!);
         cache['main.${asciiLower(name)}'] = cache[key]!;
       } finally {
         loading.remove(key);
@@ -586,7 +598,8 @@ extension _RelationalQueries on SqliteDatabase {
         if (!progressed) throw const SqlException('Circular CTE definition');
       }
     }
-    final sources = _orderedJoinSources(s);
+    final sources =
+        _orderCorrelatedTableFunctions(_orderedJoinSources(s), bound);
     final consumedPragmaConditions = <Expr>{};
     final inaccessibleGroupQualifiers = {
       for (final source in sources.where((source) => source.group.isNotEmpty))
@@ -771,9 +784,13 @@ extension _RelationalQueries on SqliteDatabase {
             describe: (query) =>
                 _pragmaColumnMetadata(query, cache, outerMetadata));
       } else {
-        final entry = cache[source.schema == null
+        final sharedName = source.schema == null
             ? asciiLower(source.table!)
-            : 'main.${asciiLower(source.table!)}'];
+            : 'main.${asciiLower(source.table!)}';
+        final entry = cache[_perCallTableFunction(source)
+                ? '$sharedName#${identityHashCode(source)}'
+                : sharedName] ??
+            cache[sharedName];
         if (entry == null) {
           throw SqlException('Unknown or circular source: ${source.table}');
         }
@@ -989,7 +1006,21 @@ extension _RelationalQueries on SqliteDatabase {
       }
 
       final right = group != null ? rows : qualifyRows(rows);
-      Iterable<RowValues> rightFor(RowValues left) {
+      final correlatedVirtual = table.virtualArgumentExprs != null;
+      Iterable<RowValues> rightFor(RowValues left, {bool independent = false}) {
+        if (correlatedVirtual) {
+          try {
+            return qualifyRows(_correlatedVirtualRows(table, source, left,
+                outer, precedingRefs, precedingColumns, bound, subquery));
+          } on SqlException catch (error) {
+            // A RIGHT/FULL preservation scan has no left row. The JSON
+            // arguments then have nothing to read, so that scan is empty.
+            if (independent && error.message.startsWith('No such column:')) {
+              return const <RowValues>[];
+            }
+            rethrow;
+          }
+        }
         if (!pragmaSource) return right;
         final context = EvalContext({
           ...?outer?.row,
@@ -1125,7 +1156,7 @@ extension _RelationalQueries on SqliteDatabase {
           }
           if (['RIGHT', 'FULL'].contains(source.join)) {
             var r = -1;
-            for (final rightRow in rightFor({})) {
+            for (final rightRow in rightFor({}, independent: true)) {
               r++;
               if (!matched.contains(r)) {
                 yield merge(
@@ -1605,6 +1636,63 @@ extension _RelationalQueries on SqliteDatabase {
         result.columnAffinities,
         result.columnDeclaredTypes,
         compoundCollations);
+  }
+
+  List<RowValues> _correlatedVirtualRows(
+      CatalogTable table,
+      QuerySource source,
+      RowValues left,
+      EvalContext? outer,
+      Map<String, String> precedingRefs,
+      Map<String, CatalogColumn> precedingColumns,
+      List<Object?> bound,
+      SqlRows Function(SelectStatement, EvalContext) subquery) {
+    final context = EvalContext({
+      ...?outer?.row,
+      ...left,
+      for (final entry in precedingRefs.entries) entry.key: left[entry.value],
+    }, {
+      ...?outer?.affinities,
+      for (final entry in precedingColumns.entries)
+        entry.key: entry.value.affinity,
+      for (final entry in precedingRefs.entries)
+        entry.key: precedingColumns[entry.value]!.affinity,
+    }, bound, _pager.header.textEncoding)
+      ..inTrigger = outer?.inTrigger ?? false
+      ..collations = {
+        ...?outer?.collations,
+        for (final entry in precedingColumns.entries)
+          entry.key: entry.value.collation,
+        for (final entry in precedingRefs.entries)
+          entry.key: precedingColumns[entry.value]!.collation,
+      }
+      ..columnAliases = {...outer?.columnAliases ?? const <String, Expr>{}}
+      ..subquery = subquery;
+    final values = [
+      for (final argument in table.virtualArgumentExprs!)
+        argument.evaluate(context)
+    ];
+    final scan = CatalogTable(table.name, table.rootPage, table.columns,
+        virtualModule: table.virtualModule,
+        virtualArguments: table.virtualArguments,
+        virtualPositionals: values);
+    final records =
+        VirtualTableRows.records(scan, parameters: bound, alias: source.alias);
+    final rows = <RowValues>[];
+    for (final record in records) {
+      final row = <String, Object?>{};
+      final stored = scan.storageColumns;
+      for (var i = 0; i < stored.length && i < record.values.length; i++) {
+        var value = record.values[i];
+        if (value is double && value.isNaN) value = null;
+        row[asciiLower(stored[i].name)] = value;
+      }
+      for (final id in ['rowid', '_rowid_', 'oid']) {
+        row.putIfAbsent(id, () => record.rowId);
+      }
+      rows.add(row);
+    }
+    return rows;
   }
 }
 

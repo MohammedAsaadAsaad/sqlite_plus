@@ -67,7 +67,8 @@ A Flutter browser can list schema, page rows, edit cells, and run SQL only for f
   - [x] `json_pretty`. The gap-ledger case `json-pretty` matches pinned SQLite 3.53.1. NULL, empty containers, nested arrays and objects, duplicate keys, comments, escapes, a custom indent, a NULL indent, numeric and blob indents, and a NUL truncated indent match `/tmp/sqlite-build/sqlite3`. Malformed JSON is rejected. The engine's arity text is `Invalid arguments to json_pretty`; the CLI text is `wrong number of arguments`. JSON input stays capped at 1 MiB. Pretty output stays capped at 16 MiB. An indent byte `0xFF` is kept as a code unit. Storing that string was not compared.
   - [ ] Native `EXPLAIN` bytecode.
   - [ ] Closer `EXPLAIN QUERY PLAN` text. The gap-ledger case `explain-query-plan` still differs. The CLI text is stored beside it.
-  - [ ] Correlated `json_each`.
+  - [x] Correlated `json_each` and `json_tree`. A column, a nested `json_each(j.value)`, and a scalar subquery are evaluated per row. Comma joins, `INNER JOIN`, `LEFT JOIN`, `docs RIGHT JOIN json_each`, and `FULL JOIN` match `/tmp/sqlite-build/sqlite3`. `generate_series` still rejects a non-constant argument. `json_each(docs.label) RIGHT JOIN docs` throws `No such column: docs.label`. The pinned CLI returns 0 rows for that shape. That shape stays open.
+  - [ ] `json_each(docs.label) RIGHT JOIN docs` when the argument names the preserved table. The CLI result is `0`.
   - [ ] A double-quoted-string mode. The gap-ledger case `dqs-fallback` stays rejected. The CLI result is `'missing'`.
   - [ ] ICU and locale collations.
   - [ ] FTS3/FTS4 writes.
