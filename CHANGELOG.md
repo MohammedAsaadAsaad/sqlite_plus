@@ -69,8 +69,9 @@ pre-release.
 - EXPLAIN bytecode, STAT4, and
   `auto_vacuum`. `json_pretty` matches the pinned CLI for the cases in
   `db_browser_b3_json_pretty_test.dart`. Correlated `json_each` matches the
-  pinned CLI for the cases in `db_browser_b3_json_each_test.dart`, except
-  `json_each(docs.label) RIGHT JOIN docs`. `doubleQuotedStrings` defaults to
+  pinned CLI for the cases in `db_browser_b3_json_each_test.dart`, including
+  `json_each(docs.label) RIGHT JOIN docs`, which returns 0 rows.
+  `doubleQuotedStrings` defaults to
   off. When it is on, `db_browser_b3_dqs_test.dart` matches the pinned CLI.
   Unquoted `a.title` beside a column named `a.title` still returns the dotted
   column.

@@ -187,7 +187,7 @@ AOT, 10000 rows, three samples. Memory SQL insert microseconds are
 | Grammar and errors | Closer native error text. Opt-in double-quoted strings match the pinned CLI in `db_browser_b3_dqs_test.dart`. The default stays off. Unquoted `a.title` beside a column named `a.title` still returns the dotted column |
 | Table functions | More virtual-table modules |
 | Windows | Wider window execution and closer planner equivalence |
-| Extensions | FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes. `json_each(docs.label) RIGHT JOIN docs` still throws; the pinned CLI returns 0 rows |
+| Extensions | FTS5 multi-page leaves, porter, trigram, detail, tokendata, locale, and FTS3/FTS4 writes. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI |
 | Platforms and release | Benchmarks at 100000 and 1000000 rows, a fresh desktop run for each new revision, Android, iOS, power-loss durability, and publication when requested. The current 10000-row file is `benchmark_results/scenarios_10k_linux_x64.json`. The recorded desktop pass is commit `7afaaba` in run 40538509306 |
 
 The production runtime stays Pure Dart. The planned browser work is a durable

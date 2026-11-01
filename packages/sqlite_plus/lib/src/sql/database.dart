@@ -331,6 +331,33 @@ final class SqliteDatabase {
     return false;
   }
 
+  /// A later FROM item exposes [key] when the alias and the real column match.
+  /// An aliased table does not keep its original name.
+  bool _laterSourceHasColumn(QuerySource source, String key) {
+    final alias = asciiLower(source.alias ?? source.table ?? '');
+    if (alias.isEmpty || source.table == null || source.query != null) {
+      return false;
+    }
+    String? column;
+    if (key.startsWith('$alias.')) {
+      column = key.substring(alias.length + 1);
+    } else if (key.startsWith('main.$alias.')) {
+      column = key.substring(alias.length + 6);
+    } else if (!key.contains('.')) {
+      column = key;
+    }
+    if (column == null || column.isEmpty || column.contains('.')) return false;
+    try {
+      final table = catalog.table(source.table!);
+      if (table.columns.any((c) => asciiLower(c.name) == column)) return true;
+      return !table.withoutRowid &&
+          const {'rowid', '_rowid_', 'oid'}.contains(column) &&
+          !table.columns.any((c) => asciiLower(c.name) == column);
+    } on SqlException {
+      return false;
+    }
+  }
+
   bool _sourceProvidesColumn(QuerySource source, String key) {
     final alias = asciiLower(source.alias ?? source.table ?? '');
     if (alias.isNotEmpty &&

@@ -1732,6 +1732,13 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10660 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The rest of B3 stays unchecked: native EXPLAIN bytecode, closer EXPLAIN QUERY PLAN text, `json_each(docs.label) RIGHT JOIN docs`, the unquoted `a.title` lookup above, ICU and locale collations, FTS3/FTS4 writes, FTS5 porter, trigram, detail, tokendata, locale, and multi-page leaves, `VACUUM INTO`, `journal_mode` switches, `auto_vacuum` writes, one durable commit across two attached databases, and the remaining DML syntax. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 json_each RIGHT JOIN
+
+- `json_each(docs.label) RIGHT JOIN docs` returns 0 rows. The table function is scanned with no JSON argument, and the preserved `docs` rows are not added. `json_tree`, `FULL JOIN`, `LEFT JOIN`, an unqualified `label`, and `main.docs.label` do the same. `json_each(missing)` and `json_each(docs.nope)` still raise `No such column`. The pinned CLI text is `no such column: missing` and `no such column: docs.nope`.
+- `db_browser_b3_json_each_test.dart` compared those statements with `/tmp/sqlite-build/sqlite3`. That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3. `docs RIGHT JOIN json_each` still matches the pin. Malformed JSON on a comma join is still rejected.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` and the full `dart test` count are recorded after this run's suite. No wall-clock timing was run. No speedup is claimed.
+- The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

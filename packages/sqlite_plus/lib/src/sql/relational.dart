@@ -615,6 +615,10 @@ extension _RelationalQueries on SqliteDatabase {
         s.sources.single.alias != null;
     final fieldOrder = <String>[];
     Iterable<RowValues> joined = <RowValues>[{}];
+    // json_each(docs.label) on the left of a later table is scanned with no
+    // argument. SQLite then rejects the preserved rows because the hidden
+    // json value is NULL. Those later RIGHT/FULL inputs contribute no rows.
+    final unboundJsonTargets = <int>{};
     final aliases = <String>{};
     final refs = <String, List<String>>{};
     final implicitRefs = <String>{};
@@ -1007,8 +1011,24 @@ extension _RelationalQueries on SqliteDatabase {
 
       final right = group != null ? rows : qualifyRows(rows);
       final correlatedVirtual = table.virtualArgumentExprs != null;
+      final jsonModule = asciiLower(source.table ?? '');
+      var suppressUnboundJson = false;
+      if (correlatedVirtual &&
+          (jsonModule == 'json_each' || jsonModule == 'json_tree')) {
+        for (final argument in table.virtualArgumentExprs!) {
+          for (final column in argument.unaggregatedColumns) {
+            for (var later = index + 1; later < sources.length; later++) {
+              if (_laterSourceHasColumn(sources[later], column)) {
+                unboundJsonTargets.add(later);
+                suppressUnboundJson = true;
+              }
+            }
+          }
+        }
+      }
       Iterable<RowValues> rightFor(RowValues left, {bool independent = false}) {
         if (correlatedVirtual) {
+          if (suppressUnboundJson) return const <RowValues>[];
           try {
             return qualifyRows(_correlatedVirtualRows(table, source, left,
                 outer, precedingRefs, precedingColumns, bound, subquery));
@@ -1093,6 +1113,10 @@ extension _RelationalQueries on SqliteDatabase {
           : rowidBounds(source.on).toList();
       final leftKeys = Set<String>.of(keysBefore);
       joinSteps.add((leftRows) sync* {
+        if (unboundJsonTargets.contains(index) &&
+            const {'RIGHT', 'FULL'}.contains(source.join)) {
+          return;
+        }
         RowValues merge(RowValues row) {
           for (final key in mergedKeys) {
             final (left, right, join) = mergedValues[key]!;

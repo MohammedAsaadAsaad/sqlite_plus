@@ -103,21 +103,41 @@ void main() {
     ''');
     await match(
         "SELECT count(*) FROM json_each((SELECT label FROM docs WHERE id=1))");
-    // The pinned CLI returns no rows for a table function on the left of
-    // RIGHT JOIN when the argument names the right table. This engine
-    // raises no such column because that table is not yet in the row.
+    await match(
+        'SELECT count(*) FROM json_each(docs.label) e RIGHT JOIN docs ON 1');
+    await match(
+        'SELECT count(*) FROM json_tree(docs.label) e RIGHT JOIN docs ON 1');
+    await match(
+        'SELECT count(*) FROM json_each(docs.label) e FULL JOIN docs ON 1');
+    await match(
+        'SELECT count(*) FROM json_each(docs.label) e LEFT JOIN docs ON 1');
+    await match('SELECT count(*) FROM json_each(label) e RIGHT JOIN docs ON 1');
+    await match(
+        'SELECT count(*) FROM json_each(main.docs.label) e RIGHT JOIN docs ON 1');
     await expectLater(
         db.query(
-            'SELECT count(*) FROM json_each(docs.label) e RIGHT JOIN docs ON 1'),
-        throwsA(isA<SqlException>().having((error) => error.message, 'message',
-            'No such column: docs.label')));
-    final rightCli = await Process.run(tool, [
+            'SELECT count(*) FROM json_each(missing) e RIGHT JOIN docs ON 1'),
+        throwsA(isA<SqlException>().having(
+            (error) => error.message, 'message', 'No such column: missing')));
+    final missingCli = await Process.run(tool, [
       ':memory:',
       setup,
-      'SELECT count(*) FROM json_each(docs.label) e RIGHT JOIN docs ON 1'
+      'SELECT count(*) FROM json_each(missing) e RIGHT JOIN docs ON 1'
     ]);
-    expect(rightCli.exitCode, 0, reason: rightCli.stderr.toString());
-    expect(rightCli.stdout.toString().trim(), '0');
+    expect(missingCli.exitCode, isNot(0));
+    expect(missingCli.stderr.toString(), contains('no such column: missing'));
+    await expectLater(
+        db.query(
+            'SELECT count(*) FROM json_each(docs.nope) e RIGHT JOIN docs ON 1'),
+        throwsA(isA<SqlException>().having(
+            (error) => error.message, 'message', 'No such column: docs.nope')));
+    final typoCli = await Process.run(tool, [
+      ':memory:',
+      setup,
+      'SELECT count(*) FROM json_each(docs.nope) e RIGHT JOIN docs ON 1'
+    ]);
+    expect(typoCli.exitCode, isNot(0));
+    expect(typoCli.stderr.toString(), contains('no such column: docs.nope'));
     await match('''
       SELECT $pack FROM (
         SELECT docs.id AS id, e.key AS k, e.value AS v
