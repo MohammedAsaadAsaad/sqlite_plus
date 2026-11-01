@@ -245,6 +245,110 @@ void main() {
         "SELECT count(*) FROM t; SELECT v FROM aux.u;";
     expect(await _engine(both), await _pinned(tool, ':memory:', both));
 
+    const values = "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+        "SELECT last_insert_rowid(); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ((SELECT v FROM t)); "
+        "SELECT last_insert_rowid(); SELECT changes(); "
+        "SELECT v FROM aux.u; SELECT v FROM t; "
+        "SELECT name FROM aux.sqlite_schema WHERE type = 'table' ORDER BY name;";
+    expect(await _engine(values), await _pinned(tool, ':memory:', values));
+
+    const valuesEmpty = "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ((SELECT v FROM t WHERE 0)); "
+        "SELECT count(*), typeof(v) FROM aux.u;";
+    expect(await _engine(valuesEmpty),
+        await _pinned(tool, ':memory:', valuesEmpty));
+
+    const valuesFirst = "CREATE TABLE t(v); INSERT INTO t VALUES ('b'), ('a'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ((SELECT v FROM t ORDER BY v)); "
+        "SELECT v FROM aux.u;";
+    expect(await _engine(valuesFirst),
+        await _pinned(tool, ':memory:', valuesFirst));
+
+    const valuesPair = "CREATE TABLE t(a, b); INSERT INTO t VALUES (1, 'm'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(a, b); "
+        "INSERT INTO aux.u VALUES ((SELECT a FROM t), (SELECT b FROM t)); "
+        "SELECT a, b FROM aux.u;";
+    expect(
+        await _engine(valuesPair), await _pinned(tool, ':memory:', valuesPair));
+
+    const valuesNamed = "CREATE TABLE t(v); INSERT INTO t VALUES ('main'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.t(v); "
+        "INSERT INTO aux.t VALUES ('aux'); CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ((SELECT main.t.v FROM main.t)); "
+        "SELECT v FROM aux.u; SELECT v FROM aux.t; SELECT v FROM t; "
+        "SELECT name FROM aux.sqlite_schema WHERE type = 'table' ORDER BY name;";
+    expect(await _engine(valuesNamed),
+        await _pinned(tool, ':memory:', valuesNamed));
+
+    const valuesReturning = "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ((SELECT v FROM t)) RETURNING v; "
+        "SELECT changes();";
+    expect(await _engine(valuesReturning),
+        await _pinned(tool, ':memory:', valuesReturning));
+
+    const valuesUpsert = "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+        "ATTACH ':memory:' AS aux; "
+        "CREATE TABLE aux.u(id INTEGER PRIMARY KEY, v); "
+        "INSERT INTO aux.u VALUES (1, 'old'); "
+        "INSERT INTO aux.u VALUES (1, (SELECT v FROM t)) "
+        "ON CONFLICT(id) DO UPDATE SET v = excluded.v; "
+        "SELECT id, v FROM aux.u; SELECT changes();";
+    expect(await _engine(valuesUpsert),
+        await _pinned(tool, ':memory:', valuesUpsert));
+
+    const valuesRows = "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "INSERT INTO aux.u VALUES ((SELECT v FROM t)), ((SELECT v FROM t)); "
+        "SELECT v FROM aux.u ORDER BY rowid; SELECT changes();";
+    expect(
+        await _engine(valuesRows), await _pinned(tool, ':memory:', valuesRows));
+
+    const valuesWith = "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+        "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+        "WITH c(v) AS (SELECT v FROM t) "
+        "INSERT INTO aux.u VALUES ((SELECT v FROM c)); "
+        "SELECT v FROM aux.u;";
+    expect(
+        await _engine(valuesWith), await _pinned(tool, ':memory:', valuesWith));
+
+    const valuesReverse = "ATTACH ':memory:' AS aux; "
+        "CREATE TABLE aux.u(v); INSERT INTO aux.u VALUES ('a'); "
+        "CREATE TABLE t(v); "
+        "INSERT INTO t VALUES ((SELECT v FROM aux.u)); "
+        "SELECT v FROM t; SELECT v FROM aux.u;";
+    expect(await _engine(valuesReverse),
+        await _pinned(tool, ':memory:', valuesReverse));
+
+    await _expectWording(
+      tool,
+      "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+          "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+          "INSERT INTO aux.u VALUES ((SELECT v FROM missing));",
+      'no such table: missing',
+      'No such table: missing',
+    );
+    await _expectWording(
+      tool,
+      "CREATE TABLE t(a, b); INSERT INTO t VALUES (1, 2); "
+          "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(v); "
+          "INSERT INTO aux.u VALUES ((SELECT a, b FROM t));",
+      'sub-select returns 2 columns - expected 1',
+      'Scalar subquery must return one column',
+    );
+    await _expectWording(
+      tool,
+      "CREATE TABLE t(v); INSERT INTO t VALUES ('m'); "
+          "ATTACH ':memory:' AS aux; CREATE TABLE aux.u(a, b); "
+          "INSERT INTO aux.u VALUES ((SELECT v FROM t));",
+      'table aux.u has 2 columns but 1 values were supplied',
+      'INSERT width mismatch',
+    );
+
     for (final statement in [
       'UPDATE aux.u SET v = 1',
       'UPDATE AUX.U SET v = 1',
@@ -264,6 +368,14 @@ void main() {
               .having((error) => error.message, 'message', message)));
     }
   });
+}
+
+Future<void> _expectWording(
+    String tool, String sql, String cliFragment, String engineMessage) async {
+  final pin = await Process.run(tool, [':memory:', sql]);
+  expect(pin.exitCode, isNonZero);
+  expect(pin.stderr.toString(), contains(cliFragment));
+  expect(await _engine(sql), 'ERR $engineMessage');
 }
 
 Future<String> _pinned(String tool, String path, String sql) async {

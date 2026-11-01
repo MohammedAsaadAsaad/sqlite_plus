@@ -1358,7 +1358,10 @@ final class MutableSqliteDatabase {
     if (counters != null) {
       counters.changes = BigInt.from(updated.changes);
       counters.totalChanges = savedTotal + BigInt.from(updated.changes);
-      counters.lastInsertRowid = savedLast;
+      final inserted = updated.changes > 0 &&
+          updated.lastRowid != null &&
+          statementInsertsRows(sql);
+      counters.lastInsertRowid = inserted ? updated.lastRowid! : savedLast;
     }
     return MutationImage(
         image, updated.changes, updated.lastRowid, updated.returning);

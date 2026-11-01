@@ -89,7 +89,7 @@ StatementRoute routeMutation(String sql, SchemaNames names) {
     if (insertSelectParts(sql) != null) {
       return StatementRoute('cross-insert', target.sql, schema: target.schema);
     }
-    if (_isUpdateOrDelete(sql)) {
+    if (_isUpdateOrDelete(sql) || statementInsertsRows(sql)) {
       return StatementRoute('cross-write', sql, schema: target.schema);
     }
     throw const SqlException('cross-database statement is not supported');
@@ -103,6 +103,13 @@ bool _isUpdateOrDelete(String sql) {
   if (cursor.take('UPDATE')) return true;
   if (!cursor.take('DELETE')) return false;
   return true;
+}
+
+/// `INSERT` or `REPLACE`, including a leading `WITH`.
+bool statementInsertsRows(String sql) {
+  final cursor = _Cursor(sql);
+  _skipWith(cursor);
+  return cursor.take('INSERT') || cursor.take('REPLACE');
 }
 
 /// The pieces of an `INSERT ... SELECT`. Null for any other statement.
@@ -544,7 +551,7 @@ final class CrossCopy {
   final String helper;
 }
 
-/// An `UPDATE` or `DELETE` rewritten so the target image can run it.
+/// An `UPDATE`, `DELETE`, or `INSERT` rewritten so the target image can run it.
 final class CrossWritePlan {
   CrossWritePlan(this.sql, this.copies);
   final String sql;
@@ -582,39 +589,70 @@ CrossWritePlan _planCrossWrite(
       parser.require(')');
     } while (parser.take(','));
   }
-  final update = parser.take('UPDATE');
-  if (!update) {
+  final replace = parser.take('REPLACE');
+  final insert = replace || parser.take('INSERT');
+  final update = !insert && parser.take('UPDATE');
+  if (!insert && !update) {
     parser.require('DELETE');
     parser.require('FROM');
   }
+  if (insert && !replace && parser.take('OR')) parser.identifier();
   if (update && parser.take('OR')) parser.identifier();
+  if (insert) parser.require('INTO');
   var targetName = parser.identifier();
   if (parser.take('.')) targetName = parser.identifier();
   if (parser.take('AS')) parser.identifier();
-  if (parser.take('INDEXED')) {
+  if (!insert && parser.take('INDEXED')) {
     parser.require('BY');
     parser.identifier();
-  } else if (parser.take('NOT')) {
+  } else if (!insert && parser.take('NOT')) {
     parser.require('INDEXED');
   }
   final owned = <Expr>[];
   final from = <QuerySource>[];
-  if (update) {
+  if (insert) {
+    if (parser.take('(')) _skipParens(parser);
+    if (parser.take('DEFAULT')) {
+      parser.require('VALUES');
+    } else if (parser.current.keyword == 'SELECT' ||
+        parser.current.keyword == 'WITH') {
+      throw const SqlException('cross-database statement is not supported');
+    } else {
+      parser.require('VALUES');
+      do {
+        parser.require('(');
+        do {
+          owned.add(parser.expression());
+        } while (parser.take(','));
+        parser.require(')');
+      } while (parser.take(','));
+    }
+    while (parser.take('ON')) {
+      parser.require('CONFLICT');
+      if (parser.take('(')) _skipParens(parser);
+      if (parser.take('WHERE')) owned.add(parser.expression());
+      parser.require('DO');
+      if (!parser.take('NOTHING')) {
+        parser.require('UPDATE');
+        parser.require('SET');
+        do {
+          if (parser.take('(')) {
+            _skipParens(parser);
+          } else {
+            parser.identifier();
+            if (parser.take('.')) parser.identifier();
+          }
+          parser.require('=');
+          owned.add(parser.expression());
+        } while (parser.take(','));
+        if (parser.take('WHERE')) owned.add(parser.expression());
+      }
+    }
+  } else if (update) {
     parser.require('SET');
     do {
       if (parser.take('(')) {
-        var depth = 1;
-        while (depth > 0) {
-          if (parser.current.kind == SqlTokenKind.end) {
-            throw const SqlException('Expected )');
-          }
-          if (parser.current.text == '(') {
-            depth++;
-          } else if (parser.current.text == ')') {
-            depth--;
-          }
-          parser.position++;
-        }
+        _skipParens(parser);
       } else {
         parser.identifier();
       }
@@ -623,7 +661,7 @@ CrossWritePlan _planCrossWrite(
     } while (parser.take(','));
     if (parser.take('FROM')) from.addAll(parser.joinedSources());
   }
-  if (parser.take('WHERE')) owned.add(parser.expression());
+  if (!insert && parser.take('WHERE')) owned.add(parser.expression());
   if (parser.take('RETURNING')) {
     do {
       if (parser.take('*')) continue;
@@ -672,27 +710,28 @@ CrossWritePlan _planCrossWrite(
   final tokens = SqlTokenizer.tokenize(sql);
   final edits = <(int, int, String)>[];
   for (final hit in hits) {
-    if (asciiLower(hit.helper) == asciiLower(hit.table)) continue;
     final index = _tokenIndexAt(tokens, hit.offset);
-    final start = index >= 2 && tokens[index - 1].text == '.'
-        ? tokens[index - 2].offset
-        : hit.offset;
+    final qualifiedRef = index >= 2 && tokens[index - 1].text == '.';
+    final sameName = asciiLower(hit.helper) == asciiLower(hit.table);
+    if (!qualifiedRef && sameName) continue;
+    final start = qualifiedRef ? tokens[index - 2].offset : hit.offset;
     final end = _tokenEnd(sql, tokens, index);
     final quoted = _quoteIdent(hit.helper);
-    final replacement =
-        hit.alias == null ? '$quoted AS ${_quoteIdent(hit.table)}' : quoted;
+    final replacement = hit.alias == null && !sameName
+        ? '$quoted AS ${_quoteIdent(hit.table)}'
+        : quoted;
     edits.add((start, end, replacement));
   }
   for (final column in qualified) {
-    final helper = _helperFor(hits, column.schema, column.table);
-    if (helper == null || asciiLower(helper) == asciiLower(column.table)) {
-      continue;
-    }
+    final hit = _hitFor(hits, column.schema, column.table);
+    if (hit == null) continue;
     final index = _tokenIndexAt(tokens, column.tableOffset);
-    final start = index >= 2 && tokens[index - 1].text == '.'
-        ? tokens[index - 2].offset
-        : column.tableOffset;
-    edits.add((start, column.columnOffset, '${_quoteIdent(helper)}.'));
+    final qualifiedRef = index >= 2 && tokens[index - 1].text == '.';
+    final sameName = asciiLower(hit.helper) == asciiLower(hit.table);
+    if (!qualifiedRef && sameName) continue;
+    final start = qualifiedRef ? tokens[index - 2].offset : column.tableOffset;
+    final visible = hit.alias ?? (sameName ? hit.helper : hit.table);
+    edits.add((start, column.columnOffset, '${_quoteIdent(visible)}.'));
   }
   for (var i = 0; i + 2 < tokens.length; i++) {
     final token = tokens[i];
@@ -707,6 +746,18 @@ CrossWritePlan _planCrossWrite(
   return CrossWritePlan(_splice(sql, edits), copies);
 }
 
+void _skipParens(SqlParser parser) {
+  var depth = 1;
+  while (depth > 0) {
+    if (parser.current.kind == SqlTokenKind.end) {
+      throw const SqlException('Expected )');
+    }
+    if (parser.current.text == '(') depth++;
+    if (parser.current.text == ')') depth--;
+    parser.position++;
+  }
+}
+
 String _freshHelper(String schema, String table, Set<String> occupied) {
   var name = '__cross_${schema}_$table';
   var suffix = 2;
@@ -717,10 +768,10 @@ String _freshHelper(String schema, String table, Set<String> occupied) {
   return name;
 }
 
-String? _helperFor(List<_ForeignUse> hits, String schema, String table) {
+_ForeignUse? _hitFor(List<_ForeignUse> hits, String schema, String table) {
   for (final hit in hits) {
     if (hit.schema == schema && asciiLower(hit.table) == asciiLower(table)) {
-      return hit.helper;
+      return hit;
     }
   }
   return null;
