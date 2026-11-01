@@ -76,6 +76,10 @@ final class MutableSqliteDatabase {
   int _busyTimeout = 0;
   int _synchronous = 2;
 
+  /// Connection journal mode. Absent means the default: `memory` for an
+  /// in-memory main database, otherwise `delete` (or `wal` when byte 18 is 2).
+  final Map<String, String> _journalModes = {};
+
   /// Reads ATTACH file paths. Memory ATTACH does not use it. A missing reader
   /// rejects file paths. The bytes are a connection-local copy, not a second journal.
   Future<Uint8List> Function(String path)? attachFile;
@@ -916,7 +920,7 @@ final class MutableSqliteDatabase {
       case 'synchronous':
         return BigInt.from(_synchronous);
       case 'journal_mode':
-        return sqlJournalMode(_imageFor(schema)[18]);
+        return _journalModeFor(schema);
       case 'auto_vacuum':
         return BigInt.zero;
       default:
@@ -941,16 +945,41 @@ final class MutableSqliteDatabase {
       case 'synchronous':
         _synchronous = _synchronousMode(value);
       case 'journal_mode':
-        final requested = asciiLower(value);
-        final current = sqlJournalMode(_imageFor(schema)[18]);
-        if (requested != current) {
-          throw SqlException('journal_mode $requested is not implemented');
-        }
+        _setJournalMode(schema, value);
       case 'auto_vacuum':
         throw const SqlException('auto_vacuum is not implemented');
       default:
         throw SqlException('Unsupported writable PRAGMA');
     }
+  }
+
+  String _journalModeFor(String schema) {
+    final stored = _journalModes[schema];
+    if (stored != null) return stored;
+    if (schema == 'main' && _journal == null) return 'memory';
+    final image = _imageFor(schema);
+    if (schema == 'main' && image.length > 18 && image[18] == 2) return 'wal';
+    return 'delete';
+  }
+
+  /// In-memory main stays `memory`. A file keeps `delete` for `off` and for an
+  /// unknown name. `memory` and `delete` change only this connection. `wal`,
+  /// `persist`, and `truncate` are not switched.
+  void _setJournalMode(String schema, String value) {
+    final requested = asciiLower(value);
+    if (schema == 'main' && _journal == null) {
+      _journalModes[schema] = 'memory';
+      return;
+    }
+    const known = {'delete', 'persist', 'off', 'truncate', 'memory', 'wal'};
+    if (!known.contains(requested) || requested == 'off') return;
+    if (requested == 'wal' && schema != 'main') return;
+    if (requested == 'wal' ||
+        requested == 'persist' ||
+        requested == 'truncate') {
+      throw SqlException('journal_mode $requested is not implemented');
+    }
+    _journalModes[schema] = requested;
   }
 
   int _synchronousMode(String value) {

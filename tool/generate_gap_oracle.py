@@ -85,19 +85,11 @@ CASES = [
     },
     {
         "id": "journal-mode-memory",
-        "disposition": "rejected",
-        "kind": "execute",
         "sql": "PRAGMA journal_mode=memory",
-        "reason": "journal_mode memory is not implemented. Writing a mode other than the current header mode is rejected before the image changes.",
-        "engine_message": "journal_mode memory is not implemented",
     },
     {
         "id": "journal-mode-off",
-        "disposition": "rejected",
-        "kind": "execute",
         "sql": "PRAGMA journal_mode=off",
-        "reason": "Pinned SQLite :memory: stays on memory when asked for off. This engine rejects journal_mode off before the rollback image changes.",
-        "engine_message": "journal_mode off is not implemented",
     },
     {
         "id": "auto-vacuum-full",
@@ -120,10 +112,7 @@ CASES = [
     },
     {
         "id": "journal-mode-read",
-        "disposition": "differs",
         "sql": "PRAGMA journal_mode",
-        "reason": "A fresh image reports rollback from header byte 18. Pinned SQLite :memory: reports memory. memory mode is not implemented.",
-        "engine_rows": [["rollback"]],
     },
     {
         "id": "explain-query-plan",

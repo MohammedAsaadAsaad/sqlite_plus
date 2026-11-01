@@ -1876,6 +1876,15 @@ result=pass
 - `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10566 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The `VACUUM INTO` sub-item is checked. The B3 parent stays open. The FTS3/FTS4 inverted index, `journal_mode`, `auto_vacuum`, and the cross-database commit stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
+## 2026-11-01 — B3 journal_mode matches the compared pin results
+
+- On `:memory:`, `PRAGMA journal_mode` and assignments to `memory`, `off`, `delete`, `wal`, `persist`, `truncate`, `rollback`, and an unknown name all return `memory`. `CREATE TABLE` and `INSERT` still return the row. `exportImage` bytes stay unchanged. Header byte 18 stays 1, so `sqlJournalMode` of that byte is still `rollback` and a read-only open of the image still says `rollback`. `fromImage` of write version 2 still throws.
+- On a file, the mode starts at `delete`. `journal_mode=off` stays `delete`. `journal_mode=memory` returns `memory` and a later read is `memory`. `SELECT v` stays `1`. Header bytes 18 and 19 stay 1, which is what the pin file shows after `journal_mode=memory`. `journal_mode=delete` returns `delete` and the row stays. File `wal`, `persist`, and `truncate` throw `journal_mode wal is not implemented`, `journal_mode persist is not implemented`, and `journal_mode truncate is not implemented`. Official journal-file bytes were not compared. This engine's redo log is not an official SQLite journal.
+- `temp.journal_mode` starts at `delete`. `off` stays `delete`. `memory` returns `memory`. The main image bytes stay.
+- That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
+- `packages/sqlite_plus`: `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10566 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- The `journal_mode` sub-item is checked for those rows. File `wal`, `persist`, and `truncate` stay unswitched. The B3 parent stays open. The FTS3/FTS4 inverted index, `auto_vacuum`, and the cross-database commit stay open. B5 stays unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

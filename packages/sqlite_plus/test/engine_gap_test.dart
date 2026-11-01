@@ -209,28 +209,37 @@ void main() {
         reopened.query('SELECT * FROM u'), throwsA(isA<SqlException>()));
   });
 
-  test('journal_mode reports the header and rejects unimplemented modes',
+  test('journal_mode on memory stays memory without rewriting the image',
       () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
     final before = db.exportImage();
     expect(
-        (await db.query('PRAGMA journal_mode')).rows.single.single, 'rollback');
+        (await db.query('PRAGMA journal_mode')).rows.single.single, 'memory');
     expect(sqlJournalMode(before[18]), 'rollback');
-    await db.execute('PRAGMA journal_mode=rollback');
-    expect(db.exportImage(), before);
     for (final mode in [
       'memory',
       'off',
       'delete',
       'persist',
       'truncate',
-      'wal'
+      'wal',
+      'rollback',
+      'nope'
     ]) {
-      await expectLater(db.execute('PRAGMA journal_mode=$mode'),
-          throwsA(isA<SqlException>()));
-      expect(db.exportImage(), before);
+      expect((await db.query('PRAGMA journal_mode=$mode')).rows.single.single,
+          'memory',
+          reason: mode);
+      expect(db.exportImage(), before, reason: mode);
     }
+    expect((await db.query('PRAGMA temp.journal_mode')).rows.single.single,
+        'delete');
+    expect((await db.query('PRAGMA temp.journal_mode=off')).rows.single.single,
+        'delete');
+    expect(
+        (await db.query('PRAGMA temp.journal_mode=memory')).rows.single.single,
+        'memory');
+    expect(db.exportImage(), before);
     final wal = Uint8List.fromList(before);
     wal[18] = 2;
     wal[19] = 2;
