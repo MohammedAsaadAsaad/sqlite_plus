@@ -1799,7 +1799,7 @@ result=pass
 - On pinned `:memory:`, `PRAGMA journal_mode` and assignments to `memory`, `off`, `delete`, and `wal` all return `memory`. On a file, the pin starts at `delete`, `journal_mode=off` stays `delete`, and `journal_mode=memory` returns `memory` while the inserted row remains `1`.
 - This engine reads `rollback`. `journal_mode=memory` throws `journal_mode memory is not implemented`. `journal_mode=off` throws `journal_mode off is not implemented`. `journal_mode=delete` throws `journal_mode delete is not implemented`. Assigning the current `rollback` mode still reads `rollback`. The gap cases `journal-mode-memory`, `journal-mode-off`, and `journal-mode-read` stay listed. `db_browser_b3_journal_test.dart` records the comparison. This is not the official journal.
 - That CLI's `sqlite_source_id()` is `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`. It reports `COMPILER=gcc-13.3.0`. `manifest.json` still records clang-22.1.3.
-- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed COUNT tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
+- `packages/sqlite_plus`: `dart format` passed for the edited files. `dart analyze --fatal-infos` passed. `dart test` passed 10675 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed.
 - The journal_mode sub-item stays unchecked. The rest of B3 stays unchecked. B4 and B5 stay unchecked. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim and not a DB Browser clone.
 
 ## 2026-10-31 — Version 0.1.2
