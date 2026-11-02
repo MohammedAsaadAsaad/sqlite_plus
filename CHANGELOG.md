@@ -12,7 +12,7 @@
 - Margin notes exports CSV, imports those rows as new notes, and plots one bar per UTC update day. `examples/notes/tool/note_exchange_check.dart` passed. The Flutter widgets were not executed on this machine.
 - The ORM calls a model method from a query. `@DbScalar() BigInt? twice() => revision * BigInt.two` is `row.twice() > 20`. Engine scalars sit on the column: `row.revision.abs()`, `row.title.upper()`, `row.title.length()`. The generator writes the method onto the query row.
 
-Still open: the two-database commit record is the engine schema-commit file, not an official SQLite master journal. B5 stays unchecked until those Flutter widgets run. M9 stays unchecked. The scenario harness rejects a row count above 10000. iOS, macOS, Windows, and power loss were not run for this revision. Item 108 stays open. `dart pub publish --dry-run` is the publish check for this version. This note does not record a completed pub.dev upload.
+Still open: the two-database commit record is the engine schema-commit file, not an official SQLite master journal. B5 stays unchecked until those Flutter widgets run. M9 stays unchecked. The scenario harness rejects a row count above 10000. iOS, macOS, Windows, and power loss were not run for this revision. Item 108 stays open. `dart pub publish --dry-run` reported 0 warnings for the three packages. This note does not record a completed pub.dev upload.
 
 ## 0.1.2
 
