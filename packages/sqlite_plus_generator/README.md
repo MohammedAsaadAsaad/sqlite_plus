@@ -6,7 +6,7 @@ Write the class. This tool writes the columns, the revision, the JSON path, the 
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.2
+  sqlite_plus_generator: ^0.1.3
 ```
 
 ```sh
@@ -93,6 +93,9 @@ final expensive = await purchases.query
     .selectWhere((row) => row.total > 20.0)
     .orderByFields((row) => [row.total.ascending])
     .select();
+final large = await purchases.query
+    .selectWhere((row) => row.total.abs() > 20)
+    .toList();
 final note = (await NoteQuery(notes.query)
         .filter((row) => row.path(r'$.title').equalTo('kept'))
         .toList())
@@ -106,7 +109,27 @@ final inside = (await PlaceQuery(places.query)
 final buyer = await purchase.reference(PurchaseRelationships.customer).load();
 ```
 
-`expensive` is `22.5` then `30.0`. `note.document` is `{"title":"kept"}`. `article.body` is `alpha kept`. `inside` is place `1`. `buyer` is `Ada`.
+`expensive` is `22.5` then `30.0`. `large` is those same two rows: `abs` is the engine, called on the column. `note.document` is `{"title":"kept"}`. `article.body` is `alpha kept`. `inside` is place `1`. `buyer` is `Ada`.
+
+A method on the class is a scalar too. It reads the fields. The query calls it with no arguments.
+
+```dart
+class Purchase {
+  Purchase({this.id, this.customerId, required this.total});
+  BigInt? id;
+  BigInt? customerId;
+  double total;
+
+  @DbScalar()
+  double doubled() => total * 2;
+}
+
+final matched = await purchases.query
+    .selectWhere((row) => row.doubled() > 40)
+    .toList();
+```
+
+`matched` is the 22.5 and 30 purchases: each total doubled is above 40. The part registers `purchase_doubled`.
 
 After the first `ensureCreated`, a new nullable field is an up migration:
 
@@ -141,7 +164,23 @@ A renamed SQL column is not guessed. Keep `@DbColumn(name: 'title')` when only t
 | `@DbVersion()` | The revision column |
 | `<Parent>Id` or `@DbReference` | `reference` and `collection` |
 | `@DbJson()` on one `String` | `path` |
+| `@DbScalar()` on a method or getter | `row.twice()`, registered as `table_method` |
 | `@DbEntity(module: 'fts5')` | `USING fts5` and `search` |
 | `@DbEntity(module: 'rtree')` | `USING rtree` and `bounds` |
 
 The write is deterministic and formatted. Hand-written files and symbolic links stay in place. Fields are `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, and `DateTime`, including nullable aliases. A generic, an inherited field, or an unsupported type is reported before any file is written.
+
+## The other packages
+
+[`sqlite_plus`](../sqlite_plus) runs the SQL. One memory database:
+
+```dart
+import 'package:sqlite_plus/sqlite_plus.dart';
+
+final db = await openInMemory();
+await db.execute(
+  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT)',
+);
+```
+
+[`sqlite_plus_orm`](../sqlite_plus_orm) is what the application calls. `saveChanges` writes the tracked objects, and `row.doubled()` is the method above.

@@ -6,7 +6,7 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.2
+  sqlite_plus: ^0.1.3
 ```
 
 ## A table, a row, a query
@@ -151,6 +151,25 @@ The file size is taken before close, so it still includes the redo.
 | Your code | `registerScalar`, `registerAggregate`, `createCollation` |
 
 `registerScalar` stays on that connection. `deterministic: true` allows it inside a schema expression. `registerAggregate` builds a fresh aggregate per group. `createCollation` sits beside `BINARY`, `NOCASE`, and `RTRIM`.
+
+## The other packages
+
+[`sqlite_plus_orm`](../sqlite_plus_orm) tracks the objects. A method on the class is a query.
+
+```dart
+@DbScalar()
+BigInt? twice() => revision * BigInt.two;
+
+final large = await books.query
+    .selectWhere((row) => (row.twice() > 20) | row.title.upper().equalTo('WEST'))
+    .toList();
+```
+
+`twice` reads `revision`. `upper` is this engine. [`sqlite_plus_generator`](../sqlite_plus_generator) writes `twice()` from that method.
+
+```sh
+dart run sqlite_plus_generator --input lib/models.dart
+```
 
 `openInMemory` is `MutableSqliteDatabase.create`. `exportImage` is the byte image a file can hold. `openBrowserStorage` reports `canRead`, `canWrite`, `durabilityPromised`, and `placement`.
 

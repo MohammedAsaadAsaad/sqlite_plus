@@ -6,11 +6,11 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.2
-  sqlite_plus_orm: ^0.1.2
+  sqlite_plus: ^0.1.3
+  sqlite_plus_orm: ^0.1.3
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.2
+  sqlite_plus_generator: ^0.1.3
 ```
 
 ## Query
@@ -58,10 +58,12 @@ class Purchase {
 await context.migrations.ensureCreated();
 
 final expensive = await purchases.query
-    .selectWhere((row) => row.total > 20.0)
+    .selectWhere((row) => (row.total > 20.0) | (row.total.abs() > 20))
     .orderByFields((row) => [row.total.ascending])
     .select();
 ```
+
+`abs` is the engine, called on the column. A method marked `@DbScalar()` is called the same way: `row.twice() > 20` reads `revision` from the model and runs that body for each row.
 
 `ensureCreated` builds the table. A later nullable field is `plan()` then `applySafe()`. A rename or a drop is a statement you write and approve. The reverse statement is the down migration.
 
@@ -97,9 +99,9 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 
 | Package | Start here |
 |---|---|
-| [`sqlite_plus`](packages/sqlite_plus) | SQL, JSON, FTS5, R-tree, `exportImage` |
-| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Saves, revisions, and migrations |
-| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `filter`, `path`, `search`, and `bounds` out |
+| [`sqlite_plus`](packages/sqlite_plus) | SQL, JSON, FTS5, R-tree, `abs`, `exportImage` |
+| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Saves, revisions, `row.twice()`, migrations |
+| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `filter`, `path`, `@DbScalar`, `search`, and `bounds` out |
 
 | You want | Command |
 |---|---|

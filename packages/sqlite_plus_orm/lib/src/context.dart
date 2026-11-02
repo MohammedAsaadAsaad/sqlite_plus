@@ -171,6 +171,7 @@ final class DbContext {
   /// Claims [connection] exclusively for this context and [model].
   DbContext(this.connection, this.model) {
     connection.claim(this);
+    registerOrmScalars(connection, model.entities);
   }
 
   /// Connection used for every statement.

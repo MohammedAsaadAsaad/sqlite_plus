@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.3
 
-The version number stays `0.1.2`. Compared with pinned SQLite 3.53.1 on Dart 3.13.7, Linux x64. 10596 tests passed.
+Compared with pinned SQLite 3.53.1 on Dart 3.13.7, Linux x64. 10596 tests passed. pub.dev already serves `0.1.2`.
 
 - Incremental auto-vacuum keeps the freelist page after an overflow delete. `incremental_vacuum` moves a live end page, then truncates.
 - Contentless FTS4 stores no content table and returns the pinned `MATCH` row. FTS3 `content=''` is a column named `content`.
