@@ -1981,6 +1981,7 @@ result=pass
 
 - Bundled `libsqlite3.so` from the `sqlite3` 3.3.4 release, published `2026-07-01T08:57:22Z` (10:57 Asia/Hebron), is 1,824,456 bytes on `arm64-v8a`, 1,865,016 on `armeabi-v7a`, 1,802,504 on `x86_64`, and 1,745,316 on `x86`. gzip-9 of the downloaded arm64 file is 891,530 bytes. That file is the native library an app bundles. Android's system `libsqlite.so` was not measured.
 - `dart compile exe` on Dart 3.13.7, Linux x64, debugging information removed: an empty program is 6,275,992 bytes. A program that calls `openInMemory`, creates a table, inserts one row, and reads it is 8,487,832 bytes and printed `1`. The difference is 2,211,840 bytes. gzip-9 of the two files differs by 900,183 bytes. This SDK cannot compile `android_arm64`. No Flutter SDK was present, so no APK was built. The ORM and the generator were not in the pair. Package tests were not re-run for this note.
+- On the committed tree, `dart pub publish --dry-run` reported 0 warnings. The archives are 690 KB, 505 KB, and 407 KB. Nothing was uploaded.
 - M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim.
 
 ## 2026-11-02 — Version 0.1.3
