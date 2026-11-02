@@ -10,4 +10,7 @@ coverage/
 # Android release packages are built locally.
 *.apk
 
+# Local probes. These directories stay off GitHub.
+/local/
+
 __pycache__/

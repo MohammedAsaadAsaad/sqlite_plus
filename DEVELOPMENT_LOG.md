@@ -1979,11 +1979,16 @@ result=pass
 
 ## 2026-11-02 — Version 0.1.3
 
-- `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.3`. pub.dev already serves `0.1.2`, uploaded `2026-10-31T11:32:26Z` (13:32 Asia/Hebron). The ORM depends on `sqlite_plus: ^0.1.3`. The generator depends on `sqlite_plus_orm: ^0.1.3`. The three example projects use the same constraints and stay `publish_to: none`.
+- `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.3`. The ORM depends on `sqlite_plus: ^0.1.3`. The generator depends on `sqlite_plus_orm: ^0.1.3`. The three example projects use the same constraints and stay `publish_to: none`.
 - The release notes cover incremental auto-vacuum, contentless FTS4, file `journal_mode` `wal`/`persist`/`truncate`, the three cross-schema `VALUES` errors, the bounded `EXPLAIN` shapes, the margin-notes CSV and plot helpers, and ORM row functions.
 - The engine suite that covers this tree passed 10596 tests. The ORM suite passed 185 tests. The generator suite passed 58 tests. Those suites were not re-run for the version number itself. The example projects were not re-run.
 - On the committed tree, `dart pub publish --dry-run` reported 0 warnings for `sqlite_plus` (690 KB), `sqlite_plus_orm` (504 KB), and `sqlite_plus_generator` (406 KB). This environment has no pub.dev credential, so nothing was uploaded.
-- M9 stays unchecked. B5 stays unchecked. Item 108 stays open. This is not a full SQLite claim. This note prepares the upload. It does not record a completed pub.dev upload.
+- The pub.dev API lists `0.1.3` as latest for `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator`. The uploads were accepted in that order. A package page can take up to 10 minutes to show the new version. M9 stays unchecked. B5 stays unchecked. Item 108 stays open. This is not a full SQLite claim.
+
+## 2026-11-02 — Package-wide generator
+
+- `sqlite_plus_generator` is version `0.1.4` and depends on `sqlite_plus_orm` `^0.1.3`. `sqlite_plus` and `sqlite_plus_orm` stay `0.1.3`. `dart run sqlite_plus_generator` from a package root scans `lib/` and writes a part for every public `@DbEntity` class. A class with only a conventional `id` stays out of that scan. `--input lib/models.dart` still selects that class. The command also writes `lib/sqlite_plus_migrations.g.dart`. Its `generatedModel` collects every selected entity and foreign key for `ensureCreated`, `plan`, and `applySafe`. The command does not open a database. A `@DbReference` target still has to be a `@DbEntity` class in the same library. Each output carries a source stamp. A later run prints what it found, leaves a matching part unchanged, and does not resolve that library again. The run ends with a summary of created, updated, unchanged, and stale files.
+- `packages/sqlite_plus_generator`: `dart format` passed, `dart analyze --fatal-infos` passed, and `dart test` passed 60 tests on Dart 3.13.7, Linux x64. The engine and ORM suites were not re-run. M9 stays unchecked. B5 stays unchecked. Item 108 stays open. This is not a full SQLite claim.
 
 ## 2026-10-31 — Version 0.1.2
 

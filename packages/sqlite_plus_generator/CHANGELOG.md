@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.1.4
+
+Depends on `sqlite_plus_orm` 0.1.3. `sqlite_plus` and `sqlite_plus_orm` stay `0.1.3`.
+
+From the package root, one command generates every public `@DbEntity` class under `lib/`:
+
+```sh
+dart run sqlite_plus_generator
+```
+
+`lib/book.dart` does not need a `part` directive. The command adds it.
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity()
+class Book {
+  Book({this.id, required this.title});
+  final BigInt? id;
+  final String title;
+}
+```
+
+The same run writes `lib/book.orm.g.dart` and `lib/sqlite_plus_migrations.g.dart`. A class that only has an `id` field is not included. The app opens one context for the whole package:
+
+```dart
+import 'package:your_app/book.dart' hide generatedModel;
+import 'package:your_app/note.dart' hide generatedModel;
+import 'package:your_app/sqlite_plus_migrations.g.dart';
+
+final context = DbContext(connection, generatedModel);
+await context.migrations.ensureCreated();
+final plan = await context.migrations.plan();
+await context.migrations.applySafe(plan);
+```
+
+`ensureCreated` creates the tables on an empty database. `plan` then `applySafe` adds a new nullable column. A rename or another destructive change stays a reviewed plan. The command does not open a database.
+
+A later run prints what it found and skips a part whose source stamp still matches:
+
+```text
+Found Book in lib/book.dart. Already generated. Leaving lib/book.orm.g.dart unchanged.
+Found Note in lib/note.dart.
+Generating lib/note.orm.g.dart.
+Created lib/note.orm.g.dart.
+
+Summary for the package
+Unchanged: lib/book.orm.g.dart (Book)
+Created: lib/note.orm.g.dart (Note)
+Updated: lib/sqlite_plus_migrations.g.dart (Book, Note)
+```
+
+`Created` is a new file, `Updated` is a changed class, and `Unchanged` was not generated again. `--check` reports `Stale` and writes nothing. One library is still:
+
+```sh
+dart run sqlite_plus_generator --input lib/models.dart
+```
+
+That form still accepts a conventional `id` class. A `@DbReference` target has to be a `@DbEntity` class in the same library.
+
 ## 0.1.3
 
 Depends on `sqlite_plus_orm` 0.1.3. pub.dev already serves `0.1.2`.

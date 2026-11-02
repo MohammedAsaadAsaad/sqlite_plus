@@ -168,8 +168,10 @@ final large = await books.query
 `twice` reads `revision`. `upper` is this engine. [`sqlite_plus_generator`](../sqlite_plus_generator) writes `twice()` from that method.
 
 ```sh
-dart run sqlite_plus_generator --input lib/models.dart
+dart run sqlite_plus_generator
 ```
+
+From the package root this writes a part for every public `@DbEntity` and writes `lib/sqlite_plus_migrations.g.dart`. One library is still `dart run sqlite_plus_generator --input lib/models.dart`.
 
 `openInMemory` is `MutableSqliteDatabase.create`. `exportImage` is the byte image a file can hold. `openBrowserStorage` reports `canRead`, `canWrite`, `durabilityPromised`, and `placement`.
 

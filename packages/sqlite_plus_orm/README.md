@@ -238,8 +238,10 @@ final rows = await connection.database.query(
 [`sqlite_plus_generator`](../sqlite_plus_generator) writes `twice()` on the query row from the class above.
 
 ```sh
-dart run sqlite_plus_generator --input lib/models.dart
+dart run sqlite_plus_generator
 ```
+
+From the package root this writes a part for every public `@DbEntity` and writes `lib/sqlite_plus_migrations.g.dart` for `ensureCreated`. One library is still `dart run sqlite_plus_generator --input lib/models.dart`.
 
 ## The engine underneath
 

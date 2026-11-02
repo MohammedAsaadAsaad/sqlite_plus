@@ -168,10 +168,10 @@ rows, reads the JSON note whose title is `kept`, the FTS article matching
 `kept`, and the R-tree place inside the unit box. `example/lib/models.dart` passes
 generator `--check`.
 
-The repository root `LICENSE` is the MIT license. Every package version is
-`0.1.3`.
-`CHANGELOG.md` records this version. pub.dev still serves `0.1.2` until this
-release is uploaded. The Linux CI job checks fixture checksums. macOS and Windows CI run
+The repository root `LICENSE` is the MIT license. `sqlite_plus` and
+`sqlite_plus_orm` are `0.1.3`. `sqlite_plus_generator` is `0.1.4`.
+`CHANGELOG.md` records those versions. The pub.dev API lists `0.1.3` as latest
+for the three packages until the generator upload is accepted. The Linux CI job checks fixture checksums. macOS and Windows CI run
 format, analysis, package tests, and the example projects.
 
 On Linux x64, Dart 3.13.7, the engine suite passed 10596 tests, the ORM suite

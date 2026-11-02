@@ -29,7 +29,11 @@ class Customer { Customer(this.id); int id; }
         'generated',
         'metadata.dart',
       );
-      final result = await generateLibrary(consumer.input, outputPath: output);
+      final result = await generateLibrary(
+        consumer.input,
+        outputPath: output,
+        classNames: const ['Customer'],
+      );
       expect(await writeGenerated(result, check: true), isFalse);
       expect(Directory(p.dirname(output)).existsSync(), isFalse);
       final cli = await consumer.cli([

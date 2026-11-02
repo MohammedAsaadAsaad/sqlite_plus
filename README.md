@@ -68,8 +68,10 @@ final expensive = await purchases.query
 `ensureCreated` builds the table. A later nullable field is `plan()` then `applySafe()`. A rename or a drop is a statement you write and approve. The reverse statement is the down migration.
 
 ```sh
-dart run sqlite_plus_generator --input lib/models.dart
+dart run sqlite_plus_generator
 ```
+
+That scans `lib/` for every public `@DbEntity`, writes each `name.orm.g.dart`, and writes `lib/sqlite_plus_migrations.g.dart`. A class that only has an `id` field is not included. One library is still `dart run sqlite_plus_generator --input lib/models.dart`. A later run leaves an unchanged part alone and prints a summary.
 
 ![Create, add, or review.](packages/sqlite_plus_orm/doc/migrations.png)
 

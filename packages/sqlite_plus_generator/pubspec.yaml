@@ -1,6 +1,6 @@
 name: sqlite_plus_generator
 description: Dart generator for sqlite_plus_orm mappings, row functions, JSON paths, FTS search, and R-tree bounds.
-version: 0.1.3
+version: 0.1.4
 repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus_generator
 issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
 topics:
@@ -15,6 +15,7 @@ executables:
 dependencies:
   analyzer: ^14.5.0
   args: ^2.7.0
+  crypto: ^3.0.8
   path: ^1.9.0
   sqlite_plus_orm: ^0.1.3
 dev_dependencies:

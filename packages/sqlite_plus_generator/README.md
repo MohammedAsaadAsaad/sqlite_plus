@@ -6,14 +6,64 @@ Write the class. This tool writes the columns, the revision, the JSON path, the 
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.3
+  sqlite_plus_generator: ^0.1.4
 ```
+
+```sh
+dart run sqlite_plus_generator
+```
+
+Run that from the package root. Put one entity in `lib/book.dart`. The annotation is the whole marker. The `part` directive is optional because the command adds it:
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity()
+class Book {
+  Book({this.id, required this.title});
+  final BigInt? id;
+  final String title;
+}
+```
+
+A second file, `lib/note.dart`, uses the same shape for `Note`. The command writes `lib/book.orm.g.dart` and `lib/note.orm.g.dart`, then `lib/sqlite_plus_migrations.g.dart`. That last library's `generatedModel` is every selected entity and foreign key. A class that only has an `id` field is not included.
+
+The command prints each file as it reads it. A part whose source stamp still matches is left unchanged and is not generated again. A missing part is created. A changed class is updated. The run ends with a summary for the package, or for the one library passed to `--input`.
+
+```text
+Found Book in lib/book.dart. Already generated. Leaving lib/book.orm.g.dart unchanged.
+Found Note in lib/note.dart.
+Generating lib/note.orm.g.dart.
+Created lib/note.orm.g.dart.
+
+Summary for the package
+Unchanged: lib/book.orm.g.dart (Book)
+Created: lib/note.orm.g.dart (Note)
+Updated: lib/sqlite_plus_migrations.g.dart (Book, Note)
+```
+
+```dart
+import 'package:your_app/book.dart' hide generatedModel;
+import 'package:your_app/note.dart' hide generatedModel;
+import 'package:your_app/sqlite_plus_migrations.g.dart';
+
+final context = DbContext(connection, generatedModel);
+await context.migrations.ensureCreated();
+final plan = await context.migrations.plan();
+await context.migrations.applySafe(plan);
+```
+
+Each model library also defines `generatedModel` for its own tables. Hide those names and use the package model when one context owns every entity. A `@DbReference` still has to name a `@DbEntity` class in the same library. The package model copies those foreign keys.
+
+`ensureCreated` creates the tables on an empty database. After that, `plan` and `applySafe` add a new nullable column. A rename or a destructive change still needs a reviewed plan.
+
+One library stays available:
 
 ```sh
 dart run sqlite_plus_generator --input lib/models.dart
 ```
 
-`--check` compares the part with the file on disk. `--class Book` limits the write.
+`--check` compares the generated files with the files on disk and does not add a missing `part` directive. `--class Book` limits that one library. `--output` and `--class` need `--input`.
 
 ## The classes
 

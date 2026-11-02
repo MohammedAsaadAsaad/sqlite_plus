@@ -49,8 +49,9 @@ final class GenerationResult {
     this.inputPath,
     this.outputPath,
     this.code,
-    Iterable<String> entityNames,
-  ) : entityNames = List.unmodifiable(entityNames);
+    Iterable<String> entityNames, {
+    this.reused = false,
+  }) : entityNames = List.unmodifiable(entityNames);
 
   /// Absolute path of the library that was read.
   final String inputPath;
@@ -63,4 +64,9 @@ final class GenerationResult {
 
   /// Model class names present in [code].
   final List<String> entityNames;
+
+  /// True when [code] was read from an output whose source stamp still matches.
+  ///
+  /// The library was not resolved again.
+  final bool reused;
 }

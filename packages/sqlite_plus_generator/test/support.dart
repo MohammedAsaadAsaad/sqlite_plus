@@ -64,12 +64,14 @@ environment:
     '--fatal-infos',
   ], workingDirectory: directory.path);
 
-  Future<ProcessResult> cli(List<String> arguments) =>
-      Process.run(dartExecutable, [
-        '--packages=${hostPackageConfig().path}',
-        File('bin/sqlite_plus_generator.dart').absolute.path,
-        ...arguments,
-      ]);
+  Future<ProcessResult> cli(
+    List<String> arguments, {
+    String? workingDirectory,
+  }) => Process.run(dartExecutable, [
+    '--packages=${hostPackageConfig().path}',
+    File('bin/sqlite_plus_generator.dart').absolute.path,
+    ...arguments,
+  ], workingDirectory: workingDirectory);
 
   Future<void> close() => directory.delete(recursive: true);
 }

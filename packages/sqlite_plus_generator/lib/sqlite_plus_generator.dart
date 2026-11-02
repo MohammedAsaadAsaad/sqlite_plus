@@ -2,4 +2,10 @@
 library;
 
 export 'src/diagnostics.dart';
-export 'src/generator.dart' show generateLibrary, writeGenerated;
+export 'src/generator.dart'
+    show
+        currentGeneration,
+        generateLibrary,
+        generatePackage,
+        writeGenerated,
+        writePackage;

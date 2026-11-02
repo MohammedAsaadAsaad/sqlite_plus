@@ -1,8 +1,41 @@
 # Changelog
 
+## 0.1.4
+
+`sqlite_plus_generator` is version `0.1.4`. `sqlite_plus` and `sqlite_plus_orm` stay `0.1.3`. The generator suite passed 60 tests on Dart 3.13.7, Linux x64. The engine and ORM suites were not re-run.
+
+From the package root:
+
+```sh
+dart run sqlite_plus_generator
+```
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity()
+class Book {
+  Book({this.id, required this.title});
+  final BigInt? id;
+  final String title;
+}
+```
+
+The command writes `lib/book.orm.g.dart`, adds `part 'book.orm.g.dart';` when it is missing, and writes `lib/sqlite_plus_migrations.g.dart`. A class with only an `id` field is not included.
+
+```dart
+import 'package:your_app/book.dart' hide generatedModel;
+import 'package:your_app/sqlite_plus_migrations.g.dart';
+
+final context = DbContext(connection, generatedModel);
+await context.migrations.ensureCreated();
+```
+
+A later run leaves a matching part unchanged and ends with a summary of created, updated, and unchanged files. `--input lib/models.dart` still generates one library. The engine and ORM packages are not part of this release.
+
 ## 0.1.3
 
-`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.3`. pub.dev already serves `0.1.2`, so this is the next upload. `packages/sqlite_plus` passed 10596 tests on Dart 3.13.7, Linux x64, against pinned SQLite 3.53.1 (`2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`). The ORM package passed 185 tests. The generator package passed 58 tests.
+`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.3`. The pub.dev API lists `0.1.3` as latest for the three packages. `packages/sqlite_plus` passed 10596 tests on Dart 3.13.7, Linux x64, against pinned SQLite 3.53.1 (`2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`). The ORM package passed 185 tests. The generator package passed 58 tests.
 
 - Incremental auto-vacuum keeps the freelist page after an overflow delete. `incremental_vacuum` moves a live end page, then truncates.
 - Contentless FTS4 (`content=''`) stores no content table. `MATCH` returns the pinned docid. A scan or a content-column read is `SQL logic error`. An insert without a docid is `constraint failed`. FTS3 `content=''` is a column named `content`.
@@ -12,7 +45,7 @@
 - Margin notes exports CSV, imports those rows as new notes, and plots one bar per UTC update day. `examples/notes/tool/note_exchange_check.dart` passed. The Flutter widgets were not executed on this machine.
 - The ORM calls a model method from a query. `@DbScalar() BigInt? twice() => revision * BigInt.two` is `row.twice() > 20`. Engine scalars sit on the column: `row.revision.abs()`, `row.title.upper()`, `row.title.length()`. The generator writes the method onto the query row.
 
-Still open: the two-database commit record is the engine schema-commit file, not an official SQLite master journal. B5 stays unchecked until those Flutter widgets run. M9 stays unchecked. The scenario harness rejects a row count above 10000. iOS, macOS, Windows, and power loss were not run for this revision. Item 108 stays open. `dart pub publish --dry-run` reported 0 warnings for the three packages. This note does not record a completed pub.dev upload.
+Still open: the two-database commit record is the engine schema-commit file, not an official SQLite master journal. B5 stays unchecked until those Flutter widgets run. M9 stays unchecked. The scenario harness rejects a row count above 10000. iOS, macOS, Windows, and power loss were not run for this revision. Item 108 stays open. The three packages were uploaded as `0.1.3`.
 
 ## 0.1.2
 

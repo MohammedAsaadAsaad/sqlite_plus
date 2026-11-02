@@ -739,8 +739,18 @@ void main() async {
       final help = await fixture.cli(['--help']);
       expect(help.exitCode, 0);
       expect(help.stdout, contains('--input'));
-      final missing = await fixture.cli([]);
-      expect(missing.exitCode, 64);
+      final outputOnly = await fixture.cli(['--output', 'lib/out.dart']);
+      expect(outputOnly.exitCode, 64);
+      final missing = await fixture.cli(
+        [],
+        workingDirectory: fixture.directory.path,
+      );
+      expect(
+        missing.exitCode,
+        65,
+        reason: '${missing.stdout}\n${missing.stderr}',
+      );
+      expect(missing.stderr, contains('G004'));
       final generated = await fixture.cli(['--input', fixture.input]);
       expect(
         generated.exitCode,

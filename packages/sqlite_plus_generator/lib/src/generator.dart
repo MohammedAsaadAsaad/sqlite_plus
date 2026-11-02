@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
@@ -10,6 +11,7 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/error/error.dart';
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
 import 'diagnostics.dart';
@@ -29,6 +31,7 @@ Future<GenerationResult> generateLibrary(
   String inputPath, {
   Iterable<String> classNames = const [],
   String? outputPath,
+  bool annotatedOnly = false,
 }) async {
   final input = p.normalize(p.absolute(inputPath));
   final output = p.normalize(
@@ -126,7 +129,9 @@ Future<GenerationResult> generateLibrary(
         requested.isEmpty &&
             !element.isPrivate &&
             (_annotation(element, 'DbEntity') != null ||
-                !element.isAbstract && _conventionalKeys(element).isNotEmpty)) {
+                !annotatedOnly &&
+                    !element.isAbstract &&
+                    _conventionalKeys(element).isNotEmpty)) {
       selected.add(element);
     }
   }
@@ -164,7 +169,16 @@ Future<GenerationResult> generateLibrary(
       'SqlArgument',
     ],
   ], input);
-  final emitted = _emit(input, output, prefix, listName, models, relationships);
+  final emitted = _emit(
+    input,
+    output,
+    prefix,
+    listName,
+    models,
+    relationships,
+    annotatedOnly: annotatedOnly,
+    classNames: requested,
+  );
   return GenerationResult(
     input,
     output,
@@ -230,6 +244,387 @@ Future<bool> writeGenerated(
     await temporaryDirectory.delete(recursive: true);
   }
   return true;
+}
+
+/// One package scan: a part for every library that declares `@DbEntity`.
+final class PackageGeneration {
+  PackageGeneration(this.libraries, this.migrations);
+
+  /// Parts for libraries that contain a public `@DbEntity` class.
+  final List<GenerationResult> libraries;
+
+  /// The package `generatedModel` used by `migrations.ensureCreated`.
+  final GenerationResult migrations;
+}
+
+/// Scans `lib/` under [packageRoot] for public `@DbEntity` classes.
+///
+/// A library with no `@DbEntity` class is left unchanged, including a class
+/// whose only claim is a conventional `id`. Each selected library receives
+/// `part '<name>.orm.g.dart';` when that directive is missing. [classNames]
+/// limits the scan to those classes.
+Future<PackageGeneration> generatePackage(
+  String packageRoot, {
+  Iterable<String> classNames = const [],
+  bool ensurePart = true,
+  void Function(String message)? report,
+}) async {
+  final root = p.normalize(p.absolute(packageRoot));
+  final lib = Directory(p.join(root, 'lib'));
+  if (!File(p.join(root, 'pubspec.yaml')).existsSync() || !lib.existsSync()) {
+    _fail(
+      'G001',
+      'Run from a package root that contains pubspec.yaml and lib/.',
+      root,
+    );
+  }
+  final requested = classNames.toSet();
+  final sources =
+      lib
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart'))
+          .map((file) => p.normalize(file.path))
+          .where((path) => !_isGeneratedDart(path))
+          .toList()
+        ..sort();
+  final libraries = <GenerationResult>[];
+  final found = <String>{};
+  for (final source in sources) {
+    final shown = _display(source, root);
+    if (requested.isEmpty) {
+      final existing = currentGeneration(source, annotatedOnly: true);
+      if (existing != null) {
+        found.addAll(existing.entityNames);
+        libraries.add(existing);
+        report?.call(
+          'Found ${existing.entityNames.join(', ')} in $shown. '
+          'Already generated. Leaving ${_display(existing.outputPath, root)} '
+          'unchanged.',
+        );
+        continue;
+      }
+    }
+    if (!_mentionsDbEntity(source)) continue;
+    report?.call('Reading $shown.');
+    final names = await _publicDbEntityNames(source, requested);
+    if (names.isEmpty) {
+      report?.call('No selected public @DbEntity in $shown.');
+      continue;
+    }
+    found.addAll(names);
+    report?.call('Found ${names.join(', ')} in $shown.');
+    if (ensurePart) await _ensurePartDirective(source);
+    final output = p.join(
+      p.dirname(source),
+      '${p.basenameWithoutExtension(source)}.orm.g.dart',
+    );
+    report?.call('Generating ${_display(output, root)}.');
+    libraries.add(
+      await generateLibrary(
+        source,
+        classNames: requested.isEmpty ? const [] : names,
+        annotatedOnly: true,
+      ),
+    );
+  }
+  final missing = requested.difference(found);
+  if (missing.isNotEmpty) {
+    _fail(
+      'G004',
+      'No public @DbEntity class named ${missing.join(', ')} exists under lib/.',
+      lib.path,
+    );
+  }
+  if (libraries.isEmpty) {
+    _fail(
+      'G004',
+      'No public @DbEntity classes were found under lib/.',
+      lib.path,
+    );
+  }
+  final migrationsPath = p.join(lib.path, 'sqlite_plus_migrations.g.dart');
+  final shownMigrations = _display(migrationsPath, root);
+  final migrations =
+      _reusableMigrations(root, migrationsPath, libraries) ??
+      GenerationResult(
+        root,
+        migrationsPath,
+        await _format(_migrationSource(lib.path, libraries), migrationsPath),
+        libraries.expand((library) => library.entityNames),
+      );
+  report?.call(
+    migrations.reused
+        ? 'Already generated. Leaving $shownMigrations unchanged.'
+        : 'Preparing $shownMigrations.',
+  );
+  return PackageGeneration(libraries, migrations);
+}
+
+/// Writes [generated] or compares it when [check] is set.
+///
+/// Returns false when [check] finds a missing or stale part. Pass
+/// `ensurePart: false` to [generatePackage] when checking, so a missing `part`
+/// directive stays a generation error instead of an edit.
+Future<bool> writePackage(
+  PackageGeneration generated, {
+  bool check = false,
+}) async {
+  var current = true;
+  for (final library in generated.libraries) {
+    current = await writeGenerated(library, check: check) && current;
+  }
+  return await writeGenerated(generated.migrations, check: check) && current;
+}
+
+bool _isGeneratedDart(String path) {
+  final name = p.basename(path);
+  return name.endsWith('.orm.g.dart') ||
+      name == 'sqlite_plus_migrations.g.dart';
+}
+
+Future<List<String>> _publicDbEntityNames(
+  String input,
+  Set<String> requested,
+) async {
+  if (!File(input).existsSync()) return const [];
+  final resolved = await resolveFile(path: input);
+  if (resolved is! ResolvedUnitResult ||
+      resolved.unit.directives.any(
+        (directive) => directive is PartOfDirective,
+      )) {
+    return const [];
+  }
+  final names = <String>[];
+  for (final fragment in resolved.libraryElement.fragments) {
+    for (final element in fragment.classes) {
+      final type = element.element;
+      final name = type.name;
+      if (name == null ||
+          type.isPrivate ||
+          _annotation(type, 'DbEntity') == null) {
+        continue;
+      }
+      if (requested.isEmpty || requested.contains(name)) names.add(name);
+    }
+  }
+  return names;
+}
+
+Future<void> _ensurePartDirective(String input) async {
+  final partUri = '${p.basenameWithoutExtension(input)}.orm.g.dart';
+  final file = File(input);
+  final source = await file.readAsString();
+  final unit = parseString(content: source, path: input).unit;
+  final present = unit.directives.whereType<PartDirective>().any(
+    (directive) => directive.uri.stringValue == partUri,
+  );
+  if (present) return;
+  final at = unit.directives.isEmpty ? 0 : unit.directives.last.end;
+  final before = source.substring(0, at);
+  var after = source.substring(at);
+  if (after.startsWith('\n')) after = after.substring(1);
+  final gap = before.isEmpty || before.endsWith('\n') ? '' : '\n';
+  final literal = partUri.contains("'") ? _string(partUri) : "'$partUri'";
+  await file.writeAsString('$before$gap\npart $literal;\n$after');
+}
+
+String _migrationSource(String libPath, List<GenerationResult> libraries) {
+  final imports = <String>[];
+  final entities = <String>[];
+  final foreignKeys = <String>[];
+  final names = <String>[];
+  final used = <String>{};
+  for (final library in libraries) {
+    final relative = _relative(library.inputPath, libPath);
+    var alias = _libraryAlias(relative);
+    var suffix = 2;
+    while (!used.add(alias)) {
+      alias = '${_libraryAlias(relative)}_$suffix';
+      suffix++;
+    }
+    imports.add("import ${_string(relative)} as $alias;");
+    entities.add('...$alias.generatedModel.entities');
+    foreignKeys.add('...$alias.generatedModel.foreignKeys');
+    names.addAll(library.entityNames);
+  }
+  return '$_header'
+      '${_stampLine(_migrationDigest(libPath, libraries), names)}\n'
+      'import \'package:sqlite_plus_orm/sqlite_plus_orm.dart\';\n'
+      '${imports.join('\n')}\n\n'
+      'final DbModel generatedModel = DbModel([\n'
+      '${entities.join(',\n')},\n'
+      '], foreignKeys: [\n'
+      '${foreignKeys.join(',\n')},\n'
+      ']);\n';
+}
+
+/// Returns the existing part when its source stamp still matches.
+///
+/// This does not resolve the library. A missing stamp, a changed source, a
+/// different class selection, or a damaged part returns null so generation runs.
+GenerationResult? currentGeneration(
+  String inputPath, {
+  String? outputPath,
+  Iterable<String> classNames = const [],
+  bool annotatedOnly = false,
+}) {
+  final input = p.normalize(p.absolute(inputPath));
+  if (!File(input).existsSync()) return null;
+  final output = p.normalize(
+    p.absolute(
+      outputPath ??
+          p.join(
+            p.dirname(input),
+            '${p.basenameWithoutExtension(input)}.orm.g.dart',
+          ),
+    ),
+  );
+  return _reusablePart(
+    input,
+    output,
+    annotatedOnly: annotatedOnly,
+    classNames: classNames,
+  );
+}
+
+GenerationResult? _reusablePart(
+  String input,
+  String output, {
+  required bool annotatedOnly,
+  required Iterable<String> classNames,
+}) {
+  final code = _ownedGenerated(output);
+  if (code == null) return null;
+  final partOf = 'part of ${_string(_relative(input, p.dirname(output)))};';
+  if (!code.contains(partOf) || !code.contains('generatedModel')) return null;
+  final parsed = _stamp(code);
+  if (parsed == null) return null;
+  final digest = _sourceDigest(
+    input,
+    annotatedOnly: annotatedOnly,
+    classNames: classNames,
+  );
+  if (parsed.digest != digest) return null;
+  return GenerationResult(input, output, code, parsed.entities, reused: true);
+}
+
+GenerationResult? _reusableMigrations(
+  String packageRoot,
+  String output,
+  List<GenerationResult> libraries,
+) {
+  final code = _ownedGenerated(output);
+  if (code == null || !code.contains('final DbModel generatedModel')) {
+    return null;
+  }
+  final parsed = _stamp(code);
+  if (parsed == null) return null;
+  if (parsed.digest !=
+      _migrationDigest(p.join(packageRoot, 'lib'), libraries)) {
+    return null;
+  }
+  return GenerationResult(
+    packageRoot,
+    output,
+    code,
+    libraries.expand((library) => library.entityNames),
+    reused: true,
+  );
+}
+
+String? _ownedGenerated(String output) {
+  final kind = FileSystemEntity.typeSync(output, followLinks: false);
+  if (kind != FileSystemEntityType.file) return null;
+  final code = utf8.decode(
+    File(output).readAsBytesSync(),
+    allowMalformed: true,
+  );
+  if (!code.startsWith(_header)) return null;
+  return code;
+}
+
+({String digest, List<String> entities})? _stamp(String code) {
+  final match = RegExp(
+    r'^// Source-sha256: ([0-9a-f]{64}) entities: (\S+)$',
+    multiLine: true,
+  ).firstMatch(code);
+  if (match == null) return null;
+  return (digest: match.group(1)!, entities: match.group(2)!.split(','));
+}
+
+String _stampLine(String digest, Iterable<String> entities) =>
+    '// Source-sha256: $digest entities: ${entities.join(',')}';
+
+String _sourceDigest(
+  String input, {
+  required bool annotatedOnly,
+  required Iterable<String> classNames,
+}) {
+  final bytes = BytesBuilder(copy: false);
+  final names = classNames.toList()..sort();
+  bytes.add(utf8.encode(annotatedOnly ? 'entity' : 'library'));
+  bytes.addByte(0);
+  bytes.add(utf8.encode(names.join(',')));
+  bytes.addByte(0);
+  for (final path in _stampFiles(input)) {
+    bytes.add(utf8.encode(_relative(path, p.dirname(input))));
+    bytes.addByte(0);
+    bytes.add(File(path).readAsBytesSync());
+    bytes.addByte(0);
+  }
+  return sha256.convert(bytes.takeBytes()).toString();
+}
+
+String _migrationDigest(String libPath, List<GenerationResult> libraries) {
+  final buffer = StringBuffer();
+  for (final library in libraries) {
+    buffer
+      ..writeln(_relative(library.inputPath, libPath))
+      ..writeln(_stamp(library.code)?.digest ?? '');
+  }
+  return sha256.convert(utf8.encode(buffer.toString())).toString();
+}
+
+List<String> _stampFiles(String input) {
+  final source = File(input).readAsStringSync();
+  final files = <String>[input];
+  try {
+    final unit = parseString(content: source, path: input).unit;
+    for (final part in unit.directives.whereType<PartDirective>()) {
+      final uri = part.uri.stringValue;
+      if (uri == null) continue;
+      final path = p.normalize(p.join(p.dirname(input), uri));
+      if (path == input || _isGeneratedDart(path) || !File(path).existsSync()) {
+        continue;
+      }
+      files.add(path);
+    }
+  } catch (_) {
+    // A source that does not parse is generated through the normal diagnostic.
+  }
+  files.sort();
+  return files;
+}
+
+bool _mentionsDbEntity(String path) {
+  try {
+    return File(path).readAsStringSync().contains('DbEntity');
+  } on FileSystemException {
+    return false;
+  }
+}
+
+String _display(String path, String from) => p
+    .relative(p.normalize(path), from: p.normalize(from))
+    .replaceAll('\\', '/');
+
+String _libraryAlias(String relative) {
+  final withoutExtension = relative.endsWith('.dart')
+      ? relative.substring(0, relative.length - 5)
+      : relative;
+  final alias = withoutExtension.replaceAll(RegExp('[^A-Za-z0-9]'), '_');
+  return RegExp('^[0-9]').hasMatch(alias) ? 'library_$alias' : alias;
 }
 
 void _checkOutputOwnership(String output) {
@@ -1344,10 +1739,22 @@ String _emit(
   String prefix,
   String listName,
   List<_Model> models,
-  List<_Relationship> relationships,
-) {
+  List<_Relationship> relationships, {
+  required bool annotatedOnly,
+  required Iterable<String> classNames,
+}) {
   final dynamicName = '${listName.substring(0, listName.length - 4)}dynamic';
   final code = StringBuffer(_header)
+    ..writeln(
+      _stampLine(
+        _sourceDigest(
+          input,
+          annotatedOnly: annotatedOnly,
+          classNames: classNames,
+        ),
+        models.map((model) => model.name),
+      ),
+    )
     ..writeln()
     ..writeln('part of ${_string(_relative(input, p.dirname(output)))};');
   for (final model in models) {
