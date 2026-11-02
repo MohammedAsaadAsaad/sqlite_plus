@@ -6,7 +6,7 @@ Write the class. This tool writes the columns, the revision, the JSON path, the 
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.2
+  sqlite_plus_generator: ^0.1.3
 ```
 
 ```sh

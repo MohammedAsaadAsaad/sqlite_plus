@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.3
 
-The package version stays `0.1.2`. Nothing here was uploaded. `packages/sqlite_plus` passed 10596 tests on Dart 3.13.7, Linux x64, against pinned SQLite 3.53.1 (`2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`).
+`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.3`. pub.dev already serves `0.1.2`, so this is the next upload. `packages/sqlite_plus` passed 10596 tests on Dart 3.13.7, Linux x64, against pinned SQLite 3.53.1 (`2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`). The ORM package passed 185 tests. The generator package passed 58 tests.
 
 - Incremental auto-vacuum keeps the freelist page after an overflow delete. `incremental_vacuum` moves a live end page, then truncates.
 - Contentless FTS4 (`content=''`) stores no content table. `MATCH` returns the pinned docid. A scan or a content-column read is `SQL logic error`. An insert without a docid is `constraint failed`. FTS3 `content=''` is a column named `content`.
@@ -12,7 +12,7 @@ The package version stays `0.1.2`. Nothing here was uploaded. `packages/sqlite_p
 - Margin notes exports CSV, imports those rows as new notes, and plots one bar per UTC update day. `examples/notes/tool/note_exchange_check.dart` passed. The Flutter widgets were not executed on this machine.
 - The ORM calls a model method from a query. `@DbScalar() BigInt? twice() => revision * BigInt.two` is `row.twice() > 20`. Engine scalars sit on the column: `row.revision.abs()`, `row.title.upper()`, `row.title.length()`. The generator writes the method onto the query row.
 
-Still open: the two-database commit record is the engine schema-commit file, not an official SQLite master journal. B5 stays unchecked until those Flutter widgets run. M9 stays unchecked. The scenario harness rejects a row count above 10000. iOS, macOS, Windows, power loss, and pub.dev were not run for this revision. Item 108 stays open.
+Still open: the two-database commit record is the engine schema-commit file, not an official SQLite master journal. B5 stays unchecked until those Flutter widgets run. M9 stays unchecked. The scenario harness rejects a row count above 10000. iOS, macOS, Windows, and power loss were not run for this revision. Item 108 stays open. `dart pub publish --dry-run` is the publish check for this version. This note does not record a completed pub.dev upload.
 
 ## 0.1.2
 

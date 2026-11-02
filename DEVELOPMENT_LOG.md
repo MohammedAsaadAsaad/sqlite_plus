@@ -1977,6 +1977,14 @@ result=pass
 - A column, a JSON path, or a call accepts engine scalars, including `abs`, `upper`, `lower`, `length`, `trim`, `substr`, `replace`, `round`, `coalesce`, `ifNull`, `concat`, `sign`, `floor`, `ceil`, `sqrt`, `date`, `time`, `dateTime`, `unixEpoch`, and `julianDay`.
 - `packages/sqlite_plus_orm`: `dart format` passed, `dart analyze --fatal-infos` passed, and `dart test` passed 185 tests on Dart 3.13.7, Linux x64. `packages/sqlite_plus_generator`: the same format and analysis passed, and `dart test` passed 58 tests. The engine package was not changed. M9 stays unchecked. Item 108 stays open. This is not a full SQLite claim.
 
+## 2026-11-02 — Version 0.1.3
+
+- `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.3`. pub.dev already serves `0.1.2`, uploaded `2026-10-31T11:32:26Z` (13:32 Asia/Hebron). The ORM depends on `sqlite_plus: ^0.1.3`. The generator depends on `sqlite_plus_orm: ^0.1.3`. The three example projects use the same constraints and stay `publish_to: none`.
+- The release notes cover incremental auto-vacuum, contentless FTS4, file `journal_mode` `wal`/`persist`/`truncate`, the three cross-schema `VALUES` errors, the bounded `EXPLAIN` shapes, the margin-notes CSV and plot helpers, and ORM row functions.
+- The engine suite that covers this tree passed 10596 tests. The ORM suite passed 185 tests. The generator suite passed 58 tests. Those suites were not re-run for the version number itself. The example projects were not re-run.
+- `dart pub publish --dry-run` for `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` listed the package archives. The only warning before the commit was the modified git files. This environment has no pub.dev credential, so nothing was uploaded.
+- M9 stays unchecked. B5 stays unchecked. Item 108 stays open. This is not a full SQLite claim. This note prepares the upload. It does not record a completed pub.dev upload.
+
 ## 2026-10-31 — Version 0.1.2
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.2`. The logo is the feather, the database, and the plus. A Linux desktop release build of Bench compared 1,000 rows with sqflite through FFI. Every checksum matched. The package charts are that sample. No new engine suite was run for this note.

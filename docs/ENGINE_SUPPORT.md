@@ -169,14 +169,15 @@ rows, reads the JSON note whose title is `kept`, the FTS article matching
 generator `--check`.
 
 The repository root `LICENSE` is the MIT license. Every package version is
-`0.1.2`.
-`CHANGELOG.md` records this version. The Linux CI job checks fixture checksums. macOS and Windows CI run
+`0.1.3`.
+`CHANGELOG.md` records this version. pub.dev still serves `0.1.2` until this
+release is uploaded. The Linux CI job checks fixture checksums. macOS and Windows CI run
 format, analysis, package tests, and the example projects.
 
-On Linux x64, Dart 3.13.7, this revision passed format, fatal-info analysis,
-10,496 engine tests, 169 ORM tests, and 53 generator tests. The pinned SQLite
-CLI was present, so the native integrity tests ran. Each example project
-passed its own test.
+On Linux x64, Dart 3.13.7, the engine suite passed 10596 tests, the ORM suite
+passed 185 tests, and the generator suite passed 58 tests. Format and
+fatal-info analysis passed for those package runs. The pinned SQLite CLI was
+present for the engine run. The example projects were not re-run for `0.1.3`.
 
 Items 91–98 are `benchmark_results/scenarios_10k_linux_x64.json`: Linux x64
 AOT, 10000 rows, three samples. Memory SQL insert microseconds are

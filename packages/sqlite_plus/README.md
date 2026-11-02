@@ -6,7 +6,7 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.2
+  sqlite_plus: ^0.1.3
 ```
 
 ## A table, a row, a query

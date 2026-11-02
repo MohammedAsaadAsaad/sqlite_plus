@@ -6,7 +6,7 @@ Dart objects on `sqlite_plus`. You change a field. `saveChanges` writes one tran
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.2
+  sqlite_plus_orm: ^0.1.3
 ```
 
 ## Save two books, rename one

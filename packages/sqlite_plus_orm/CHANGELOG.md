@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.3
 
-Version stays `0.1.2`. Depends on `sqlite_plus` 0.1.2.
+Depends on `sqlite_plus` 0.1.3. pub.dev already serves `0.1.2`.
 
 - `@DbScalar()` on an instance method or getter reads mapped fields. `selectWhere((row) => row.twice() > 20)` runs that body for each row. The context registers `table_method` on the connection.
 - A column, a JSON path, or a call accepts the engine scalars: `abs`, `upper`, `lower`, `length`, `trim`, `substr`, `replace`, `round`, `coalesce`, `ifNull`, `concat`, `sign`, `floor`, `ceil`, `sqrt`, `date`, `time`, `dateTime`, `unixEpoch`, and `julianDay`.

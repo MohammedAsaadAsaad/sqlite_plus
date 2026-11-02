@@ -51,8 +51,8 @@ EXPLAIN bytecode for an integer-primary-key insert and a join of two subqueries,
 an official SQLite master journal, a multi-frame WAL log, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
-rows on Linux x64. Version `0.1.2` is the release in this tree. See
-`CHANGELOG.md`.
+rows on Linux x64. Version `0.1.3` is the release prepared in this tree. pub.dev still serves
+`0.1.2` until that upload. See `CHANGELOG.md`.
 
 ## Development checks
 
