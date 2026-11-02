@@ -31,7 +31,7 @@ final context = DbContext(connection, generatedModel);
 await context.migrations.ensureCreated();
 ```
 
-A later run leaves a matching part unchanged and ends with a summary of created, updated, and unchanged files. `--input lib/models.dart` still generates one library. The engine and ORM packages are not part of this release.
+A later run leaves a matching part unchanged and ends with a summary of created, updated, and unchanged files. `--input lib/models.dart` still generates one library. The pub.dev API lists `sqlite_plus_generator` `0.1.4` as latest. `sqlite_plus` and `sqlite_plus_orm` remain `0.1.3`. A package page can take up to 10 minutes to show the new version.
 
 ## 0.1.3
 

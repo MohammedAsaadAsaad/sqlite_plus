@@ -170,8 +170,10 @@ generator `--check`.
 
 The repository root `LICENSE` is the MIT license. `sqlite_plus` and
 `sqlite_plus_orm` are `0.1.3`. `sqlite_plus_generator` is `0.1.4`.
-`CHANGELOG.md` records those versions. The pub.dev API lists `0.1.3` as latest
-for the three packages until the generator upload is accepted. The Linux CI job checks fixture checksums. macOS and Windows CI run
+`CHANGELOG.md` records those versions. The pub.dev API lists
+`sqlite_plus_generator` `0.1.4` as latest, and `sqlite_plus` and
+`sqlite_plus_orm` remain `0.1.3`. A package page can take up to 10 minutes to
+show the new version. The Linux CI job checks fixture checksums. macOS and Windows CI run
 format, analysis, package tests, and the example projects.
 
 On Linux x64, Dart 3.13.7, the engine suite passed 10596 tests, the ORM suite
