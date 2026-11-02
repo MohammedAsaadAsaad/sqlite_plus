@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-No API change. The package still depends on `sqlite_plus_orm` 0.1.2. The engine comparisons are in the `sqlite_plus` changelog.
+Version stays `0.1.2`. Depends on `sqlite_plus_orm` 0.1.2.
+
+- `@DbScalar()` on an instance method or getter becomes `row.twice()` with no parameters. The part registers `table_method` and passes the mapped fields that body reads.
 
 ## 0.1.2
 

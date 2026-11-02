@@ -535,6 +535,26 @@ class Customer {
       '@DbEntity(module: "rtree") class Bad { Bad(this.id); final BigInt id; }',
       'G013',
     ),
+    (
+      'scalar parameter',
+      'class Bad { Bad({this.id, required this.revision}); final BigInt? id; BigInt revision; @DbScalar() BigInt twice(BigInt revision) => revision; }',
+      'G014',
+    ),
+    (
+      'scalar instance call',
+      'class Bad { Bad({this.id, required this.revision}); final BigInt? id; BigInt revision; BigInt helper() => revision; @DbScalar() BigInt twice() => helper(); }',
+      'G014',
+    ),
+    (
+      'scalar ignored field',
+      'class Bad { Bad({this.id, required this.revision}); final BigInt? id; BigInt revision; @DbIgnore() int extra = 1; @DbScalar() int twice() => extra; }',
+      'G014',
+    ),
+    (
+      'scalar name clash',
+      'class Bad { Bad({this.id, required this.body}); final BigInt? id; @DbJson() final String body; @DbScalar() String path() => body; }',
+      'G014',
+    ),
   ];
   for (final (name, source, code) in negative) {
     test('located diagnostic: $name', () async {
@@ -625,6 +645,90 @@ abstract class Abstract { int get id; }
       );
     },
   );
+
+  test('a scalar reads model fields and the query calls it', () async {
+    final fixture = await consumer('''
+class Book {
+  Book({this.id, required this.revision, required this.title});
+  final BigInt? id;
+  BigInt revision;
+  String title;
+  @DbScalar()
+  BigInt? twice() => revision * BigInt.two;
+  @DbScalar()
+  BigInt? get doubled => revision * BigInt.two;
+  @DbScalar()
+  String label() => title.toUpperCase();
+}
+''');
+    final result = await generateLibrary(fixture.input);
+    expect(result.code, contains('SqlCall<Book, BigInt?> twice()'));
+    expect(result.code, contains('book_twice'));
+    expect(result.code, contains('SqlArgument.of(revision)'));
+    expect(result.code, contains('SqlArgument.of(title)'));
+    expect(result.code, contains('book_label'));
+    expect(result.code, isNot(contains('twice(BigInt')));
+    await writeGenerated(result);
+    final analyzed = await fixture.analyze();
+    expect(
+      analyzed.exitCode,
+      0,
+      reason: '${analyzed.stdout}\n${analyzed.stderr}',
+    );
+    final run = await fixture.run('''
+import 'package:generator_consumer/models.dart';
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+void main() async {
+  final book = Book(revision: BigInt.from(5), title: 'kept');
+  if (book.twice() != BigInt.from(10) ||
+      book.doubled != BigInt.from(10) ||
+      book.label() != 'KEPT') {
+    throw StateError('instance');
+  }
+  final connection = await MutableDatabaseConnection.openMemory();
+  final context = DbContext(connection, generatedModel);
+  try {
+    await context.migrations.ensureCreated();
+    final books = context.set(BookMapping.instance);
+    books.add(Book(revision: BigInt.from(5), title: 'kept'));
+    books.add(Book(revision: BigInt.from(30), title: 'other'));
+    books.add(Book(revision: BigInt.from(-4), title: 'west'));
+    if (await context.saveChanges() != 3) throw StateError('save');
+    final doubled = await books.query
+        .selectWhere((row) => row.twice() > 20)
+        .orderByFields((row) => [row.revision.ascending])
+        .toList();
+    if (doubled.length != 1 || doubled.single.revision != BigInt.from(30)) {
+      throw StateError('twice');
+    }
+    final same = await books.query
+        .selectWhere((row) => row.doubled() > 20)
+        .toList();
+    if (same.length != 1 || same.single.revision != BigInt.from(30)) {
+      throw StateError('getter');
+    }
+    final kept = await books.query
+        .selectWhere((row) => row.label().equalTo('KEPT'))
+        .toList();
+    if (kept.single.title != 'kept') throw StateError('label');
+    final wide = await books.query
+        .selectWhere((row) => row.revision.abs() > 20)
+        .toList();
+    if (wide.single.revision != BigInt.from(30)) throw StateError('abs');
+    final upper = await books.query
+        .selectWhere((row) => row.title.upper().equalTo('WEST'))
+        .toList();
+    if (upper.single.title != 'west') throw StateError('upper');
+    print('scalar query works');
+  } finally {
+    await context.close();
+  }
+}
+''');
+    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+    expect(normalizeNewlines(run.stdout), 'scalar query works\n');
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test(
     'CLI generates, checks staleness, reports bad arguments and never writes partial output',

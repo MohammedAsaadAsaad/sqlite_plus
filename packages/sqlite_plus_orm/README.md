@@ -184,6 +184,63 @@ final expensive = await purchases.query
     .select();
 ```
 
+## Call a function on the row
+
+`twice` reads `revision`. On a loaded book it returns the number. In the query it is the same method, and the comparison is SQL.
+
+```dart
+@DbEntity(table: 'books')
+class Book {
+  Book({this.id, required this.title, required this.revision});
+
+  final BigInt? id;
+  String title;
+  BigInt revision;
+
+  @DbScalar()
+  BigInt? twice() => revision * BigInt.two;
+}
+```
+
+```dart
+final large = await books.query
+    .selectWhere((row) => (row.twice() > 20) | row.title.upper().equalTo('WEST'))
+    .orderByFields((row) => [row.title.length().ascending])
+    .toList();
+```
+
+`large` keeps a book whose doubled revision is above 20, or whose title is `WEST`, and orders those rows by title length. Parenthesize a comparison before `&` or `|`.
+
+| You write | The engine runs |
+|---|---|
+| `row.twice() > 20` | `books_twice("revision") > ?` |
+| `row.revision.abs() > 3` | `abs("revision") > ?` |
+| `row.title.upper().equalTo('WEST')` | `upper("title") = ?` |
+| `row.title.trim().length()` | `length(trim("title"))` |
+| `row.note.coalesce(row.title)` | `coalesce("note", "title")` |
+| `row.title.substr(1, 4)` | `substr("title", ?, ?)` |
+| `row.updated.date()` | `date("updated")` |
+| `row.path(r'$.shelf').equalTo('north')` | `json_extract("body", ?) = ?` |
+
+The method takes no parameters. A getter is the same shape. The body reads mapped fields and stays synchronous. `DbContext` registers `books_twice` on the connection. A null stored in a non-nullable field makes that call null. A thrown body fails the statement. `abs`, `upper`, `lower`, `length`, `trim`, `substr`, `replace`, `round`, `coalesce`, `ifNull`, `concat`, `sign`, `floor`, `ceil`, `sqrt`, `date`, `time`, `dateTime`, `unixEpoch`, and `julianDay` are the engine, called on the column or on another call.
+
+## The other packages
+
+[`sqlite_plus`](../sqlite_plus) is the engine. The same connection answers SQL directly.
+
+```dart
+final rows = await connection.database.query(
+  'SELECT title FROM books WHERE upper(title) = ?',
+  ['WEST'],
+);
+```
+
+[`sqlite_plus_generator`](../sqlite_plus_generator) writes `twice()` on the query row from the class above.
+
+```sh
+dart run sqlite_plus_generator --input lib/models.dart
+```
+
 ## The engine underneath
 
 1,000 rows on Linux, release build. The same SQL, and every checksum matched. In memory, a transaction of inserts was 263× and search was 107×. On a file, search was 142× and a point lookup was 104×.

@@ -179,6 +179,41 @@ final class OrmIndex<T> {
   final bool unique;
 }
 
+/// A model method exposed as one SQL scalar.
+///
+/// [columns] are the mapped fields the body reads, in model order. [apply]
+/// receives those stored SQL values and returns the method result.
+final class EntityScalar<T> {
+  /// [name] is the SQL function name. [deterministic] is true when the body
+  /// depends only on [columns].
+  EntityScalar(
+      {required this.name,
+      required List<Column<T, dynamic>> columns,
+      required this.apply,
+      this.deterministic = true})
+      : columns = List.unmodifiable(columns) {
+    _ormValidateName(name);
+    if (!RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(name)) {
+      throw const OrmMappingException('Scalar name must be a SQL identifier');
+    }
+    if (columns.length > 1000) {
+      throw const OrmMappingException('Scalar has too many fields');
+    }
+  }
+
+  /// SQL function name.
+  final String name;
+
+  /// Mapped fields passed to [apply], in order.
+  final List<Column<T, dynamic>> columns;
+
+  /// Invokes the model method with the stored field values.
+  final Object? Function(List<Object?> arguments) apply;
+
+  /// Whether schema expressions may call this function.
+  final bool deterministic;
+}
+
 /// Table mapping: columns, factory, and optional store-value writer.
 final class EntityType<T> {
   /// [tableName] is the SQL name. [create] builds an entity from a row.
@@ -188,9 +223,11 @@ final class EntityType<T> {
       required this.create,
       this.applyStoreValues,
       this.virtualModule,
-      List<OrmIndex<T>> indexes = const []})
+      List<OrmIndex<T>> indexes = const [],
+      List<EntityScalar<T>> scalars = const []})
       : columns = List.unmodifiable(columns),
-        indexes = List.unmodifiable(indexes) {
+        indexes = List.unmodifiable(indexes),
+        scalars = List.unmodifiable(scalars) {
     _ormValidateName(tableName);
     if (_ormAsciiLower(tableName).startsWith('sqlite_')) {
       throw const OrmMappingException('sqlite_ table names are reserved');
@@ -243,6 +280,13 @@ final class EntityType<T> {
         throw const OrmMappingException('Invalid or duplicate mapped index');
       }
     }
+    final scalarNames = <String>{};
+    for (final scalar in scalars) {
+      if (!scalarNames.add(_ormAsciiLower(scalar.name)) ||
+          !scalar.columns.every(columns.contains)) {
+        throw const OrmMappingException('Invalid or duplicate mapped scalar');
+      }
+    }
     _validateVirtualModule();
   }
 
@@ -263,6 +307,9 @@ final class EntityType<T> {
 
   /// Secondary indexes.
   final List<OrmIndex<T>> indexes;
+
+  /// Model methods registered as SQL scalars.
+  final List<EntityScalar<T>> scalars;
 
   /// Primary-key columns in key order.
   late final List<Column<T, dynamic>> keys;
@@ -431,6 +478,14 @@ final class DbModel {
       for (final index in entity.indexes) {
         if (!names.add(_ormAsciiLower(index.name))) {
           throw const OrmMappingException('Duplicate mapped schema name');
+        }
+      }
+    }
+    final scalarNames = <String>{};
+    for (final entity in entities) {
+      for (final scalar in entity.scalars) {
+        if (!scalarNames.add(_ormAsciiLower(scalar.name))) {
+          throw const OrmMappingException('Duplicate mapped scalar name');
         }
       }
     }

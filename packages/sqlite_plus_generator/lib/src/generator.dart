@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
@@ -157,6 +158,11 @@ Future<GenerationResult> generateLibrary(
     if (models.any((model) => model.fields.any((field) => field.json)))
       'JsonPathField',
     if (models.any((model) => model.module == 'rtree')) 'Bounds',
+    if (models.any((model) => model.scalars.isNotEmpty)) ...[
+      'EntityScalar',
+      'SqlCall',
+      'SqlArgument',
+    ],
   ], input);
   final emitted = _emit(input, output, prefix, listName, models, relationships);
   return GenerationResult(
@@ -445,6 +451,7 @@ final class _Inspector {
   final String output;
   final LibraryElement library;
   final List<GeneratorDiagnostic> diagnostics = [];
+  final Set<String> scalarNames = {};
 
   void error(String code, String message, [Element? element]) {
     final path = element == null ? units.keys.first : _elementPath(element);
@@ -679,7 +686,131 @@ final class _Inspector {
         element,
       );
     }
-    return _Model(element, table, columns, keys, constructor, module);
+    final scalars = _scalars(element, columns, table, module);
+    return _Model(element, table, columns, keys, constructor, module, scalars);
+  }
+
+  List<_Scalar> _scalars(
+    ClassElement element,
+    List<_Field> columns,
+    String table,
+    String? module,
+  ) {
+    final executables = <ExecutableElement>[
+      ...element.methods,
+      ...element.getters.where((getter) => getter.isOriginDeclaration),
+    ];
+    final taken = columns.map((field) => field.name).toSet();
+    final json = columns.where((field) => field.json).toList();
+    if (json.length == 1) taken.add('path');
+    if (json.length > 1) {
+      taken.addAll(json.map((field) => '${field.name}Path'));
+    }
+    if (module == 'rtree') taken.add('bounds');
+    final scalars = <_Scalar>[];
+    for (final executable in executables) {
+      if (_annotation(executable, 'DbScalar') == null) continue;
+      final name = executable.name;
+      if (name == null || name.isEmpty) {
+        invalid('G014', '@DbScalar needs a name.', executable);
+      }
+      if (executable.isStatic || executable.formalParameters.isNotEmpty) {
+        invalid(
+          'G014',
+          '@DbScalar $name() reads mapped fields. It takes no parameters.',
+          executable,
+        );
+      }
+      final declaration = _methodDeclaration(executable);
+      if (declaration == null) {
+        invalid(
+          'G014',
+          '@DbScalar $name() has no resolvable body.',
+          executable,
+        );
+      }
+      if (declaration.body.isAsynchronous || declaration.body.isGenerator) {
+        invalid(
+          'G014',
+          '@DbScalar $name() is a synchronous function of the row.',
+          executable,
+        );
+      }
+      if (!_scalarReturnAllowed(executable.returnType)) {
+        invalid(
+          'G014',
+          '@DbScalar $name() must return null or a mapped SQL value.',
+          executable,
+        );
+      }
+      if (taken.contains(name)) {
+        invalid(
+          'G014',
+          'The scalar $name conflicts with a mapped field or query helper.',
+          executable,
+        );
+      }
+      taken.add(name);
+      final visitor = _ScalarReads(element, columns);
+      declaration.body.accept(visitor);
+      if (visitor.failure != null) {
+        invalid('G014', visitor.failure!, executable);
+      }
+      final reads = columns
+          .where((field) => visitor.reads.contains(field.element))
+          .toList();
+      final sqlName = _uniqueScalarName(_scalarSqlName(table, name));
+      final returnType = executable.returnType.getDisplayString();
+      scalars.add(
+        _Scalar(
+          executable,
+          name,
+          sqlName,
+          reads,
+          returnType,
+          declaration.isGetter,
+        ),
+      );
+    }
+    return scalars;
+  }
+
+  MethodDeclaration? _methodDeclaration(ExecutableElement element) {
+    final path = p.normalize(
+      element.firstFragment.libraryFragment.source.fullName,
+    );
+    final unit = units[path];
+    if (unit == null) return null;
+    for (final declaration
+        in unit.unit.declarations.whereType<ClassDeclaration>()) {
+      for (final member
+          in declaration.body.members.whereType<MethodDeclaration>()) {
+        if (member.declaredFragment?.element == element) return member;
+      }
+    }
+    return null;
+  }
+
+  bool _scalarReturnAllowed(DartType type) {
+    if (type is DynamicType || type.isDartCoreObject) return true;
+    if (type is VoidType || type is NeverType || type is RecordType) {
+      return false;
+    }
+    if (type is InterfaceType &&
+        (type.isDartAsyncFuture || type.isDartAsyncFutureOr)) {
+      return false;
+    }
+    return _kind(type) != null;
+  }
+
+  String _uniqueScalarName(String base) {
+    var name = base;
+    var suffix = 2;
+    while (!scalarNames.add(name)) {
+      name = '${base}_$suffix';
+      suffix++;
+    }
+    return name;
   }
 
   void _checkVirtual(
@@ -1044,6 +1175,136 @@ final class _Field {
       : '${prefix}Codecs.$kind';
 }
 
+final class _Scalar {
+  _Scalar(
+    this.element,
+    this.name,
+    this.sqlName,
+    this.fields,
+    this.returnType,
+    this.getter,
+  );
+  final ExecutableElement element;
+  final String name, sqlName, returnType;
+  final List<_Field> fields;
+  final bool getter;
+}
+
+final class _ScalarReads extends RecursiveAstVisitor<void> {
+  _ScalarReads(this.owner, this.fields);
+  final ClassElement owner;
+  final List<_Field> fields;
+  final Set<FieldElement> reads = {};
+  String? failure;
+
+  @override
+  void visitAssignmentExpression(AssignmentExpression node) {
+    final left = node.leftHandSide;
+    final field = left is SimpleIdentifier ? _scalarField(left.element) : null;
+    if (field != null && field.enclosingElement == owner) {
+      failure ??= '@DbScalar does not assign ${field.name}.';
+    }
+    super.visitAssignmentExpression(node);
+  }
+
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    final target = node.realTarget;
+    final invoked = node.methodName.element;
+    if ((target == null || target is ThisExpression) &&
+        invoked is ExecutableElement &&
+        invoked.enclosingElement == owner) {
+      failure ??=
+          '@DbScalar reads mapped fields directly. ${node.methodName.name}() stays outside the body.';
+    }
+    super.visitMethodInvocation(node);
+  }
+
+  @override
+  void visitSimpleIdentifier(SimpleIdentifier node) {
+    final field = _scalarField(node.element);
+    if (field != null && !field.isStatic && field.enclosingElement == owner) {
+      if (fields.any((candidate) => candidate.element == field)) {
+        reads.add(field);
+      } else {
+        failure ??=
+            '@DbScalar can read mapped fields. ${field.name} is not mapped.';
+      }
+    }
+    super.visitSimpleIdentifier(node);
+  }
+}
+
+FieldElement? _scalarField(Element? element) {
+  if (element is FieldElement) return element;
+  if (element is PropertyAccessorElement) {
+    final variable = element.variable;
+    if (variable is FieldElement) return variable;
+  }
+  return null;
+}
+
+String _scalarSqlName(String table, String method) {
+  final raw = '${_lower(table)}_${_lower(method)}';
+  final units = raw.codeUnits.map((unit) {
+    final digit = unit >= 48 && unit <= 57;
+    final letter = (unit >= 65 && unit <= 90) || (unit >= 97 && unit <= 122);
+    return digit || letter || unit == 95 ? unit : 95;
+  });
+  var name = String.fromCharCodes(units).replaceAll(RegExp(r'_+'), '_');
+  if (name.startsWith(RegExp(r'[0-9]'))) name = 's_$name';
+  if (name.isEmpty || name == '_') name = 'scalar';
+  return name;
+}
+
+String _scalarRegistration(_Model model, _Scalar scalar, String prefix) {
+  final body = StringBuffer();
+  for (var index = 0; index < scalar.fields.length; index++) {
+    final field = scalar.fields[index];
+    body.writeln(
+      'final ${field.name} = scalarArguments[$index] == null ? null : '
+      '${model.name}Columns.${field.name}.decodeValue(scalarArguments[$index]);',
+    );
+    if (!field.nullable) {
+      body.writeln('if (${field.name} == null) return null;');
+    }
+  }
+  final arguments = <String>[];
+  for (final parameter in model.constructor.formalParameters) {
+    final field = model.fields
+        .where((field) => field.name == parameter.name)
+        .firstOrNull;
+    if (field == null) continue;
+    final read = scalar.fields.any((item) => item.name == field.name);
+    final value = read ? field.name : _scalarPlaceholder(field);
+    arguments.add(parameter.isNamed ? '${parameter.name}: $value' : value);
+  }
+  final call = scalar.getter ? scalar.name : '${scalar.name}()';
+  body.write(
+    'return ${model.name}'
+    '${_unnamedConstructor(model.constructor) ? '' : '.${model.constructor.name}'}'
+    '(${arguments.join(',')}).$call;',
+  );
+  return '${prefix}EntityScalar<${model.name}>('
+      'name: ${_string(scalar.sqlName)}, '
+      'columns: [${scalar.fields.map((field) => '${model.name}Columns.${field.name}').join(', ')}], '
+      'apply: (scalarArguments) { $body },),';
+}
+
+String _scalarPlaceholder(_Field field) {
+  if (field.nullable) return 'null';
+  return switch (field.kind) {
+    'bigInt' => 'BigInt.zero',
+    'integer' => '0',
+    'real' => '0.0',
+    'boolean' => 'false',
+    'text' => "''",
+    'dateTime' => 'DateTime.utc(1970)',
+    'blob' => 'Uint8List(0)',
+    _ => 'null',
+  };
+}
+
 final class _Model {
   _Model(
     this.element,
@@ -1052,12 +1313,14 @@ final class _Model {
     this.keys,
     this.constructor,
     this.module,
+    this.scalars,
   );
   final ClassElement element;
   final String table;
   final List<_Field> fields, keys;
   final ConstructorElement constructor;
   final String? module;
+  final List<_Scalar> scalars;
   String get name => element.name!;
 }
 
@@ -1115,6 +1378,7 @@ String _emit(
       'columns: ${model.name}Columns.all, create: _create,'
       '${model.module == null ? '' : 'virtualModule: ${_string(model.module!)},'}'
       '${model.fields.any((field) => !field.writable) ? 'applyStoreValues: (entity, row) => _create(row),' : ''}'
+      '${model.scalars.isEmpty ? '' : 'scalars: _scalars,'}'
       ');',
     );
     code.writeln('static ${model.name} _create(${prefix}RowReader row) {');
@@ -1138,6 +1402,15 @@ String _emit(
       );
     }
     code.writeln('return entity; }');
+    if (model.scalars.isNotEmpty) {
+      code.writeln(
+        'static final _scalars = $listName<${prefix}EntityScalar<${model.name}>>.unmodifiable([',
+      );
+      for (final scalar in model.scalars) {
+        code.writeln(_scalarRegistration(model, scalar, prefix));
+      }
+      code.writeln(']);');
+    }
     code.writeln(
       'static ${prefix}EntityKey key('
       '${[for (var i = 0; i < model.keys.length; i++) '${model.keys[i].keyType} value$i'].join(',')}'
@@ -1186,6 +1459,15 @@ String _emit(
         'final bounds = ${prefix}Bounds<${model.name}>('
         'minX: ${model.name}Columns.minX, maxX: ${model.name}Columns.maxX, '
         'minY: ${model.name}Columns.minY, maxY: ${model.name}Columns.maxY,);',
+      );
+    }
+    for (final scalar in model.scalars) {
+      final arguments = scalar.fields.isEmpty
+          ? '<${prefix}SqlArgument<${model.name}>>[]'
+          : '[${scalar.fields.map((field) => '${prefix}SqlArgument.of(${field.name})').join(', ')}]';
+      code.writeln(
+        '${prefix}SqlCall<${model.name}, ${scalar.returnType}> ${scalar.name}() => '
+        '${prefix}SqlCall(${_string(scalar.sqlName)}, $arguments);',
       );
     }
     code.writeln('}');

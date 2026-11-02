@@ -12,6 +12,15 @@ class DbEntity {
   final String? module;
 }
 
+/// Marks an instance method or getter as a SQL scalar.
+///
+/// The body reads mapped fields. The generated query calls it with no
+/// arguments, and the runtime passes those fields in for each row.
+class DbScalar {
+  /// The body is a pure function of the mapped fields it reads.
+  const DbScalar();
+}
+
 /// Marks one TEXT column for a generated JSON path helper.
 class DbJson {
   /// Marks the annotated `String` field as JSON text.

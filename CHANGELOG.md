@@ -10,6 +10,7 @@ The package version stays `0.1.2`. Nothing here was uploaded. `packages/sqlite_p
 - Cross-schema `VALUES` errors use the pinned text: `no such table: missing`, `sub-select returns 2 columns - expected 1`, and `table aux.u has 2 columns but 1 values were supplied`.
 - `EXPLAIN` matches the pinned opcode rows for a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries still throw `EXPLAIN bytecode is not implemented`. This is not a VDBE.
 - Margin notes exports CSV, imports those rows as new notes, and plots one bar per UTC update day. `examples/notes/tool/note_exchange_check.dart` passed. The Flutter widgets were not executed on this machine.
+- The ORM calls a model method from a query. `@DbScalar() BigInt? twice() => revision * BigInt.two` is `row.twice() > 20`. Engine scalars sit on the column: `row.revision.abs()`, `row.title.upper()`, `row.title.length()`. The generator writes the method onto the query row.
 
 Still open: the two-database commit record is the engine schema-commit file, not an official SQLite master journal. B5 stays unchecked until those Flutter widgets run. M9 stays unchecked. The scenario harness rejects a row count above 10000. iOS, macOS, Windows, power loss, and pub.dev were not run for this revision. Item 108 stays open.
 

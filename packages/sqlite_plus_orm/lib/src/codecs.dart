@@ -206,6 +206,18 @@ bool _ormIntegerCodec(ValueCodec<dynamic> codec) =>
     _ormBaseCodec(codec) is _BigIntCodec;
 
 /// Copy an encoded SQL value and reject unsupported or lossy values.
+/// Publishes a scalar-method result as a SQL value.
+///
+/// `int` becomes [BigInt]. `bool` becomes `1` or `0`. [DateTime] becomes a
+/// UTC ISO-8601 string. `null`, [BigInt], [String], [double], and [Uint8List]
+/// pass through the binding rules.
+Object? publishOrmScalar(Object? value) {
+  if (value is bool) return value ? BigInt.one : BigInt.zero;
+  if (value is DateTime) return value.toUtc().toIso8601String();
+  if (value is int) return copyOrmValue(BigInt.from(value));
+  return copyOrmValue(value);
+}
+
 Object? copyOrmValue(Object? value) {
   if (value is int) value = BigInt.from(value);
   if (value is BigInt) return _ormCheckedInteger(value);
