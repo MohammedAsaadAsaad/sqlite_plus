@@ -5,6 +5,7 @@
 Depends on `sqlite_plus_orm` 0.1.3. pub.dev already serves `0.1.2`.
 
 - `@DbScalar()` on an instance method or getter becomes `row.twice()` with no parameters. The part registers `table_method` and passes the mapped fields that body reads.
+- The README records the same size samples as the engine page: a bundled arm64 `libsqlite3.so` of 1,824,456 bytes, and 2,211,840 bytes for calling `sqlite_plus` from a Linux x64 release executable. This generator was not in that pair.
 
 ## 0.1.2
 

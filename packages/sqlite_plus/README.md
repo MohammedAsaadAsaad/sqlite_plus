@@ -137,6 +137,19 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 
 The file size is taken before close, so it still includes the redo.
 
+## Size
+
+A bundled native library and this engine add different bytes. This package adds no `.so`.
+
+| What the app gains | Bytes |
+|---|---:|
+| `libsqlite3.so` for `arm64-v8a` | 1,824,456 |
+| `sqlite_plus` after the app opens a database | 2,211,840 |
+
+The native file is the Android build from package `sqlite3` 3.3.4. The other ABIs in that release are 1,865,016 (`armeabi-v7a`), 1,802,504 (`x86_64`), and 1,745,316 (`x86`). gzip-9 of the arm64 file is 891,530 bytes. A store install carries one ABI. Android's own `libsqlite.so` stays in the system image when the app uses `android.database.sqlite`.
+
+The second row is two Linux x64 executables from `dart compile exe` on Dart 3.13.7, with debugging information removed. The empty program is 6,275,992 bytes. The program that opens a memory database, creates a table, inserts one row, and reads it is 8,487,832 bytes. gzip-9 of those two files differs by 900,183 bytes. No Flutter APK was built, and Android arm64 was not compiled. An import that nothing calls can be tree-shaken away. The ORM and the generator are outside this pair.
+
 ## SQL
 
 | You write | You get |

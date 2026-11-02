@@ -170,6 +170,10 @@ A renamed SQL column is not guessed. Keep `@DbColumn(name: 'title')` when only t
 
 The write is deterministic and formatted. Hand-written files and symbolic links stay in place. Fields are `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, and `DateTime`, including nullable aliases. A generic, an inherited field, or an unsupported type is reported before any file is written.
 
+## Size
+
+`sqlite_plus` adds no native library. A bundled `libsqlite3.so` for `arm64-v8a` is 1,824,456 bytes. Calling that engine from a Linux x64 release executable added 2,211,840 bytes: 8,487,832 against an empty program of 6,275,992, Dart 3.13.7, debugging information removed. gzip-9 of the arm64 file is 891,530 bytes. gzip-9 of the two executables differs by 900,183 bytes. No Flutter APK was built. This generator was not in that pair.
+
 ## The other packages
 
 [`sqlite_plus`](../sqlite_plus) runs the SQL. One memory database:

@@ -224,6 +224,10 @@ final large = await books.query
 
 The method takes no parameters. A getter is the same shape. The body reads mapped fields and stays synchronous. `DbContext` registers `books_twice` on the connection. A null stored in a non-nullable field makes that call null. A thrown body fails the statement. `abs`, `upper`, `lower`, `length`, `trim`, `substr`, `replace`, `round`, `coalesce`, `ifNull`, `concat`, `sign`, `floor`, `ceil`, `sqrt`, `date`, `time`, `dateTime`, `unixEpoch`, and `julianDay` are the engine, called on the column or on another call.
 
+## Size
+
+`sqlite_plus` adds no native library. A bundled `libsqlite3.so` for `arm64-v8a` is 1,824,456 bytes. Calling this engine from a Linux x64 release executable added 2,211,840 bytes: 8,487,832 against an empty program of 6,275,992, Dart 3.13.7, debugging information removed. gzip-9 of the arm64 file is 891,530 bytes. gzip-9 of the two executables differs by 900,183 bytes. The other native ABIs in `sqlite3` 3.3.4 are 1,865,016, 1,802,504, and 1,745,316. No Flutter APK was built. This ORM was not in that pair.
+
 ## The other packages
 
 [`sqlite_plus`](../sqlite_plus) is the engine. The same connection answers SQL directly.

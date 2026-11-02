@@ -11,6 +11,7 @@
 - `EXPLAIN` matches the pinned opcode rows for a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries still throw `EXPLAIN bytecode is not implemented`. This is not a VDBE.
 - Margin notes exports CSV, imports those rows as new notes, and plots one bar per UTC update day. `examples/notes/tool/note_exchange_check.dart` passed. The Flutter widgets were not executed on this machine.
 - The ORM calls a model method from a query. `@DbScalar() BigInt? twice() => revision * BigInt.two` is `row.twice() > 20`. Engine scalars sit on the column: `row.revision.abs()`, `row.title.upper()`, `row.title.length()`. The generator writes the method onto the query row.
+- The READMEs record two size samples. Bundled `libsqlite3.so` from package `sqlite3` 3.3.4 is 1,824,456 bytes on `arm64-v8a`. Calling `sqlite_plus` added 2,211,840 bytes to a Linux x64 release executable. No Flutter APK was built.
 
 Still open: the two-database commit record is the engine schema-commit file, not an official SQLite master journal. B5 stays unchecked until those Flutter widgets run. M9 stays unchecked. The scenario harness rejects a row count above 10000. iOS, macOS, Windows, and power loss were not run for this revision. Item 108 stays open. `dart pub publish --dry-run` reported 0 warnings for the three packages. This note does not record a completed pub.dev upload.
 

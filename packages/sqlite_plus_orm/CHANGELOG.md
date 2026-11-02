@@ -6,6 +6,7 @@ Depends on `sqlite_plus` 0.1.3. pub.dev already serves `0.1.2`.
 
 - `@DbScalar()` on an instance method or getter reads mapped fields. `selectWhere((row) => row.twice() > 20)` runs that body for each row. The context registers `table_method` on the connection.
 - A column, a JSON path, or a call accepts the engine scalars: `abs`, `upper`, `lower`, `length`, `trim`, `substr`, `replace`, `round`, `coalesce`, `ifNull`, `concat`, `sign`, `floor`, `ceil`, `sqrt`, `date`, `time`, `dateTime`, `unixEpoch`, and `julianDay`.
+- The README records the same size samples as the engine page: a bundled arm64 `libsqlite3.so` of 1,824,456 bytes, and 2,211,840 bytes for calling `sqlite_plus` from a Linux x64 release executable. This ORM was not in that pair.
 
 ## 0.1.2
 

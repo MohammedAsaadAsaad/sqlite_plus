@@ -9,6 +9,7 @@ Compared with pinned SQLite 3.53.1 on Dart 3.13.7, Linux x64. 10596 tests passed
 - File `journal_mode` `wal`, `persist`, and `truncate` follow the pinned header and journal bytes. This is not a multi-frame WAL log.
 - Cross-schema `VALUES` errors use the pinned wording.
 - `EXPLAIN` matches the pinned opcode rows for a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries stay rejected. This is not a VDBE.
+- The README records the size samples. Bundled `libsqlite3.so` for `arm64-v8a` is 1,824,456 bytes. Calling this engine added 2,211,840 bytes to a Linux x64 release executable. This package adds no `.so`. No Flutter APK was built.
 
 ## 0.1.2
 
