@@ -213,8 +213,21 @@ image. Statements are atomic in memory; durability requires an ImagePager.
 
 The current writer validates page ownership/freelists before rebuilding compact
 B-trees, secondary indexes and overflow pages. It supports complete images up to
-64 MiB without auto-vacuum or reserved page bytes. It favors correctness and
+64 MiB. A reserve of 0 keeps the previous page geometry. A nonzero reserve
+rebuilds when auto-vacuum is off, and the cell area ends at the usable size.
+Auto-vacuum together with a reserve is rejected. Fast page patches still
+require a zero reserve and fall through to the rebuild. It favors correctness and
 simple atomic images over in-place updates; large write workloads are not tuned.
+
+`SqlCipherDatabase` wraps that image. `encryptedImage()` applies the SQLCipher 4
+default codec: AES-256-CBC, HMAC-SHA512, and PBKDF2-HMAC-SHA512 for 256000
+iterations. The HMAC key is PBKDF2 of the encryption key over the salt XOR
+`0x3a`, for 2 iterations. Page 1 stores a 16-byte salt and restores
+`SQLite format 3` after a successful HMAC. `database.exportImage()` is the
+decrypted image. `saveSqlCipher` in `sqlite_plus_io.dart` replaces the whole
+file. That write is not the rollback journal. WAL files, SQLCipher 1–3, rekey,
+and a plaintext header are unsupported. The codec is pure Dart and is not used
+by `openInMemory` or `openDatabase`.
 
 For durable commits, supply `RollbackJournalPager.open(database, journal)` to
 `MutableSqliteDatabase.fromJournalPager`. Both backends must implement the

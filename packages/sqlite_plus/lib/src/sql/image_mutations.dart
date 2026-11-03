@@ -285,10 +285,13 @@ final class ImageMutations {
       if (image.length > 64 * 1024 * 1024 ||
           !header.hasValidDatabaseSize ||
           header.databaseSize * header.pageSize != image.length ||
-          header.largestRootPage > header.databaseSize ||
-          header.reservedBytes != 0) {
+          header.largestRootPage > header.databaseSize) {
         throw UnsupportedError(
             'Writer requires complete non-auto-vacuum image without reserved bytes');
+      }
+      if (header.reservedBytes != 0 && header.largestRootPage != 0) {
+        throw UnsupportedError(
+            'Reserved-byte auto-vacuum image rebuild is unsupported');
       }
       final catalog = await DatabaseCatalog.read(pager);
       final owned = <int>{};

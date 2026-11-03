@@ -6,7 +6,7 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.3
+  sqlite_plus: ^0.1.4
 ```
 
 ## A table, a row, a query
@@ -100,6 +100,23 @@ await owner.close();
 ```
 
 `openDatabase` is `DatabaseOwner.open`. It needs `dart:io`. The file and its journal sidecar already exist. A second open of the same path fails while the first owner is open.
+
+## SQLCipher 4
+
+```dart
+final created = await SqlCipherDatabase.create('secret');
+await created.database.execute('CREATE TABLE note (title TEXT)');
+await created.database.execute(
+  'INSERT INTO note(title) VALUES (?)',
+  ['Kept Garden'],
+);
+final file = created.encryptedImage();
+
+final opened = await SqlCipherDatabase.open(file, 'secret');
+final title = await opened.database.query('SELECT title FROM note');
+```
+
+`file` is a SQLCipher 4 database: AES-256-CBC, HMAC-SHA512, and PBKDF2-HMAC-SHA512 for 256000 iterations. The salt is the first 16 bytes. Each page keeps an 80-byte reserve. `opened.database.exportImage()` is the decrypted SQLite image. `saveSqlCipher` writes the encrypted file in one pass. A file opens when the passphrase and the iteration count match the writer. Pass the same `iterations` value on both sides when it is not 256000. The codec is pure Dart, through `pointycastle`. An ordinary `openInMemory` or `openDatabase` does not call it.
 
 ## Speed
 
