@@ -2,10 +2,15 @@
 
 ## 0.1.4
 
-Depends on `sqlite_plus` 0.1.3. `sqlite_plus` stays `0.1.3`.
+Depends on `sqlite_plus` 0.1.5.
 
 - `@DbDocument()` stores one object as JSON text. `Codecs.document` calls `fromJson` and `toJson`. `row.card.path(r'$.title')` binds `json_extract`. A returned row is decoded. The other rows stay text.
 - The model schema records `"document": true` for that column. The SQL type stays `TEXT`. A `String` column still uses `@DbJson`.
+- `DbModules`, `DbTokenizers`, and `DbVectorMetrics` are documented `String` constants. `DbVectorLimits` documents 1 and 4096. The annotation fields stay strings, so a missing name can still be written by hand.
+- `@DbEntity(module:, tokenizer:)` creates `fts5`, `rtree`, or `vec0`. An unknown module is rejected. A tokenizer belongs on `fts5`.
+- `@DbVector(dimensions)` stores `List<double>` as little-endian float32. The default metric is `l2`.
+- `search` queries an FTS5 table. `nearest` writes `column MATCH ? AND k = ?` and orders by `distance`.
+- `sqlite_plus_arabic` and `sqlite_plus_vec` are registered by the application. This package does not import them.
 
 ## 0.1.3
 

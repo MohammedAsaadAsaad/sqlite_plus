@@ -891,13 +891,23 @@ final class _Inspector {
     for (final field in _fields(element)) {
       final document = _annotation(field, 'DbDocument') != null;
       final json = _annotation(field, 'DbJson') != null;
+      final vector = _annotation(field, 'DbVector');
       var kind = _kind(field.type);
       String? documentFromJson;
+      int? vectorDimensions;
+      String? vectorMetric;
       if (document && json) {
         invalid(
           'G013',
           '@DbDocument and @DbJson mark different columns. '
               'A String column uses @DbJson.',
+          field,
+        );
+      }
+      if (document && vector != null) {
+        invalid(
+          'G013',
+          '@DbDocument and @DbVector mark different columns.',
           field,
         );
       }
@@ -918,6 +928,25 @@ final class _Inspector {
         }
         documentFromJson = _documentFromJson(field);
         kind = 'document';
+      }
+      if (vector != null) {
+        if (!_isDoubleList(field.type)) {
+          invalid('G013', '@DbVector needs a List<double> column.', field);
+        }
+        vectorDimensions = vector.getField('dimensions')?.toIntValue();
+        vectorMetric = vector.getField('metric')?.toStringValue();
+        if (vectorDimensions == null ||
+            vectorDimensions < 1 ||
+            vectorDimensions > 4096 ||
+            vectorMetric == null ||
+            !_identifier(vectorMetric)) {
+          invalid(
+            'G013',
+            '@DbVector dimensions must be 1 to 4096 and metric must be an identifier.',
+            field,
+          );
+        }
+        kind = 'vector';
       }
       if (kind == null) {
         invalid(
@@ -978,6 +1007,8 @@ final class _Inspector {
           json: json,
           documentFromJson: documentFromJson,
           reference: _annotation(field, 'DbReference'),
+          vectorDimensions: vectorDimensions,
+          vectorMetric: vectorMetric,
         ),
       );
     }
@@ -1052,11 +1083,10 @@ final class _Inspector {
     if (columns.where((field) => field.version).length > 1) {
       invalid('G009', 'A model can have only one version field.', element);
     }
-    final module = _annotation(
-      element,
-      'DbEntity',
-    )?.getField('module')?.toStringValue();
-    _checkVirtual(element, columns, module);
+    final entity = _annotation(element, 'DbEntity');
+    final module = entity?.getField('module')?.toStringValue();
+    final tokenizer = entity?.getField('tokenizer')?.toStringValue();
+    _checkVirtual(element, columns, module, tokenizer);
     final constructors = element.constructors
         .where((ctor) => !ctor.isFactory)
         .toList();
@@ -1121,7 +1151,16 @@ final class _Inspector {
       );
     }
     final scalars = _scalars(element, columns, table, module);
-    return _Model(element, table, columns, keys, constructor, module, scalars);
+    return _Model(
+      element,
+      table,
+      columns,
+      keys,
+      constructor,
+      module,
+      tokenizer,
+      scalars,
+    );
   }
 
   List<_Scalar> _scalars(
@@ -1350,7 +1389,9 @@ final class _Inspector {
     ClassElement element,
     List<_Field> columns,
     String? module,
+    String? tokenizer,
   ) {
+    final vectors = columns.where((field) => field.kind == 'vector').toList();
     if (module == null) {
       for (final field in columns.where((field) => field.document)) {
         if (field.keyOrder != null) {
@@ -1367,6 +1408,13 @@ final class _Inspector {
             field.element,
           );
         }
+      }
+      if (tokenizer != null || vectors.isNotEmpty) {
+        invalid(
+          'G013',
+          'A tokenizer or @DbVector needs module fts5 or vec0.',
+          element,
+        );
       }
       final json = columns.where((field) => field.json).toList();
       if (json.any((field) => field.kind != 'text')) {
@@ -1395,8 +1443,18 @@ final class _Inspector {
       }
       return;
     }
-    if (module != 'fts5' && module != 'rtree') {
-      invalid('G013', 'DbEntity.module must be fts5 or rtree.', element);
+    if (module != 'fts5' && module != 'rtree' && module != 'vec0') {
+      invalid('G013', 'DbEntity.module must be fts5, rtree, or vec0.', element);
+    }
+    if (tokenizer != null && (module != 'fts5' || !_identifier(tokenizer))) {
+      invalid(
+        'G013',
+        'DbEntity.tokenizer is an identifier on an fts5 table.',
+        element,
+      );
+    }
+    if (module != 'vec0' && vectors.isNotEmpty) {
+      invalid('G013', '@DbVector belongs on a vec0 table.', element);
     }
     if (columns.any(
       (field) =>
@@ -1426,6 +1484,30 @@ final class _Inspector {
         invalid(
           'G013',
           'fts5 needs one rowid key and one or more String columns.',
+          element,
+        );
+      }
+      return;
+    }
+    if (module == 'vec0') {
+      final content = columns.where((field) => field.keyOrder == null);
+      final key = columns.where((field) => field.keyOrder != null).toList();
+      if (key.length != 1 ||
+          _lower(key.single.sqlName) != 'rowid' ||
+          !const {'integer', 'bigInt'}.contains(key.single.kind) ||
+          content.length != 1 ||
+          vectors.length != 1 ||
+          columns.any(
+            (field) =>
+                _lower(field.name) == 'distance' ||
+                _lower(field.name) == 'k' ||
+                _lower(field.sqlName) == 'distance' ||
+                _lower(field.sqlName) == 'k',
+          )) {
+        invalid(
+          'G013',
+          'vec0 needs one rowid key and one List<double> @DbVector column. '
+              'distance and k are reserved.',
           element,
         );
       }
@@ -1712,6 +1794,19 @@ bool _returnsJsonMap(DartType type) {
       _libraryUri(type.element.library) == 'dart:core';
 }
 
+bool _identifier(String value) =>
+    RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(value);
+
+bool _isDoubleList(DartType type) {
+  if (type is! InterfaceType || type.element.name != 'List') return false;
+  if (type.typeArguments.length != 1) return false;
+  final argument = type.typeArguments.single;
+  return argument is InterfaceType &&
+      argument.element.name == 'double' &&
+      argument.nullabilitySuffix != NullabilitySuffix.question &&
+      _libraryUri(argument.element.library) == 'dart:core';
+}
+
 String? _kind(DartType type) {
   if (type is! InterfaceType) return null;
   final uri = _libraryUri(type.element.library);
@@ -1747,11 +1842,15 @@ final class _Field {
     this.keyOrder,
     this.defaultSql,
     this.reference,
+    this.vectorDimensions,
+    this.vectorMetric,
   });
   final FieldElement element;
   final String kind, sqlName, dartType, keyType;
   final bool nullable, unique, explicitKey, version, json;
   final String? documentFromJson;
+  final int? vectorDimensions;
+  final String? vectorMetric;
   bool generated;
   int? keyOrder;
   final String? defaultSql;
@@ -1765,6 +1864,7 @@ final class _Field {
           '${prefix}Codecs.document($documentFromJson, (value) => value.toJson())';
       return nullable ? '${prefix}Codecs.nullable($body)' : body;
     }
+    if (kind == 'vector') return '${prefix}Codecs.vector($vectorDimensions)';
     return nullable
         ? '${prefix}Codecs.nullable(${prefix}Codecs.$kind)'
         : '${prefix}Codecs.$kind';
@@ -1897,6 +1997,7 @@ String _scalarPlaceholder(_Field field) {
     'text' => "''",
     'dateTime' => 'DateTime.utc(1970)',
     'blob' => 'Uint8List(0)',
+    'vector' => 'const <double>[]',
     _ => 'null',
   };
 }
@@ -1909,6 +2010,7 @@ final class _Model {
     this.keys,
     this.constructor,
     this.module,
+    this.tokenizer,
     this.scalars,
   );
   final ClassElement element;
@@ -1916,6 +2018,7 @@ final class _Model {
   final List<_Field> fields, keys;
   final ConstructorElement constructor;
   final String? module;
+  final String? tokenizer;
   final List<_Scalar> scalars;
   String get name => element.name!;
 }
@@ -1972,6 +2075,7 @@ String _emit(
         '${field.version ? 'version: true,' : ''}'
         '${field.unique ? 'unique: true,' : ''}'
         '${field.defaultSql != null ? 'defaultSql: ${_string(field.defaultSql!)},' : ''}'
+        '${field.vectorDimensions == null ? '' : 'vectorDimensions: ${field.vectorDimensions}, vectorMetric: ${_string(field.vectorMetric!)},'}'
         ');',
       );
     }
@@ -1985,6 +2089,7 @@ String _emit(
       '${prefix}EntityType<${model.name}>(tableName: ${_string(model.table)},'
       'columns: ${model.name}Columns.all, create: _create,'
       '${model.module == null ? '' : 'virtualModule: ${_string(model.module!)},'}'
+      '${model.tokenizer == null ? '' : 'tokenizer: ${_string(model.tokenizer!)},'}'
       '${model.fields.any((field) => !field.writable) ? 'applyStoreValues: (entity, row) => _create(row),' : ''}'
       '${model.scalars.isEmpty ? '' : 'scalars: _scalars,'}'
       ');',
@@ -2094,6 +2199,11 @@ String _emit(
     if (model.module == 'fts5') {
       code.writeln(
         '${prefix}TypedQuery<${model.name}> search(String text) => ${prefix}TypedQuery<${model.name}>(type: type, connection: connection).search(text);',
+      );
+    }
+    if (model.module == 'vec0') {
+      code.writeln(
+        '${prefix}TypedQuery<${model.name}> nearest(List<double> vector, {int k = 10}) => ${prefix}TypedQuery<${model.name}>(type: type, connection: connection).nearest(vector, k: k);',
       );
     }
     code.writeln('}');

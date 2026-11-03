@@ -10,3 +10,7 @@ workspace:
   - packages/sqlite_plus_orm/example
   - packages/sqlite_plus_generator
   - packages/sqlite_plus_generator/example
+  - packages/sqlite_plus_arabic
+  - packages/sqlite_plus_arabic/example
+  - packages/sqlite_plus_vec
+  - packages/sqlite_plus_vec/example

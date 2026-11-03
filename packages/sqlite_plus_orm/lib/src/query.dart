@@ -80,6 +80,25 @@ final class _LogicalPredicate<T> extends SqlPredicate<T> {
       '(${left._sql(parameters)} $operator ${right._sql(parameters)})';
 }
 
+final class _NearestPredicate<T> extends SqlPredicate<T> {
+  _NearestPredicate(this.column, this.vector, this.k);
+  final Column<T, dynamic> column;
+  final Uint8List vector;
+  final int k;
+
+  @override
+  Iterable<Column<T, dynamic>> get _columns => [column];
+
+  @override
+  String _sql(List<Object?> parameters) {
+    parameters
+      ..add(Uint8List.fromList(vector))
+      ..add(BigInt.from(k));
+    return '${quoteIdentifier(column.sqlName)} MATCH ? AND '
+        '${quoteIdentifier('k')} = ?';
+  }
+}
+
 final class _MatchPredicate<T> extends SqlPredicate<T> {
   _MatchPredicate(this.table, this.text);
   final String table;
@@ -159,6 +178,10 @@ final class MappedTable<T> {
   /// Rows whose FTS content matches [text].
   TypedQuery<T> search(String text) =>
       TypedQuery(type: type, connection: connection).search(text);
+
+  /// The [k] nearest rows to [vector], ordered by distance.
+  TypedQuery<T> nearest(List<double> vector, {int k = 10}) =>
+      TypedQuery(type: type, connection: connection).nearest(vector, k: k);
 }
 
 final class _NotPredicate<T> extends SqlPredicate<T> {
@@ -593,7 +616,8 @@ final class TypedQuery<T> {
         _offset = 0,
         _limit = null,
         _noTracking = false,
-        _rank = false;
+        _rank = false,
+        _distance = false;
 
   TypedQuery._(
       this.type,
@@ -605,7 +629,8 @@ final class TypedQuery<T> {
       this._offset,
       this._limit,
       this._noTracking,
-      this._rank);
+      this._rank,
+      this._distance);
 
   /// Mapping this query reads.
   final EntityType<T> type;
@@ -620,6 +645,7 @@ final class TypedQuery<T> {
   final int? _limit;
   final bool _noTracking;
   final bool _rank;
+  final bool _distance;
 
   TypedQuery<T> _copy(
           {SqlPredicate<T>? predicate,
@@ -627,7 +653,8 @@ final class TypedQuery<T> {
           int? offset,
           int? limit,
           bool? noTracking,
-          bool? rank}) =>
+          bool? rank,
+          bool? distance}) =>
       TypedQuery._(
           type,
           connection,
@@ -638,7 +665,8 @@ final class TypedQuery<T> {
           offset ?? _offset,
           limit ?? _limit,
           noTracking ?? _noTracking,
-          rank ?? _rank);
+          rank ?? _rank,
+          distance ?? _distance);
 
   void _validateColumns(Iterable<Column<T, dynamic>> columns) {
     if (columns.any((candidate) =>
@@ -663,7 +691,31 @@ final class TypedQuery<T> {
     final predicate = _MatchPredicate<T>(type.tableName, text);
     return _copy(
         predicate: _predicate == null ? predicate : _predicate & predicate,
-        rank: true);
+        rank: true,
+        distance: false);
+  }
+
+  /// Binds [vector] to `column MATCH ? AND k = ?` and orders by distance.
+  ///
+  /// [k] is the number of neighbors, from 1 through
+  /// [DbVectorLimits.maximumNeighbors]. The table must be [DbModules.vec0].
+  TypedQuery<T> nearest(List<double> vector, {int k = 10}) {
+    final column = type.vectorColumn;
+    if (column == null) {
+      throw const OrmMappingException('nearest needs one vector column');
+    }
+    if (k < 1 || k > DbVectorLimits.maximumNeighbors) {
+      throw RangeError.range(k, 1, DbVectorLimits.maximumNeighbors, 'k');
+    }
+    final stored = column.encodeValue(vector);
+    if (stored is! Uint8List) {
+      throw const OrmCodecException('Vector did not encode to a BLOB');
+    }
+    final predicate = _NearestPredicate<T>(column, stored, k);
+    return _copy(
+        predicate: _predicate == null ? predicate : _predicate & predicate,
+        rank: false,
+        distance: true);
   }
 
   /// Replaces ordering; supply all ordering terms in their priority order.
@@ -725,9 +777,10 @@ final class TypedQuery<T> {
     if (_predicate != null) {
       sql.write(' WHERE ${_predicate._sql(parameters)}');
     }
-    if (_rank || _ordering.isNotEmpty) {
+    if (_rank || _distance || _ordering.isNotEmpty) {
       sql.write(' ORDER BY ');
       sql.write([
+        if (_distance) 'distance',
         if (_rank) 'rank',
         ..._ordering.map((term) => term._sql(parameters))
       ].join(', '));

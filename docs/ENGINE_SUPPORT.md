@@ -168,16 +168,14 @@ rows, reads the JSON note whose title is `kept`, the FTS article matching
 `kept`, and the R-tree place inside the unit box. `example/lib/models.dart` passes
 generator `--check`.
 
-The repository root `LICENSE` is the MIT license. `sqlite_plus` is `0.1.3`. This tree's `sqlite_plus_orm` is `0.1.4` and `sqlite_plus_generator` is `0.1.5`. Those two have not been uploaded. 
-`CHANGELOG.md` records those versions. The pub.dev API lists
+The repository root `LICENSE` is the MIT license. This tree is `sqlite_plus` `0.1.5`, `sqlite_plus_orm` `0.1.4`, `sqlite_plus_generator` `0.1.5`, `sqlite_plus_arabic` `0.1.0`, and `sqlite_plus_vec` `0.1.0`. Those versions have not been uploaded.
+`CHANGELOG.md` records them. The pub.dev API lists
 `sqlite_plus_generator` `0.1.4` as latest, and `sqlite_plus` and
 `sqlite_plus_orm` remain `0.1.3`. A package page can take up to 10 minutes to
-show the new version. The Linux CI job checks fixture checksums. macOS and Windows CI run
+show a new version. The Linux CI job checks fixture checksums. macOS and Windows CI run
 format, analysis, package tests, and the example projects.
 
-On Linux x64, Dart 3.13.7, the engine suite passed 10596 tests. The document revision passed 187 ORM tests and 68 generator tests. The engine suite was not re-run for it. Format and
-fatal-info analysis passed for those package runs. The pinned SQLite CLI was
-present for the engine run. The example projects were not re-run for `0.1.3`.
+On Linux x64, Dart 3.13.7, the combined tree passed 190 ORM tests, 78 generator tests, 3 Arabic tests, and 4 vec tests. Format and fatal-info analysis passed for those packages. The engine sources match the revision that passed 10609 tests, and that suite was not re-run. The pinned SQLite CLI was present for that earlier engine run.
 
 Items 91–98 are `benchmark_results/scenarios_10k_linux_x64.json`: Linux x64
 AOT, 10000 rows, three samples. Memory SQL insert microseconds are

@@ -285,10 +285,13 @@ final class ImageMutations {
       if (image.length > 64 * 1024 * 1024 ||
           !header.hasValidDatabaseSize ||
           header.databaseSize * header.pageSize != image.length ||
-          header.largestRootPage > header.databaseSize ||
-          header.reservedBytes != 0) {
+          header.largestRootPage > header.databaseSize) {
         throw UnsupportedError(
             'Writer requires complete non-auto-vacuum image without reserved bytes');
+      }
+      if (header.reservedBytes != 0 && header.largestRootPage != 0) {
+        throw UnsupportedError(
+            'Reserved-byte auto-vacuum image rebuild is unsupported');
       }
       final catalog = await DatabaseCatalog.read(pager);
       final owned = <int>{};
@@ -2644,11 +2647,14 @@ final class ImageMutations {
     policy = _conflictPolicies.last ?? policy;
     if (insert) p.require('INTO');
     if (!insert && !update) p.require('FROM');
-    final name = p.qualifiedIdentifier(
+    final requestedName = p.qualifiedIdentifier(
         allowQualified: !compileOnly && _triggerContexts.isEmpty);
+    var name = requestedName;
     final targetLabel = reportedTarget ??
-        (p.parsedQualifier == null ? name : '${p.parsedQualifier}.$name');
-    final alias = p.take('AS') ? p.identifier() : name;
+        (p.parsedQualifier == null
+            ? requestedName
+            : '${p.parsedQualifier}.$requestedName');
+    final alias = p.take('AS') ? p.identifier() : requestedName;
     String? requiredIndex;
     if (!insert) {
       if (p.take('INDEXED')) {
@@ -2664,9 +2670,11 @@ final class ImageMutations {
         p.require('INDEXED');
       }
     }
-    if (_searchTarget(name) != null) {
+    if (_searchTarget(requestedName) != null) {
       return _searchWrite(sql, parameters, compileOnly: compileOnly);
     }
+    final shadow = _storedShadowName(requestedName);
+    if (shadow != null) name = shadow;
     _targetAliases.last[asciiLower(name)] = asciiLower(alias);
     final table = await _target(name);
     if (table == null) throw SqlException('no such table: $targetLabel');

@@ -25,12 +25,16 @@ final class ImageObject {
 /// Compact reconstruction of SQLite rowid and index B-trees. The caller supplies
 /// validated/sorted logical records and commits the returned image atomically.
 abstract final class DatabaseImageBuilder {
-  static Uint8List empty({int pageSize = 4096, int encoding = 1}) {
+  static Uint8List empty(
+      {int pageSize = 4096, int encoding = 1, int reservedBytes = 0}) {
     if (pageSize < 512 ||
         pageSize > 65536 ||
         pageSize & (pageSize - 1) != 0 ||
         encoding < 1 ||
-        encoding > 3) {
+        encoding > 3 ||
+        reservedBytes < 0 ||
+        reservedBytes > 255 ||
+        pageSize - reservedBytes < 480) {
       throw ArgumentError('Invalid database format');
     }
     final image = Uint8List(pageSize);
@@ -56,6 +60,7 @@ abstract final class DatabaseImageBuilder {
     data.setUint16(16, pageSize == 65536 ? 1 : pageSize);
     image[18] = 1;
     image[19] = 1;
+    image[20] = reservedBytes;
     image[21] = 64;
     image[22] = 32;
     image[23] = 32;
@@ -66,7 +71,8 @@ abstract final class DatabaseImageBuilder {
     data.setUint32(92, 1);
     data.setUint32(96, 3053001);
     image[100] = 13;
-    data.setUint16(105, pageSize == 65536 ? 0 : pageSize);
+    final usable = pageSize - reservedBytes;
+    data.setUint16(105, usable == 65536 ? 0 : usable);
     return image;
   }
 
@@ -74,8 +80,10 @@ abstract final class DatabaseImageBuilder {
       {bool schemaChanged = false, int maxImageBytes = 64 * 1024 * 1024}) {
     final header = DatabaseHeader.decode(original);
     final size = header.pageSize;
-    if (header.reservedBytes != 0) {
-      throw UnsupportedError('Reserved-byte image rebuild is unsupported');
+    final usable = header.usableSize;
+    if (header.reservedBytes != 0 && header.largestRootPage != 0) {
+      throw UnsupportedError(
+          'Reserved-byte auto-vacuum image rebuild is unsupported');
     }
     final vacuum = header.largestRootPage != 0;
     final roots = objects
@@ -109,22 +117,22 @@ abstract final class DatabaseImageBuilder {
     Uint8List payloadCell(List<Object?> values, bool table, {BigInt? rowid}) {
       final payload =
           RecordEncoder.encode(values, encoding: header.textEncoding);
-      final max = table ? size - 35 : ((size - 12) * 64 ~/ 255) - 23;
-      final min = ((size - 12) * 32 ~/ 255) - 23;
+      final max = table ? usable - 35 : ((usable - 12) * 64 ~/ 255) - 23;
+      final min = ((usable - 12) * 32 ~/ 255) - 23;
       var local = payload.length;
       if (local > max) {
-        local = min + (payload.length - min) % (size - 4);
+        local = min + (payload.length - min) % (usable - 4);
         if (local > max) local = min;
       }
       var first = 0;
       var last = 0;
-      for (var offset = local; offset < payload.length; offset += size - 4) {
+      for (var offset = local; offset < payload.length; offset += usable - 4) {
         final n = allocate();
         if (first == 0) first = n;
         if (last != 0) ByteData.sublistView(pages[last - 1]).setUint32(0, n);
-        final length = payload.length - offset < size - 4
+        final length = payload.length - offset < usable - 4
             ? payload.length - offset
-            : size - 4;
+            : usable - 4;
         pages[n - 1].setRange(4, 4 + length, payload, offset);
         last = n;
       }
@@ -166,7 +174,7 @@ abstract final class DatabaseImageBuilder {
       page[start] = type;
       data.setUint16(start + 3, cells.length);
       if (right != null) data.setUint32(start + 8, right);
-      var end = size;
+      var end = usable;
       for (var i = 0; i < cells.length; i++) {
         end -= cells[i].length;
         if (end < start + length + 2 * cells.length) {
@@ -221,7 +229,7 @@ abstract final class DatabaseImageBuilder {
           payloadCell(row.values, true, rowid: row.rowId)
       ];
       if (cells.fold<int>(root == 1 ? 108 : 8, (s, c) => s + c.length + 2) <=
-          size) {
+          usable) {
         write(root, cells, 13);
         return;
       }
@@ -230,7 +238,7 @@ abstract final class DatabaseImageBuilder {
       while (begin < cells.length) {
         var end = begin;
         var used = 8;
-        while (end < cells.length && used + cells[end].length + 2 <= size) {
+        while (end < cells.length && used + cells[end].length + 2 <= usable) {
           used += cells[end++].length + 2;
         }
         if (end == begin) throw StateError('Table cell cannot fit');
@@ -245,7 +253,7 @@ abstract final class DatabaseImageBuilder {
             tableSeparator(node.$1, node.$2)
         ];
         if (cells.fold<int>(root == 1 ? 112 : 12, (s, c) => s + c.length + 2) <=
-            size) {
+            usable) {
           write(root, cells, 5, right: nodes.last.$1);
           return;
         }
@@ -257,7 +265,7 @@ abstract final class DatabaseImageBuilder {
           while (end < nodes.length) {
             final cost =
                 tableSeparator(nodes[end - 1].$1, nodes[end - 1].$2).length + 2;
-            if (used + cost > size) break;
+            if (used + cost > usable) break;
             used += cost;
             end++;
           }
@@ -284,7 +292,7 @@ abstract final class DatabaseImageBuilder {
       // A promoted index cell retains its payload/overflow chain; only its
       // four-byte child prefix changes between leaf and interior nodes.
       final cells = [for (final row in records) payloadCell(row, false)];
-      if (cells.fold<int>(8, (s, c) => s + c.length + 2) <= size) {
+      if (cells.fold<int>(8, (s, c) => s + c.length + 2) <= usable) {
         write(root, cells, 10);
         return;
       }
@@ -301,7 +309,7 @@ abstract final class DatabaseImageBuilder {
       while (begin < cells.length) {
         var end = begin;
         var used = 8;
-        while (end < cells.length && used + cells[end].length + 2 <= size) {
+        while (end < cells.length && used + cells[end].length + 2 <= usable) {
           used += cells[end++].length + 2;
         }
         if (end == begin) throw StateError('Index cell cannot fit');
@@ -317,7 +325,7 @@ abstract final class DatabaseImageBuilder {
         }
       }
       while (true) {
-        if (keys.fold<int>(12, (s, c) => s + c.length + 6) <= size) {
+        if (keys.fold<int>(12, (s, c) => s + c.length + 6) <= usable) {
           write(
               root,
               [
@@ -335,7 +343,7 @@ abstract final class DatabaseImageBuilder {
           var end = begin + 1;
           var used = 12;
           while (end < children.length &&
-              used + keys[end - 1].length + 6 <= size) {
+              used + keys[end - 1].length + 6 <= usable) {
             used += keys[end - 1].length + 6;
             end++;
           }

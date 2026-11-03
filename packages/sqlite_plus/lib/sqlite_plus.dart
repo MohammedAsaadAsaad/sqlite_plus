@@ -21,11 +21,22 @@ export 'src/pager/schema_commit.dart';
 export 'src/format/record_encoder.dart';
 export 'src/btree/table_image_writer.dart';
 export 'src/sql/mutable_database.dart';
+export 'src/crypto/sqlcipher.dart'
+    show SqlCipher, SqlCipherDatabase, SqlCipherKeys;
 export 'src/format/wal_snapshot.dart';
 export 'src/pager/image_pager.dart';
 export 'src/pager/wal_pager.dart';
 
-export 'src/sql/function_registry.dart' show SqlFunctionRegistry, SqlAggregate;
+export 'src/sql/function_registry.dart'
+    show
+        SqlAggregate,
+        SqlFunctionRegistry,
+        VirtualMatchBoard,
+        VirtualMatchHandler;
+export 'src/sql/fts_text.dart'
+    show FtsToken, FtsTokenizer, FtsTokenizerFactory, FtsTokenizerRegistry;
+export 'src/sql/search_runtime.dart'
+    show SearchSnapshot, ShadowRow, ShadowTable;
 export 'src/sql/virtual_table.dart'
     show
         GenerateSeriesModule,

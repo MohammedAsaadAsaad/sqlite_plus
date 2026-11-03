@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [sqlite_plus, sqlite_plus_orm, sqlite_plus_generator]
+        package: [sqlite_plus, sqlite_plus_orm, sqlite_plus_generator, sqlite_plus_arabic, sqlite_plus_vec]
     defaults:
       run:
         working-directory: packages/${{ matrix.package }}
@@ -79,7 +79,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
-        package: [sqlite_plus, sqlite_plus_orm, sqlite_plus_generator]
+        package: [sqlite_plus, sqlite_plus_orm, sqlite_plus_generator, sqlite_plus_arabic, sqlite_plus_vec]
     defaults:
       run:
         working-directory: packages/${{ matrix.package }}

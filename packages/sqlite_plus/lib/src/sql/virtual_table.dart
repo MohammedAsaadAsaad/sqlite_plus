@@ -38,6 +38,21 @@ abstract class VirtualTableModule {
   /// When true, `SELECT * FROM name(...)` opens this module without CREATE.
   bool get eponymous => false;
 
+  /// When true, CREATE installs [shadowFields] and row changes write that
+  /// ordinary table. SELECT still uses [xOpen].
+  bool get storesRows => false;
+
+  /// Physical table that holds the rows of a [storesRows] module.
+  String shadowName(String table, List<String> arguments) => '${table}_vec';
+
+  /// Columns after the shadow table's integer `rowid` primary key.
+  ///
+  /// Each type is `BLOB`, `TEXT`, `INTEGER`, or `REAL`, with an optional
+  /// `NOT NULL`. The engine quotes [name] and rejects any other type text.
+  List<({String name, String type})> shadowFields(
+          String table, List<String> arguments) =>
+      const [];
+
   /// Whole-result helper used by the default cursor. A module that overrides
   /// [xOpen] does not need this.
   List<List<Object?>> read(String table, List<String> arguments) {
@@ -436,6 +451,21 @@ List<VirtualTableConstraint> virtualTableConstraints(
     {required bool allowUnqualified, String? alias}) {
   final constraints = <VirtualTableConstraint>[];
   void walk(Expr? expression) {
+    if (expression == null) return;
+    if (expression.isMatchCall) {
+      final column = expression.matchColumn;
+      final pattern = expression.matchPattern;
+      if (column is ColumnExpr &&
+          pattern != null &&
+          _constant(pattern, parameters)) {
+        final index = _columnIndex(column, table, allowUnqualified, alias);
+        if (index != null) {
+          constraints.add(VirtualTableConstraint(
+              index, 'match', evaluateVirtualArgument(pattern, parameters)));
+        }
+      }
+      return;
+    }
     if (expression is! BinaryExpr) return;
     if (expression.op == 'AND') {
       walk(expression.left);

@@ -561,6 +561,46 @@ class Customer {
       'G013',
     ),
     (
+      'tokenizer on rtree',
+      '@DbEntity(module: DbModules.rtree, tokenizer: DbTokenizers.porter) class Bad { Bad({required this.id, required this.minX, required this.maxX, required this.minY, required this.maxY}); final BigInt id; final double minX; final double maxX; final double minY; final double maxY; }',
+      'G013',
+    ),
+    (
+      'tokenizer is not an identifier',
+      "@DbEntity(module: 'fts5', tokenizer: 'arabic stem') class Bad { Bad({this.rowid, required this.body}); @DbKey(generated: true) final BigInt? rowid; final String body; }",
+      'G013',
+    ),
+    (
+      'vector on an ordinary class',
+      'class Bad { Bad({this.id, required this.embedding}); final BigInt? id; @DbVector(4) final List<double> embedding; }',
+      'G013',
+    ),
+    (
+      'vector on fts5',
+      '@DbEntity(module: DbModules.fts5) class Bad { Bad({this.rowid, required this.embedding}); @DbKey(generated: true) final BigInt? rowid; @DbVector(4) final List<double> embedding; }',
+      'G013',
+    ),
+    (
+      'vec0 without a vector',
+      "@DbEntity(module: 'vec0') class Bad { Bad({this.rowid, required this.body}); @DbKey(generated: true) final BigInt? rowid; final String body; }",
+      'G013',
+    ),
+    (
+      'vector dimension zero',
+      '@DbEntity(module: DbModules.vec0) class Bad { Bad({this.rowid, required this.embedding}); @DbKey(generated: true) final BigInt? rowid; @DbVector(0) final List<double> embedding; }',
+      'G013',
+    ),
+    (
+      'vector dimension above the limit',
+      '@DbEntity(module: DbModules.vec0) class Bad { Bad({this.rowid, required this.embedding}); @DbKey(generated: true) final BigInt? rowid; @DbVector(4097) final List<double> embedding; }',
+      'G013',
+    ),
+    (
+      'reserved distance column',
+      '@DbEntity(module: DbModules.vec0) class Bad { Bad({this.rowid, required this.distance}); @DbKey(generated: true) final BigInt? rowid; @DbVector(2) final List<double> distance; }',
+      'G013',
+    ),
+    (
       'fts without rowid',
       '@DbEntity(module: "fts5") class Bad { Bad(this.id, this.body); final BigInt? id; final String body; }',
       'G013',
@@ -613,6 +653,59 @@ class Customer {
       expect(File(fixture.output).existsSync(), isFalse);
     });
   }
+
+  test(
+    'string constants become tokenizer, vector codec, and nearest',
+    () async {
+      final fixture = await consumer('''
+@DbEntity(module: DbModules.fts5, tokenizer: DbTokenizers.porter)
+class Article {
+  Article({this.rowid, required this.body});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  final String body;
+}
+@DbEntity(module: DbModules.vec0)
+class Point {
+  Point({this.rowid, required this.embedding});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  @DbVector(4, metric: DbVectorMetrics.cosine)
+  final List<double> embedding;
+}
+@DbEntity(module: 'fts5', tokenizer: 'arabic')
+class Note {
+  Note({this.rowid, required this.body});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  final String body;
+}
+''');
+      final result = await generateLibrary(fixture.input);
+      expect(result.entityNames, ['Article', 'Point', 'Note']);
+      expect(result.code, contains('virtualModule: "fts5"'));
+      expect(result.code, contains('tokenizer: "porter"'));
+      expect(result.code, contains('tokenizer: "arabic"'));
+      expect(result.code, contains('virtualModule: "vec0"'));
+      expect(result.code, contains('Codecs.vector(4)'));
+      expect(result.code, contains('vectorDimensions: 4'));
+      expect(result.code, contains('vectorMetric: "cosine"'));
+      expect(result.code, contains('search(String text)'));
+      expect(
+        result.code,
+        contains('nearest(List<double> vector, {int k = 10})'),
+      );
+      expect(result.code, isNot(contains('sqlite_plus_vec')));
+      expect(result.code, isNot(contains('sqlite_plus_arabic')));
+      expect(await writeGenerated(result), isTrue);
+      final analyzed = await fixture.analyze();
+      expect(
+        analyzed.exitCode,
+        0,
+        reason: '${analyzed.stdout}\n${analyzed.stderr}',
+      );
+    },
+  );
 
   test(
     'explicit class selection omits unrelated conventions and diagnoses missing names',

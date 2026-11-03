@@ -579,13 +579,21 @@ bool _migrationColumnNullable(Column<dynamic, dynamic> column) =>
     column.nullable && (column.keyOrder == null || column.generated);
 
 String _createTableSql(EntityType<dynamic> entity, DbModel model) {
-  if (entity.virtualModule == 'fts5') {
+  if (entity.virtualModule == DbModules.fts5) {
     final columns =
         entity.columns.where((column) => column.keyOrder == null).toList();
+    final tokenize =
+        entity.tokenizer == null ? '' : ", tokenize = '${entity.tokenizer}'";
     return 'CREATE VIRTUAL TABLE ${quoteIdentifier(entity.tableName)} '
-        'USING fts5(${columns.map((column) => quoteIdentifier(column.sqlName)).join(', ')})';
+        'USING fts5(${columns.map((column) => quoteIdentifier(column.sqlName)).join(', ')}$tokenize)';
   }
-  if (entity.virtualModule == 'rtree') {
+  if (entity.virtualModule == DbModules.vec0) {
+    final column = entity.vectorColumn!;
+    return 'CREATE VIRTUAL TABLE ${quoteIdentifier(entity.tableName)} '
+        'USING vec0(${quoteIdentifier(column.sqlName)} float[${column.vectorDimensions}] '
+        'distance_metric=${column.vectorMetric})';
+  }
+  if (entity.virtualModule == DbModules.rtree) {
     return 'CREATE VIRTUAL TABLE ${quoteIdentifier(entity.tableName)} '
         'USING rtree(${entity.columns.map((column) => quoteIdentifier(column.sqlName)).join(', ')})';
   }
@@ -744,6 +752,7 @@ String _modelSchema(DbModel model) => jsonEncode({
           {
             'name': entity.tableName,
             if (entity.virtualModule != null) 'module': entity.virtualModule,
+            if (entity.tokenizer != null) 'tokenizer': entity.tokenizer,
             'columns': [
               for (final column in entity.columns)
                 {
@@ -755,6 +764,10 @@ String _modelSchema(DbModel model) => jsonEncode({
                   'default': _migrationDefault(column.defaultSql),
                   'unique': column.unique,
                   if (_migrationDocument(column)) 'document': true,
+                  if (column.vectorDimensions != null)
+                    'vector': column.vectorDimensions,
+                  if (column.vectorMetric != null)
+                    'metric': column.vectorMetric,
                 }
             ],
             'indexes': [

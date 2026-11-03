@@ -3,9 +3,29 @@ import 'tokenizer.dart';
 import 'values.dart';
 import 'date_functions.dart';
 import 'connection_state.dart';
+import 'fts_text.dart';
 import 'json_tables.dart';
 import 'search_modules.dart';
 import 'virtual_table.dart';
+
+/// Answers `column MATCH pattern` for one statement.
+///
+/// Return null when the call belongs to another module. A non-null value is
+/// the SQL result, usually [BigInt.one] or [BigInt.zero].
+typedef VirtualMatchHandler = Object? Function(
+    String? qualifier, String? column, Object? pattern, Object? rowid);
+
+/// Match handlers installed by a virtual table while one statement runs.
+final class VirtualMatchBoard {
+  static VirtualMatchBoard? get current =>
+      Zone.current[virtualMatchBoardKey] as VirtualMatchBoard?;
+
+  /// Handlers consulted before the built-in FTS `MATCH`.
+  final List<VirtualMatchHandler> handlers = [];
+}
+
+/// Zone value holding the [VirtualMatchBoard] for the active statement.
+final Object virtualMatchBoardKey = Object();
 
 /// A fresh aggregate instance is created for each SQL group/frame.
 abstract class SqlAggregate {
@@ -42,6 +62,9 @@ final class SqlFunctionRegistry {
   final Map<String, int Function(String, String)> collations = {};
   final SqlConnectionState connectionState = SqlConnectionState();
   final VirtualTableRegistry virtualTables = VirtualTableRegistry();
+
+  /// Tokenizers this connection adds. Built-in names stay in the engine.
+  final FtsTokenizerRegistry tokenizers = FtsTokenizerRegistry();
 
   /// When true, an unresolved double-quoted expression identifier is a string.
   /// Backticks, brackets, and qualified names stay identifiers. The default
@@ -101,6 +124,8 @@ final class SqlFunctionRegistry {
             _zoneKey: this,
             collationKey: collations,
             doubleQuotedStringsKey: doubleQuotedStrings,
+            ftsTokenizerRegistryKey: tokenizers,
+            virtualMatchBoardKey: VirtualMatchBoard(),
           }));
   static RegisteredSqlFunction? resolve(String name, int count) {
     final overloads = current?._functions[asciiLower(name)];

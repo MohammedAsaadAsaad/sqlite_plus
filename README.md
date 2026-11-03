@@ -6,12 +6,16 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.3
+  sqlite_plus: ^0.1.5
   sqlite_plus_orm: ^0.1.4
+  sqlite_plus_arabic: ^0.1.0
+  sqlite_plus_vec: ^0.1.0
 
 dev_dependencies:
   sqlite_plus_generator: ^0.1.5
 ```
+
+`sqlite_plus_arabic` and `sqlite_plus_vec` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer and `sqlite_plus_vec` for a vector column. A package is loaded when the application imports it.
 
 ## Query
 
@@ -111,19 +115,88 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 
 | Package | Start here |
 |---|---|
-| [`sqlite_plus`](packages/sqlite_plus) | SQL, JSON, FTS5, R-tree, `abs`, `exportImage` |
-| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Saves, revisions, `row.twice()`, migrations |
-| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `filter`, `path`, `@DbScalar`, `search`, and `bounds` out |
+| [`sqlite_plus`](packages/sqlite_plus) | SQL, JSON, FTS5, R-tree, `abs`, `exportImage`, SQLCipher 4 |
+| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Saves, revisions, `@DbDocument`, `row.twice()`, `DbModules`, migrations |
+| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `DocumentField`, `path`, `@DbScalar`, `search`, `nearest`, and `bounds` out |
+| [`sqlite_plus_arabic`](packages/sqlite_plus_arabic) | FTS5 tokenizer `arabic`. `حديقة` and `الحديقة` share a token |
+| [`sqlite_plus_vec`](packages/sqlite_plus_vec) | `vec0` nearest neighbors. A full scan of float32 vectors |
 
 | You want | Command |
 |---|---|
 | The engine tour | `(cd packages/sqlite_plus/example && dart run bin/main.dart)` |
 | The reading log | `(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)` |
 | The generated library | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` |
+| Arabic search | `(cd packages/sqlite_plus_arabic/example && dart run bin/main.dart)` |
+| Nearest vector | `(cd packages/sqlite_plus_vec/example && dart run bin/main.dart)` |
+
+## Arabic search and a nearest vector
+
+The closed names are `String` constants on [`sqlite_plus_orm`](packages/sqlite_plus_orm). `DbModules.fts5` and `'fts5'` are the same value, so a name that is not in the list can still be written by hand. The ORM creates `fts5`, `rtree`, and `vec0`. A tokenizer such as `'arabic'` is kept as text and checked when the table is created.
+
+[`sqlite_plus_arabic`](packages/sqlite_plus_arabic) registers the stemmer. [`sqlite_plus`](packages/sqlite_plus) stores the FTS5 index. The generator writes `search`. The generated part does not import the Arabic package.
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity(module: DbModules.fts5, tokenizer: ArabicTokenizers.arabic)
+class Note {
+  Note({this.rowid, required this.body});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  final String body;
+}
+
+SqlitePlusArabic.register(connection.database);
+await context.migrations.ensureCreated();
+notes.add(Note(body: 'في الحديقة'));
+notes.add(Note(body: 'سيارة'));
+await context.saveChanges(); // 2
+final garden = await notes.query.search('الحديقة').single();
+```
+
+`garden.body` is `في الحديقة`. `حديقة` and `الحديقة` share a token. `search('سيارة')` returns no row. The created SQL contains `tokenize = 'arabic'`. The Arabic README lists the folds, the prefixes, and why `الله` stays `الله`.
+
+[`sqlite_plus_vec`](packages/sqlite_plus_vec) registers `vec0`. The ORM writes `float[N]` and `nearest`. The scan reads every stored float32 vector.
+
+```dart
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+@DbEntity(module: DbModules.vec0)
+class Point {
+  Point({this.rowid, required this.embedding});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  @DbVector(2, metric: DbVectorMetrics.l2)
+  final List<double> embedding;
+}
+
+SqlitePlusVec.register(connection.database);
+await context.migrations.ensureCreated();
+points.add(Point(embedding: const [1, 0]));
+points.add(Point(embedding: const [0, 1]));
+await context.saveChanges(); // 2
+final nearest = await points.query.nearest(const [0.9, 0.1], k: 1).single();
+```
+
+`nearest.embedding` is `[1.0, 0.0]`. `[0.9, 0.1]` is closer to that row than to `[0, 1]`. The created SQL contains `float[2] distance_metric=l2`. `l2` is Euclidean distance. `DbVectorMetrics.cosine` runs from 0 to 2. The vec README shows `k = 2`, the shadow table, and the same query in SQL.
+
+Register each package before `ensureCreated`, and register it again after the image is reopened. [`sqlite_plus_generator`](packages/sqlite_plus_generator) emits `tokenizer: "arabic"`, `Codecs.vector(2)`, `search`, and `nearest` from the classes above.
+
+The two examples print:
+
+```text
+في الحديقة | missed true | stable true
+1.0 | stable true
+```
+
+The first line is the Arabic note, a miss on `سيارة`, and an empty second migration plan. The second line is the first coordinate of the nearer vector, and an empty second plan.
 
 ## SQL
 
 Joins through `FULL`, subqueries, `UNION` `INTERSECT` `EXCEPT`, CTEs, windows, `ON CONFLICT`, `RETURNING`, views, triggers, `CHECK`, `STRICT`, foreign keys, JSON, FTS5, R-tree, and geopoly. Integers are `BigInt`. `docs/REFERENCE.md` is the statement list.
+
+`SqlCipherDatabase.create('secret')` writes a SQLCipher 4 image. `encryptedImage()` is the file. `database.exportImage()` is the decrypted SQLite image. The default key schedule is PBKDF2-HMAC-SHA512 for 256000 iterations, AES-256-CBC, and HMAC-SHA512, with an 80-byte reserve. Derivation runs when the database is created or opened. A later export reuses those keys. `saveSqlCipher` replaces the whole file. WAL files, SQLCipher 1–3, rekey, a plaintext header, and auto-vacuum with the reserve stay outside this codec.
 
 Compared with pinned SQLite 3.53.1: constant `EXPLAIN` arithmetic, a constant `WHERE`, one table scan, a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries still have no bytecode. This is not a VDBE. Contentless FTS4 returns the pinned `MATCH` row and stores no content table. File `journal_mode` `wal`, `persist`, and `truncate` follow the pinned header and journal bytes. This is not a multi-frame WAL. `incremental_vacuum` moves a live end page before truncating. ICU collations are absent. `json_pretty` and correlated `json_each` are in the engine. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI. Double quotes stay identifiers unless `doubleQuotedStrings` is set. That mode matches the pinned CLI for the cases in `db_browser_b3_dqs_test.dart`. Unquoted `a.title` beside a column named `a.title` returns the `title` column, matching the pinned CLI.
 
@@ -134,7 +207,7 @@ Packages require Dart >=3.6.0. From the repository root:
 ```sh
 dart pub get --enforce-lockfile
 dart format .
-for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator; do
+for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator sqlite_plus_arabic sqlite_plus_vec; do
   (cd packages/$package && dart analyze --fatal-infos && dart test) || exit
 done
 ```

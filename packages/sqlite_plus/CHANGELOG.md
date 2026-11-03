@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.5
+
+Custom FTS tokenizers and row-storing virtual tables on Dart 3.13.7, Linux x64. 10609 tests passed.
+
+- `tokenizers.register` adds an FTS tokenizer. `unicode61`, `porter`, `trigram`, `ascii`, and `simple` cannot be replaced.
+- `VirtualTableModule.storesRows` creates a shadow table. `INSERT`, `UPDATE`, and `DELETE` write that table. `DROP` removes the shadows named by `ownedShadows`.
+- A `MATCH` handler on the statement's virtual-match board can answer a virtual table before FTS does.
+- `sqlite_plus_arabic` and `sqlite_plus_vec` use these hooks. The engine does not contain the Arabic stemmer or the vector distance math.
+
+## 0.1.4
+
+SQLCipher 4 file codec on Dart 3.13.7, Linux x64. 10607 tests passed. An unencrypted database does not run it.
+
+- `SqlCipherDatabase.create` and `open` keep a plaintext database whose header reserve is 80 bytes. `encryptedImage` is AES-256-CBC with HMAC-SHA512. The key is PBKDF2-HMAC-SHA512, 256000 iterations by default. The HMAC key uses the salt with each byte XOR `0x3a` for 2 iterations.
+- Page 1 stores a 16-byte salt. A wrong passphrase, a changed byte, or a page moved to another number fails authentication.
+- A SQLCipher 4.5.6 community file with the default schedule opens here. A file written here opens in that CLI when both sides use the same iteration count. `saveSqlCipher` replaces the whole file. It is not the rollback journal.
+- WAL files, SQLCipher 1–3, rekey, a plaintext header, and auto-vacuum combined with the reserve are unsupported.
+- A reserve of 0 keeps the previous page geometry. A nonzero reserve rebuilds when auto-vacuum is off.
+
 ## 0.1.3
 
 Compared with pinned SQLite 3.53.1 on Dart 3.13.7, Linux x64. 10596 tests passed. pub.dev already serves `0.1.2`.

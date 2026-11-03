@@ -2,15 +2,29 @@
 
 ## 0.1.5
 
-`sqlite_plus_orm` is version `0.1.4`. `sqlite_plus_generator` is version `0.1.5` and depends on `sqlite_plus_orm` `^0.1.4`. `sqlite_plus` stays `0.1.3`. The ORM suite passed 187 tests and the generator suite passed 68 tests on Dart 3.13.7, Linux x64. The engine suite was not re-run.
+`sqlite_plus` is version `0.1.5`. `sqlite_plus_orm` is version `0.1.4`. `sqlite_plus_generator` is version `0.1.5`. `sqlite_plus_arabic` and `sqlite_plus_vec` are version `0.1.0`. This tree has not been uploaded. The pub.dev API still lists `sqlite_plus` and `sqlite_plus_orm` `0.1.3`, and `sqlite_plus_generator` `0.1.4`, as latest.
 
 `@DbDocument()` stores one object as JSON text. The class provides `toJson` and `fromJson`. A filter uses `row.card.path`, which is `json_extract` with a bound path. `fromJson` runs for the rows that come back. Saving the changed object writes that JSON and increments the version column. A `String` column still uses `@DbJson`.
 
-These version numbers are the next numbers after `main`. An unmerged branch also uses `sqlite_plus_orm` `0.1.4` and `sqlite_plus_generator` `0.1.5`. This tree has not been uploaded. The pub.dev API still lists `sqlite_plus` and `sqlite_plus_orm` `0.1.3`, and `sqlite_plus_generator` `0.1.4`.
+`DbModules`, `DbTokenizers`, and `DbVectorMetrics` are documented `String` constants. Each annotation field stays a string, so a name that is not in the list can be written by hand. The ORM creates `fts5`, `rtree`, and `vec0`. An unknown module is rejected because the generator has to write `CREATE VIRTUAL TABLE`. An unknown tokenizer or metric identifier is kept and checked when the table is created.
+
+`sqlite_plus_arabic` registers the FTS5 tokenizer `arabic`. Diacritics and tatweel are removed. One prefix and one suffix are removed when three letters remain. `الله` stays `الله`. `حديقة` and `الحديقة` share a token. This is not the SQLite ICU Arabic tokenizer. Register `SqlitePlusArabic` before `ensureCreated` or `search`.
+
+`sqlite_plus_vec` registers `vec0`. One column holds a little-endian float32 vector. `nearest` writes `column MATCH ? AND k = ?` and scans every row. Metrics are `l2` and `cosine`. This is not a sqlite-vec file and not an approximate index. Register `SqlitePlusVec` before creating or querying the table.
+
+The generator emits `Codecs.document`, `DocumentField`, `tokenizer`, `Codecs.vector`, `search`, and `nearest`. The generated part does not import `sqlite_plus_arabic` or `sqlite_plus_vec`. An application loads a package when it imports it.
+
+On Dart 3.13.7, Linux x64, `dart format` and `dart analyze --fatal-infos` passed for the five packages. The ORM suite passed 190 tests. The generator suite passed 78 tests. The Arabic suite passed 3 tests. The vec suite passed 4 tests. The engine sources match the revision that passed 10609 tests, and that suite was not re-run for this combined tree. Each package example passed analysis and its test. macOS, Windows, Android, iOS, and pub.dev were not run. This tree has not been uploaded.
 
 ## 0.1.4
 
-`sqlite_plus_generator` is version `0.1.4`. `sqlite_plus` and `sqlite_plus_orm` stay `0.1.3`. The generator suite passed 60 tests on Dart 3.13.7, Linux x64. The engine and ORM suites were not re-run.
+`sqlite_plus` is version `0.1.4`. `sqlite_plus_generator` is version `0.1.4`. `sqlite_plus_orm` stays `0.1.3`.
+
+`SqlCipherDatabase` reads and writes a SQLCipher 4 file. The plaintext database keeps an 80-byte reserve. `encryptedImage()` is AES-256-CBC and HMAC-SHA512. The passphrase uses PBKDF2-HMAC-SHA512, 256000 iterations by default, and the HMAC key is derived from the salt XOR `0x3a` for 2 iterations. Page 1 stores a 16-byte salt. A wrong passphrase, a changed byte, or a swapped page fails authentication and does not return a database image. Derivation runs on create and open. A later export reuses the keys.
+
+A SQLCipher 4.5.6 community file with that default schedule opens here, including a 3000-byte value and its index. A file written here opens in that CLI when `cipher_default_kdf_iter` matches. `saveSqlCipher` replaces the whole file and is not the rollback journal. WAL files, SQLCipher 1–3, rekey, a plaintext header, and auto-vacuum with the reserve are unsupported. An unencrypted database does not call the codec. A reserve of 0 keeps the previous page geometry. The engine suite passed 10607 tests on Dart 3.13.7, Linux x64. The ORM and generator suites were not re-run.
+
+`sqlite_plus_generator` `0.1.4` was already published. The generator suite passed 60 tests on Dart 3.13.7, Linux x64. The engine and ORM suites were not re-run for that generator upload.
 
 From the package root:
 
@@ -39,7 +53,7 @@ final context = DbContext(connection, generatedModel);
 await context.migrations.ensureCreated();
 ```
 
-A later run leaves a matching part unchanged and ends with a summary of created, updated, and unchanged files. `--input lib/models.dart` still generates one library. The pub.dev API lists `sqlite_plus_generator` `0.1.4` as latest. `sqlite_plus` and `sqlite_plus_orm` remain `0.1.3`. A package page can take up to 10 minutes to show the new version.
+A later run leaves a matching part unchanged and ends with a summary of created, updated, and unchanged files. `--input lib/models.dart` still generates one library. The pub.dev API lists `sqlite_plus_generator` `0.1.4` as latest. At that upload, `sqlite_plus` and `sqlite_plus_orm` on pub.dev were `0.1.3`. This tree's `sqlite_plus` is `0.1.4` and has not been uploaded. A package page can take up to 10 minutes to show a new version.
 
 ## 0.1.3
 
