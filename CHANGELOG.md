@@ -2,7 +2,13 @@
 
 ## 0.1.4
 
-`sqlite_plus_generator` is version `0.1.4`. `sqlite_plus` and `sqlite_plus_orm` stay `0.1.3`. The generator suite passed 60 tests on Dart 3.13.7, Linux x64. The engine and ORM suites were not re-run.
+`sqlite_plus` is version `0.1.4`. `sqlite_plus_generator` is version `0.1.4`. `sqlite_plus_orm` stays `0.1.3`.
+
+`SqlCipherDatabase` reads and writes a SQLCipher 4 file. The plaintext database keeps an 80-byte reserve. `encryptedImage()` is AES-256-CBC and HMAC-SHA512. The passphrase uses PBKDF2-HMAC-SHA512, 256000 iterations by default, and the HMAC key is derived from the salt XOR `0x3a` for 2 iterations. Page 1 stores a 16-byte salt. A wrong passphrase, a changed byte, or a swapped page fails authentication and does not return a database image. Derivation runs on create and open. A later export reuses the keys.
+
+A SQLCipher 4.5.6 community file with that default schedule opens here, including a 3000-byte value and its index. A file written here opens in that CLI when `cipher_default_kdf_iter` matches. `saveSqlCipher` replaces the whole file and is not the rollback journal. WAL files, SQLCipher 1–3, rekey, a plaintext header, and auto-vacuum with the reserve are unsupported. An unencrypted database does not call the codec. A reserve of 0 keeps the previous page geometry. The engine suite passed 10607 tests on Dart 3.13.7, Linux x64. The ORM and generator suites were not re-run.
+
+`sqlite_plus_generator` `0.1.4` was already published. The generator suite passed 60 tests on Dart 3.13.7, Linux x64. The engine and ORM suites were not re-run for that generator upload.
 
 From the package root:
 
@@ -31,7 +37,7 @@ final context = DbContext(connection, generatedModel);
 await context.migrations.ensureCreated();
 ```
 
-A later run leaves a matching part unchanged and ends with a summary of created, updated, and unchanged files. `--input lib/models.dart` still generates one library. The pub.dev API lists `sqlite_plus_generator` `0.1.4` as latest. `sqlite_plus` and `sqlite_plus_orm` remain `0.1.3`. A package page can take up to 10 minutes to show the new version.
+A later run leaves a matching part unchanged and ends with a summary of created, updated, and unchanged files. `--input lib/models.dart` still generates one library. The pub.dev API lists `sqlite_plus_generator` `0.1.4` as latest. At that upload, `sqlite_plus` and `sqlite_plus_orm` on pub.dev were `0.1.3`. This tree's `sqlite_plus` is `0.1.4` and has not been uploaded. A package page can take up to 10 minutes to show a new version.
 
 ## 0.1.3
 
