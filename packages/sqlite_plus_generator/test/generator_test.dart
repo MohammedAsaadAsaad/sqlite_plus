@@ -521,6 +521,41 @@ class Customer {
       'G013',
     ),
     (
+      'document on a string',
+      'class Bad { Bad(this.id, this.body); final int id; @DbDocument() String body; }',
+      'G013',
+    ),
+    (
+      'document without fromJson',
+      'class Card { Card(this.title); final String title; Map<String, Object?> toJson() => {"title": title}; } class Bad { Bad(this.id, this.card); final int id; @DbDocument() Card card; }',
+      'G013',
+    ),
+    (
+      'document toJson is not a map',
+      'class Card { Card(this.title); final String title; String toJson() => title; factory Card.fromJson(Map<String, Object?> json) => Card(json["title"]! as String); } class Bad { Bad(this.id, this.card); final int id; @DbDocument() Card card; }',
+      'G013',
+    ),
+    (
+      'document and json',
+      'class Card { Card(this.title); final String title; Map<String, Object?> toJson() => {"title": title}; factory Card.fromJson(Map<String, Object?> json) => Card(json["title"]! as String); } class Bad { Bad(this.id, this.card); final int id; @DbDocument() @DbJson() Card card; }',
+      'G013',
+    ),
+    (
+      'document key',
+      'class Card { Card(this.title); final String title; Map<String, Object?> toJson() => {"title": title}; factory Card.fromJson(Map<String, Object?> json) => Card(json["title"]! as String); } class Bad { Bad(this.id); @DbDocument() final Card id; }',
+      'G013',
+    ),
+    (
+      'document version',
+      'class Card { Card(this.title); final String title; Map<String, Object?> toJson() => {"title": title}; factory Card.fromJson(Map<String, Object?> json) => Card(json["title"]! as String); } class Bad { Bad(this.id, this.revision); final int id; @DbVersion() @DbDocument() Card revision; }',
+      'G013',
+    ),
+    (
+      'document on fts5',
+      'class Card { Card(this.title); final String title; Map<String, Object?> toJson() => {"title": title}; factory Card.fromJson(Map<String, Object?> json) => Card(json["title"]! as String); } @DbEntity(module: "fts5") class Bad { Bad({this.rowid, required this.body, required this.card}); @DbKey(generated: true) final BigInt? rowid; final String body; @DbDocument() Card card; }',
+      'G013',
+    ),
+    (
       'unknown virtual module',
       '@DbEntity(module: "fts4") class Bad { Bad({this.rowid, required this.body}); @DbKey(generated: true) final BigInt? rowid; final String body; }',
       'G013',
@@ -728,6 +763,112 @@ void main() async {
 ''');
     expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
     expect(normalizeNewlines(run.stdout), 'scalar query works\n');
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('a document field filters a path and decodes the match', () async {
+    final fixture = await consumer('''
+class Card {
+  Card({required this.title, required this.pages});
+  final String title;
+  final int pages;
+  static int decoded = 0;
+  Map<String, Object?> toJson() => {'title': title, 'pages': pages};
+  factory Card.fromJson(Map<String, Object?> json) {
+    decoded++;
+    return Card(
+      title: json['title']! as String,
+      pages: json['pages']! as int,
+    );
+  }
+}
+
+class DynamicCard {
+  DynamicCard({required this.title, required this.pages});
+  final String title;
+  final int pages;
+  Map<String, dynamic> toJson() => {'title': title, 'pages': pages};
+  factory DynamicCard.fromJson(Map<String, dynamic> json) => DynamicCard(
+    title: json['title']! as String,
+    pages: json['pages']! as int,
+  );
+}
+
+@DbEntity(table: 'notes')
+class Note {
+  Note({this.id, required this.card, this.extra, this.revision = 0});
+  final BigInt? id;
+  @DbDocument()
+  Card card;
+  @DbDocument()
+  DynamicCard? extra;
+  @DbVersion()
+  int revision;
+}
+''');
+    final result = await generateLibrary(fixture.input);
+    expect(result.code, contains('DocumentField(NoteColumns.card)'));
+    expect(result.code, contains('DocumentField(NoteColumns.extra)'));
+    expect(
+      result.code,
+      contains('Codecs.document(Card.fromJson, (value) => value.toJson())'),
+    );
+    expect(result.code, contains('Map<String, dynamic>.from(json)'));
+    expect(result.code, contains('DynamicCard.fromJson'));
+    expect(result.code, contains('Codecs.nullable('));
+    expect(result.code, isNot(contains('MappedField(NoteColumns.card)')));
+    await writeGenerated(result);
+    final analyzed = await fixture.analyze();
+    expect(
+      analyzed.exitCode,
+      0,
+      reason: '${analyzed.stdout}\n${analyzed.stderr}',
+    );
+    final run = await fixture.run('''
+import 'package:generator_consumer/models.dart';
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+void main() async {
+  final connection = await MutableDatabaseConnection.openMemory();
+  final context = DbContext(connection, generatedModel);
+  try {
+    await context.migrations.ensureCreated();
+    final notes = context.set(NoteMapping.instance);
+    notes.add(Note(card: Card(title: 'Kept Garden', pages: 320)));
+    notes.add(Note(card: Card(title: 'Other Atlas', pages: 40)));
+    if (await context.saveChanges() != 2) throw StateError('save');
+    Card.decoded = 0;
+    final kept = await notes.query
+        .filter((row) => row.card.path(r'\$.title').equalTo('Kept Garden'))
+        .single();
+    if (Card.decoded != 1 || kept.card.pages != 320) {
+      throw StateError('pages \${kept.card.pages} \${Card.decoded}');
+    }
+    kept.card = Card(title: 'Kept Garden', pages: 321);
+    if (await context.saveChanges() != 1) throw StateError('update');
+    final again = await notes.query
+        .filter((row) => row.card.path(r'\$.title').equalTo('Kept Garden'))
+        .single();
+    final other = await notes.query
+        .filter((row) => row.card.path(r'\$.title').equalTo('Other Atlas'))
+        .single();
+    final command = notes.query
+        .filter((row) => row.card.path(r'\$.title').equalTo('Kept Garden'))
+        .toSql();
+    final bound = command.sql.contains('json_extract("card", ?) = ?') &&
+        !command.sql.contains(r'\$.title') &&
+        command.parameters.contains(r'\$.title') &&
+        command.parameters.contains('Kept Garden');
+    if (again.card.pages != 321 || again.revision != 1 || other.revision != 0) {
+      throw StateError('revision \${again.revision} \${other.revision}');
+    }
+    print('document \${again.card.pages} \${again.revision} \$bound');
+  } finally {
+    await context.close();
+  }
+}
+''');
+    expect(run.exitCode, 0, reason: '${run.stdout}\n${run.stderr}');
+    expect(normalizeNewlines(run.stdout), 'document 321 1 true\n');
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test(

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5
+
+`sqlite_plus_orm` is version `0.1.4`. `sqlite_plus_generator` is version `0.1.5` and depends on `sqlite_plus_orm` `^0.1.4`. `sqlite_plus` stays `0.1.3`. The ORM suite passed 187 tests and the generator suite passed 68 tests on Dart 3.13.7, Linux x64. The engine suite was not re-run.
+
+`@DbDocument()` stores one object as JSON text. The class provides `toJson` and `fromJson`. A filter uses `row.card.path`, which is `json_extract` with a bound path. `fromJson` runs for the rows that come back. Saving the changed object writes that JSON and increments the version column. A `String` column still uses `@DbJson`.
+
+These version numbers are the next numbers after `main`. An unmerged branch also uses `sqlite_plus_orm` `0.1.4` and `sqlite_plus_generator` `0.1.5`. This tree has not been uploaded. The pub.dev API still lists `sqlite_plus` and `sqlite_plus_orm` `0.1.3`, and `sqlite_plus_generator` `0.1.4`.
+
 ## 0.1.4
 
 `sqlite_plus_generator` is version `0.1.4`. `sqlite_plus` and `sqlite_plus_orm` stay `0.1.3`. The generator suite passed 60 tests on Dart 3.13.7, Linux x64. The engine and ORM suites were not re-run.

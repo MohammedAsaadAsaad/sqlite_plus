@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5
+
+Depends on `sqlite_plus_orm` 0.1.4. `sqlite_plus` stays `0.1.3`.
+
+`@DbDocument()` emits `Codecs.document` and a `DocumentField`. The call is `row.card.path(r'$.title')`. `fromJson(Map<String, Object?>)` is passed through. `fromJson(Map<String, dynamic>)` is wrapped. A `String` field, a key, a version, a virtual table, or a missing `fromJson` or `toJson` is reported before any file is written.
+
 ## 0.1.4
 
 Depends on `sqlite_plus_orm` 0.1.3. `sqlite_plus` and `sqlite_plus_orm` stay `0.1.3`.

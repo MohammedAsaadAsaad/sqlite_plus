@@ -526,6 +526,18 @@ final class MappedField<T, V> extends SqlExpression<T, V> {
   JsonPathField<T> at(String path) => JsonPathField(column, path);
 }
 
+/// A mapped object stored as one JSON text value.
+///
+/// [path] reads a value inside the object. The path is bound. Equality,
+/// null tests, and ordering on this field use the stored text.
+final class DocumentField<T, V> extends MappedField<T, V> {
+  /// Wraps a column whose codec is [Codecs.document].
+  const DocumentField(super.column);
+
+  /// `json_extract(column, path)`. [jsonPath] is bound, not interpolated.
+  JsonPathField<T> path(String jsonPath) => at(jsonPath);
+}
+
 /// A JSON path on a mapped column. Comparisons bind both the path and the value.
 final class JsonPathField<T> extends SqlExpression<T, Object?> {
   /// [path] is bound, not interpolated.

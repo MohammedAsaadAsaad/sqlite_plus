@@ -7,10 +7,10 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 ```yaml
 dependencies:
   sqlite_plus: ^0.1.3
-  sqlite_plus_orm: ^0.1.3
+  sqlite_plus_orm: ^0.1.4
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.3
+  sqlite_plus_generator: ^0.1.5
 ```
 
 ## Query
@@ -64,6 +64,16 @@ final expensive = await purchases.query
 ```
 
 `abs` is the engine, called on the column. A method marked `@DbScalar()` is called the same way: `row.twice() > 20` reads `revision` from the model and runs that body for each row.
+
+`@DbDocument()` stores one object as JSON text. The class supplies `toJson` and `fromJson`. The query reads a nested value, and only the returned rows are decoded.
+
+```dart
+final kept = await notes.query
+    .filter((row) => row.card.path(r'$.title').equalTo('Kept Garden'))
+    .single();
+```
+
+`kept.card.pages` is 320. The SQL is `json_extract("card", ?) = ?`. The ORM page shows the class and the revision that follows a later save.
 
 `ensureCreated` builds the table. A later nullable field is `plan()` then `applySafe()`. A rename or a drop is a statement you write and approve. The reverse statement is the down migration.
 

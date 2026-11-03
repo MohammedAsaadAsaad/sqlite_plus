@@ -51,7 +51,7 @@ EXPLAIN bytecode for an integer-primary-key insert and a join of two subqueries,
 an official SQLite master journal, a multi-frame WAL log, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
-rows on Linux x64. `sqlite_plus` and `sqlite_plus_orm` remain `0.1.3`. The pub.dev API lists `sqlite_plus_generator` `0.1.4` as latest. A package page can take up to 10 minutes to show that version. See `CHANGELOG.md`.
+rows on Linux x64. This tree's `sqlite_plus_orm` is `0.1.4` and `sqlite_plus_generator` is `0.1.5`. `sqlite_plus` remains `0.1.3`. The pub.dev API still lists `sqlite_plus` and `sqlite_plus_orm` `0.1.3`, and `sqlite_plus_generator` `0.1.4`. These document versions have not been uploaded. A package page can take up to 10 minutes to show that version. See `CHANGELOG.md`.
 
 ## Development checks
 

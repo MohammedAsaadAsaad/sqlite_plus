@@ -154,7 +154,7 @@ iOS are planned.
 
 ## Items 99–107
 
-`@DbJson` on one String field emits `path(String path)`. An `fts5` model emits
+`@DbJson` on one String field emits `path(String path)`. `@DbDocument()` emits `DocumentField` and `row.card.path`. The column is JSON text. `fromJson` runs for returned rows. An `fts5` model emits
 `search(String text)` on its query extension. The created table lists the
 content columns and keeps `rowid` as the key. An `rtree` model emits `bounds`
 for `minX`, `maxX`, `minY`, and `maxY`, with the integer key first. FTS and
@@ -168,16 +168,14 @@ rows, reads the JSON note whose title is `kept`, the FTS article matching
 `kept`, and the R-tree place inside the unit box. `example/lib/models.dart` passes
 generator `--check`.
 
-The repository root `LICENSE` is the MIT license. `sqlite_plus` and
-`sqlite_plus_orm` are `0.1.3`. `sqlite_plus_generator` is `0.1.4`.
+The repository root `LICENSE` is the MIT license. `sqlite_plus` is `0.1.3`. This tree's `sqlite_plus_orm` is `0.1.4` and `sqlite_plus_generator` is `0.1.5`. Those two have not been uploaded. 
 `CHANGELOG.md` records those versions. The pub.dev API lists
 `sqlite_plus_generator` `0.1.4` as latest, and `sqlite_plus` and
 `sqlite_plus_orm` remain `0.1.3`. A package page can take up to 10 minutes to
 show the new version. The Linux CI job checks fixture checksums. macOS and Windows CI run
 format, analysis, package tests, and the example projects.
 
-On Linux x64, Dart 3.13.7, the engine suite passed 10596 tests, the ORM suite
-passed 185 tests, and the generator suite passed 58 tests. Format and
+On Linux x64, Dart 3.13.7, the engine suite passed 10596 tests. The document revision passed 187 ORM tests and 68 generator tests. The engine suite was not re-run for it. Format and
 fatal-info analysis passed for those package runs. The pinned SQLite CLI was
 present for the engine run. The example projects were not re-run for `0.1.3`.
 

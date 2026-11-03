@@ -6,7 +6,7 @@ Write the class. This tool writes the columns, the revision, the JSON path, the 
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.4
+  sqlite_plus_generator: ^0.1.5
 ```
 
 ```sh
@@ -214,11 +214,12 @@ A renamed SQL column is not guessed. Keep `@DbColumn(name: 'title')` when only t
 | `@DbVersion()` | The revision column |
 | `<Parent>Id` or `@DbReference` | `reference` and `collection` |
 | `@DbJson()` on one `String` | `path` |
+| `@DbDocument()` on an object | `row.card.path`, stored with `fromJson` and `toJson` |
 | `@DbScalar()` on a method or getter | `row.twice()`, registered as `table_method` |
 | `@DbEntity(module: 'fts5')` | `USING fts5` and `search` |
 | `@DbEntity(module: 'rtree')` | `USING rtree` and `bounds` |
 
-The write is deterministic and formatted. Hand-written files and symbolic links stay in place. Fields are `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, and `DateTime`, including nullable aliases. A generic, an inherited field, or an unsupported type is reported before any file is written.
+The write is deterministic and formatted. Hand-written files and symbolic links stay in place. Fields are `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, and `DateTime`, including nullable aliases. `@DbDocument()` adds one class that has `fromJson` and `toJson`. A generic, an inherited field, or an unsupported type is reported before any file is written.
 
 ## The other packages
 

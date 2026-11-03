@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4
+
+Depends on `sqlite_plus` 0.1.3. `sqlite_plus` stays `0.1.3`.
+
+- `@DbDocument()` stores one object as JSON text. `Codecs.document` calls `fromJson` and `toJson`. `row.card.path(r'$.title')` binds `json_extract`. A returned row is decoded. The other rows stay text.
+- The model schema records `"document": true` for that column. The SQL type stays `TEXT`. A `String` column still uses `@DbJson`.
+
 ## 0.1.3
 
 Depends on `sqlite_plus` 0.1.3. pub.dev already serves `0.1.2`.
