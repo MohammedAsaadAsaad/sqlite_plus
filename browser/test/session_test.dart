@@ -84,6 +84,46 @@ void main() {
     expect(formatCell(null), 'NULL');
   });
 
+  test('a cell editor follows the declared column type', () {
+    expect(cellKind('INTEGER'), CellKind.integer);
+    expect(cellKind('int'), CellKind.integer);
+    expect(cellKind('BIGINT'), CellKind.integer);
+    expect(cellKind('REAL'), CellKind.real);
+    expect(cellKind('FLOAT'), CellKind.real);
+    expect(cellKind('DOUBLE PRECISION'), CellKind.real);
+    expect(cellKind('NUMERIC'), CellKind.real);
+    expect(cellKind('DECIMAL(8,2)'), CellKind.real);
+    expect(cellKind('TEXT'), CellKind.text);
+    expect(cellKind('VARCHAR(20)'), CellKind.text);
+    expect(cellKind(''), CellKind.text);
+    expect(cellKind('BLOB'), CellKind.text);
+    expect(cellKind('BOOLEAN'), CellKind.boolean);
+    expect(cellKind('BOOL'), CellKind.boolean);
+    expect(cellKind('DATE'), CellKind.date);
+    expect(cellKind('DATETIME'), CellKind.dateTime);
+    expect(cellKind('TIMESTAMP'), CellKind.dateTime);
+    expect(cellKind('TIME'), CellKind.time);
+
+    expect(
+      parseTypedCell('321', CellKind.integer, nullWord: false),
+      BigInt.from(321),
+    );
+    expect(parseTypedCell(' 42 ', CellKind.integer, nullWord: false),
+        BigInt.from(42));
+    expect(parseTypedCell('', CellKind.integer, nullWord: false), isNull);
+    expect(parseTypedCell('7', CellKind.integer, nullWord: true), isNull);
+    expect(parseTypedCell('320', CellKind.text, nullWord: false), '320');
+    expect(parseTypedCell('1.5', CellKind.real, nullWord: false), 1.5);
+    expect(parseTypedCell('4', CellKind.real, nullWord: false), BigInt.from(4));
+    expect(parseTypedCell('0', CellKind.boolean, nullWord: false), BigInt.zero);
+    expect(cellTextValid('3.2', CellKind.integer), isFalse);
+    expect(cellTextValid('-7', CellKind.integer), isTrue);
+    expect(cellTextValid('', CellKind.integer), isTrue);
+    expect(cellTextValid('1e2', CellKind.real), isTrue);
+    expect(cellTextValid('nope', CellKind.real), isFalse);
+    expect(cellTextValid('nan', CellKind.real), isFalse);
+  });
+
   test('sample rows edit, delete, and reopen from the image', () async {
     final session = BrowserSession();
     await session.openEmpty();

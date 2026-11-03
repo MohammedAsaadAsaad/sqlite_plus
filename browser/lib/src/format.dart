@@ -151,6 +151,68 @@ Object? parseCell(String text, {required bool nullWord}) {
   return text;
 }
 
+/// How the cell editor presents a declared column type.
+enum CellKind { integer, real, text, boolean, date, time, dateTime }
+
+/// The editor shape for a declared SQL type.
+CellKind cellKind(String declared) {
+  final type = declared.toUpperCase();
+  if (type.contains('BOOL')) return CellKind.boolean;
+  if (type.contains('DATETIME') || type.contains('TIMESTAMP')) {
+    return CellKind.dateTime;
+  }
+  if (type.contains('DATE')) return CellKind.date;
+  if (RegExp(r'(^|[^A-Z])TIME([^A-Z]|$)').hasMatch(type)) return CellKind.time;
+  if (type.contains('INT')) return CellKind.integer;
+  if (type.contains('REAL') ||
+      type.contains('FLOA') ||
+      type.contains('DOUB') ||
+      type.contains('DEC') ||
+      type.contains('NUM')) {
+    return CellKind.real;
+  }
+  return CellKind.text;
+}
+
+/// True when [text] can be stored in a column of [kind]. Blank text is NULL.
+bool cellTextValid(String text, CellKind kind) {
+  final trimmed = text.trim();
+  if (trimmed.isEmpty) return true;
+  switch (kind) {
+    case CellKind.integer:
+    case CellKind.boolean:
+      return RegExp(r'^-?\d+$').hasMatch(trimmed);
+    case CellKind.real:
+      final value = double.tryParse(trimmed);
+      return value != null && value.isFinite;
+    case CellKind.text:
+    case CellKind.date:
+    case CellKind.time:
+    case CellKind.dateTime:
+      return true;
+  }
+}
+
+/// Parses [text] for a column of [kind]. Numbers stay numbers. Text stays text.
+Object? parseTypedCell(String text, CellKind kind, {required bool nullWord}) {
+  if (nullWord) return null;
+  final trimmed = text.trim();
+  if (trimmed.isEmpty) return null;
+  switch (kind) {
+    case CellKind.integer:
+    case CellKind.boolean:
+      return BigInt.parse(trimmed);
+    case CellKind.real:
+      if (RegExp(r'^-?\d+$').hasMatch(trimmed)) return BigInt.parse(trimmed);
+      return double.parse(trimmed);
+    case CellKind.text:
+    case CellKind.date:
+    case CellKind.time:
+    case CellKind.dateTime:
+      return text;
+  }
+}
+
 /// Editor text for a value. NULL starts blank.
 String editableText(Object? value) {
   if (value == null || value is List<int>) return '';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite_plus_browser/browser_app.dart';
+import 'package:sqlite_plus_browser/src/grid.dart';
 import 'package:sqlite_plus_browser/src/session.dart';
 
 Future<void> _frames(WidgetTester tester) async {
@@ -119,6 +120,21 @@ void main() {
 
     await tester.tap(find.text('320'));
     await _frames(tester);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('cell-kind'))).data,
+      'INTEGER',
+    );
+    expect(find.byKey(const Key('cell-step-up')), findsOneWidget);
+    expect(find.byKey(const Key('cell-null')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('cell-step-up')));
+    await _frames(tester);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('cell-editor')))
+          .controller!
+          .text,
+      '321',
+    );
     await tester.enterText(find.byKey(const Key('cell-editor')), '321');
     await tester.tap(find.byKey(const Key('cell-save')));
     await _frames(tester);
@@ -156,6 +172,102 @@ void main() {
     expect(find.text('50'), findsOneWidget);
     expect(find.text('54'), findsOneWidget);
     expect(find.text('0'), findsNothing);
+    await _finish(tester, session);
+  });
+
+  testWidgets('the cell editor follows the column type', (tester) async {
+    tester.view.physicalSize = const Size(2400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run(
+      'CREATE TABLE kinds ('
+      'flag INTEGER, note TEXT NOT NULL, amount REAL, '
+      'ok BOOLEAN, day DATE, when_at DATETIME, clock TIME)',
+    );
+    await session.run(
+      "INSERT INTO kinds(flag, note, amount, ok, day, when_at, clock) "
+      "VALUES (0, 'Kept', 1.5, 1, '2026-11-03', '2026-11-03 09:30:00', '09:30:00')",
+    );
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('schema-table-kinds')));
+    await _frames(tester);
+
+    await tester.tap(find.text('1.5'));
+    await _frames(tester);
+    expect(
+        tester.widget<Text>(find.byKey(const Key('cell-kind'))).data, 'REAL');
+    expect(find.text('Decimal number'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await _frames(tester);
+
+    await tester.tap(find.text('Kept'));
+    await _frames(tester);
+    expect(
+        tester.widget<Text>(find.byKey(const Key('cell-kind'))).data, 'TEXT');
+    expect(find.text('NOT NULL'), findsOneWidget);
+    expect(find.byKey(const Key('cell-null')), findsNothing);
+    final note = tester.widget<TextField>(find.byKey(const Key('cell-editor')));
+    expect(note.minLines, 3);
+    await tester.tap(find.text('Cancel'));
+    await _frames(tester);
+
+    await tester.tap(
+      find.descendant(of: find.byType(CellGrid), matching: find.text('1')),
+    );
+    await _frames(tester);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('cell-kind'))).data,
+      'BOOLEAN',
+    );
+    expect(find.text('On'), findsOneWidget);
+    expect(find.text('Off'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await _frames(tester);
+
+    await tester.tap(find.text('2026-11-03'));
+    await _frames(tester);
+    expect(
+        tester.widget<Text>(find.byKey(const Key('cell-kind'))).data, 'DATE');
+    expect(find.byKey(const Key('cell-pick-date')), findsOneWidget);
+    expect(find.byKey(const Key('cell-pick-time')), findsNothing);
+    await tester.tap(find.text('Cancel'));
+    await _frames(tester);
+
+    await tester.tap(find.text('2026-11-03 09:30:00'));
+    await _frames(tester);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('cell-kind'))).data,
+      'DATETIME',
+    );
+    expect(find.byKey(const Key('cell-pick-date')), findsOneWidget);
+    expect(find.byKey(const Key('cell-pick-time')), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await _frames(tester);
+
+    await tester.tap(find.text('09:30:00'));
+    await _frames(tester);
+    expect(
+        tester.widget<Text>(find.byKey(const Key('cell-kind'))).data, 'TIME');
+    expect(find.byKey(const Key('cell-pick-time')), findsOneWidget);
+    expect(find.byKey(const Key('cell-pick-date')), findsNothing);
+    await tester.tap(find.text('Cancel'));
+    await _frames(tester);
+
+    await tester.tap(
+      find.descendant(of: find.byType(CellGrid), matching: find.text('0')),
+    );
+    await _frames(tester);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('cell-kind'))).data,
+      'INTEGER',
+    );
+    expect(find.text('Whole number'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await _frames(tester);
     await _finish(tester, session);
   });
 }

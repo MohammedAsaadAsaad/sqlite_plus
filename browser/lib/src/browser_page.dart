@@ -5,8 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:sqlite_plus/sqlite_plus.dart';
 
+import 'cell_dialog.dart';
 import 'data_pane.dart';
-import 'format.dart';
 import 'schema_pane.dart';
 import 'session.dart';
 import 'sql_pane.dart';
@@ -388,9 +388,9 @@ class _BrowserPageState extends State<BrowserPage> {
       _showMessage('This cell is ${current.length} bytes. Edit it with SQL.');
       return;
     }
-    final edited = await showDialog<_CellEdit>(
+    final edited = await showDialog<CellEdit>(
       context: context,
-      builder: (context) => _CellDialog(column: column.name, current: current),
+      builder: (context) => CellDialog(column: column, current: current),
     );
     if (edited == null || !mounted) return;
     final selected = _selected;
@@ -561,73 +561,5 @@ class _BrowserPageState extends State<BrowserPage> {
   void _showMessage(String text) {
     if (!mounted) return;
     setState(() => _message = text);
-  }
-}
-
-class _CellEdit {
-  const _CellEdit(this.value);
-  final Object? value;
-}
-
-class _CellDialog extends StatefulWidget {
-  const _CellDialog({required this.column, required this.current});
-
-  final String column;
-  final Object? current;
-
-  @override
-  State<_CellDialog> createState() => _CellDialogState();
-}
-
-class _CellDialogState extends State<_CellDialog> {
-  late final TextEditingController _text = TextEditingController(
-    text: editableText(widget.current),
-  );
-  late bool _nullValue = widget.current == null;
-
-  @override
-  void dispose() {
-    _text.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.column),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            key: const Key('cell-editor'),
-            controller: _text,
-            enabled: !_nullValue,
-            autofocus: true,
-          ),
-          CheckboxListTile(
-            key: const Key('cell-null'),
-            contentPadding: EdgeInsets.zero,
-            title: const Text('NULL'),
-            value: _nullValue,
-            onChanged: (value) => setState(() => _nullValue = value ?? false),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          key: const Key('cell-save'),
-          onPressed: () {
-            Navigator.of(context).pop(
-              _CellEdit(parseCell(_text.text, nullWord: _nullValue)),
-            );
-          },
-          child: const Text('Save'),
-        ),
-      ],
-    );
   }
 }
