@@ -68,6 +68,61 @@ String? createIndexSql({
   return 'CREATE $kind ${quoteIdent(index)} ON ${quoteIdent(target)} ($listed)';
 }
 
+/// `ALTER TABLE ... ADD COLUMN` for one column on a table that already exists.
+///
+/// A `NOT NULL` column needs a default, because the rows already stored receive
+/// that value. A reference keeps those rows null, so it takes no other default.
+String? addColumnSql({
+  required String table,
+  required String name,
+  required String type,
+  List<String> existing = const [],
+  bool notNull = false,
+  String defaultText = '',
+  String referenceTable = '',
+  String referenceColumn = '',
+}) {
+  final target = table.trim();
+  final column = name.trim();
+  if (target.isEmpty || column.isEmpty) return null;
+  if (existing.any((item) => item.toLowerCase() == column.toLowerCase())) {
+    return null;
+  }
+  final fallback = defaultText.trim();
+  final refTable = referenceTable.trim();
+  final refColumn = referenceColumn.trim();
+  final hasReference = refTable.isNotEmpty || refColumn.isNotEmpty;
+  if (hasReference && (refTable.isEmpty || refColumn.isEmpty)) return null;
+  if (notNull && fallback.isEmpty) return null;
+  if (hasReference && fallback.isNotEmpty && fallback.toUpperCase() != 'NULL') {
+    return null;
+  }
+  final parts = <String>[quoteIdent(column)];
+  if (type.trim().isNotEmpty) parts.add(type.trim());
+  if (notNull) parts.add('NOT NULL');
+  if (fallback.isNotEmpty) {
+    final literal = _defaultLiteral(fallback, type);
+    if (literal == null) return null;
+    parts.add('DEFAULT $literal');
+  }
+  final referenced = hasReference
+      ? ' REFERENCES ${quoteIdent(refTable)} (${quoteIdent(refColumn)})'
+      : '';
+  return 'ALTER TABLE ${quoteIdent(target)} ADD COLUMN ${parts.join(' ')}$referenced';
+}
+
+String? _defaultLiteral(String raw, String type) {
+  if (raw.toUpperCase() == 'NULL') return 'NULL';
+  final numeric = RegExp(r'^[+-]?\d+(\.\d+)?$').hasMatch(raw);
+  final kind = type.trim().toUpperCase();
+  const numbers = {'INTEGER', 'REAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'DECIMAL'};
+  if (numeric &&
+      (kind.isEmpty || numbers.contains(kind) || kind.startsWith('INT'))) {
+    return raw;
+  }
+  return "'${raw.replaceAll("'", "''")}'";
+}
+
 /// A new child column that references a parent column.
 String? linkColumnSql({
   required String child,

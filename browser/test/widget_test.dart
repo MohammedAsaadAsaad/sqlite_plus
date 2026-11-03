@@ -502,4 +502,39 @@ void main() {
     expect(find.byKey(const Key('schema-table-pace')), findsOneWidget);
     await _finish(tester, session);
   });
+
+  testWidgets('add column collects the properties of a new column',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run(
+      'CREATE TABLE events (id INTEGER PRIMARY KEY, category TEXT)',
+    );
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.text('Add column'));
+    await _frames(tester);
+    await tester.enterText(find.byKey(const Key('add-column-name')), 'note');
+    await tester.tap(find.byKey(const Key('add-column-null')));
+    await _frames(tester);
+    expect(find.text('Existing rows need a default.'), findsOneWidget);
+    expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('add-column-save')))
+            .onPressed,
+        isNull);
+    await tester.enterText(find.byKey(const Key('add-column-default')), 'Kept');
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('add-column-save')));
+    await _frames(tester);
+    expect(find.text('note'), findsOneWidget);
+    expect(find.textContaining('"note" TEXT NOT NULL'), findsWidgets);
+    expect(find.byKey(const Key('sql-input')), findsNothing);
+    await _finish(tester, session);
+  });
 }

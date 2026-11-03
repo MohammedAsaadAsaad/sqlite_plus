@@ -362,4 +362,92 @@ void main() {
         .singleWhere((object) => object.name == 'idx_books_title');
     expect(index.indexColumns, ['title']);
   });
+
+  test('an added column keeps its null rule, default, and reference', () async {
+    expect(
+      addColumnSql(table: '', name: 'note', type: 'TEXT'),
+      isNull,
+    );
+    expect(
+      addColumnSql(
+        table: 'events',
+        name: 'id',
+        type: 'INTEGER',
+        existing: const ['id'],
+      ),
+      isNull,
+    );
+    expect(
+      addColumnSql(
+        table: 'events',
+        name: 'note',
+        type: 'TEXT',
+        notNull: true,
+      ),
+      isNull,
+    );
+    expect(
+      addColumnSql(
+        table: 'events',
+        name: 'note',
+        type: 'TEXT',
+        notNull: true,
+        defaultText: "Kept's",
+      ),
+      'ALTER TABLE "events" ADD COLUMN "note" TEXT NOT NULL DEFAULT \'Kept\'\'s\'',
+    );
+    expect(
+      addColumnSql(
+        table: 'events',
+        name: 'rank',
+        type: 'INTEGER',
+        defaultText: '3',
+      ),
+      'ALTER TABLE "events" ADD COLUMN "rank" INTEGER DEFAULT 3',
+    );
+    expect(
+      addColumnSql(
+        table: 'books',
+        name: 'author_id',
+        type: 'INTEGER',
+        referenceTable: 'authors',
+        referenceColumn: 'id',
+      ),
+      'ALTER TABLE "books" ADD COLUMN "author_id" INTEGER '
+      'REFERENCES "authors" ("id")',
+    );
+
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    await session.run(
+      'CREATE TABLE events (id INTEGER PRIMARY KEY, category TEXT)',
+    );
+    await session.run(
+      'CREATE TABLE authors (id INTEGER PRIMARY KEY)',
+    );
+    await session.run(addColumnSql(
+      table: 'events',
+      name: 'note',
+      type: 'TEXT',
+      notNull: true,
+      defaultText: 'Kept',
+    )!);
+    await session.run(addColumnSql(
+      table: 'events',
+      name: 'author_id',
+      type: 'INTEGER',
+      referenceTable: 'authors',
+      referenceColumn: 'id',
+    )!);
+    final events =
+        session.objects.singleWhere((object) => object.name == 'events');
+    final note = events.columns.singleWhere((column) => column.name == 'note');
+    expect(note.notNull, isTrue);
+    expect(note.defaultValue, contains('Kept'));
+    final link = events.foreignKeys.single;
+    expect(link.from, 'author_id');
+    expect(link.table, 'authors');
+    expect(link.to, 'id');
+  });
 }

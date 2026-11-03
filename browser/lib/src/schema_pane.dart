@@ -79,6 +79,27 @@ class _SchemaPaneState extends State<SchemaPane> {
                   label: const Text('Create table'),
                 ),
                 TextButton.icon(
+                  key: const Key('add-column'),
+                  onPressed: () async {
+                    final tables = [
+                      for (final object in widget.objects)
+                        if (object.type == 'table') object,
+                    ];
+                    final selected = widget.selected;
+                    final sql = await showAddColumn(
+                      context,
+                      tables,
+                      initialTable: selected != null && selected.type == 'table'
+                          ? selected.name
+                          : null,
+                    );
+                    if (!context.mounted || sql == null) return;
+                    widget.onApply(sql);
+                  },
+                  icon: const Icon(Icons.view_column_outlined, size: 18),
+                  label: const Text('Add column'),
+                ),
+                TextButton.icon(
                   onPressed: () async {
                     final tables = [
                       for (final object in widget.objects)
