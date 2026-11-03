@@ -28,7 +28,63 @@ extension _SearchMutations on ImageMutations {
       await _installRtree(RtreeSpec.parse(
           declaration.name, declaration.arguments,
           geopoly: module is GeopolyModule));
+    } else if (module.storesRows) {
+      await _installStoredShadow(module, declaration);
     }
+  }
+
+  Future<void> _installStoredShadow(
+      VirtualTableModule module, VirtualTableDeclaration declaration) async {
+    final shadow = module.shadowName(declaration.name, declaration.arguments);
+    final fields = module.shadowFields(declaration.name, declaration.arguments);
+    if (!_shadowIdentifier(shadow) || fields.isEmpty) {
+      throw const SqlException('Virtual table shadow is invalid');
+    }
+    final seen = <String>{'rowid'};
+    final definitions = <String>['rowid INTEGER PRIMARY KEY'];
+    for (final field in fields) {
+      if (!_shadowIdentifier(field.name) ||
+          !seen.add(asciiLower(field.name)) ||
+          !_safeShadowType(field.type)) {
+        throw const SqlException('Virtual table shadow is invalid');
+      }
+      definitions.add('${_q(field.name)} ${field.type}');
+    }
+    await execute(
+        'CREATE TABLE ${_q(shadow)}(${definitions.join(', ')})', const []);
+  }
+
+  bool _shadowIdentifier(String name) =>
+      name.isNotEmpty &&
+      !name.contains('\u0000') &&
+      !name.contains('"') &&
+      asciiLower(name) != 'rowid';
+
+  bool _safeShadowType(String type) {
+    final parts =
+        type.split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+    if (parts.isEmpty || parts.length > 3) return false;
+    if (!const {'BLOB', 'TEXT', 'INTEGER', 'REAL'}
+        .contains(parts.first.toUpperCase())) {
+      return false;
+    }
+    if (parts.length == 1) return true;
+    return parts.length == 3 &&
+        parts[1].toUpperCase() == 'NOT' &&
+        parts[2].toUpperCase() == 'NULL';
+  }
+
+  String? _storedShadowName(String name) {
+    final object = other
+        .where((entry) =>
+            entry.virtualTable && asciiLower(entry.name) == asciiLower(name))
+        .firstOrNull;
+    final sql = object?.sql;
+    if (sql == null || !VirtualTableDeclaration.isVirtual(sql)) return null;
+    final declaration = VirtualTableDeclaration.parse(sql);
+    final module = VirtualTableRegistry.current?.find(declaration.module);
+    if (module == null || !module.storesRows) return null;
+    return module.shadowName(declaration.name, declaration.arguments);
   }
 
   void _dropSearchShadows(

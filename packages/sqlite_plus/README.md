@@ -6,7 +6,7 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.4
+  sqlite_plus: ^0.1.5
 ```
 
 ## A table, a row, a query
@@ -165,9 +165,27 @@ The file size is taken before close, so it still includes the redo.
 | Schema | Tables, indexes, views, triggers, `ALTER TABLE`, `CHECK`, `STRICT`, foreign keys, generated columns |
 | JSON | `json` `jsonb` `json_pretty` `json_extract` `json_object` `json_set` `json_patch`, `->` `->>` |
 | Search | FTS5 and contentless FTS4 `MATCH`, `highlight` `snippet` `bm25`, R-tree, geopoly |
-| Your code | `registerScalar`, `registerAggregate`, `createCollation` |
+| Your code | `registerScalar`, `registerAggregate`, `createCollation`, `tokenizers.register` |
 
-`registerScalar` stays on that connection. `deterministic: true` allows it inside a schema expression. `registerAggregate` builds a fresh aggregate per group. `createCollation` sits beside `BINARY`, `NOCASE`, and `RTRIM`.
+`registerScalar` stays on that connection. `deterministic: true` allows it inside a schema expression. `registerAggregate` builds a fresh aggregate per group. `createCollation` sits beside `BINARY`, `NOCASE`, and `RTRIM`. `tokenizers.register` adds an FTS tokenizer name. The built-in names `unicode61`, `porter`, `trigram`, `ascii`, and `simple` stay fixed.
+
+## Arabic search and vectors
+
+[`sqlite_plus_arabic`](../sqlite_plus_arabic) registers the tokenizer `arabic`. [`sqlite_plus_vec`](../sqlite_plus_vec) registers the module `vec0`. Both stay out of an application that does not import them.
+
+```dart
+SqlitePlusArabic.register(db);
+await db.execute(
+  "CREATE VIRTUAL TABLE docs USING fts5(body, tokenize = 'arabic')",
+);
+
+SqlitePlusVec.register(db);
+await db.execute(
+  'CREATE VIRTUAL TABLE items USING vec0(embedding float[2])',
+);
+```
+
+`arabic` is a light stemmer, not ICU. `vec0` scans every stored float32 vector. It does not read a sqlite-vec file and it does not build an approximate index. Register each package again after `fromImage`.
 
 ## The other packages
 

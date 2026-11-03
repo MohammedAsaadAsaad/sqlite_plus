@@ -2647,11 +2647,14 @@ final class ImageMutations {
     policy = _conflictPolicies.last ?? policy;
     if (insert) p.require('INTO');
     if (!insert && !update) p.require('FROM');
-    final name = p.qualifiedIdentifier(
+    final requestedName = p.qualifiedIdentifier(
         allowQualified: !compileOnly && _triggerContexts.isEmpty);
+    var name = requestedName;
     final targetLabel = reportedTarget ??
-        (p.parsedQualifier == null ? name : '${p.parsedQualifier}.$name');
-    final alias = p.take('AS') ? p.identifier() : name;
+        (p.parsedQualifier == null
+            ? requestedName
+            : '${p.parsedQualifier}.$requestedName');
+    final alias = p.take('AS') ? p.identifier() : requestedName;
     String? requiredIndex;
     if (!insert) {
       if (p.take('INDEXED')) {
@@ -2667,9 +2670,11 @@ final class ImageMutations {
         p.require('INDEXED');
       }
     }
-    if (_searchTarget(name) != null) {
+    if (_searchTarget(requestedName) != null) {
       return _searchWrite(sql, parameters, compileOnly: compileOnly);
     }
+    final shadow = _storedShadowName(requestedName);
+    if (shadow != null) name = shadow;
     _targetAliases.last[asciiLower(name)] = asciiLower(alias);
     final table = await _target(name);
     if (table == null) throw SqlException('no such table: $targetLabel');

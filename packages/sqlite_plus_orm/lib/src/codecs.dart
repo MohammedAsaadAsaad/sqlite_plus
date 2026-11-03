@@ -41,6 +41,12 @@ abstract final class Codecs {
   /// UTC timestamp stored as `TEXT`.
   static const ValueCodec<DateTime> dateTime = _DateTimeCodec();
 
+  /// [dimensions] little-endian float32 values stored as `BLOB`.
+  ///
+  /// [dimensions] follows [DbVectorLimits]. A non-finite coordinate is rejected.
+  static ValueCodec<List<double>> vector(int dimensions) =>
+      _VectorCodec(dimensions);
+
   /// Wraps [codec] so SQL `NULL` decodes as null.
   static ValueCodec<V?> nullable<V>(ValueCodec<V> codec) {
     if (codec.nullable) {
@@ -182,6 +188,50 @@ final class _DateTimeCodec extends ValueCodec<DateTime> {
       throw const OrmCodecException('Expected canonical UTC datetime TEXT');
     }
     return parsed;
+  }
+}
+
+final class _VectorCodec extends ValueCodec<List<double>> {
+  _VectorCodec(this.dimensions) {
+    if (dimensions < DbVectorLimits.minimumDimensions ||
+        dimensions > DbVectorLimits.maximumDimensions) {
+      throw const OrmMappingException(
+          'Vector dimensions are outside 1 to 4096');
+    }
+  }
+
+  final int dimensions;
+
+  @override
+  String get sqlType => 'BLOB';
+
+  @override
+  Uint8List encode(List<double> value) {
+    if (value.length != dimensions) {
+      throw const OrmCodecException('Vector length does not match float[N]');
+    }
+    final bytes = Uint8List(dimensions * 4);
+    final data = ByteData.sublistView(bytes);
+    for (var index = 0; index < dimensions; index++) {
+      final coordinate = value[index];
+      if (!coordinate.isFinite) {
+        throw const OrmCodecException('Vector coordinate must be finite');
+      }
+      data.setFloat32(index * 4, coordinate, Endian.little);
+    }
+    return bytes;
+  }
+
+  @override
+  List<double> decode(Object? value) {
+    if (value is! Uint8List || value.length != dimensions * 4) {
+      throw const OrmCodecException('Expected float32 vector BLOB');
+    }
+    final data = ByteData.sublistView(value);
+    return [
+      for (var index = 0; index < dimensions; index++)
+        data.getFloat32(index * 4, Endian.little)
+    ];
   }
 }
 

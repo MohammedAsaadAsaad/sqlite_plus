@@ -27,7 +27,16 @@ export 'src/format/wal_snapshot.dart';
 export 'src/pager/image_pager.dart';
 export 'src/pager/wal_pager.dart';
 
-export 'src/sql/function_registry.dart' show SqlFunctionRegistry, SqlAggregate;
+export 'src/sql/function_registry.dart'
+    show
+        SqlAggregate,
+        SqlFunctionRegistry,
+        VirtualMatchBoard,
+        VirtualMatchHandler;
+export 'src/sql/fts_text.dart'
+    show FtsToken, FtsTokenizer, FtsTokenizerFactory, FtsTokenizerRegistry;
+export 'src/sql/search_runtime.dart'
+    show SearchSnapshot, ShadowRow, ShadowTable;
 export 'src/sql/virtual_table.dart'
     show
         GenerateSeriesModule,

@@ -6,7 +6,7 @@ Write the class. This tool writes the columns, the revision, the JSON path, the 
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.4
+  sqlite_plus_generator: ^0.1.5
 ```
 
 ```sh
@@ -94,12 +94,21 @@ class Note {
   final String document;
 }
 
-@DbEntity(module: 'fts5')
+@DbEntity(module: DbModules.fts5, tokenizer: DbTokenizers.porter)
 class Article {
   Article({this.rowid, required this.body});
   @DbKey(generated: true)
   final BigInt? rowid;
   final String body;
+}
+
+@DbEntity(module: DbModules.vec0)
+class Point {
+  Point({this.rowid, required this.embedding});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  @DbVector(4, metric: DbVectorMetrics.cosine)
+  final List<double> embedding;
 }
 
 @DbEntity(module: 'rtree')
@@ -215,10 +224,12 @@ A renamed SQL column is not guessed. Keep `@DbColumn(name: 'title')` when only t
 | `<Parent>Id` or `@DbReference` | `reference` and `collection` |
 | `@DbJson()` on one `String` | `path` |
 | `@DbScalar()` on a method or getter | `row.twice()`, registered as `table_method` |
-| `@DbEntity(module: 'fts5')` | `USING fts5` and `search` |
-| `@DbEntity(module: 'rtree')` | `USING rtree` and `bounds` |
+| `@DbEntity(module: DbModules.fts5)` | `USING fts5` and `search`. `'fts5'` is the same string |
+| `tokenizer: DbTokenizers.porter` or `tokenizer: 'arabic'` | `tokenize = 'porter'` or `tokenize = 'arabic'` |
+| `@DbEntity(module: DbModules.rtree)` | `USING rtree` and `bounds` |
+| `@DbEntity(module: DbModules.vec0)` and `@DbVector(4)` | `Codecs.vector(4)`, `float[4]`, and `nearest` |
 
-The write is deterministic and formatted. Hand-written files and symbolic links stay in place. Fields are `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, and `DateTime`, including nullable aliases. A generic, an inherited field, or an unsupported type is reported before any file is written.
+The write is deterministic and formatted. Hand-written files and symbolic links stay in place. Fields are `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, `DateTime`, and, on `vec0`, `List<double>`. Nullable aliases of the scalar types are included. A generic, an inherited field, or an unsupported type is reported before any file is written. An unknown module, a tokenizer on a table that is not FTS5, a vector off `vec0`, a dimension outside 1 to 4096, and a column named `distance` or `k` on `vec0` are reported the same way. The part does not import `sqlite_plus_arabic` or `sqlite_plus_vec`. The application registers those packages before it creates the tables.
 
 ## The other packages
 

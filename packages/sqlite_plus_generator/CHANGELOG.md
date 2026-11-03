@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.5
+
+Depends on `sqlite_plus_orm` 0.1.4.
+
+- `module: DbModules.fts5` and `module: 'fts5'` both emit `search`. `tokenizer: DbTokenizers.porter` and `tokenizer: 'arabic'` both emit `tokenize = '...'`.
+- `module: DbModules.vec0` with `@DbVector(n, metric: DbVectorMetrics.cosine)` emits `Codecs.vector(n)`, `vectorMetric: "cosine"`, and `nearest`.
+- The generated part does not import `sqlite_plus_arabic` or `sqlite_plus_vec`.
+- An unknown module, a tokenizer off FTS5, a vector off `vec0`, a dimension outside 1 to 4096, and a column named `distance` or `k` on `vec0` fail before a file is written.
+
 ## 0.1.4
 
 Depends on `sqlite_plus_orm` 0.1.3. `sqlite_plus` and `sqlite_plus_orm` stay `0.1.3`.

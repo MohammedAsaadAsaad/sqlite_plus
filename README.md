@@ -102,14 +102,18 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | Package | Start here |
 |---|---|
 | [`sqlite_plus`](packages/sqlite_plus) | SQL, JSON, FTS5, R-tree, `abs`, `exportImage`, SQLCipher 4 |
-| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Saves, revisions, `row.twice()`, migrations |
-| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `filter`, `path`, `@DbScalar`, `search`, and `bounds` out |
+| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Saves, revisions, `row.twice()`, `DbModules`, migrations |
+| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `filter`, `path`, `@DbScalar`, `search`, `nearest`, and `bounds` out |
+| [`sqlite_plus_arabic`](packages/sqlite_plus_arabic) | FTS5 tokenizer `arabic`. `حديقة` and `الحديقة` share a token |
+| [`sqlite_plus_vec`](packages/sqlite_plus_vec) | `vec0` nearest neighbors. A full scan of float32 vectors |
 
 | You want | Command |
 |---|---|
 | The engine tour | `(cd packages/sqlite_plus/example && dart run bin/main.dart)` |
 | The reading log | `(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)` |
 | The generated library | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` |
+| Arabic search | `(cd packages/sqlite_plus_arabic/example && dart run bin/main.dart)` |
+| Nearest vector | `(cd packages/sqlite_plus_vec/example && dart run bin/main.dart)` |
 
 ## SQL
 
@@ -126,7 +130,7 @@ Packages require Dart >=3.6.0. From the repository root:
 ```sh
 dart pub get --enforce-lockfile
 dart format .
-for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator; do
+for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator sqlite_plus_arabic sqlite_plus_vec; do
   (cd packages/$package && dart analyze --fatal-infos && dart test) || exit
 done
 ```

@@ -18,9 +18,18 @@ Read `MASTER_SPEC.md`, `AGENTS.md`, `IMPLEMENTATION_PLAN.md` and
 
 - `packages/sqlite_plus`: memory storage, SQLite format decoders, read-only pager and B-tree reader
 - `packages/sqlite_plus_orm`: browser-safe metadata, codecs, typed queries,
-  DbContext, CRUD/change tracking, relationships and safe migrations
+  DbContext, CRUD/change tracking, relationships and safe migrations.
+  `DbModules`, `DbTokenizers`, and `DbVectorMetrics` are documented `String`
+  constants. A caller can still write the same text by hand
 - `packages/sqlite_plus_generator`: resolved convention/annotation metadata
-  generator and CLI; see its checked-in example and package README
+  generator and CLI; see its checked-in example and package README.
+  `@DbEntity(module: DbModules.fts5, tokenizer: ...)` emits `search`.
+  `@DbVector` on `DbModules.vec0` emits `Codecs.vector` and `nearest`
+- `packages/sqlite_plus_arabic`: FTS5 tokenizer `arabic`. Register
+  `SqlitePlusArabic` before creating or searching the table
+- `packages/sqlite_plus_vec`: `vec0` nearest-neighbor module. Register
+  `SqlitePlusVec` before creating or querying the table. The scan reads
+  every stored vector. It is not a sqlite-vec file and not an approximate index
 
 The [ORM guide](../packages/sqlite_plus_orm/README.md) covers generated/manual
 metadata, typed queries, tracking, relationships and reviewed migrations.
@@ -51,7 +60,7 @@ EXPLAIN bytecode for an integer-primary-key insert and a join of two subqueries,
 an official SQLite master journal, a multi-frame WAL log, ICU and locale
 collations, a durable browser store, Android, iOS, and benchmarks at 100000 and
 1000000 rows. `benchmark_results/scenarios_10k_linux_x64.json` measures 10000
-rows on Linux x64. `sqlite_plus` and `sqlite_plus_orm` remain `0.1.3`. The pub.dev API lists `sqlite_plus_generator` `0.1.4` as latest. A package page can take up to 10 minutes to show that version. See `CHANGELOG.md`.
+rows on Linux x64. This tree is `sqlite_plus` `0.1.5`, `sqlite_plus_orm` `0.1.4`, `sqlite_plus_generator` `0.1.5`, `sqlite_plus_arabic` `0.1.0`, and `sqlite_plus_vec` `0.1.0`. Those versions have not been uploaded. The pub.dev API still lists `sqlite_plus` and `sqlite_plus_orm` `0.1.3`, and `sqlite_plus_generator` `0.1.4`, as latest. A package page can take up to 10 minutes to show a new version. See `CHANGELOG.md`.
 
 ## Development checks
 
@@ -61,7 +70,7 @@ CI uses Dart 3.13.7. Packages require Dart >=3.6.0. Run from the repository root
 dart pub get --enforce-lockfile
 dart format .
 python3 tool/generate_fixtures.py --verify
-for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator; do
+for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator sqlite_plus_arabic sqlite_plus_vec; do
   (cd packages/$package && dart analyze --fatal-infos && dart test) || exit
 done
 ```

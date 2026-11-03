@@ -6,7 +6,7 @@ Dart objects on `sqlite_plus`. You change a field. `saveChanges` writes one tran
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.3
+  sqlite_plus_orm: ^0.1.4
 ```
 
 ## Save two books, rename one
@@ -224,6 +224,46 @@ final large = await books.query
 
 The method takes no parameters. A getter is the same shape. The body reads mapped fields and stays synchronous. `DbContext` registers `books_twice` on the connection. A null stored in a non-nullable field makes that call null. A thrown body fails the statement. `abs`, `upper`, `lower`, `length`, `trim`, `substr`, `replace`, `round`, `coalesce`, `ifNull`, `concat`, `sign`, `floor`, `ceil`, `sqrt`, `date`, `time`, `dateTime`, `unixEpoch`, and `julianDay` are the engine, called on the column or on another call.
 
+## Search and nearest neighbors
+
+`module` and `tokenizer` are strings. The constants are the names this ORM already knows how to create. A name that is not in the list is still a string, so you can write it by hand.
+
+| Constant | Value | What it selects |
+|---|---|---|
+| `DbModules.fts5` | `fts5` | Full-text table. The key is `rowid`. Other columns are text |
+| `DbModules.rtree` | `rtree` | Rectangle table: integer key, then `minX`, `maxX`, `minY`, `maxY` |
+| `DbModules.vec0` | `vec0` | One vector column, stored by `sqlite_plus_vec` |
+| `DbTokenizers.unicode61` | `unicode61` | FTS5 default. Letters stay whole tokens. This is not an Arabic stemmer |
+| `DbTokenizers.porter` | `porter` | English Porter stemmer |
+| `DbTokenizers.trigram` | `trigram` | Overlapping three-character tokens |
+| `DbTokenizers.ascii` | `ascii` | ASCII letters and digits. FTS3 and FTS4 default |
+| `DbTokenizers.simple` | `simple` | FTS3 spelling of `ascii`. FTS5 rejects this name |
+| `DbVectorMetrics.l2` | `l2` | Euclidean distance. The default `@DbVector` metric |
+| `DbVectorMetrics.cosine` | `cosine` | One minus cosine similarity, from 0 to 2 |
+
+`DbVectorLimits.minimumDimensions` is 1. `DbVectorLimits.maximumDimensions` and `DbVectorLimits.maximumNeighbors` are 4096.
+
+```dart
+@DbEntity(module: DbModules.fts5, tokenizer: DbTokenizers.porter)
+class Article {
+  Article({this.rowid, required this.body});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  final String body;
+}
+
+@DbEntity(module: DbModules.vec0)
+class Point {
+  Point({this.rowid, required this.embedding});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  @DbVector(4, metric: DbVectorMetrics.cosine)
+  final List<double> embedding;
+}
+```
+
+`tokenizer: 'arabic'` is valid on `DbModules.fts5` because the value is a string. Register `SqlitePlusArabic` before `ensureCreated`. Register `SqlitePlusVec` before creating or querying a `vec0` table. `search('kept')` is the full-text query. `nearest(const [0.9, 0.1, 0, 0], k: 1)` writes `embedding MATCH ? AND k = ?` and orders by distance. An unknown module such as `'vec9'` is rejected, because the ORM has to write `CREATE VIRTUAL TABLE`. An unknown metric identifier is kept and checked by `vec0` when the table is created.
+
 ## The other packages
 
 [`sqlite_plus`](../sqlite_plus) is the engine. The same connection answers SQL directly.
@@ -235,7 +275,7 @@ final rows = await connection.database.query(
 );
 ```
 
-[`sqlite_plus_generator`](../sqlite_plus_generator) writes `twice()` on the query row from the class above.
+[`sqlite_plus_arabic`](../sqlite_plus_arabic) registers the `arabic` tokenizer. [`sqlite_plus_vec`](../sqlite_plus_vec) registers `vec0` and answers `nearest`. [`sqlite_plus_generator`](../sqlite_plus_generator) writes `twice()`, `search`, and `nearest` from the class.
 
 ```sh
 dart run sqlite_plus_generator
@@ -260,6 +300,6 @@ From the package root this writes a part for every public `@DbEntity` and writes
 | Unique index | `apply` with approval. Duplicates roll the save back |
 | Rename, drop, type change, required column | You write the SQL, then approve that plan |
 | Down | The reverse statement, after the model points at the old shape |
-| Second `plan()` | Empty when the stored schema matches, including FTS5 and R-tree |
+| Second `plan()` | Empty when the stored schema matches, including FTS5, R-tree, and vec0 |
 
 One object per key lives in the context. `saveChanges` freezes values before the first await and publishes generated keys after commit. A stale revision aborts the whole save. `count` returns `BigInt`.

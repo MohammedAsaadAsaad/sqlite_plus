@@ -2,14 +2,31 @@ part of '../sqlite_plus_orm.dart';
 
 /// Selects a class for generation and optional virtual-table storage.
 class DbEntity {
-  /// [table] overrides the SQL name. [module] is `fts5` or `rtree`.
-  const DbEntity({this.table, this.module});
+  /// [table] overrides the SQL name.
+  ///
+  /// [module] is a virtual-table module. Use [DbModules] for the modules
+  /// this ORM creates: [DbModules.fts5], [DbModules.rtree], and
+  /// [DbModules.vec0]. The value is a [String], so `'fts5'` is the same as
+  /// [DbModules.fts5].
+  ///
+  /// [tokenizer] is the FTS5 `tokenize` name. Use [DbTokenizers] for the
+  /// built-in names. A registered tokenizer such as `'arabic'` is written
+  /// as a string. It is valid only when [module] is [DbModules.fts5].
+  const DbEntity({this.table, this.module, this.tokenizer});
 
   /// SQL table name. The class name is used when this is null.
   final String? table;
 
-  /// `fts5` or `rtree`. Omitted models stay ordinary tables.
+  /// [DbModules.fts5], [DbModules.rtree], [DbModules.vec0], or the same text.
+  ///
+  /// Omitted models stay ordinary tables.
   final String? module;
+
+  /// FTS5 tokenizer name. See [DbTokenizers].
+  ///
+  /// Null keeps the engine default. Any other SQL identifier is kept so a
+  /// package can register it before the table is created.
+  final String? tokenizer;
 }
 
 /// Marks an instance method or getter as a SQL scalar.
@@ -19,6 +36,24 @@ class DbEntity {
 class DbScalar {
   /// The body is a pure function of the mapped fields it reads.
   const DbScalar();
+}
+
+/// Marks one `List<double>` column of a [DbModules.vec0] table.
+class DbVector {
+  /// [dimensions] is `float[N]`. [metric] is [DbVectorMetrics.l2] unless
+  /// another identifier is written.
+  const DbVector(this.dimensions, {this.metric = DbVectorMetrics.l2});
+
+  /// Number of float32 coordinates. From [DbVectorLimits.minimumDimensions]
+  /// through [DbVectorLimits.maximumDimensions].
+  final int dimensions;
+
+  /// `distance_metric` stored in the `CREATE VIRTUAL TABLE` statement.
+  ///
+  /// [DbVectorMetrics.l2] and [DbVectorMetrics.cosine] are implemented by
+  /// `sqlite_plus_vec`. Another identifier is accepted here and checked when
+  /// that package creates the table.
+  final String metric;
 }
 
 /// Marks one TEXT column for a generated JSON path helper.
