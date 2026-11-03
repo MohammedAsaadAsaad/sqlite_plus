@@ -1,11 +1,40 @@
 # sqlite_plus_arabic
 
-A light Arabic stemmer for FTS5. Register it on the connection, then create the table with `tokenize = 'arabic'`.
+A light Arabic stemmer for an FTS5 table in [`sqlite_plus`](../sqlite_plus). The name is the string `arabic`. Register it on the connection, then create the table with `tokenize = 'arabic'`.
 
 ```yaml
 dependencies:
+  sqlite_plus: ^0.1.5
   sqlite_plus_arabic: ^0.1.0
 ```
+
+An application that does not import this package does not load the stemmer. The engine keeps `unicode61`, `porter`, `trigram`, `ascii`, and `simple`. Those names stay fixed.
+
+## What one word becomes
+
+`ArabicTokenizers.arabic` is `'arabic'`. You can write that constant or the same characters by hand. The rules are fixed. The constructor rejects every option, so `tokenize = 'arabic remove_diacritics 1'` fails with `error in tokenizer constructor`.
+
+Diacritics and tatweel are removed. Alef variants أ إ آ ٱ fold to ا. Alef maksura ى folds to ي. ئ folds to ي. ؤ folds to و. ASCII letters are lowercased and are not stemmed.
+
+One prefix is removed when at least three letters remain, longest first: وال، بال، كال، فال، لل، ال. One suffix is then removed on the same condition: يات، ون، ين، ات، ان، ها، ية، يه، ه، ة، ي. When the word starts with one of those prefixes and removing it would leave fewer than three letters, the suffix stays as well. `الله` therefore stays `الله`.
+
+| Text | Token |
+|---|---|
+| `حديقة` | `حديق` |
+| `الحديقة` | `حديق` |
+| `بالحديقة` | `حديق` |
+| `والكتاب` | `كتاب` |
+| `كتابه` | `كتاب` |
+| `كِتَابٌ` | `كتاب` |
+| `أحمد` | `احمد` |
+| `الله` | `الله` |
+| `Hello` | `hello` |
+
+`في الحديقة` is two tokens, `في` and `حديق`. A string of commas produces no token. SQLite ICU Arabic is a different tokenizer. This package applies the list above.
+
+## SQL
+
+Register before `CREATE`. The registry is the connection's. A second `register` replaces the factory. `SqlitePlusArabic.register` accepts a `SqliteDatabase`, a `MutableSqliteDatabase`, or that connection's `SqlFunctionRegistry`.
 
 ```dart
 import 'package:sqlite_plus/sqlite_plus.dart';
@@ -16,11 +45,29 @@ SqlitePlusArabic.register(db);
 await db.execute(
   "CREATE VIRTUAL TABLE docs USING fts5(body, tokenize = 'arabic')",
 );
+await db.execute(
+  'INSERT INTO docs(body) VALUES (?), (?)',
+  ['في الحديقة', 'سيارة'],
+);
+final found = await db.query(
+  "SELECT body FROM docs WHERE docs MATCH 'حديقة'",
+);
+final missed = await db.query(
+  "SELECT body FROM docs WHERE docs MATCH 'كتاب'",
+);
 ```
 
-`ArabicTokenizers.arabic` is the string `'arabic'`. Diacritics and tatweel are removed. Alef variants fold to ا, alef maksura and ئ fold to ي, and ؤ folds to و. One prefix is removed when three letters remain: وال، بال، كال، فال، لل، ال. One suffix is then removed on the same condition: يات، ون، ين، ات، ان، ها، ية، يه، ه، ة، ي. A word that starts with one of those prefixes, and would have fewer than three letters left, keeps its suffix too, so `الله` stays `الله`. `حديقة` and `الحديقة` share a token. ASCII letters are lowercased and are not stemmed. This is not a morphological analyzer and it is not the SQLite ICU Arabic tokenizer.
+`found` is one row, `في الحديقة`. `MATCH 'الحديقة'` and `MATCH 'حديق'` return that same row, because all three strings share `حديق`. `missed` is empty: `سيارة` does not share a token with `حديقة`.
 
-The same name works on a mapped table. The ORM stores the string. This package supplies the stemmer.
+Creating the table before `register` fails with `no such tokenizer: arabic`. The database stays usable. Call `register`, then run the `CREATE` again.
+
+`exportImage` keeps the table and the indexed rows. `MutableSqliteDatabase.fromImage` opens that image, and the new connection has an empty tokenizer registry. Call `SqlitePlusArabic.register` on the reopened database before the next `MATCH`.
+
+[`sqlite_plus`](../sqlite_plus) stores the FTS5 index and answers `MATCH`, `highlight`, `snippet`, and `bm25`. This package only supplies the tokenizer named `arabic`.
+
+## A mapped table
+
+[`sqlite_plus_orm`](../sqlite_plus_orm) stores the tokenizer name on the entity. It does not import this package. `DbModules.fts5` is the string `'fts5'`. `ArabicTokenizers.arabic` is the string `'arabic'`. `module: 'fts5'` and `tokenizer: 'arabic'` are the same two values written by hand.
 
 ```dart
 import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
@@ -29,18 +76,78 @@ import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 @DbEntity(module: DbModules.fts5, tokenizer: ArabicTokenizers.arabic)
 class Note {
   Note({this.rowid, required this.body});
+
   @DbKey(generated: true)
   final BigInt? rowid;
   final String body;
 }
 ```
 
+The key column is `rowid`. Every other mapped column is text. A tokenizer on `DbModules.rtree` or on an ordinary table is rejected, because only FTS5 has a `tokenize` clause.
+
 ```dart
+final connection = await MutableDatabaseConnection.openMemory();
 SqlitePlusArabic.register(connection.database);
+final context = DbContext(connection, generatedModel);
 await context.migrations.ensureCreated();
-final found = await notes.query.search('الحديقة').toList();
+
+final notes = context.set(NoteMapping.instance);
+notes.add(Note(body: 'في الحديقة'));
+notes.add(Note(body: 'كتاب بعيد'));
+await context.saveChanges(); // 2
+
+final found = await notes.query.search('الحديقة').single();
+final missed = await notes.query.search('سيارة').toList();
+final again = await context.migrations.plan();
 ```
 
-Register the tokenizer before `ensureCreated` or `search`. A second `register` replaces the factory. Reopening an image needs another `register` on that connection. `search('سيارة')` does not return a garden note.
+`ensureCreated` writes `CREATE VIRTUAL TABLE "Note" USING fts5("body", tokenize = 'arabic')`. `found.body` is `في الحديقة`. `missed` is empty. `again` is empty: the stored virtual SQL still matches the model. Register before `ensureCreated`. A search on an unregistered connection fails with `no such tokenizer: arabic`.
 
-[`sqlite_plus`](../sqlite_plus) stores the index. [`sqlite_plus_orm`](../sqlite_plus_orm) writes `tokenize = 'arabic'` from [DbModules.fts5] and the tokenizer string. [`sqlite_plus_generator`](../sqlite_plus_generator) emits that string and `search`. The generated part does not import this package.
+A hand-written mapping uses the same two strings:
+
+```dart
+final type = EntityType<Note>(
+  tableName: 'notes',
+  columns: [rowid, body],
+  virtualModule: DbModules.fts5,
+  tokenizer: ArabicTokenizers.arabic,
+  create: (row) => Note(rowid: row.read(rowid), body: row.read(body)),
+);
+```
+
+`notes.query.search('الحديقة')` is the same full-text query. The column codec stays `Codecs.text`.
+
+## What the generator writes
+
+[`sqlite_plus_generator`](../sqlite_plus_generator) reads `DbModules.fts5` and `ArabicTokenizers.arabic` as strings. The part contains `virtualModule: "fts5"`, `tokenizer: "arabic"`, and `search(String text)`. It does not import `sqlite_plus_arabic`. The application still calls `SqlitePlusArabic.register` before `ensureCreated`.
+
+```dart
+final note =
+    (await NoteQuery(notes.query).search('الحديقة').toList()).single;
+```
+
+`note.body` is `في الحديقة`. `search('سيارة')` returns no row. The generator guide shows the surrounding class and the package model.
+
+## The runnable example
+
+`packages/sqlite_plus_arabic/example` is that mapped table, with two saved notes.
+
+```sh
+cd packages/sqlite_plus_arabic/example
+dart run bin/main.dart
+```
+
+```text
+في الحديقة | missed true | stable true
+```
+
+`في الحديقة` is the body found by `search('الحديقة')`. `missed true` means `search('سيارة')` returned no row. `stable true` means a second `plan()` is empty.
+
+## Where each piece lives
+
+| You want | Package | You call |
+|---|---|---|
+| The index, `MATCH`, `highlight` | [`sqlite_plus`](../sqlite_plus) | `openInMemory`, then SQL |
+| The string constants and `search` | [`sqlite_plus_orm`](../sqlite_plus_orm) | `DbModules.fts5`, `notes.query.search` |
+| The class turned into a part | [`sqlite_plus_generator`](../sqlite_plus_generator) | `dart run sqlite_plus_generator` |
+| The stemmer | this package | `SqlitePlusArabic.register` |

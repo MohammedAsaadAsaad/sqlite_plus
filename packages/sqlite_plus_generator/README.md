@@ -190,6 +190,106 @@ final matched = await purchases.query
 
 `matched` is the 22.5 and 30 purchases: each total doubled is above 40. The part registers `purchase_doubled`.
 
+## Arabic words and nearest vectors
+
+`DbModules.fts5` and `'fts5'` both become `virtualModule: "fts5"`. `tokenizer: DbTokenizers.porter` becomes `tokenizer: "porter"`. `tokenizer: 'arabic'` becomes `tokenizer: "arabic"`. The part grows a `search` method either way.
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity(module: DbModules.fts5, tokenizer: ArabicTokenizers.arabic)
+class Garden {
+  Garden({this.rowid, required this.body});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  final String body;
+}
+```
+
+The part contains the mapping and the query method. It does not import `sqlite_plus_arabic`. `Garden` is a different class from the JSON `Note` above.
+
+```dart
+static final EntityType<Garden> instance = EntityType<Garden>(
+  tableName: "Garden",
+  columns: GardenColumns.all,
+  create: _create,
+  virtualModule: "fts5",
+  tokenizer: "arabic",
+  applyStoreValues: (entity, row) => _create(row),
+);
+
+extension GardenQuery on TypedQuery<Garden> {
+  TypedQuery<Garden> search(String text) =>
+      TypedQuery<Garden>(type: type, connection: connection).search(text);
+}
+```
+
+`@DbEntity(module: DbModules.vec0)` with `@DbVector(2)` becomes `Codecs.vector(2)`, `vectorDimensions: 2`, `vectorMetric: "l2"`, and `nearest`. `@DbVector(4, metric: DbVectorMetrics.cosine)` stores `vectorMetric: "cosine"`. The default `k` on the generated method is 10.
+
+```dart
+extension PointQuery on TypedQuery<Point> {
+  TypedQuery<Point> nearest(List<double> vector, {int k = 10}) =>
+      TypedQuery<Point>(type: type, connection: connection)
+          .nearest(vector, k: k);
+}
+```
+
+The four-coordinate `Point` above is a different table: its metric is cosine and its list has length 4. The calls below use a two-coordinate class. [`sqlite_plus_arabic`](../sqlite_plus_arabic) supplies the stemmer. [`sqlite_plus_vec`](../sqlite_plus_vec) supplies `vec0`. [`sqlite_plus_orm`](../sqlite_plus_orm) defines `search` and `nearest`. The part still does not import either package.
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity(module: DbModules.vec0)
+class Neighbor {
+  Neighbor({this.rowid, required this.embedding});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  @DbVector(2)
+  final List<double> embedding;
+}
+```
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+final connection = await MutableDatabaseConnection.openMemory();
+SqlitePlusArabic.register(connection.database);
+SqlitePlusVec.register(connection.database);
+final context = DbContext(connection, generatedModel);
+await context.migrations.ensureCreated();
+
+final gardens = context.set(GardenMapping.instance);
+final neighbors = context.set(NeighborMapping.instance);
+gardens.add(Garden(body: 'في الحديقة'));
+gardens.add(Garden(body: 'سيارة'));
+neighbors.add(Neighbor(embedding: const [1, 0]));
+neighbors.add(Neighbor(embedding: const [0, 1]));
+await context.saveChanges(); // 4
+
+final garden =
+    (await GardenQuery(gardens.query).search('الحديقة').toList()).single;
+final neighbor = (await NeighborQuery(neighbors.query)
+        .nearest(const [0.9, 0.1], k: 1)
+        .toList())
+    .single;
+```
+
+`garden.body` is `في الحديقة`. `neighbor.embedding` is `[1.0, 0.0]`. A second `plan()` is empty. The garden table's SQL contains `tokenize = 'arabic'`. The neighbor table's SQL contains `float[2] distance_metric=l2`. `@DbVector(2)` omitted `metric`, so the metric is `l2`.
+
+These annotations fail before a file is written:
+
+| Source | Why |
+|---|---|
+| `module: 'fts4'` | The ORM cannot write that `CREATE VIRTUAL TABLE` |
+| `module: DbModules.rtree` and `tokenizer: DbTokenizers.porter` | A tokenizer belongs on FTS5 |
+| `tokenizer: 'arabic stem'` | The name has to be one SQL identifier |
+| `@DbVector(4)` on an ordinary class or on `fts5` | A vector belongs on `vec0` |
+| `module: DbModules.vec0` with no `@DbVector` | `vec0` has one vector column |
+| `@DbVector(0)` or `@DbVector(4097)` | Dimensions run from 1 to 4096 |
+| A `vec0` field named `distance` | `distance` and `k` are the hidden query columns |
+
 After the first `ensureCreated`, a new nullable field is an up migration:
 
 ```sh
@@ -244,4 +344,6 @@ await db.execute(
 );
 ```
 
-[`sqlite_plus_orm`](../sqlite_plus_orm) is what the application calls. `saveChanges` writes the tracked objects, and `row.doubled()` is the method above.
+[`sqlite_plus_orm`](../sqlite_plus_orm) is what the application calls. `saveChanges` writes the tracked objects, and `row.doubled()` is the method above. `DbModules`, `DbTokenizers`, and `DbVectorMetrics` are the string constants in that package.
+
+[`sqlite_plus_arabic`](../sqlite_plus_arabic) is registered with `SqlitePlusArabic.register` before a table whose tokenizer is `arabic` is created. `search('الحديقة')` then returns the garden note whose body is `في الحديقة`. [`sqlite_plus_vec`](../sqlite_plus_vec) is registered with `SqlitePlusVec.register` before a `vec0` table is created. `nearest(const [0.9, 0.1], k: 1)` then returns `[1.0, 0.0]` when the stored rows are `[1, 0]` and `[0, 1]`.
