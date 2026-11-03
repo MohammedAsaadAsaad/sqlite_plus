@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'format.dart';
 import 'grid.dart';
 import 'session.dart';
+import 'sql_view.dart';
 
 /// One page of the selected table or view, with a filter row and a pager.
 class DataPane extends StatefulWidget {
@@ -123,10 +124,7 @@ class _DataPaneState extends State<DataPane> {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 12),
-          SelectableText(
-            object.sql ?? object.name,
-            style: const TextStyle(fontFamily: 'monospace', height: 1.4),
-          ),
+          SqlCodeView(source: formatSql(object.sql ?? object.name)),
         ],
       );
     }

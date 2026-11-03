@@ -10,6 +10,7 @@ import 'format.dart';
 import 'schema_pane.dart';
 import 'session.dart';
 import 'sql_pane.dart';
+import 'sql_view.dart';
 
 enum BrowserPane { data, sql }
 
@@ -403,17 +404,42 @@ class _BrowserPageState extends State<BrowserPage> {
   Future<void> _showSql() async {
     final sql = _selected?.sql;
     if (sql == null) return;
+    final name = _selected!.name;
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(_selected!.name),
-        content: SingleChildScrollView(child: SelectableText(sql)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SqlCodeView(source: formatSql(sql)),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -1,8 +1,36 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite_plus_browser/src/format.dart';
 import 'package:sqlite_plus_browser/src/session.dart';
+import 'package:sqlite_plus_browser/src/sql_view.dart';
 
 void main() {
+  test('a create statement keeps each column on one line', () {
+    expect(
+      formatSql(
+        'CREATE TABLE events (\n'
+        '    id      INTEGER PRIMARY\n'
+        'KEY,\n'
+        '        category TEXT,\n'
+        '    value   REAL,\n'
+        '    flag    INTEGER\n'
+        ')',
+      ),
+      'CREATE TABLE events (\n'
+      '  id INTEGER PRIMARY KEY,\n'
+      '  category TEXT,\n'
+      '  value REAL,\n'
+      '  flag INTEGER\n'
+      ')',
+    );
+    expect(
+      formatSql(
+        'CREATE TABLE IF NOT EXISTS books '
+        '(id INTEGER PRIMARY KEY, title TEXT NOT NULL, pages INTEGER)',
+      ),
+      contains('  id INTEGER PRIMARY KEY,\n  title TEXT NOT NULL,'),
+    );
+  });
+
   test('words ignore quoted text', () {
     expect(sqlWords("SELECT 'INSERT' FROM books"), ['select', 'from', 'books']);
     expect(

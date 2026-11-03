@@ -43,6 +43,16 @@ void main() {
     expect(find.text('Triggers (0)'), findsOneWidget);
     expect(find.text('"title" TEXT NOT NULL'), findsOneWidget);
     expect(find.text('"id" INTEGER PRIMARY KEY'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('show-sql')));
+    await _frames(tester);
+    final code =
+        tester.widget<SelectableText>(find.byKey(const Key('sql-code')));
+    final shown = code.textSpan!.toPlainText();
+    expect(shown, contains('id INTEGER PRIMARY KEY'));
+    expect(shown, contains('title TEXT NOT NULL'));
+    expect(shown, contains('\n  pages INTEGER'));
+    await tester.tap(find.text('Close'));
+    await _frames(tester);
     await _finish(tester, session);
   });
 
