@@ -14,6 +14,8 @@ class SqlPane extends StatefulWidget {
     required this.log,
     required this.busy,
     required this.onRun,
+    required this.onPrevious,
+    required this.onNext,
   });
 
   final TextEditingController controller;
@@ -22,6 +24,8 @@ class SqlPane extends StatefulWidget {
   final List<String> log;
   final bool busy;
   final VoidCallback onRun;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
 
   @override
   State<SqlPane> createState() => _SqlPaneState();
@@ -143,8 +147,6 @@ class _SqlPaneState extends State<SqlPane> {
             ),
           ),
           const SizedBox(height: 8),
-          if (result != null && result.isQuery)
-            Text('${result.rows.length} rows · ${result.columns.join(', ')}'),
           if (result != null && !result.isQuery)
             Text('${result.changes} rows changed'),
           if (widget.log.isNotEmpty) ...[
@@ -201,8 +203,37 @@ class _SqlPaneState extends State<SqlPane> {
                   )
                 : const SizedBox.shrink(),
           ),
+          if (result != null && result.isQuery) _pager(result),
         ],
       ),
+    );
+  }
+
+  Widget _pager(StatementResult result) {
+    return Row(
+      children: [
+        IconButton(
+          key: const Key('sql-page-previous'),
+          tooltip: 'Previous',
+          onPressed: widget.busy ? null : widget.onPrevious,
+          icon: const Icon(Icons.chevron_left),
+        ),
+        Text(_range(result), key: const Key('sql-page-range')),
+        IconButton(
+          key: const Key('sql-page-next'),
+          tooltip: 'Next',
+          onPressed: widget.busy ? null : widget.onNext,
+          icon: const Icon(Icons.chevron_right),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            result.columns.join(', '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 
@@ -268,6 +299,13 @@ class _SqlPaneState extends State<SqlPane> {
         ),
       ),
     );
+  }
+
+  String _range(StatementResult result) {
+    if (result.rows.isEmpty) return '0 rows';
+    final start = result.offset + 1;
+    final end = result.offset + result.rows.length;
+    return '$start–$end';
   }
 
   IconData _icon(String kind) {

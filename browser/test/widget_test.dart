@@ -108,4 +108,36 @@ void main() {
     expect(find.text('320'), findsNothing);
     await _finish(tester, session);
   });
+
+  testWidgets('SQL pages a result that has no limit', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run('CREATE TABLE nums (n INTEGER)');
+    final values = [for (var i = 0; i < 55; i++) '($i)'];
+    await session.run('INSERT INTO nums(n) VALUES ${values.join(',')}');
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.text('SQL'));
+    await _frames(tester);
+    await tester.enterText(
+        find.byKey(const Key('sql-input')), 'SELECT n FROM nums');
+    await tester.tap(find.byKey(const Key('run-sql')));
+    await _frames(tester);
+    expect(find.text('1–50'), findsWidgets);
+    expect(find.text('0'), findsOneWidget);
+    expect(find.text('54'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('sql-page-next')));
+    await _frames(tester);
+    expect(find.text('51–55'), findsWidgets);
+    expect(find.text('50'), findsOneWidget);
+    expect(find.text('54'), findsOneWidget);
+    expect(find.text('0'), findsNothing);
+    await _finish(tester, session);
+  });
 }

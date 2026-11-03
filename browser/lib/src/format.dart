@@ -31,6 +31,68 @@ bool statementReads(String sql) {
   return false;
 }
 
+/// True when the outer statement has `LIMIT`, ignoring limits inside
+/// parentheses, quotes, and comments.
+bool outerSqlLimit(String sql) {
+  var depth = 0;
+  String? quote;
+  for (var i = 0; i < sql.length; i++) {
+    final char = sql[i];
+    if (quote != null) {
+      if (char == quote) {
+        final doubled = i + 1 < sql.length && sql[i + 1] == quote;
+        if (doubled) {
+          i++;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (char == "'" || char == '"') {
+      quote = char;
+      continue;
+    }
+    if (char == '-' && i + 1 < sql.length && sql[i + 1] == '-') {
+      final end = sql.indexOf('\n', i);
+      i = end < 0 ? sql.length - 1 : end;
+      continue;
+    }
+    if (char == '/' && i + 1 < sql.length && sql[i + 1] == '*') {
+      final end = sql.indexOf('*/', i + 2);
+      i = end < 0 ? sql.length - 1 : end + 1;
+      continue;
+    }
+    if (char == '(') {
+      depth++;
+      continue;
+    }
+    if (char == ')') {
+      if (depth > 0) depth--;
+      continue;
+    }
+    if (depth == 0 && _keywordAt(sql, i, 'limit')) return true;
+  }
+  return false;
+}
+
+bool _keywordAt(String sql, int index, String word) {
+  if (index > 0 && _sqlIdent(sql.codeUnitAt(index - 1))) return false;
+  final end = index + word.length;
+  if (end > sql.length) return false;
+  if (sql.substring(index, end).toLowerCase() != word) return false;
+  if (end < sql.length && _sqlIdent(sql.codeUnitAt(end))) return false;
+  return true;
+}
+
+bool _sqlIdent(int unit) {
+  if (unit == 95) return true;
+  if (unit >= 48 && unit <= 57) return true;
+  if (unit >= 65 && unit <= 90) return true;
+  if (unit >= 97 && unit <= 122) return true;
+  return unit > 127;
+}
+
 /// Lower-case words outside quotes.
 List<String> sqlWords(String sql) {
   final words = <String>[];

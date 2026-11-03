@@ -100,22 +100,75 @@ class TableSlice {
   );
 }
 
+/// How many SQL result rows are shown at once.
+const sqlPageSize = 50;
+
 /// Rows from a read, or a change count from a write.
 class StatementResult {
-  const StatementResult.query(this.columns, this.rows)
-      : changes = null,
+  const StatementResult.query(
+    this.columns,
+    this.rows, {
+    this.offset = 0,
+    this.limit = 0,
+    this.more = false,
+    this.cached,
+  })  : changes = null,
         lastInsertRowid = null;
 
   const StatementResult.write(this.changes, this.lastInsertRowid)
       : columns = const [],
-        rows = const [];
+        rows = const [],
+        offset = 0,
+        limit = 0,
+        more = false,
+        cached = null;
 
   final List<String> columns;
   final List<List<Object?>> rows;
   final int? changes;
   final BigInt? lastInsertRowid;
 
+  /// First visible row, counting from zero.
+  final int offset;
+
+  /// Page size. Zero when the result was not paged.
+  final int limit;
+
+  /// Another page follows this one.
+  final bool more;
+
+  /// Every row, when the statement already had its own limit.
+  final List<List<Object?>>? cached;
+
   bool get isQuery => changes == null;
+
+  /// Another window of a cached result.
+  StatementResult window(int next) {
+    final source = cached;
+    if (source == null) {
+      throw StateError('This result has no cached pages');
+    }
+    final size = limit <= 0 ? source.length : limit;
+    final start = next < 0 ? 0 : next;
+    if (start >= source.length) {
+      return StatementResult.query(
+        columns,
+        const [],
+        offset: start,
+        limit: size,
+        cached: source,
+      );
+    }
+    final end = start + size > source.length ? source.length : start + size;
+    return StatementResult.query(
+      columns,
+      source.sublist(start, end),
+      offset: start,
+      limit: size,
+      more: end < source.length,
+      cached: source,
+    );
+  }
 }
 
 /// An open sqlite_plus image: schema, pages, SQL, and cell edits.
@@ -166,14 +219,17 @@ class BrowserSession extends ChangeNotifier {
   }
 
   /// Runs one statement.
-  Future<StatementResult> run(String sql) {
+  ///
+  /// A read without an outer `LIMIT` returns at most [sqlPageSize] rows from
+  /// [offset]. The next page is the same statement with a later offset.
+  Future<StatementResult> run(String sql, {int offset = 0}) {
     final text = sql.trim();
     if (text.isEmpty) {
       throw const SqlException('SQL is empty');
     }
     return _enqueue(() async {
       final database = _required();
-      final result = await _run(database, text);
+      final result = await _run(database, text, offset: offset);
       if (!result.isQuery) {
         _changed();
         await _loadSchema(database);
@@ -331,18 +387,71 @@ class BrowserSession extends ChangeNotifier {
   }
 
   Future<StatementResult> _run(
-      MutableSqliteDatabase database, String text) async {
+    MutableSqliteDatabase database,
+    String text, {
+    int offset = 0,
+  }) async {
     final words = sqlWords(text);
     final read = statementReads(text);
     if (read && words.isNotEmpty && words.first == 'pragma') {
       try {
-        return await _query(database, text);
+        return _sliceCached(await _query(database, text), offset);
       } on SqlException {
         return _write(database, text);
       }
     }
-    if (read) return _query(database, text);
+    if (read && _pageable(words) && !outerSqlLimit(text)) {
+      return _limitedPage(database, text, offset);
+    }
+    if (read) return _sliceCached(await _query(database, text), offset);
     return _write(database, text);
+  }
+
+  bool _pageable(List<String> words) {
+    if (words.isEmpty) return false;
+    final first = words.first;
+    return first == 'select' || first == 'values' || first == 'with';
+  }
+
+  Future<StatementResult> _limitedPage(
+    MutableSqliteDatabase database,
+    String text,
+    int offset,
+  ) async {
+    final body = _stripSemicolon(text);
+    final window = '$body LIMIT ${sqlPageSize + 1} OFFSET $offset';
+    try {
+      final result = await database.browse(window);
+      final more = result.rows.length > sqlPageSize;
+      final rows = more ? result.rows.sublist(0, sqlPageSize) : result.rows;
+      return StatementResult.query(
+        result.columns,
+        rows,
+        offset: offset,
+        limit: sqlPageSize,
+        more: more,
+      );
+    } on SqlException {
+      return _sliceCached(await _query(database, text), offset);
+    }
+  }
+
+  StatementResult _sliceCached(StatementResult full, int offset) {
+    return StatementResult.query(
+      full.columns,
+      full.rows,
+      limit: sqlPageSize,
+      more: full.rows.length > sqlPageSize,
+      cached: full.rows,
+    ).window(offset);
+  }
+
+  String _stripSemicolon(String sql) {
+    var text = sql.trim();
+    while (text.endsWith(';')) {
+      text = text.substring(0, text.length - 1).trimRight();
+    }
+    return text;
   }
 
   Future<StatementResult> _query(

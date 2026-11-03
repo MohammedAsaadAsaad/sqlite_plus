@@ -186,7 +186,13 @@ class _BrowserPageState extends State<BrowserPage> {
                   result: _result,
                   log: _log,
                   busy: _busy,
-                  onRun: _runSql,
+                  onRun: () => _runSql(),
+                  onPrevious: _result != null && _result!.offset > 0
+                      ? () => _runSql(offset: _result!.offset - _result!.limit)
+                      : null,
+                  onNext: _result != null && _result!.more
+                      ? () => _runSql(offset: _result!.offset + _result!.limit)
+                      : null,
                 ),
         ),
       ],
@@ -263,6 +269,14 @@ class _BrowserPageState extends State<BrowserPage> {
     _load(offset);
   }
 
+  String _queryMessage(StatementResult result) {
+    if (result.rows.isEmpty) return '0 rows';
+    final start = result.offset + 1;
+    final end = result.offset + result.rows.length;
+    if (!result.more && result.offset == 0) return '${result.rows.length} rows';
+    return '$start–$end';
+  }
+
   void _draft(String sql) {
     _sql.text = sql;
     _sql.selection = TextSelection.collapsed(offset: sql.length);
@@ -310,17 +324,26 @@ class _BrowserPageState extends State<BrowserPage> {
     return _load(next < 0 ? 0 : next);
   }
 
-  Future<void> _runSql() {
+  Future<void> _runSql({int? offset}) {
+    final current = _result;
+    if (offset != null && current != null && current.cached != null) {
+      final page = current.window(offset);
+      setState(() {
+        _result = page;
+        _message = _queryMessage(page);
+      });
+      return Future.value();
+    }
     return _guard(() async {
-      final result = await session.run(_sql.text);
+      final result = await session.run(_sql.text, offset: offset ?? 0);
       if (!mounted) return;
       final statement = _sql.text.trim();
       setState(() {
         _result = result;
         _message = result.isQuery
-            ? '${result.rows.length} rows'
+            ? _queryMessage(result)
             : '${result.changes} changed';
-        if (statement.isNotEmpty) {
+        if (offset == null && statement.isNotEmpty) {
           _log.add(statement.replaceAll(RegExp(r'\s+'), ' '));
           if (_log.length > 12) _log.removeAt(0);
         }

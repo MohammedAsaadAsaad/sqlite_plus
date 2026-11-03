@@ -100,6 +100,38 @@ void main() {
     expect(second.rows.last[1], BigInt.from(54));
   });
 
+  test('a query without a limit returns one page', () async {
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    expect(
+        outerSqlLimit('SELECT * FROM (SELECT n FROM nums LIMIT 1)'), isFalse);
+    expect(outerSqlLimit("SELECT 'LIMIT' FROM nums"), isFalse);
+    expect(outerSqlLimit('SELECT n FROM nums LIMIT 3'), isTrue);
+    await session.run('CREATE TABLE nums (n INTEGER)');
+    final values = [for (var i = 0; i < 55; i++) '($i)'];
+    await session.run('INSERT INTO nums(n) VALUES ${values.join(',')}');
+    final first = await session.run('SELECT n FROM nums');
+    expect(first.rows, hasLength(50));
+    expect(first.more, isTrue);
+    expect(first.offset, 0);
+    expect(first.rows.first.single, BigInt.zero);
+    expect(first.rows.last.single, BigInt.from(49));
+    final second = await session.run('SELECT n FROM nums;', offset: 50);
+    expect(second.rows, hasLength(5));
+    expect(second.more, isFalse);
+    expect(second.offset, 50);
+    expect(second.rows.first.single, BigInt.from(50));
+    expect(second.rows.last.single, BigInt.from(54));
+    final limited = await session.run('SELECT n FROM nums LIMIT 60');
+    expect(limited.rows, hasLength(50));
+    expect(limited.more, isTrue);
+    expect(limited.cached, hasLength(55));
+    expect(limited.window(50).rows, hasLength(5));
+    expect(limited.window(50).more, isFalse);
+    expect(limited.window(50).rows.first.single, BigInt.from(50));
+  });
+
   test('schema keeps defaults, foreign keys, indexes, and triggers', () async {
     final session = BrowserSession();
     await session.openEmpty();
