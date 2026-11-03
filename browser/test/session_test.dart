@@ -24,6 +24,12 @@ void main() {
     addTearDown(session.close);
     await session.insertSample();
     expect(session.objects.map((object) => object.name), contains('books'));
+    final books =
+        session.objects.singleWhere((object) => object.name == 'books');
+    expect(
+        books.columns.map((column) => column.name), ['id', 'title', 'pages']);
+    expect(books.columns.first.primaryKey, isTrue);
+    expect(books.columns[1].notNull, isTrue);
 
     final page = await session.slice('books');
     expect(page.hasRowid, isTrue);
@@ -73,5 +79,24 @@ void main() {
     final page = await session.slice('pair');
     expect(page.hasRowid, isFalse);
     expect(page.rows.single, ['one', 'two']);
+  });
+
+  test('a full page does not count, and the next page is the tail', () async {
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    await session.run('CREATE TABLE nums (n INTEGER)');
+    final values = [for (var i = 0; i < 55; i++) '($i)'];
+    await session.run('INSERT INTO nums(n) VALUES ${values.join(',')}');
+    final first = await session.slice('nums');
+    expect(first.rows, hasLength(50));
+    expect(first.total, -1);
+    expect(first.rows.first[1], BigInt.zero);
+    expect(await session.countRows('nums'), 55);
+    final second = await session.slice('nums', offset: 50);
+    expect(second.rows, hasLength(5));
+    expect(second.total, 55);
+    expect(second.rows.first[1], BigInt.from(50));
+    expect(second.rows.last[1], BigInt.from(54));
   });
 }

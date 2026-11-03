@@ -1,6 +1,6 @@
 # sqlite_plus browser
 
-A database browser on the sqlite_plus engine. It opens a file, lists the schema, pages through rows, edits a cell, and runs one SQL statement. The same screen is the phone layout and the desktop layout: a wide window keeps the schema beside the rows, and a narrow window puts the schema in a drawer and Rows / SQL in a bar.
+A database browser on the sqlite_plus engine. It opens a file, shows each table with its columns, pages through rows, edits a cell, and runs one SQL statement. The editor offers completions from the words already typed and from the open schema. The same screen is the phone layout and the desktop layout: a wide window keeps the schema beside the rows, and a narrow window puts the schema in a drawer and Rows / SQL in a bar.
 
 The engine is pure Dart. This program does not use FFI, native SQLite, or WASM.
 
@@ -19,7 +19,7 @@ The image has to be a complete rollback database. A WAL file is rejected by the 
 
 Add sample rows creates `books` and inserts Kept Garden (320 pages) and Other Atlas (40 pages).
 
-On Linux x64, Flutter 3.47.9 and Dart 3.13.7, `flutter analyze --fatal-infos` reported no issues and `flutter test` passed 6 tests: four session tests and two widget tests. The sample grid shows Kept Garden at 320 pages. A later cell edit stores 321. `flutter build linux` was not run on that machine because `gtk+-3.0` and Ninja were not installed.
+On Linux x64, Flutter 3.47.9 and Dart 3.13.7, `flutter analyze --fatal-infos` reported no issues and `flutter test` passed 9 tests: five session tests, one completion test, and three widget tests. The sample grid shows Kept Garden at 320 pages, the schema shows `id` as PK and `title` as TEXT, and a later cell edit stores 321. Typing `SEL` inserts `SELECT`. A full page of 50 rows leaves the exact count for `countRows`, and the next page is the remaining rows. `flutter build linux` was not run on that machine because `gtk+-3.0` and Ninja were not installed.
 
 An arm64 release package is built with:
 
@@ -27,4 +27,4 @@ An arm64 release package is built with:
 flutter build apk --release --target-platform android-arm64
 ```
 
-The build on 3 November 2026 at 21:40 Asia/Hebron wrote `build/app/outputs/flutter-apk/app-release.apk`, 19405861 bytes, sha256 `7c09e4e709cf487d66e021caab354429547e1ff6923be124296bac11159be66d`. `aapt dump badging` reports `native-code: arm64-v8a`, versionName `1.0.0`, versionCode `1`, and package `dev.sqliteplus.sqlite_plus_browser`. The downloadable copy is [`dist/sqlite-plus-browser-arm64-v8a.apk`](dist/sqlite-plus-browser-arm64-v8a.apk). Other `*.apk` files stay ignored. The release build uses the Android debug keystore. That package was not installed on a device. iOS, macOS, and Windows were not launched.
+The build on 3 November 2026 at 22:00 Asia/Hebron wrote `build/app/outputs/flutter-apk/app-release.apk`, 19537521 bytes, sha256 `74f77b02d79ae81d7268893cc3ef869cf7a7df8d51fce852c064b9b4cc63f9b2`. `aapt dump badging` reports `native-code: arm64-v8a`, versionName `1.0.0`, versionCode `2`, and package `dev.sqliteplus.sqlite_plus_browser`. The downloadable copy is [`dist/sqlite-plus-browser-arm64-v8a.apk`](dist/sqlite-plus-browser-arm64-v8a.apk). Other `*.apk` files stay ignored. The release build uses the Android debug keystore. That package was not installed on a device. iOS, macOS, and Windows were not launched.

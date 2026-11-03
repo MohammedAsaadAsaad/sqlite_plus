@@ -17,6 +17,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('sample rows show in the grid', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final session = BrowserSession();
     await session.openEmpty();
     await tester.pumpWidget(BrowserApp(session: session));
@@ -31,6 +35,29 @@ void main() {
     expect(find.text('Kept Garden'), findsOneWidget);
     expect(find.text('320'), findsOneWidget);
     expect(find.text('Memory · unsaved'), findsOneWidget);
+    expect(find.text('PK'), findsOneWidget);
+    expect(find.text('TEXT'), findsOneWidget);
+    await _finish(tester, session);
+  });
+
+  testWidgets('SQL completion inserts the chosen word', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.text('SQL'));
+    await _frames(tester);
+    await tester.enterText(find.byKey(const Key('sql-input')), 'SEL');
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('suggest-SELECT')));
+    await _frames(tester);
+    final field = tester.widget<TextField>(find.byKey(const Key('sql-input')));
+    expect(field.controller!.text, 'SELECT ');
     await _finish(tester, session);
   });
 

@@ -98,12 +98,15 @@ class _BrowserPageState extends State<BrowserPage> {
           body: wide
               ? Row(
                   children: [
-                    SizedBox(
-                      width: 280,
-                      child: SchemaPane(
-                        objects: session.objects,
-                        selected: _selected,
-                        onSelect: _select,
+                    ColoredBox(
+                      color: Colors.white,
+                      child: SizedBox(
+                        width: 300,
+                        child: SchemaPane(
+                          objects: session.objects,
+                          selected: _selected,
+                          onSelect: _select,
+                        ),
                       ),
                     ),
                     const VerticalDivider(width: 1),
@@ -144,9 +147,10 @@ class _BrowserPageState extends State<BrowserPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (wide) _paneSwitch(),
+        if (_busy) const LinearProgressIndicator(minHeight: 2),
         if (_message != null)
           Material(
-            color: const Color(0xFFF6E4C8),
+            color: const Color(0xFFE7F2EC),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Text(_message!),
@@ -159,9 +163,7 @@ class _BrowserPageState extends State<BrowserPage> {
                   slice: _slice,
                   busy: _busy,
                   onPrevious: _slice.offset == 0 ? null : () => _move(-1),
-                  onNext: _slice.offset + _slice.rows.length >= _slice.total
-                      ? null
-                      : () => _move(1),
+                  onNext: _hasNext ? () => _move(1) : null,
                   onInsert: _selected == null ? null : _insert,
                   onEdit: _edit,
                   onDelete: _delete,
@@ -169,6 +171,7 @@ class _BrowserPageState extends State<BrowserPage> {
                 )
               : SqlPane(
                   controller: _sql,
+                  objects: session.objects,
                   result: _result,
                   busy: _busy,
                   onRun: _runSql,
@@ -213,6 +216,13 @@ class _BrowserPageState extends State<BrowserPage> {
     }
   }
 
+  bool get _hasNext {
+    if (_slice.totalKnown) {
+      return _slice.offset + _slice.rows.length < _slice.total;
+    }
+    return _slice.rows.length == _slice.limit && _slice.limit > 0;
+  }
+
   Future<void> _load(int offset) async {
     final selected = _selected;
     if (selected == null) return;
@@ -221,6 +231,21 @@ class _BrowserPageState extends State<BrowserPage> {
       final slice = await session.slice(selected.name, offset: offset);
       if (!mounted) return;
       setState(() => _slice = slice);
+    });
+    if (!mounted || _selected?.name != selected.name || _slice.totalKnown) {
+      return;
+    }
+    final total = await session.countRows(selected.name);
+    if (!mounted || _selected?.name != selected.name) return;
+    setState(() {
+      _slice = TableSlice(
+        columns: _slice.columns,
+        rows: _slice.rows,
+        hasRowid: _slice.hasRowid,
+        total: total,
+        offset: _slice.offset,
+        limit: _slice.limit,
+      );
     });
   }
 

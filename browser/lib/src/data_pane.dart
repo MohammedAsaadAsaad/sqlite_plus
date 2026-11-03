@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'format.dart';
+import 'grid.dart';
 import 'session.dart';
 
 /// One page of the selected table or view.
@@ -40,23 +40,43 @@ class DataPane extends StatelessWidget {
       );
     }
     if (object.type != 'table' && object.type != 'view') {
-      return Center(child: Text(object.sql ?? object.name));
+      return ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Text(
+            object.name,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+          SelectableText(
+            object.sql ?? object.name,
+            style: const TextStyle(fontFamily: 'monospace', height: 1.4),
+          ),
+        ],
+      );
     }
-    final headers = slice.columns.map((column) => column.name).toList();
+    final start = slice.rows.isEmpty ? slice.offset : slice.offset + 1;
+    final end = slice.offset + slice.rows.length;
+    final range =
+        slice.totalKnown ? '$start–$end of ${slice.total}' : '$start–$end';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 8),
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Expanded(
-                child: Text(
-                  '${object.name}  ${slice.total} rows',
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w600),
+              Text(
+                object.name,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
+              Text(range, key: const Key('page-range')),
               IconButton(
                 key: const Key('show-sql'),
                 tooltip: 'Create statement',
@@ -69,75 +89,63 @@ class DataPane extends StatelessWidget {
                 onPressed: busy || object.type != 'table' ? null : onInsert,
                 icon: const Icon(Icons.add),
               ),
-              IconButton(
+              OutlinedButton.icon(
                 key: const Key('page-previous'),
-                tooltip: 'Previous page',
                 onPressed: busy ? null : onPrevious,
                 icon: const Icon(Icons.chevron_left),
+                label: const Text('Previous'),
               ),
-              IconButton(
+              OutlinedButton.icon(
                 key: const Key('page-next'),
-                tooltip: 'Next page',
                 onPressed: busy ? null : onNext,
                 icon: const Icon(Icons.chevron_right),
+                label: const Text('Next'),
               ),
             ],
           ),
         ),
         if (!slice.hasRowid && object.type == 'table')
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text('This table has no rowid. Change it with SQL.'),
           ),
         Expanded(
           child: slice.rows.isEmpty
               ? const Center(child: Text('This table has no rows.'))
-              : Scrollbar(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SingleChildScrollView(
-                      child: DataTable(
-                        key: const Key('result-grid'),
-                        columns: [
-                          for (final name in headers)
-                            DataColumn(label: Text(name)),
-                          if (slice.hasRowid) const DataColumn(label: Text('')),
-                        ],
-                        rows: [
-                          for (final row in slice.rows) _row(row),
-                        ],
-                      ),
-                    ),
-                  ),
+              : CellGrid(
+                  key: const Key('result-grid'),
+                  columns: [
+                    for (final column in slice.columns) column.name,
+                  ],
+                  rows: [
+                    for (final row in slice.rows)
+                      slice.hasRowid ? row.skip(1).toList() : row,
+                  ],
+                  onCell: (index, column) {
+                    final source = slice.rows[index];
+                    final rowid = slice.hasRowid && source.first is BigInt
+                        ? source.first as BigInt
+                        : null;
+                    if (rowid == null || onEdit == null) return;
+                    final values =
+                        slice.hasRowid ? source.skip(1).toList() : source;
+                    onEdit!(
+                      slice.columns[column],
+                      rowid,
+                      column < values.length ? values[column] : null,
+                    );
+                  },
+                  onDelete: slice.hasRowid
+                      ? (index) {
+                          final source = slice.rows[index];
+                          if (source.first is! BigInt || onDelete == null) {
+                            return;
+                          }
+                          onDelete!(source.first as BigInt);
+                        }
+                      : null,
                 ),
         ),
-      ],
-    );
-  }
-
-  DataRow _row(List<Object?> row) {
-    final rowid =
-        slice.hasRowid && row.first is BigInt ? row.first as BigInt : null;
-    final values = slice.hasRowid ? row.skip(1).toList() : row;
-    return DataRow(
-      cells: [
-        for (var i = 0; i < slice.columns.length; i++)
-          DataCell(
-            Text(i < values.length ? formatCell(values[i]) : ''),
-            onTap: rowid == null || onEdit == null
-                ? null
-                : () => onEdit!(slice.columns[i], rowid, values[i]),
-          ),
-        if (slice.hasRowid)
-          DataCell(
-            IconButton(
-              tooltip: 'Delete row',
-              onPressed: rowid == null || onDelete == null
-                  ? null
-                  : () => onDelete!(rowid),
-              icon: const Icon(Icons.delete_outline),
-            ),
-          ),
       ],
     );
   }

@@ -10,12 +10,16 @@ class SchemaObject {
     required this.name,
     required this.table,
     required this.sql,
+    this.columns = const [],
   });
 
   final String type;
   final String name;
   final String table;
   final String? sql;
+
+  /// Columns for a table or view. Empty for an index or trigger.
+  final List<ColumnInfo> columns;
 }
 
 /// A column from `PRAGMA table_info`.
@@ -47,9 +51,13 @@ class TableSlice {
   final List<ColumnInfo> columns;
   final List<List<Object?>> rows;
   final bool hasRowid;
+
+  /// `-1` while a full page is still waiting for [BrowserSession.countRows].
   final int total;
   final int offset;
   final int limit;
+
+  bool get totalKnown => total >= 0;
 
   static const empty = TableSlice(
     columns: [],
@@ -89,6 +97,9 @@ class BrowserSession extends ChangeNotifier {
 
   /// A write happened since the last open or save.
   bool dirty = false;
+
+  /// Known `count(*)` values. A full page leaves this empty until [countRows].
+  final Map<String, int> _rowCounts = {};
 
   /// Schema objects, excluding `sqlite_%` names.
   List<SchemaObject> objects = const [];
@@ -133,7 +144,7 @@ class BrowserSession extends ChangeNotifier {
       final database = _required();
       final result = await _run(database, text);
       if (!result.isQuery) {
-        dirty = true;
+        _changed();
         await _loadSchema(database);
       }
       notifyListeners();
@@ -153,13 +164,17 @@ class BrowserSession extends ChangeNotifier {
         'INSERT INTO books(title, pages) VALUES (?, ?), (?, ?)',
         ['Kept Garden', 320, 'Other Atlas', 40],
       );
-      dirty = true;
+      _changed();
       await _loadSchema(database);
       notifyListeners();
     });
   }
 
   /// One page of [table]. The first value of each row is the rowid when present.
+  ///
+  /// The read uses [MutableSqliteDatabase.browse], so a full page stops after
+  /// that window. [TableSlice.total] is `-1` until the page is short or
+  /// [countRows] has run. The count is kept until the next write.
   Future<TableSlice> slice(
     String table, {
     int offset = 0,
@@ -167,34 +182,55 @@ class BrowserSession extends ChangeNotifier {
   }) {
     return _enqueue(() async {
       final database = _required();
-      final columns = await _columns(database, table);
+      final known = _knownColumns(table);
+      final columns =
+          known.isNotEmpty ? known : await _columns(database, table);
+      final quoted = quoteIdent(table);
+      final window = limit + 1;
+      QueryResult page;
+      var hasRowid = true;
+      try {
+        page = await database.browse(
+          'SELECT rowid AS _browser_rowid, * FROM $quoted LIMIT ? OFFSET ?',
+          [window, offset],
+        );
+      } on SqlException {
+        hasRowid = false;
+        page = await database.browse(
+          'SELECT * FROM $quoted LIMIT ? OFFSET ?',
+          [window, offset],
+        );
+      }
+      final more = page.rows.length > limit;
+      final rows = more ? page.rows.sublist(0, limit) : page.rows;
+      var total = _rowCounts[table];
+      if (!more) {
+        total = offset + rows.length;
+        _rowCounts[table] = total;
+      }
+      return TableSlice(
+        columns: columns,
+        rows: rows,
+        hasRowid: hasRowid,
+        total: total ?? -1,
+        offset: offset,
+        limit: limit,
+      );
+    });
+  }
+
+  /// Exact row count for [table]. Later pages reuse it until a write.
+  Future<int> countRows(String table) {
+    return _enqueue(() async {
+      final known = _rowCounts[table];
+      if (known != null) return known;
+      final database = _required();
       final counted = await database.query(
         'SELECT count(*) FROM ${quoteIdent(table)}',
       );
       final total = _asInt(counted.rows.single.single);
-      final quoted = quoteIdent(table);
-      QueryResult page;
-      var hasRowid = true;
-      try {
-        page = await database.query(
-          'SELECT rowid AS _browser_rowid, * FROM $quoted LIMIT ? OFFSET ?',
-          [limit, offset],
-        );
-      } on SqlException {
-        hasRowid = false;
-        page = await database.query(
-          'SELECT * FROM $quoted LIMIT ? OFFSET ?',
-          [limit, offset],
-        );
-      }
-      return TableSlice(
-        columns: columns,
-        rows: page.rows,
-        hasRowid: hasRowid,
-        total: total,
-        offset: offset,
-        limit: limit,
-      );
+      _rowCounts[table] = total;
+      return total;
     });
   }
 
@@ -212,7 +248,7 @@ class BrowserSession extends ChangeNotifier {
         'WHERE rowid = ?',
         [value, rowid],
       );
-      dirty = true;
+      _changed();
       notifyListeners();
     });
   }
@@ -225,7 +261,7 @@ class BrowserSession extends ChangeNotifier {
         'DELETE FROM ${quoteIdent(table)} WHERE rowid = ?',
         [rowid],
       );
-      dirty = true;
+      _changed();
       notifyListeners();
     });
   }
@@ -235,7 +271,7 @@ class BrowserSession extends ChangeNotifier {
     return _enqueue(() async {
       final database = _required();
       await database.execute('INSERT INTO ${quoteIdent(table)} DEFAULT VALUES');
-      dirty = true;
+      _changed();
       notifyListeners();
     });
   }
@@ -246,6 +282,7 @@ class BrowserSession extends ChangeNotifier {
       final previous = _database;
       _database = null;
       objects = const [];
+      _rowCounts.clear();
       await previous?.close();
       notifyListeners();
     });
@@ -256,6 +293,7 @@ class BrowserSession extends ChangeNotifier {
     _database = next;
     label = nextLabel;
     dirty = false;
+    _rowCounts.clear();
     await _loadSchema(next);
     await previous?.close();
     notifyListeners();
@@ -293,7 +331,7 @@ class BrowserSession extends ChangeNotifier {
       'SELECT type, name, tbl_name, sql FROM sqlite_schema '
       "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",
     );
-    objects = [
+    final listed = [
       for (final row in result.rows)
         SchemaObject(
           type: row[0]! as String,
@@ -302,6 +340,43 @@ class BrowserSession extends ChangeNotifier {
           sql: row[3] as String?,
         ),
     ];
+    final filled = <SchemaObject>[];
+    for (final object in listed) {
+      if (object.type != 'table' && object.type != 'view') {
+        filled.add(object);
+        continue;
+      }
+      List<ColumnInfo> columns;
+      try {
+        columns = await _columns(database, object.name);
+      } on SqlException {
+        columns = const [];
+      }
+      filled.add(SchemaObject(
+        type: object.type,
+        name: object.name,
+        table: object.table,
+        sql: object.sql,
+        columns: columns,
+      ));
+    }
+    objects = filled;
+  }
+
+  List<ColumnInfo> _knownColumns(String table) {
+    for (final object in objects) {
+      if (object.name == table &&
+          (object.type == 'table' || object.type == 'view') &&
+          object.columns.isNotEmpty) {
+        return object.columns;
+      }
+    }
+    return const [];
+  }
+
+  void _changed() {
+    dirty = true;
+    _rowCounts.clear();
   }
 
   Future<List<ColumnInfo>> _columns(

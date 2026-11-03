@@ -11,23 +11,51 @@ class BrowserApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const ink = Color(0xFF14211C);
+    const line = Color(0xFFD9E2DC);
     final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF1F6B4A),
-      surface: const Color(0xFFF3F0E8),
+      seedColor: const Color(0xFF0E7C66),
+      surface: const Color(0xFFF4F7F5),
     );
     return MaterialApp(
       title: 'sqlite_plus browser',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: scheme,
-        scaffoldBackgroundColor: const Color(0xFFF3F0E8),
+        scaffoldBackgroundColor: const Color(0xFFF4F7F5),
         useMaterial3: true,
+        visualDensity: VisualDensity.standard,
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFF3F0E8),
-          foregroundColor: Color(0xFF1B2421),
+          backgroundColor: Colors.white,
+          foregroundColor: ink,
           elevation: 0,
+          scrolledUnderElevation: 0,
+          titleTextStyle: TextStyle(
+            color: ink,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-        dividerColor: const Color(0xFFD9D3C7),
+        dividerColor: line,
+        cardTheme: const CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          margin: EdgeInsets.zero,
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF0E7C66),
+            foregroundColor: Colors.white,
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: line),
+          ),
+        ),
       ),
       home: BrowserPage(session: session),
     );
