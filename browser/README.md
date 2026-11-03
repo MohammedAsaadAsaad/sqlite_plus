@@ -19,4 +19,12 @@ The image has to be a complete rollback database. A WAL file is rejected by the 
 
 Add sample rows creates `books` and inserts Kept Garden (320 pages) and Other Atlas (40 pages).
 
-On Linux x64, Flutter 3.47.9 and Dart 3.13.7, `flutter analyze --fatal-infos` reported no issues and `flutter test` passed 6 tests: four session tests and two widget tests. The sample grid shows Kept Garden at 320 pages. A later cell edit stores 321. `flutter build linux` was not run on that machine because `gtk+-3.0` and Ninja were not installed. Android, iOS, macOS, and Windows were not launched.
+On Linux x64, Flutter 3.47.9 and Dart 3.13.7, `flutter analyze --fatal-infos` reported no issues and `flutter test` passed 6 tests: four session tests and two widget tests. The sample grid shows Kept Garden at 320 pages. A later cell edit stores 321. `flutter build linux` was not run on that machine because `gtk+-3.0` and Ninja were not installed.
+
+An arm64 release package is built with:
+
+```sh
+flutter build apk --release --target-platform android-arm64
+```
+
+The build on 3 November 2026 at 21:40 Asia/Hebron wrote `build/app/outputs/flutter-apk/app-release.apk`, 19405861 bytes, sha256 `7c09e4e709cf487d66e021caab354429547e1ff6923be124296bac11159be66d`. `aapt dump badging` reports `native-code: arm64-v8a`, versionName `1.0.0`, versionCode `1`, and package `dev.sqliteplus.sqlite_plus_browser`. A copy is `dist/sqlite-plus-browser-arm64-v8a.apk`. The repository ignores `*.apk`. The release build uses the Android debug keystore. That package was not installed on a device. iOS, macOS, and Windows were not launched.
