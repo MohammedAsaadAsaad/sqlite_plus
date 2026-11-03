@@ -31,6 +31,44 @@ void main() {
     );
   });
 
+  test('the editor formats at a boundary and leaves a prefix alone', () {
+    final prefix = liveSqlEdit('SEL', 3);
+    expect(prefix.text, 'SEL');
+    expect(prefix.cursor, 3);
+
+    final spaced = liveSqlEdit('SELECT ', 7);
+    expect(spaced.text, 'SELECT ');
+    expect(spaced.cursor, 7);
+
+    const fromText = 'SELECT title FROM ';
+    final from = liveSqlEdit(fromText, fromText.length);
+    expect(from.text, 'SELECT title\nFROM ');
+    expect(from.cursor, from.text.length);
+
+    const opened = 'CREATE TABLE events (\n';
+    final indented = liveSqlEdit(opened, opened.length);
+    expect(indented.text, endsWith('\n  '));
+    expect(indented.cursor, indented.text.length);
+
+    const typed = 'CREATE TABLE events (id INTEGER,';
+    final comma = liveSqlEdit(typed, typed.length);
+    expect(comma.text, endsWith(',\n  '));
+
+    const partial = 'CREATE TABLE events (\n  id INTEGER PRIMARY KEY';
+    final open = liveSqlEdit(partial, partial.length);
+    expect(open.text, partial);
+
+    const closed =
+        'CREATE TABLE events (id INTEGER PRIMARY KEY, category TEXT, value REAL, flag INTEGER)';
+    final formatted = liveSqlEdit(closed, closed.length);
+    expect(formatted.text, formatSql(closed));
+    expect(formatted.cursor, formatted.text.length);
+    expect(formatted.text, contains('  id INTEGER PRIMARY KEY,'));
+    final again = liveSqlEdit(formatted.text, formatted.cursor);
+    expect(again.text, formatted.text);
+    expect(again.cursor, formatted.cursor);
+  });
+
   test('words ignore quoted text', () {
     expect(sqlWords("SELECT 'INSERT' FROM books"), ['select', 'from', 'books']);
     expect(

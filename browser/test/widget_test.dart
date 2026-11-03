@@ -70,10 +70,18 @@ void main() {
     await _frames(tester);
     await tester.enterText(find.byKey(const Key('sql-input')), 'SEL');
     await _frames(tester);
+    expect(find.byKey(const Key('suggest-SELECT')), findsOneWidget);
+    await tester.tap(find.text('Statement'));
+    await _frames(tester);
+    expect(find.byKey(const Key('suggest-SELECT')), findsNothing);
+    await tester.enterText(find.byKey(const Key('sql-input')), 'SE');
+    await _frames(tester);
     await tester.tap(find.byKey(const Key('suggest-SELECT')));
     await _frames(tester);
     final field = tester.widget<TextField>(find.byKey(const Key('sql-input')));
     expect(field.controller!.text, 'SELECT ');
+    expect(field.style!.fontFamily, 'JetBrainsMono');
+    expect(field.style!.color, const Color(0x00000000));
     await _finish(tester, session);
   });
 

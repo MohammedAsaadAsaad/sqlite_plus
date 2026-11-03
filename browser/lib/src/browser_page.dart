@@ -280,7 +280,7 @@ class _BrowserPageState extends State<BrowserPage> {
 
   void _draft(String sql) {
     _sql.text = sql;
-    _sql.selection = TextSelection.collapsed(offset: sql.length);
+    _sql.selection = TextSelection.collapsed(offset: _sql.text.length);
     setState(() {
       _pane = BrowserPane.sql;
       _message = null;

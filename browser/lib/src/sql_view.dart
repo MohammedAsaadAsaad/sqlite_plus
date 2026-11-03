@@ -316,6 +316,221 @@ List<String> _splitTop(String input) {
   return parts;
 }
 
+/// Shared metrics for the code view and the SQL editor.
+const sqlCodeFont = TextStyle(
+  fontFamily: 'JetBrainsMono',
+  fontSize: 13,
+  height: 22 / 13,
+  color: Color(0xFFE7F3EE),
+);
+
+const sqlCodeStrut = StrutStyle(
+  fontFamily: 'JetBrainsMono',
+  fontSize: 13,
+  height: 22 / 13,
+  forceStrutHeight: true,
+  leadingDistribution: TextLeadingDistribution.even,
+);
+
+/// Keyword, type, string, and number colors for [source].
+List<InlineSpan> sqlHighlightSpans(String source) => _spans(source);
+
+/// The text and cursor after one live formatting step.
+class SqlEdit {
+  const SqlEdit({required this.text, required this.cursor});
+
+  final String text;
+  final int cursor;
+}
+
+const _liveClauses = {
+  'select',
+  'from',
+  'where',
+  'group',
+  'order',
+  'having',
+  'limit',
+  'offset',
+  'union',
+  'values',
+  'set',
+  'join',
+  'begin',
+  'insert',
+  'into',
+  'update',
+  'delete',
+  'create',
+  'drop',
+  'alter',
+  'and',
+  'or',
+  'on',
+  'by',
+};
+
+/// Formats only at a structural boundary so a prefix such as `SEL` stays put.
+///
+/// A newline indents by the open-paren depth. A comma inside parentheses
+/// starts a new indented line. A balanced `)` or `;` runs [formatSql]. A
+/// space after a clause keyword, when the statement is balanced, does too
+/// and keeps the trailing spaces.
+SqlEdit liveSqlEdit(String text, int cursor) {
+  final end = cursor < 0 ? text.length : cursor.clamp(0, text.length);
+  if (text.isEmpty || end == 0) return SqlEdit(text: text, cursor: end);
+  final previous = text[end - 1];
+  if (previous == '\n') return _indentAt(text, end);
+  if (previous == ',' && !_maskedAt(text, end)) {
+    final depth = _depthAt(text, end);
+    final followedByBreak = end < text.length && text[end] == '\n';
+    if (depth > 0 && !followedByBreak) {
+      final indent = '  ' * depth;
+      final next = '${text.substring(0, end)}\n$indent${text.substring(end)}';
+      return SqlEdit(text: next, cursor: end + 1 + indent.length);
+    }
+  }
+  if (text.substring(end).trim().isNotEmpty) {
+    return SqlEdit(text: text, cursor: end);
+  }
+  if (!_balanced(text)) return SqlEdit(text: text, cursor: end);
+  if (previous == ')' || previous == ';') {
+    final formatted = formatSql(text);
+    return SqlEdit(text: formatted, cursor: formatted.length);
+  }
+  if (previous == ' ') {
+    var spaceStart = end;
+    while (spaceStart > 0 && text[spaceStart - 1] == ' ') {
+      spaceStart--;
+    }
+    final word = _wordEndingAt(text, spaceStart);
+    if (word != null && _liveClauses.contains(word)) {
+      final formatted =
+          _breakFinalClause(formatSql(text.substring(0, spaceStart)));
+      final spaces = text.substring(spaceStart);
+      return SqlEdit(
+        text: '$formatted$spaces',
+        cursor: formatted.length + (end - spaceStart),
+      );
+    }
+  }
+  return SqlEdit(text: text, cursor: end);
+}
+
+String _breakFinalClause(String formatted) {
+  final lines = formatted.split('\n');
+  final words = lines.last.trimRight().split(RegExp(r'\s+'));
+  if (words.length < 2) return formatted;
+  final lastWord = words.last.toLowerCase();
+  final previous = words[words.length - 2].toLowerCase();
+  final compound = (lastWord == 'by' &&
+          (previous == 'order' || previous == 'group')) ||
+      (lastWord == 'all' && previous == 'union') ||
+      (lastWord == 'join' &&
+          (previous == 'left' || previous == 'inner' || previous == 'cross'));
+  final take = compound ? 2 : 1;
+  if (words.length <= take) return formatted;
+  final clauseWord = words[words.length - take].toLowerCase();
+  if (!_liveClauses.contains(clauseWord) && !_liveClauses.contains(lastWord)) {
+    return formatted;
+  }
+  final head = words.sublist(0, words.length - take).join(' ');
+  final clause = words.sublist(words.length - take).join(' ');
+  lines[lines.length - 1] = '$head\n$clause';
+  return lines.join('\n');
+}
+
+SqlEdit _indentAt(String text, int end) {
+  if (_maskedAt(text, end)) return SqlEdit(text: text, cursor: end);
+  final want = _depthAt(text, end) * 2;
+  var index = end;
+  while (index < text.length && text[index] == ' ') {
+    index++;
+  }
+  if (index - end == want) {
+    return SqlEdit(text: text, cursor: end + want);
+  }
+  final next = text.substring(0, end) + (' ' * want) + text.substring(index);
+  return SqlEdit(text: next, cursor: end + want);
+}
+
+String? _wordEndingAt(String text, int index) {
+  if (index <= 0 || !_wordChar(text[index - 1])) return null;
+  var start = index - 1;
+  while (start > 0 && _wordChar(text[start - 1])) {
+    start--;
+  }
+  return text.substring(start, index).toLowerCase();
+}
+
+bool _balanced(String text) {
+  final scan = _Scan(text, text.length)..run();
+  return scan.quote == null && !scan.block && scan.depth == 0;
+}
+
+int _depthAt(String text, int end) => (_Scan(text, end)..run()).depth;
+
+bool _maskedAt(String text, int end) {
+  final scan = _Scan(text, end)..run();
+  return scan.quote != null || scan.block || scan.lineComment;
+}
+
+class _Scan {
+  _Scan(this.text, this.end);
+
+  final String text;
+  final int end;
+  var depth = 0;
+  String? quote;
+  var lineComment = false;
+  var block = false;
+
+  void run() {
+    final stop = end < text.length ? end : text.length;
+    for (var i = 0; i < stop; i++) {
+      final char = text[i];
+      if (block) {
+        if (char == '*' && i + 1 < stop && text[i + 1] == '/') {
+          block = false;
+          i++;
+        }
+        continue;
+      }
+      if (lineComment) {
+        if (char == '\n') lineComment = false;
+        continue;
+      }
+      if (quote != null) {
+        if (char == quote) {
+          final doubled = i + 1 < stop && text[i + 1] == quote;
+          if (doubled) {
+            i++;
+          } else {
+            quote = null;
+          }
+        }
+        continue;
+      }
+      if (char == '-' && i + 1 < stop && text[i + 1] == '-') {
+        lineComment = true;
+        i++;
+        continue;
+      }
+      if (char == '/' && i + 1 < stop && text[i + 1] == '*') {
+        block = true;
+        i++;
+        continue;
+      }
+      if (char == "'" || char == '"') {
+        quote = char;
+        continue;
+      }
+      if (char == '(') depth++;
+      if (char == ')' && depth > 0) depth--;
+    }
+  }
+}
+
 /// A dark, monospaced view of one SQL statement.
 class SqlCodeView extends StatelessWidget {
   const SqlCodeView({super.key, required this.source});
@@ -323,12 +538,6 @@ class SqlCodeView extends StatelessWidget {
   final String source;
 
   static const _lineHeight = 22.0;
-  static const _font = TextStyle(
-    fontFamily: 'JetBrainsMono',
-    fontSize: 13,
-    height: 22 / 13,
-    color: Color(0xFFE7F3EE),
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -364,7 +573,7 @@ class SqlCodeView extends StatelessWidget {
                             child: Text(
                               '${i + 1}',
                               textAlign: TextAlign.right,
-                              style: _font.copyWith(
+                              style: sqlCodeFont.copyWith(
                                 color: const Color(0xFF6E847C),
                               ),
                             ),
@@ -373,7 +582,9 @@ class SqlCodeView extends StatelessWidget {
                     ),
                     const SizedBox(width: 16),
                     SelectableText.rich(
-                      TextSpan(style: _font, children: _spans(text)),
+                      TextSpan(
+                          style: sqlCodeFont,
+                          children: sqlHighlightSpans(text)),
                       key: const Key('sql-code'),
                     ),
                   ],

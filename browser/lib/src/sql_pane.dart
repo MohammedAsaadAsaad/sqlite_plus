@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'grid.dart';
 import 'session.dart';
 import 'sql_complete.dart';
+import 'sql_view.dart';
 
-/// One SQL statement, a popup of the next valid tokens, and its result.
+/// One SQL statement, a caret-side popup of the next tokens, and its result.
 class SqlPane extends StatefulWidget {
   const SqlPane({
     super.key,
@@ -32,14 +33,23 @@ class SqlPane extends StatefulWidget {
 }
 
 class _SqlPaneState extends State<SqlPane> {
-  final _link = LayerLink();
   final _portal = OverlayPortalController();
+  final _focus = FocusNode();
+  final _scroll = ScrollController();
+  final _textKey = GlobalKey();
+  final Object _menuGroup = Object();
+  var _applying = false;
+  var _menuOpen = false;
+  var _textWidth = 0.0;
+
+  static const _lineHeight = 22.0;
+  static const _visibleLines = 6;
 
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_changed);
-    _schedulePortal();
+    _focus.addListener(_focusChanged);
   }
 
   @override
@@ -55,22 +65,50 @@ class _SqlPaneState extends State<SqlPane> {
   @override
   void dispose() {
     widget.controller.removeListener(_changed);
+    _focus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
   void _changed() {
-    if (!mounted) return;
-    setState(() {});
+    if (!mounted || _applying) return;
+    final value = widget.controller.value;
+    final edited = liveSqlEdit(value.text, value.selection.baseOffset);
+    final cursor = edited.cursor.clamp(0, edited.text.length);
+    final textChanged = edited.text != value.text;
+    final cursorChanged =
+        value.selection.isCollapsed && value.selection.baseOffset != cursor;
+    if (textChanged || cursorChanged) {
+      _applying = true;
+      widget.controller.value = TextEditingValue(
+        text: edited.text,
+        selection: TextSelection.collapsed(offset: cursor),
+      );
+      _applying = false;
+    }
+    setState(() => _menuOpen = true);
     _schedulePortal();
+  }
+
+  void _focusChanged() {
+    if (!mounted || !_focus.hasFocus) return;
+    setState(() => _menuOpen = true);
+    _schedulePortal();
+  }
+
+  void _hideMenu() {
+    if (!_menuOpen) return;
+    setState(() => _menuOpen = false);
+    _portal.hide();
   }
 
   void _schedulePortal() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_suggestions.isEmpty) {
-        _portal.hide();
-      } else {
+      if (_menuOpen && _suggestions.isNotEmpty) {
         _portal.show();
+      } else {
+        _portal.hide();
       }
     });
   }
@@ -96,6 +134,7 @@ class _SqlPaneState extends State<SqlPane> {
         offset: completion.prefixStart + written.length,
       ),
     );
+    _focus.requestFocus();
   }
 
   @override
@@ -126,24 +165,11 @@ class _SqlPaneState extends State<SqlPane> {
           const SizedBox(height: 8),
           OverlayPortal(
             controller: _portal,
-            overlayChildBuilder: (context) => _menu(),
-            child: CompositedTransformTarget(
-              link: _link,
-              child: TextField(
-                key: const Key('sql-input'),
-                controller: widget.controller,
-                minLines: 4,
-                maxLines: 8,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 14,
-                  height: 1.45,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'SELECT title FROM books',
-                  alignLabelWithHint: true,
-                ),
-              ),
+            overlayChildBuilder: _menu,
+            child: TapRegion(
+              groupId: _menuGroup,
+              onTapOutside: (_) => _hideMenu(),
+              child: _editor(),
             ),
           ),
           const SizedBox(height: 8),
@@ -209,6 +235,128 @@ class _SqlPaneState extends State<SqlPane> {
     );
   }
 
+  Widget _editor() {
+    final text = widget.controller.text;
+    final lines = text.isEmpty ? const [''] : text.split('\n');
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF17241F),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2C3C36)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          height: 24 + _visibleLines * _lineHeight,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final measured = _measure(text);
+              final gutter = 44.0;
+              final inner = constraints.maxWidth - 24;
+              final textWidth =
+                  measured > inner - gutter ? measured : inner - gutter;
+              _textWidth = textWidth;
+              return Scrollbar(
+                controller: _scroll,
+                child: SingleChildScrollView(
+                  controller: _scroll,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _gutter(lines.length),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          key: _textKey,
+                          width: textWidth,
+                          child: Stack(
+                            children: [
+                              Text.rich(
+                                TextSpan(
+                                  style: sqlCodeFont,
+                                  children: sqlHighlightSpans(text),
+                                ),
+                                strutStyle: sqlCodeStrut,
+                              ),
+                              TextField(
+                                key: const Key('sql-input'),
+                                controller: widget.controller,
+                                focusNode: _focus,
+                                maxLines: null,
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                smartDashesType: SmartDashesType.disabled,
+                                smartQuotesType: SmartQuotesType.disabled,
+                                textCapitalization: TextCapitalization.none,
+                                style: sqlCodeFont.copyWith(
+                                  color: const Color(0x00000000),
+                                ),
+                                strutStyle: sqlCodeStrut,
+                                cursorColor: const Color(0xFF7DDBB6),
+                                cursorWidth: 1.5,
+                                decoration: InputDecoration(
+                                  isCollapsed: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  filled: false,
+                                  border: InputBorder.none,
+                                  hintText: text.isEmpty
+                                      ? 'SELECT title FROM books'
+                                      : null,
+                                  hintStyle: sqlCodeFont.copyWith(
+                                    color: const Color(0xFF6E847C),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _gutter(int count) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        for (var i = 0; i < count; i++)
+          SizedBox(
+            height: _lineHeight,
+            width: 28,
+            child: Text(
+              '${i + 1}',
+              textAlign: TextAlign.right,
+              strutStyle: sqlCodeStrut,
+              style: sqlCodeFont.copyWith(color: const Color(0xFF6E847C)),
+            ),
+          ),
+      ],
+    );
+  }
+
+  double _measure(String text) {
+    final painter = TextPainter(
+      text: TextSpan(text: text.isEmpty ? ' ' : text, style: sqlCodeFont),
+      textDirection: TextDirection.ltr,
+      strutStyle: sqlCodeStrut,
+    )..layout(maxWidth: double.infinity);
+    final width = painter.width + 24;
+    painter.dispose();
+    return width;
+  }
+
   Widget _pager(StatementResult result) {
     return Row(
       children: [
@@ -237,64 +385,113 @@ class _SqlPaneState extends State<SqlPane> {
     );
   }
 
-  Widget _menu() {
+  Widget _menu(BuildContext overlayContext) {
     final suggestions = _suggestions;
-    return CompositedTransformFollower(
-      link: _link,
-      showWhenUnlinked: false,
-      targetAnchor: Alignment.bottomLeft,
-      followerAnchor: Alignment.topLeft,
-      offset: const Offset(0, 6),
-      child: Align(
-        alignment: Alignment.topLeft,
+    final box = _textKey.currentContext?.findRenderObject() as RenderBox?;
+    final overlayObject =
+        Overlay.of(overlayContext).context.findRenderObject() as RenderBox?;
+    if (suggestions.isEmpty ||
+        box == null ||
+        !box.attached ||
+        !box.hasSize ||
+        overlayObject == null ||
+        !overlayObject.hasSize) {
+      return const SizedBox.shrink();
+    }
+    final width = _textWidth > 0 ? _textWidth : box.size.width;
+    final painter = TextPainter(
+      text: TextSpan(text: widget.controller.text, style: sqlCodeFont),
+      textDirection: Directionality.of(overlayContext),
+      strutStyle: sqlCodeStrut,
+    )..layout(maxWidth: width);
+    final rawCursor = widget.controller.selection.baseOffset;
+    final cursor = rawCursor < 0
+        ? widget.controller.text.length
+        : rawCursor.clamp(0, widget.controller.text.length);
+    final caret = painter.getOffsetForCaret(
+      TextPosition(offset: cursor),
+      const Rect.fromLTWH(0, 0, 1.5, _lineHeight),
+    );
+    painter.dispose();
+    final origin = box.localToGlobal(Offset.zero, ancestor: overlayObject);
+    const menuWidth = 236.0;
+    final menuHeight = suggestions.length * 34.0 + 8;
+    final screen = overlayObject.size;
+    final keyboard = MediaQuery.viewInsetsOf(overlayContext).bottom;
+    var left = origin.dx + caret.dx;
+    var top = origin.dy + caret.dy + _lineHeight + 4;
+    if (left + menuWidth > screen.width - 8) {
+      left = screen.width - 8 - menuWidth;
+    }
+    if (left < 8) left = 8;
+    final floor = screen.height - keyboard - 8;
+    if (top + menuHeight > floor) {
+      top = origin.dy + caret.dy - menuHeight - 4;
+    }
+    if (top < 8) top = 8;
+    return Positioned(
+      left: left,
+      top: top,
+      width: menuWidth,
+      child: TapRegion(
+        groupId: _menuGroup,
         child: Material(
-          color: Colors.white,
-          elevation: 12,
-          shadowColor: const Color(0x6614221C),
-          borderRadius: BorderRadius.circular(12),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360, maxHeight: 248),
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              shrinkWrap: true,
-              itemCount: suggestions.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final item = suggestions[index];
-                return ListTile(
-                  key: Key('suggest-${item.insert}'),
-                  dense: true,
-                  visualDensity: VisualDensity.compact,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                  leading:
-                      Icon(_icon(item.kind), size: 18, color: _tint(item.kind)),
-                  title: Text(
-                    item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: item.detail.isEmpty
-                      ? null
-                      : Text(
-                          item.detail,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+          color: const Color(0xFFFFFDFB),
+          elevation: 6,
+          shadowColor: const Color(0x3314221C),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: Color(0xFFD5E2DB)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            shrinkWrap: true,
+            itemCount: suggestions.length,
+            itemBuilder: (context, index) {
+              final item = suggestions[index];
+              return InkWell(
+                key: Key('suggest-${item.insert}'),
+                onTap: () => _apply(item),
+                child: SizedBox(
+                  height: 34,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _icon(item.kind),
+                          size: 15,
+                          color: _tint(item.kind),
                         ),
-                  trailing: Text(
-                    item.kind,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF5E736B),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'JetBrainsMono',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF14211C),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          item.kind,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF5E736B),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  onTap: () => _apply(item),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),
