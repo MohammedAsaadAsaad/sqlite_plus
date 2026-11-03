@@ -120,6 +120,7 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `DocumentField`, `path`, `@DbScalar`, `search`, `nearest`, and `bounds` out |
 | [`sqlite_plus_arabic`](packages/sqlite_plus_arabic) | FTS5 tokenizer `arabic`. `حديقة` and `الحديقة` share a token |
 | [`sqlite_plus_vec`](packages/sqlite_plus_vec) | `vec0` nearest neighbors. A full scan of float32 vectors |
+| [`browser`](browser) | Flutter browser for a database image on phone and desktop |
 
 | You want | Command |
 |---|---|
@@ -128,6 +129,7 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | The generated library | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` |
 | Arabic search | `(cd packages/sqlite_plus_arabic/example && dart run bin/main.dart)` |
 | Nearest vector | `(cd packages/sqlite_plus_vec/example && dart run bin/main.dart)` |
+| The database browser | `(cd browser && flutter run)` |
 
 ## Arabic search and a nearest vector
 
