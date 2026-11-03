@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:sqlite_plus/sqlite_plus.dart';
 
 part 'src/annotations.dart';
+part 'src/names.dart';
 part 'src/codecs.dart';
 part 'src/connection.dart';
 part 'src/errors.dart';

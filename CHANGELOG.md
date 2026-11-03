@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.5
+
+`sqlite_plus` is version `0.1.5`. `sqlite_plus_orm` is version `0.1.4`. `sqlite_plus_generator` is version `0.1.5`. `sqlite_plus_arabic` and `sqlite_plus_vec` are version `0.1.0`. This tree has not been uploaded. The pub.dev API still lists `sqlite_plus` and `sqlite_plus_orm` `0.1.3`, and `sqlite_plus_generator` `0.1.4`, as latest.
+
+`DbModules`, `DbTokenizers`, and `DbVectorMetrics` are documented `String` constants. Each annotation field stays a string, so a name that is not in the list can be written by hand. The ORM creates `fts5`, `rtree`, and `vec0`. An unknown module is rejected because the generator has to write `CREATE VIRTUAL TABLE`. An unknown tokenizer or metric identifier is kept and checked when the table is created.
+
+`sqlite_plus_arabic` registers the FTS5 tokenizer `arabic`. Diacritics and tatweel are removed. One prefix and one suffix are removed when three letters remain. `الله` stays `الله`. `حديقة` and `الحديقة` share a token. This is not the SQLite ICU Arabic tokenizer. Register `SqlitePlusArabic` before `ensureCreated` or `search`.
+
+`sqlite_plus_vec` registers `vec0`. One column holds a little-endian float32 vector. `nearest` writes `column MATCH ? AND k = ?` and scans every row. Metrics are `l2` and `cosine`. This is not a sqlite-vec file and not an approximate index. Register `SqlitePlusVec` before creating or querying the table.
+
+The generator emits `tokenizer`, `Codecs.vector`, `search`, and `nearest` from those constants. The generated part does not import either package. An application that does not import a package does not load it.
+
+On Dart 3.13.7, Linux x64, the engine suite passed 10609 tests, the ORM suite passed 188 tests, the generator suite passed 70 tests, `sqlite_plus_arabic` passed 3 tests, and `sqlite_plus_vec` passed 4 tests. `dart format` and `dart analyze --fatal-infos` passed for those packages. The Arabic example printed `في الحديقة | missed true | stable true`. The vec example printed `1.0 | stable true`. macOS, Windows, Android, iOS, and pub.dev were not run for this revision.
+
 ## 0.1.4
 
 `sqlite_plus` is version `0.1.4`. `sqlite_plus_generator` is version `0.1.4`. `sqlite_plus_orm` stays `0.1.3`.

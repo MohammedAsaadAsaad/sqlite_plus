@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.5
+
+Custom FTS tokenizers and row-storing virtual tables on Dart 3.13.7, Linux x64. 10609 tests passed.
+
+- `tokenizers.register` adds an FTS tokenizer. `unicode61`, `porter`, `trigram`, `ascii`, and `simple` cannot be replaced.
+- `VirtualTableModule.storesRows` creates a shadow table. `INSERT`, `UPDATE`, and `DELETE` write that table. `DROP` removes the shadows named by `ownedShadows`.
+- A `MATCH` handler on the statement's virtual-match board can answer a virtual table before FTS does.
+- `sqlite_plus_arabic` and `sqlite_plus_vec` use these hooks. The engine does not contain the Arabic stemmer or the vector distance math.
+
 ## 0.1.4
 
 SQLCipher 4 file codec on Dart 3.13.7, Linux x64. 10607 tests passed. An unencrypted database does not run it.

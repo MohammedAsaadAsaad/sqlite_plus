@@ -143,6 +143,15 @@ abstract class Expr {
   String? collation(EvalContext context) => explicitCollation(context);
 
   void validate(Set<String> columns) {}
+
+  /// True when this is the `MATCH` operator lowered to `match(pattern, column)`.
+  bool get isMatchCall => false;
+
+  /// The pattern of a [isMatchCall], which the parser stores first.
+  Expr? get matchPattern => null;
+
+  /// The column or table of a [isMatchCall].
+  Expr? get matchColumn => null;
 }
 
 final class Literal extends Expr {

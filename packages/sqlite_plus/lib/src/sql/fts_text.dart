@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -20,6 +21,47 @@ final class FtsToken {
 abstract class FtsTokenizer {
   String get name;
   List<FtsToken> tokenize(String text);
+}
+
+/// Builds a tokenizer from the option words that follow its name.
+typedef FtsTokenizerFactory = FtsTokenizer Function(List<String> options);
+
+/// Zone value set by a connection while one of its statements runs.
+final Object ftsTokenizerRegistryKey = Object();
+
+/// Connection-local tokenizers. Built-in names stay in [ftsTokenizer].
+final class FtsTokenizerRegistry {
+  /// Names implemented by the engine. [register] rejects them.
+  static const builtin = {
+    'porter',
+    'trigram',
+    'ascii',
+    'unicode61',
+    'simple',
+  };
+
+  final Map<String, FtsTokenizerFactory> _factories = {};
+
+  /// Replaces a previous factory for [name]. [name] is a SQL identifier.
+  void register(String name, FtsTokenizerFactory factory) {
+    final key = asciiLower(name);
+    if (name.isEmpty ||
+        name.contains('\u0000') ||
+        !RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(name)) {
+      throw ArgumentError('Invalid tokenizer name');
+    }
+    if (builtin.contains(key)) {
+      throw ArgumentError('Built-in tokenizer $name cannot be replaced');
+    }
+    _factories[key] = factory;
+  }
+
+  /// The factory for [name], or null when this registry does not own it.
+  FtsTokenizer? create(String name, List<String> options) {
+    final factory = _factories[asciiLower(name)];
+    if (factory == null) return null;
+    return factory(options);
+  }
 }
 
 const _maxTokenBytes = 32768;
@@ -463,6 +505,11 @@ int _utf8CharCountToStringIndex(String token, int chars) {
 }
 
 FtsTokenizer ftsTokenizer(String name, List<String> pairs) {
+  final registered = Zone.current[ftsTokenizerRegistryKey];
+  if (registered is FtsTokenizerRegistry) {
+    final custom = registered.create(name, pairs);
+    if (custom != null) return custom;
+  }
   final key = asciiLower(name);
   if (key == 'porter') return _porterTokenizer(pairs);
   if (key == 'trigram') return _trigramTokenizer(pairs);

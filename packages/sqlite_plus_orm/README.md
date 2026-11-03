@@ -6,7 +6,7 @@ Dart objects on `sqlite_plus`. You change a field. `saveChanges` writes one tran
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.3
+  sqlite_plus_orm: ^0.1.4
 ```
 
 ## Save two books, rename one
@@ -224,6 +224,112 @@ final large = await books.query
 
 The method takes no parameters. A getter is the same shape. The body reads mapped fields and stays synchronous. `DbContext` registers `books_twice` on the connection. A null stored in a non-nullable field makes that call null. A thrown body fails the statement. `abs`, `upper`, `lower`, `length`, `trim`, `substr`, `replace`, `round`, `coalesce`, `ifNull`, `concat`, `sign`, `floor`, `ceil`, `sqrt`, `date`, `time`, `dateTime`, `unixEpoch`, and `julianDay` are the engine, called on the column or on another call.
 
+## Names you can write by hand
+
+`module`, `tokenizer`, and `metric` are strings. The constants are the names this ORM already knows how to spell. `DbModules.fts5` and `'fts5'` are the same value. A tokenizer or a metric that is not in the list is still a string, so a package can add a name without an ORM release. A module outside `fts5`, `rtree`, and `vec0` is rejected: the generator has to write `CREATE VIRTUAL TABLE`, and it only knows those three shapes.
+
+| Constant | Value | What a row does |
+|---|---|---|
+| `DbModules.fts5` | `fts5` | Full-text table. The key is `rowid`. Other columns are text. `search('kept')` returns `alpha kept` |
+| `DbModules.rtree` | `rtree` | Rectangle table: integer key, then `minX`, `maxX`, `minY`, `maxY`. `bounds.intersects` returns the overlapping place |
+| `DbModules.vec0` | `vec0` | One `List<double>` column. `nearest` returns the closest rows |
+| `DbTokenizers.unicode61` | `unicode61` | FTS5 default when `tokenizer` is omitted. `مرحبا` stays one token and matches itself |
+| `DbTokenizers.porter` | `porter` | English stemmer. A row `running` matches `search('run')` |
+| `DbTokenizers.trigram` | `trigram` | Overlapping three-character tokens. `abcdef` matches `bcd`. A query shorter than three characters matches nothing |
+| `DbTokenizers.ascii` | `ascii` | ASCII letters and digits. This is the FTS3 and FTS4 default |
+| `DbTokenizers.simple` | `simple` | The FTS3 spelling of `ascii`. FTS5 answers `no such tokenizer: simple` |
+| `DbVectorMetrics.l2` | `l2` | Euclidean distance. `[0, 0]` to `[3, 4]` is `5`. This is the `@DbVector` default |
+| `DbVectorMetrics.cosine` | `cosine` | One minus cosine similarity. Equal vectors are `0`, orthogonal vectors are `1`, opposite vectors are `2` |
+
+`DbVectorLimits.minimumDimensions` is 1. `DbVectorLimits.maximumDimensions` and `DbVectorLimits.maximumNeighbors` are 4096. Each constant has a dartdoc comment on the declaration.
+
+`ForeignKeyAction`, `MigrationSafety`, `EntityState`, and `MigrationKind` stay enums. Their sets are closed inside the ORM and a handwritten string would not select another behavior.
+
+## Search a word
+
+```dart
+@DbEntity(module: DbModules.fts5, tokenizer: DbTokenizers.porter)
+class Article {
+  Article({this.rowid, required this.body});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  final String body;
+}
+```
+
+`ensureCreated` writes `CREATE VIRTUAL TABLE "Article" USING fts5("body", tokenize = 'porter')`. `rowid` is the key and is omitted from the `fts5(...)` list.
+
+```dart
+final articles = context.set(ArticleMapping.instance);
+articles.add(Article(body: 'running'));
+articles.add(Article(body: 'other words'));
+await context.saveChanges(); // 2
+final hit = await articles.query.search('run').single();
+```
+
+`hit.body` is `running`. Porter did the stemming. The engine already contains this tokenizer, so no extra package is registered.
+
+Arabic stemming is the string `'arabic'`. [`sqlite_plus_arabic`](../sqlite_plus_arabic) registers that name. The ORM only stores it.
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+
+@DbEntity(module: DbModules.fts5, tokenizer: ArabicTokenizers.arabic)
+class Note {
+  Note({this.rowid, required this.body});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  final String body;
+}
+```
+
+`tokenizer: 'arabic'` is the same annotation. The created SQL contains `tokenize = 'arabic'`.
+
+```dart
+SqlitePlusArabic.register(connection.database);
+await context.migrations.ensureCreated();
+final notes = context.set(NoteMapping.instance);
+notes.add(Note(body: 'في الحديقة'));
+notes.add(Note(body: 'سيارة'));
+await context.saveChanges(); // 2
+final garden = await notes.query.search('الحديقة').single();
+final missed = await notes.query.search('كتاب').toList();
+```
+
+`garden.body` is `في الحديقة`. `الحديقة` and `حديقة` share a token. `missed` is empty. Register before `ensureCreated`. Without that call the create fails with `no such tokenizer: arabic`. A later `plan()` is empty while the stored virtual SQL still matches. The Arabic package page lists the prefix and suffix rules, including why `الله` stays `الله`.
+
+## Find the nearest vector
+
+```dart
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+@DbEntity(module: DbModules.vec0)
+class Point {
+  Point({this.rowid, required this.embedding});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  @DbVector(4, metric: DbVectorMetrics.cosine)
+  final List<double> embedding;
+}
+```
+
+`@DbVector(4)` without `metric` uses `DbVectorMetrics.l2`. The created SQL for the class above is `CREATE VIRTUAL TABLE "Point" USING vec0("embedding" float[4] distance_metric=cosine)`. `Codecs.vector(4)` stores little-endian float32 and rejects a list of another length.
+
+```dart
+SqlitePlusVec.register(connection.database);
+await context.migrations.ensureCreated();
+final points = context.set(PointMapping.instance);
+points.add(Point(embedding: const [1, 0, 0, 0]));
+points.add(Point(embedding: const [0, 1, 0, 0]));
+await context.saveChanges(); // 2
+final nearest =
+    await points.query.nearest(const [0.8, 0.2, 0, 0], k: 1).single();
+```
+
+`nearest.embedding[0]` is greater than `0.5`. The query is `"embedding" MATCH ? AND "k" = ?`, ordered by `distance`. The scan reads both rows. [`sqlite_plus_vec`](../sqlite_plus_vec) owns the distance. This ORM writes the SQL and checks the list length. `nearest(const [1, 0], k: 1)` throws `OrmCodecException`. `k: 0` throws `RangeError`. `k` above 4096 throws `RangeError` as well.
+
+`module: 'vec9'` is rejected while the model is built. `metric: 'hamming'` is accepted as an identifier and `vec0` rejects it at `CREATE` with `vec0: unknown distance metric`. A column named `distance` or `k` on a `vec0` entity is rejected, because those names are the hidden query columns.
+
 ## The other packages
 
 [`sqlite_plus`](../sqlite_plus) is the engine. The same connection answers SQL directly.
@@ -235,7 +341,7 @@ final rows = await connection.database.query(
 );
 ```
 
-[`sqlite_plus_generator`](../sqlite_plus_generator) writes `twice()` on the query row from the class above.
+[`sqlite_plus_arabic`](../sqlite_plus_arabic) registers `arabic` and documents the stem of `حديقة`, `كتابه`, and `الله`. [`sqlite_plus_vec`](../sqlite_plus_vec) registers `vec0`, encodes float32, and answers `MATCH` with `k`. [`sqlite_plus_generator`](../sqlite_plus_generator) writes `twice()`, `search`, and `nearest` from the class. The generated part does not import the two extension packages. Call `register` on the connection yourself.
 
 ```sh
 dart run sqlite_plus_generator
@@ -260,6 +366,6 @@ From the package root this writes a part for every public `@DbEntity` and writes
 | Unique index | `apply` with approval. Duplicates roll the save back |
 | Rename, drop, type change, required column | You write the SQL, then approve that plan |
 | Down | The reverse statement, after the model points at the old shape |
-| Second `plan()` | Empty when the stored schema matches, including FTS5 and R-tree |
+| Second `plan()` | Empty when the stored schema matches, including FTS5, R-tree, and vec0 |
 
 One object per key lives in the context. `saveChanges` freezes values before the first await and publishes generated keys after commit. A stale revision aborts the whole save. `count` returns `BigInt`.

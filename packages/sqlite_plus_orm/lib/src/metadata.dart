@@ -28,8 +28,15 @@ final class Column<T, V> {
       this.generated = false,
       this.version = false,
       this.defaultSql,
-      this.unique = false})
-      : sqlName = name ?? property {
+      this.unique = false,
+      this.vectorDimensions,
+      String? vectorMetric})
+      : sqlName = name ?? property,
+        vectorMetric = vectorDimensions == null
+            ? null
+            : (vectorMetric == null || vectorMetric.isEmpty
+                ? DbVectorMetrics.l2
+                : vectorMetric) {
     _ormValidateName(property);
     _ormValidateName(sqlName);
     if (!['INTEGER', 'REAL', 'TEXT', 'BLOB'].contains(codec.sqlType)) {
@@ -46,6 +53,19 @@ final class Column<T, V> {
         (defaultSql!.trim().isEmpty || defaultSql!.contains('\u0000'))) {
       throw const OrmMappingException(
           'Default SQL must be nonempty without NUL');
+    }
+    if (vectorDimensions != null &&
+        (vectorDimensions! < DbVectorLimits.minimumDimensions ||
+            vectorDimensions! > DbVectorLimits.maximumDimensions ||
+            codec.sqlType != 'BLOB' ||
+            keyOrder != null ||
+            generated ||
+            version ||
+            unique ||
+            defaultSql != null ||
+            !_ormIdentifier(this.vectorMetric!))) {
+      throw const OrmMappingException(
+          'A vector column is one BLOB float[N] with an identifier metric');
     }
   }
 
@@ -78,6 +98,12 @@ final class Column<T, V> {
 
   /// Whether the column is declared `UNIQUE`.
   final bool unique;
+
+  /// `float[N]` for a vec0 column, or null for every other column.
+  final int? vectorDimensions;
+
+  /// [DbVectorMetrics] name for [vectorDimensions], or null.
+  final String? vectorMetric;
 
   /// Whether the codec accepts SQL `NULL`.
   bool get nullable => codec.nullable;
@@ -223,6 +249,7 @@ final class EntityType<T> {
       required this.create,
       this.applyStoreValues,
       this.virtualModule,
+      this.tokenizer,
       List<OrmIndex<T>> indexes = const [],
       List<EntityScalar<T>> scalars = const []})
       : columns = List.unmodifiable(columns),
@@ -293,8 +320,19 @@ final class EntityType<T> {
   /// SQL table name.
   final String tableName;
 
-  /// `fts5`, `rtree`, or null for an ordinary table.
+  /// [DbModules.fts5], [DbModules.rtree], [DbModules.vec0], or null.
   final String? virtualModule;
+
+  /// FTS5 tokenizer name. See [DbTokenizers]. Null uses the engine default.
+  final String? tokenizer;
+
+  /// The vec0 column, or null when this table has none.
+  Column<T, dynamic>? get vectorColumn {
+    final columnsWithVectors =
+        columns.where((column) => column.vectorDimensions != null).toList();
+    if (columnsWithVectors.length != 1) return null;
+    return columnsWithVectors.single;
+  }
 
   /// Mapped columns, including keys.
   final List<Column<T, dynamic>> columns;
@@ -343,9 +381,25 @@ final class EntityType<T> {
 
   void _validateVirtualModule() {
     final module = virtualModule;
-    if (module == null) return;
-    if (module != 'fts5' && module != 'rtree') {
-      throw const OrmMappingException('Virtual module must be fts5 or rtree');
+    final vectors =
+        columns.where((column) => column.vectorDimensions != null).toList();
+    if (module == null) {
+      if (tokenizer != null || vectors.isNotEmpty) {
+        throw const OrmMappingException(
+            'A tokenizer or vector column needs fts5 or vec0');
+      }
+      return;
+    }
+    if (module != DbModules.fts5 &&
+        module != DbModules.rtree &&
+        module != DbModules.vec0) {
+      throw const OrmMappingException(
+          'Virtual module must be fts5, rtree, or vec0');
+    }
+    if (tokenizer != null &&
+        (module != DbModules.fts5 || !_ormIdentifier(tokenizer!))) {
+      throw const OrmMappingException(
+          'tokenizer is an identifier on an fts5 table');
     }
     if (indexes.isNotEmpty || versionColumn != null) {
       throw const OrmMappingException(
@@ -355,19 +409,35 @@ final class EntityType<T> {
       throw const OrmMappingException(
           'A virtual table cannot map unique or default constraints');
     }
-    if (module == 'fts5') {
+    if (module == DbModules.fts5) {
       final content = columns.where((column) => column.keyOrder == null);
       if (keys.length != 1 ||
           _ormAsciiLower(keys.single.sqlName) != 'rowid' ||
           content.isEmpty ||
+          vectors.isNotEmpty ||
           content.any((column) => column.codec.sqlType != 'TEXT')) {
         throw const OrmMappingException(
             'fts5 needs one rowid key and one or more TEXT columns');
       }
       return;
     }
+    if (module == DbModules.vec0) {
+      final content = columns.where((column) => column.keyOrder == null);
+      if (tokenizer != null ||
+          keys.length != 1 ||
+          _ormAsciiLower(keys.single.sqlName) != 'rowid' ||
+          content.length != 1 ||
+          vectors.length != 1 ||
+          !identical(content.single, vectors.single)) {
+        throw const OrmMappingException(
+            'vec0 needs one rowid key and one vector column');
+      }
+      return;
+    }
     final coordinates = columns.skip(1).toList();
     if (generatedKey != null ||
+        tokenizer != null ||
+        vectors.isNotEmpty ||
         keys.length != 1 ||
         !identical(columns.first, keys.single) ||
         keys.single.codec.sqlType != 'INTEGER' ||
@@ -380,6 +450,9 @@ final class EntityType<T> {
     }
   }
 }
+
+bool _ormIdentifier(String value) =>
+    RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(value);
 
 /// SQL action for a foreign-key delete or update.
 enum ForeignKeyAction { noAction, restrict, cascade, setNull, setDefault }

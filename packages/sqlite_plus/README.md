@@ -6,7 +6,7 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.4
+  sqlite_plus: ^0.1.5
 ```
 
 ## A table, a row, a query
@@ -165,9 +165,51 @@ The file size is taken before close, so it still includes the redo.
 | Schema | Tables, indexes, views, triggers, `ALTER TABLE`, `CHECK`, `STRICT`, foreign keys, generated columns |
 | JSON | `json` `jsonb` `json_pretty` `json_extract` `json_object` `json_set` `json_patch`, `->` `->>` |
 | Search | FTS5 and contentless FTS4 `MATCH`, `highlight` `snippet` `bm25`, R-tree, geopoly |
-| Your code | `registerScalar`, `registerAggregate`, `createCollation` |
+| Your code | `registerScalar`, `registerAggregate`, `createCollation`, `tokenizers.register` |
 
-`registerScalar` stays on that connection. `deterministic: true` allows it inside a schema expression. `registerAggregate` builds a fresh aggregate per group. `createCollation` sits beside `BINARY`, `NOCASE`, and `RTRIM`.
+`registerScalar` stays on that connection. `deterministic: true` allows it inside a schema expression. `registerAggregate` builds a fresh aggregate per group. `createCollation` sits beside `BINARY`, `NOCASE`, and `RTRIM`. `tokenizers.register` adds an FTS tokenizer name. The built-in names `unicode61`, `porter`, `trigram`, `ascii`, and `simple` stay fixed.
+
+## Arabic search and vectors
+
+[`sqlite_plus_arabic`](../sqlite_plus_arabic) registers the tokenizer `arabic`. [`sqlite_plus_vec`](../sqlite_plus_vec) registers the module `vec0`. Both stay out of an application that does not import them. Register each one before `CREATE`, and register it again after `fromImage`, because the registry belongs to the connection.
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+SqlitePlusArabic.register(db);
+await db.execute(
+  "CREATE VIRTUAL TABLE docs USING fts5(body, tokenize = 'arabic')",
+);
+await db.execute(
+  'INSERT INTO docs(body) VALUES (?), (?)',
+  ['في الحديقة', 'سيارة'],
+);
+final garden = await db.query(
+  "SELECT body FROM docs WHERE docs MATCH 'حديقة'",
+);
+
+SqlitePlusVec.register(db);
+await db.execute(
+  'CREATE VIRTUAL TABLE items USING vec0(embedding float[2] distance_metric=l2)',
+);
+await db.execute(
+  'INSERT INTO items(rowid, embedding) VALUES (1, ?), (2, ?)',
+  [encodeVec(const [1, 0]), encodeVec(const [0, 1])],
+);
+final near = await db.query(
+  'SELECT rowid FROM items WHERE embedding MATCH ? AND k = 1',
+  [encodeVec(const [0.9, 0.1])],
+);
+```
+
+`garden` is `في الحديقة`. `حديقة`, `الحديقة`, and `بالحديقة` share one token. `MATCH 'كتاب'` on those two rows is empty. `الله` stays `الله`. The stemmer removes one prefix and one suffix when three letters remain. SQLite ICU Arabic is a different tokenizer. The package page lists every fold.
+
+`near` is row `1`. That row holds `[1, 0]`, which is closer to `[0.9, 0.1]` than `[0, 1]` is. `k` is required with `MATCH`. The scan reads every stored vector. The bytes live in the shadow table `items_vec`. A sqlite-vec file is a different format. `l2` is Euclidean distance. `cosine` runs from 0 to 2.
+
+`tokenizers.register` is the same hook the Arabic package uses. A built-in name such as `unicode61` cannot be replaced. `virtualTables.register` is the hook `vec0` uses. A module can set `storesRows` and name its shadow columns. The engine then writes `INSERT`, `UPDATE`, and `DELETE` to that shadow.
+
+[`sqlite_plus_orm`](../sqlite_plus_orm) turns the same two shapes into `search` and `nearest`. The constants are `DbModules.fts5`, `ArabicTokenizers.arabic`, `DbModules.vec0`, and `DbVectorMetrics.l2`. Each constant is a `String`, so `'fts5'` and `'arabic'` are the same text written by hand. [`sqlite_plus_generator`](../sqlite_plus_generator) emits those strings. The generated part does not import the two packages. The application still calls `register`.
 
 ## The other packages
 

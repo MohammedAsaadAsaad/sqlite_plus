@@ -6,12 +6,16 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.4
-  sqlite_plus_orm: ^0.1.3
+  sqlite_plus: ^0.1.5
+  sqlite_plus_orm: ^0.1.4
+  sqlite_plus_arabic: ^0.1.0
+  sqlite_plus_vec: ^0.1.0
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.3
+  sqlite_plus_generator: ^0.1.5
 ```
+
+`sqlite_plus_arabic` and `sqlite_plus_vec` are optional. Leave them out of an application that does not search Arabic text and does not compare vectors.
 
 ## Query
 
@@ -102,14 +106,81 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | Package | Start here |
 |---|---|
 | [`sqlite_plus`](packages/sqlite_plus) | SQL, JSON, FTS5, R-tree, `abs`, `exportImage`, SQLCipher 4 |
-| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Saves, revisions, `row.twice()`, migrations |
-| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `filter`, `path`, `@DbScalar`, `search`, and `bounds` out |
+| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Saves, revisions, `row.twice()`, `DbModules`, migrations |
+| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `filter`, `path`, `@DbScalar`, `search`, `nearest`, and `bounds` out |
+| [`sqlite_plus_arabic`](packages/sqlite_plus_arabic) | FTS5 tokenizer `arabic`. `حديقة` and `الحديقة` share a token |
+| [`sqlite_plus_vec`](packages/sqlite_plus_vec) | `vec0` nearest neighbors. A full scan of float32 vectors |
 
 | You want | Command |
 |---|---|
 | The engine tour | `(cd packages/sqlite_plus/example && dart run bin/main.dart)` |
 | The reading log | `(cd packages/sqlite_plus_orm/example && dart run bin/main.dart)` |
 | The generated library | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` |
+| Arabic search | `(cd packages/sqlite_plus_arabic/example && dart run bin/main.dart)` |
+| Nearest vector | `(cd packages/sqlite_plus_vec/example && dart run bin/main.dart)` |
+
+## Arabic search and a nearest vector
+
+The closed names are `String` constants on [`sqlite_plus_orm`](packages/sqlite_plus_orm). `DbModules.fts5` and `'fts5'` are the same value, so a name that is not in the list can still be written by hand. The ORM creates `fts5`, `rtree`, and `vec0`. A tokenizer such as `'arabic'` is kept as text and checked when the table is created.
+
+[`sqlite_plus_arabic`](packages/sqlite_plus_arabic) registers the stemmer. [`sqlite_plus`](packages/sqlite_plus) stores the FTS5 index. The generator writes `search`. The generated part does not import the Arabic package.
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity(module: DbModules.fts5, tokenizer: ArabicTokenizers.arabic)
+class Note {
+  Note({this.rowid, required this.body});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  final String body;
+}
+
+SqlitePlusArabic.register(connection.database);
+await context.migrations.ensureCreated();
+notes.add(Note(body: 'في الحديقة'));
+notes.add(Note(body: 'سيارة'));
+await context.saveChanges(); // 2
+final garden = await notes.query.search('الحديقة').single();
+```
+
+`garden.body` is `في الحديقة`. `حديقة` and `الحديقة` share a token. `search('سيارة')` returns no row. The created SQL contains `tokenize = 'arabic'`. The Arabic README lists the folds, the prefixes, and why `الله` stays `الله`.
+
+[`sqlite_plus_vec`](packages/sqlite_plus_vec) registers `vec0`. The ORM writes `float[N]` and `nearest`. The scan reads every stored float32 vector.
+
+```dart
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+@DbEntity(module: DbModules.vec0)
+class Point {
+  Point({this.rowid, required this.embedding});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  @DbVector(2, metric: DbVectorMetrics.l2)
+  final List<double> embedding;
+}
+
+SqlitePlusVec.register(connection.database);
+await context.migrations.ensureCreated();
+points.add(Point(embedding: const [1, 0]));
+points.add(Point(embedding: const [0, 1]));
+await context.saveChanges(); // 2
+final nearest = await points.query.nearest(const [0.9, 0.1], k: 1).single();
+```
+
+`nearest.embedding` is `[1.0, 0.0]`. `[0.9, 0.1]` is closer to that row than to `[0, 1]`. The created SQL contains `float[2] distance_metric=l2`. `l2` is Euclidean distance. `DbVectorMetrics.cosine` runs from 0 to 2. The vec README shows `k = 2`, the shadow table, and the same query in SQL.
+
+Register each package before `ensureCreated`, and register it again after the image is reopened. [`sqlite_plus_generator`](packages/sqlite_plus_generator) emits `tokenizer: "arabic"`, `Codecs.vector(2)`, `search`, and `nearest` from the classes above.
+
+The two examples print:
+
+```text
+في الحديقة | missed true | stable true
+1.0 | stable true
+```
+
+The first line is the Arabic note, a miss on `سيارة`, and an empty second migration plan. The second line is the first coordinate of the nearer vector, and an empty second plan.
 
 ## SQL
 
@@ -126,7 +197,7 @@ Packages require Dart >=3.6.0. From the repository root:
 ```sh
 dart pub get --enforce-lockfile
 dart format .
-for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator; do
+for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator sqlite_plus_arabic sqlite_plus_vec; do
   (cd packages/$package && dart analyze --fatal-infos && dart test) || exit
 done
 ```

@@ -28,6 +28,16 @@ final class FunctionExpr extends Expr {
 
   bool _signatureResolved = false;
   final bool deferValidation;
+
+  @override
+  bool get isMatchCall => key == 'match' && arguments.length >= 2;
+
+  @override
+  Expr? get matchPattern => isMatchCall ? arguments[0] : null;
+
+  @override
+  Expr? get matchColumn => isMatchCall ? arguments[1] : null;
+
   void resolveSignature() => _resolveSignature();
   void _resolveSignature() {
     if (_signatureResolved) return;
@@ -291,13 +301,22 @@ final class FunctionExpr extends Expr {
       final pattern = arguments[0].evaluate(context);
       if (arguments.length > 1) arguments[1].evaluate(context);
       if (arguments.length > 2) arguments[2].evaluate(context);
+      final columnExpr = arguments.length > 1 && arguments[1] is ColumnExpr
+          ? arguments[1] as ColumnExpr
+          : null;
+      final board = VirtualMatchBoard.current;
+      if (board != null) {
+        for (final handler in board.handlers) {
+          final answer = handler(columnExpr?.qualifier, columnExpr?.name,
+              pattern, context.row['rowid']);
+          if (answer != null) return answer;
+        }
+      }
       if (ftsSession().tables.isEmpty) {
         throw const SqlException(
             'Unable to use function MATCH in the requested context');
       }
-      final column =
-          arguments[1] is ColumnExpr ? (arguments[1] as ColumnExpr).name : null;
-      return ftsMatchValue(column, pattern, context.row['rowid']);
+      return ftsMatchValue(columnExpr?.name, pattern, context.row['rowid']);
     }
     final collation = arguments
         .map((arg) => arg.collation(context))
