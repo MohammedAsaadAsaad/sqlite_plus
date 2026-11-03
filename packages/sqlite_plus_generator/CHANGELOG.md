@@ -4,6 +4,7 @@
 
 Depends on `sqlite_plus_orm` 0.1.4.
 
+- `@DbDocument()` emits `Codecs.document` and a `DocumentField`. The call is `row.card.path(r'$.title')`. `fromJson(Map<String, Object?>)` is passed through. `fromJson(Map<String, dynamic>)` is wrapped. A `String` field, a key, a version, a virtual table, or a missing `fromJson` or `toJson` is reported before any file is written.
 - `module: DbModules.fts5` and `module: 'fts5'` both emit `search`. `tokenizer: DbTokenizers.porter` and `tokenizer: 'arabic'` both emit `tokenize = '...'`.
 - `module: DbModules.vec0` with `@DbVector(n, metric: DbVectorMetrics.cosine)` emits `Codecs.vector(n)`, `vectorMetric: "cosine"`, and `nearest`.
 - The generated part does not import `sqlite_plus_arabic` or `sqlite_plus_vec`.

@@ -211,9 +211,84 @@ final near = await db.query(
 
 [`sqlite_plus_orm`](../sqlite_plus_orm) turns the same two shapes into `search` and `nearest`. The constants are `DbModules.fts5`, `ArabicTokenizers.arabic`, `DbModules.vec0`, and `DbVectorMetrics.l2`. Each constant is a `String`, so `'fts5'` and `'arabic'` are the same text written by hand. [`sqlite_plus_generator`](../sqlite_plus_generator) emits those strings. The generated part does not import the two packages. The application still calls `register`.
 
-## The other packages
+## Packages built on this engine
 
-[`sqlite_plus_orm`](../sqlite_plus_orm) tracks the objects. A method on the class is a query.
+| Package | What the application gets |
+|---|---|
+| [`sqlite_plus_orm`](../sqlite_plus_orm) | Objects, revisions, a typed JSON document, and reviewed migrations |
+| [`sqlite_plus_generator`](../sqlite_plus_generator) | The mapping, `filter`, and `row.card.path` from the class |
+| [`sqlite_plus_arabic`](../sqlite_plus_arabic) | The FTS5 tokenizer `arabic` for a reading note written in Arabic |
+| [`sqlite_plus_vec`](../sqlite_plus_vec) | `vec0`, so a note can be found by the nearest embedding |
+
+An application loads a package when it imports it. Arabic and vec stay out of a project that only stores rows.
+
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.5
+  sqlite_plus_orm: ^0.1.4
+  sqlite_plus_arabic: ^0.1.0
+  sqlite_plus_vec: ^0.1.0
+
+dev_dependencies:
+  sqlite_plus_generator: ^0.1.5
+```
+
+### A reading card
+
+[`sqlite_plus_orm`](../sqlite_plus_orm) keeps one object in a `TEXT` column. `@DbDocument()` calls `toJson` on save and `fromJson` on the rows a query returns. The filter stays SQL: `json_extract` with a bound path. The other rows stay stored text.
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity(table: 'notes')
+class Note {
+  Note({this.id, required this.card, this.revision = 0});
+
+  final BigInt? id;
+  @DbDocument()
+  Card card;
+  @DbVersion()
+  int revision;
+}
+
+class Card {
+  Card({required this.title, required this.pages});
+
+  final String title;
+  final int pages;
+
+  Map<String, Object?> toJson() => {'title': title, 'pages': pages};
+
+  factory Card.fromJson(Map<String, Object?> json) => Card(
+    title: json['title']! as String,
+    pages: json['pages']! as int,
+  );
+}
+```
+
+```dart
+final notes = context.set(NoteMapping.instance);
+notes.add(Note(card: Card(title: 'Kept Garden', pages: 320)));
+notes.add(Note(card: Card(title: 'Other Atlas', pages: 40)));
+await context.saveChanges();
+final kept = await notes.query
+    .filter((row) => row.card.path(r'$.title').equalTo('Kept Garden'))
+    .single();
+```
+
+`kept.card.pages` is 320. The SQL is `json_extract("card", ?) = ?`, and the parameters are `$.title` and `Kept Garden`. `Other Atlas` is not decoded. A `String` column still uses `@DbJson`.
+
+```dart
+kept.card = Card(title: 'Kept Garden', pages: 321);
+await context.saveChanges();
+final revised = await notes.query
+    .filter((row) => row.card.path(r'$.title').equalTo('Kept Garden'))
+    .single();
+```
+
+`revised.card.pages` is 321 and `revised.revision` is 1. The other note stays at revision 0. The next read shows that revision, because a final `id` is replaced when the store writes the key back.
+
+A method on the class is a query too. `twice` reads `revision`. `upper` is this engine.
 
 ```dart
 @DbScalar()
@@ -224,13 +299,68 @@ final large = await books.query
     .toList();
 ```
 
-`twice` reads `revision`. `upper` is this engine. [`sqlite_plus_generator`](../sqlite_plus_generator) writes `twice()` from that method.
+### The generator writes the mapping
+
+[`sqlite_plus_generator`](../sqlite_plus_generator) reads the class and writes the part. From the package root:
 
 ```sh
 dart run sqlite_plus_generator
 ```
 
-From the package root this writes a part for every public `@DbEntity` and writes `lib/sqlite_plus_migrations.g.dart`. One library is still `dart run sqlite_plus_generator --input lib/models.dart`.
+For the card above the part contains `DocumentField(NoteColumns.card)` and, on that column, `Codecs.document(Card.fromJson, (value) => value.toJson())`. `row.card.path` is that field. The part does not import `sqlite_plus_arabic` or `sqlite_plus_vec`. One library is still `dart run sqlite_plus_generator --input lib/models.dart`. The same run writes `lib/sqlite_plus_migrations.g.dart` for `ensureCreated`.
+
+### Arabic words in the note
+
+[`sqlite_plus_arabic`](../sqlite_plus_arabic) registers the tokenizer `arabic`. The SQL sample above inserts `في الحديقة` and `سيارة`, then `MATCH 'حديقة'` returns `في الحديقة`. `حديقة`, `الحديقة`, and `بالحديقة` share one token. `MATCH 'كتاب'` on those two rows is empty. `الله` stays `الله`. The stemmer removes one prefix and one suffix when three letters remain. This is not the SQLite ICU Arabic tokenizer.
+
+The same table from the ORM:
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+
+@DbEntity(module: DbModules.fts5, tokenizer: ArabicTokenizers.arabic)
+class Passage {
+  Passage({this.rowid, required this.body});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  final String body;
+}
+
+SqlitePlusArabic.register(connection.database);
+await context.migrations.ensureCreated();
+passages.add(Passage(body: 'في الحديقة'));
+passages.add(Passage(body: 'سيارة'));
+await context.saveChanges(); // 2
+final garden = await passages.query.search('الحديقة').single();
+```
+
+`garden.body` is `في الحديقة`. The created SQL contains `tokenize = 'arabic'`. Register before `ensureCreated`, and register again after `fromImage`. Without that call, create fails with `no such tokenizer: arabic`.
+
+### The nearest note
+
+[`sqlite_plus_vec`](../sqlite_plus_vec) registers `vec0`. The SQL sample above stores `[1, 0]` and `[0, 1]`, and `k = 1` against `[0.9, 0.1]` returns row 1. The scan reads every stored vector. The bytes live in the shadow table `items_vec`. A sqlite-vec file is a different format.
+
+```dart
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+@DbEntity(module: DbModules.vec0)
+class Neighbor {
+  Neighbor({this.rowid, required this.embedding});
+  @DbKey(generated: true)
+  final BigInt? rowid;
+  @DbVector(2, metric: DbVectorMetrics.l2)
+  final List<double> embedding;
+}
+
+SqlitePlusVec.register(connection.database);
+await context.migrations.ensureCreated();
+neighbors.add(Neighbor(embedding: const [1, 0]));
+neighbors.add(Neighbor(embedding: const [0, 1]));
+await context.saveChanges(); // 2
+final near = await neighbors.query.nearest(const [0.9, 0.1], k: 1).single();
+```
+
+`near.embedding` is `[1.0, 0.0]`. `[0.9, 0.1]` is closer to that row than to `[0, 1]`. The created SQL contains `float[2] distance_metric=l2`. `l2` is Euclidean distance. `cosine` runs from 0 to 2. `k` is required. Register before `ensureCreated`, and register again after the image is reopened.
 
 `openInMemory` is `MutableSqliteDatabase.create`. `exportImage` is the byte image a file can hold. `openBrowserStorage` reports `canRead`, `canWrite`, `durabilityPromised`, and `placement`.
 

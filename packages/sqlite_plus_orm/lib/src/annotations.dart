@@ -62,6 +62,17 @@ class DbJson {
   const DbJson();
 }
 
+/// Stores one object as a JSON object in a TEXT column.
+///
+/// The class provides `fromJson(Map<String, Object?>)` or
+/// `fromJson(Map<String, dynamic>)`, and `toJson()` returning a map.
+/// A [String] field stays [@DbJson]. The query reads a nested value with
+/// `row.field.path(r'$.title')`.
+class DbDocument {
+  /// Marks the annotated field as one JSON object.
+  const DbDocument();
+}
+
 /// Overrides the SQL column derived from a field.
 class DbColumn {
   /// [name] is the SQL column. [defaultSql] is emitted as a column default.

@@ -738,6 +738,12 @@ List<MigrationOperation> _tableDifferences(
   return problems;
 }
 
+bool _migrationDocument(Column<dynamic, dynamic> column) {
+  final codec = column.codec;
+  if (codec is _NullableCodec) return codec.wrapped is _DocumentCodec;
+  return codec is _DocumentCodec;
+}
+
 String _modelSchema(DbModel model) => jsonEncode({
       'tables': [
         for (final entity in [...model.entities]..sort((left, right) =>
@@ -757,6 +763,7 @@ String _modelSchema(DbModel model) => jsonEncode({
                   'generated': column.generated,
                   'default': _migrationDefault(column.defaultSql),
                   'unique': column.unique,
+                  if (_migrationDocument(column)) 'document': true,
                   if (column.vectorDimensions != null)
                     'vector': column.vectorDimensions,
                   if (column.vectorMetric != null)

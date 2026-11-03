@@ -15,7 +15,7 @@ dev_dependencies:
   sqlite_plus_generator: ^0.1.5
 ```
 
-`sqlite_plus_arabic` and `sqlite_plus_vec` are optional. Leave them out of an application that does not search Arabic text and does not compare vectors.
+`sqlite_plus_arabic` and `sqlite_plus_vec` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer and `sqlite_plus_vec` for a vector column. A package is loaded when the application imports it.
 
 ## Query
 
@@ -69,6 +69,16 @@ final expensive = await purchases.query
 
 `abs` is the engine, called on the column. A method marked `@DbScalar()` is called the same way: `row.twice() > 20` reads `revision` from the model and runs that body for each row.
 
+`@DbDocument()` stores one object as JSON text. The class supplies `toJson` and `fromJson`. The query reads a nested value, and only the returned rows are decoded.
+
+```dart
+final kept = await notes.query
+    .filter((row) => row.card.path(r'$.title').equalTo('Kept Garden'))
+    .single();
+```
+
+`kept.card.pages` is 320. The SQL is `json_extract("card", ?) = ?`. The ORM page shows the class and the revision that follows a later save.
+
 `ensureCreated` builds the table. A later nullable field is `plan()` then `applySafe()`. A rename or a drop is a statement you write and approve. The reverse statement is the down migration.
 
 ```sh
@@ -106,8 +116,8 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | Package | Start here |
 |---|---|
 | [`sqlite_plus`](packages/sqlite_plus) | SQL, JSON, FTS5, R-tree, `abs`, `exportImage`, SQLCipher 4 |
-| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Saves, revisions, `row.twice()`, `DbModules`, migrations |
-| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `filter`, `path`, `@DbScalar`, `search`, `nearest`, and `bounds` out |
+| [`sqlite_plus_orm`](packages/sqlite_plus_orm) | Saves, revisions, `@DbDocument`, `row.twice()`, `DbModules`, migrations |
+| [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `DocumentField`, `path`, `@DbScalar`, `search`, `nearest`, and `bounds` out |
 | [`sqlite_plus_arabic`](packages/sqlite_plus_arabic) | FTS5 tokenizer `arabic`. `حديقة` and `الحديقة` share a token |
 | [`sqlite_plus_vec`](packages/sqlite_plus_vec) | `vec0` nearest neighbors. A full scan of float32 vectors |
 

@@ -165,6 +165,56 @@ final north = await notes.query
     .toList();
 ```
 
+`@DbDocument()` stores one object in that same kind of TEXT column. The class writes `toJson` and `fromJson`. The filter reads one value with `path`, and `fromJson` runs for the rows that come back.
+
+```dart
+@DbEntity(table: 'notes')
+class Note {
+  Note({this.id, required this.card, this.revision = 0});
+
+  final BigInt? id;
+  @DbDocument()
+  Card card;
+  @DbVersion()
+  int revision;
+}
+
+class Card {
+  Card({required this.title, required this.pages});
+  final String title;
+  final int pages;
+
+  Map<String, Object?> toJson() => {'title': title, 'pages': pages};
+
+  factory Card.fromJson(Map<String, Object?> json) => Card(
+    title: json['title']! as String,
+    pages: json['pages']! as int,
+  );
+}
+```
+
+```dart
+final notes = context.set(NoteMapping.instance);
+notes.add(Note(card: Card(title: 'Kept Garden', pages: 320)));
+notes.add(Note(card: Card(title: 'Other Atlas', pages: 40)));
+await context.saveChanges();
+final kept = await notes.query
+    .filter((row) => row.card.path(r'$.title').equalTo('Kept Garden'))
+    .single();
+```
+
+`kept.card.pages` is 320. The SQL is `json_extract("card", ?) = ?`, with parameters `$.title` and `Kept Garden`. `Other Atlas` stays stored text.
+
+```dart
+kept.card = Card(title: 'Kept Garden', pages: 321);
+await context.saveChanges();
+final revised = await notes.query
+    .filter((row) => row.card.path(r'$.title').equalTo('Kept Garden'))
+    .single();
+```
+
+`revised.card.pages` is 321 and `revised.revision` is 1. The other note stays at revision 0. `fromJson` can take `Map<String, dynamic>`; the generator wraps that parameter. A `String` field still uses `@DbJson`.
+
 A purchase points at its customer before the save. `load` returns the same instance the context already tracks.
 
 ```dart

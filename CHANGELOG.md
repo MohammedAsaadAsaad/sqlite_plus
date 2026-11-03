@@ -4,15 +4,17 @@
 
 `sqlite_plus` is version `0.1.5`. `sqlite_plus_orm` is version `0.1.4`. `sqlite_plus_generator` is version `0.1.5`. `sqlite_plus_arabic` and `sqlite_plus_vec` are version `0.1.0`. This tree has not been uploaded. The pub.dev API still lists `sqlite_plus` and `sqlite_plus_orm` `0.1.3`, and `sqlite_plus_generator` `0.1.4`, as latest.
 
+`@DbDocument()` stores one object as JSON text. The class provides `toJson` and `fromJson`. A filter uses `row.card.path`, which is `json_extract` with a bound path. `fromJson` runs for the rows that come back. Saving the changed object writes that JSON and increments the version column. A `String` column still uses `@DbJson`.
+
 `DbModules`, `DbTokenizers`, and `DbVectorMetrics` are documented `String` constants. Each annotation field stays a string, so a name that is not in the list can be written by hand. The ORM creates `fts5`, `rtree`, and `vec0`. An unknown module is rejected because the generator has to write `CREATE VIRTUAL TABLE`. An unknown tokenizer or metric identifier is kept and checked when the table is created.
 
 `sqlite_plus_arabic` registers the FTS5 tokenizer `arabic`. Diacritics and tatweel are removed. One prefix and one suffix are removed when three letters remain. `الله` stays `الله`. `حديقة` and `الحديقة` share a token. This is not the SQLite ICU Arabic tokenizer. Register `SqlitePlusArabic` before `ensureCreated` or `search`.
 
 `sqlite_plus_vec` registers `vec0`. One column holds a little-endian float32 vector. `nearest` writes `column MATCH ? AND k = ?` and scans every row. Metrics are `l2` and `cosine`. This is not a sqlite-vec file and not an approximate index. Register `SqlitePlusVec` before creating or querying the table.
 
-The generator emits `tokenizer`, `Codecs.vector`, `search`, and `nearest` from those constants. The generated part does not import either package. An application that does not import a package does not load it.
+The generator emits `Codecs.document`, `DocumentField`, `tokenizer`, `Codecs.vector`, `search`, and `nearest`. The generated part does not import `sqlite_plus_arabic` or `sqlite_plus_vec`. An application loads a package when it imports it.
 
-On Dart 3.13.7, Linux x64, the engine suite passed 10609 tests, the ORM suite passed 188 tests, the generator suite passed 70 tests, `sqlite_plus_arabic` passed 3 tests, and `sqlite_plus_vec` passed 4 tests. `dart format` and `dart analyze --fatal-infos` passed for those packages. The Arabic example printed `في الحديقة | missed true | stable true`. The vec example printed `1.0 | stable true`. macOS, Windows, Android, iOS, and pub.dev were not run for this revision.
+On Dart 3.13.7, Linux x64, `dart format` and `dart analyze --fatal-infos` passed for the five packages. The ORM suite passed 190 tests. The generator suite passed 78 tests. The Arabic suite passed 3 tests. The vec suite passed 4 tests. The engine sources match the revision that passed 10609 tests, and that suite was not re-run for this combined tree. Each package example passed analysis and its test. macOS, Windows, Android, iOS, and pub.dev were not run. This tree has not been uploaded.
 
 ## 0.1.4
 

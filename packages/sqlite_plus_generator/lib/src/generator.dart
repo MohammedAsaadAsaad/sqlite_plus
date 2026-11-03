@@ -162,6 +162,8 @@ Future<GenerationResult> generateLibrary(
   _requireRuntimeNames(library, prefix, [
     if (models.any((model) => model.fields.any((field) => field.json)))
       'JsonPathField',
+    if (models.any((model) => model.fields.any((field) => field.document)))
+      'DocumentField',
     if (models.any((model) => model.module == 'rtree')) 'Bounds',
     if (models.any((model) => model.scalars.isNotEmpty)) ...[
       'EntityScalar',
@@ -887,10 +889,46 @@ final class _Inspector {
     }
     final columns = <_Field>[];
     for (final field in _fields(element)) {
+      final document = _annotation(field, 'DbDocument') != null;
+      final json = _annotation(field, 'DbJson') != null;
       final vector = _annotation(field, 'DbVector');
       var kind = _kind(field.type);
+      String? documentFromJson;
       int? vectorDimensions;
       String? vectorMetric;
+      if (document && json) {
+        invalid(
+          'G013',
+          '@DbDocument and @DbJson mark different columns. '
+              'A String column uses @DbJson.',
+          field,
+        );
+      }
+      if (document && vector != null) {
+        invalid(
+          'G013',
+          '@DbDocument and @DbVector mark different columns.',
+          field,
+        );
+      }
+      if (document) {
+        if (kind == 'text') {
+          invalid(
+            'G013',
+            '@DbDocument stores an object. A String column uses @DbJson.',
+            field,
+          );
+        }
+        if (kind != null) {
+          invalid(
+            'G013',
+            '@DbDocument stores an object with fromJson and toJson.',
+            field,
+          );
+        }
+        documentFromJson = _documentFromJson(field);
+        kind = 'document';
+      }
       if (vector != null) {
         if (!_isDoubleList(field.type)) {
           invalid('G013', '@DbVector needs a List<double> column.', field);
@@ -966,7 +1004,8 @@ final class _Inspector {
           generated: key?.getField('generated')?.toBoolValue() ?? false,
           explicitKey: key != null,
           version: _annotation(field, 'DbVersion') != null,
-          json: _annotation(field, 'DbJson') != null,
+          json: json,
+          documentFromJson: documentFromJson,
           reference: _annotation(field, 'DbReference'),
           vectorDimensions: vectorDimensions,
           vectorMetric: vectorMetric,
@@ -1012,6 +1051,13 @@ final class _Inspector {
       }
     }
     for (final field in columns) {
+      if (field.document && field.version) {
+        invalid(
+          'G013',
+          '@DbDocument cannot be the version column.',
+          field.element,
+        );
+      }
       if (field.generated &&
           (keys.length != 1 ||
               field.keyOrder != 0 ||
@@ -1240,6 +1286,105 @@ final class _Inspector {
     return name;
   }
 
+  String _documentFromJson(FieldElement field) {
+    final type = field.type;
+    if (type is! InterfaceType || type.element is! ClassElement) {
+      invalid(
+        'G013',
+        '@DbDocument needs a class with fromJson and toJson.',
+        field,
+      );
+    }
+    final owner = type.element as ClassElement;
+    final factory = owner.constructors
+        .where(
+          (constructor) =>
+              constructor.isFactory && constructor.name == 'fromJson',
+        )
+        .toList();
+    final methods = owner.methods
+        .where((method) => method.isStatic && method.name == 'fromJson')
+        .toList();
+    if (factory.isNotEmpty && methods.isNotEmpty) {
+      invalid(
+        'G013',
+        '${owner.name} has both a factory and a static fromJson. Keep one.',
+        field,
+      );
+    }
+    if (factory.length > 1 || methods.length > 1) {
+      invalid(
+        'G013',
+        '${owner.name}.fromJson is declared more than once.',
+        field,
+      );
+    }
+    final fromJson = factory.singleOrNull ?? methods.singleOrNull;
+    if (fromJson == null) {
+      invalid(
+        'G013',
+        '${owner.name} needs fromJson(Map<String, Object?> json) or '
+            'fromJson(Map<String, dynamic> json).',
+        field,
+      );
+    }
+    final parameters = fromJson.formalParameters;
+    if (parameters.length != 1 || parameters.single.isNamed) {
+      invalid(
+        'G013',
+        '${owner.name}.fromJson must take one map parameter.',
+        field,
+      );
+    }
+    final mapKind = _jsonMapKind(parameters.single.type);
+    if (mapKind == null) {
+      invalid(
+        'G013',
+        '${owner.name}.fromJson must take Map<String, Object?> or '
+            'Map<String, dynamic>.',
+        field,
+      );
+    }
+    final toJson = _documentToJson(owner);
+    if (toJson == null) {
+      invalid(
+        'G013',
+        '${owner.name} needs a toJson() method that returns a Map.',
+        field,
+      );
+    }
+    if (toJson.formalParameters.any((parameter) => parameter.isRequired)) {
+      invalid('G013', '${owner.name}.toJson() must take no arguments.', field);
+    }
+    if (!_returnsJsonMap(toJson.returnType)) {
+      invalid('G013', '${owner.name}.toJson() must return a Map.', field);
+    }
+    final written = sourceType(field);
+    final typeName = written.endsWith('?')
+        ? written.substring(0, written.length - 1)
+        : written;
+    if (mapKind == 'dynamic') {
+      return '(Map<String, Object?> json) => '
+          '$typeName.fromJson(Map<String, dynamic>.from(json))';
+    }
+    return '$typeName.fromJson';
+  }
+
+  MethodElement? _documentToJson(ClassElement owner) {
+    final declared = owner.methods.where(
+      (method) =>
+          !method.isStatic &&
+          method.name == 'toJson' &&
+          method.enclosingElement == owner,
+    );
+    if (declared.isNotEmpty) return declared.first;
+    final parent = owner.supertype?.element;
+    if (parent is ClassElement && parent.name != 'Object') {
+      return _documentToJson(parent);
+    }
+    return null;
+  }
+
   void _checkVirtual(
     ClassElement element,
     List<_Field> columns,
@@ -1248,6 +1393,22 @@ final class _Inspector {
   ) {
     final vectors = columns.where((field) => field.kind == 'vector').toList();
     if (module == null) {
+      for (final field in columns.where((field) => field.document)) {
+        if (field.keyOrder != null) {
+          invalid(
+            'G013',
+            '@DbDocument cannot be a primary key.',
+            field.element,
+          );
+        }
+        if (field.version) {
+          invalid(
+            'G013',
+            '@DbDocument cannot be the version column.',
+            field.element,
+          );
+        }
+      }
       if (tokenizer != null || vectors.isNotEmpty) {
         invalid(
           'G013',
@@ -1298,6 +1459,7 @@ final class _Inspector {
     if (columns.any(
       (field) =>
           field.json ||
+          field.document ||
           field.version ||
           field.unique ||
           field.defaultSql != null ||
@@ -1305,8 +1467,8 @@ final class _Inspector {
     )) {
       invalid(
         'G013',
-        'A virtual table cannot map JSON, version, unique, default, '
-            'or reference columns.',
+        'A virtual table cannot map JSON, a document, version, unique, '
+            'default, or reference columns.',
         element,
       );
     }
@@ -1432,6 +1594,10 @@ final class _Inspector {
         return '${prefix == null ? '' : '$prefix.'}'
             '$name${!nonNullable && type.nullabilitySuffix == NullabilitySuffix.question ? '?' : ''}';
       }
+    }
+    if (_libraryUri(type.element.library) == _libraryUri(library)) {
+      return '$name'
+          '${!nonNullable && type.nullabilitySuffix == NullabilitySuffix.question ? '?' : ''}';
     }
     invalid(
       'G006',
@@ -1596,6 +1762,38 @@ final class _Inspector {
 bool _validSqlName(String value) =>
     value.isNotEmpty && !value.contains('\u0000');
 
+String? _jsonMapKind(DartType type) {
+  if (type is! InterfaceType ||
+      type.element.name != 'Map' ||
+      _libraryUri(type.element.library) != 'dart:core' ||
+      type.typeArguments.length != 2) {
+    return null;
+  }
+  final key = type.typeArguments[0];
+  if (key is! InterfaceType ||
+      key.element.name != 'String' ||
+      _libraryUri(key.element.library) != 'dart:core' ||
+      key.nullabilitySuffix == NullabilitySuffix.question) {
+    return null;
+  }
+  final value = type.typeArguments[1];
+  if (value is DynamicType) return 'dynamic';
+  if (value is InterfaceType &&
+      value.element.name == 'Object' &&
+      _libraryUri(value.element.library) == 'dart:core' &&
+      value.nullabilitySuffix == NullabilitySuffix.question) {
+    return 'object';
+  }
+  return null;
+}
+
+bool _returnsJsonMap(DartType type) {
+  if (type is DynamicType) return true;
+  return type is InterfaceType &&
+      type.element.name == 'Map' &&
+      _libraryUri(type.element.library) == 'dart:core';
+}
+
 bool _identifier(String value) =>
     RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(value);
 
@@ -1640,6 +1838,7 @@ final class _Field {
     required this.generated,
     required this.version,
     required this.json,
+    this.documentFromJson,
     this.keyOrder,
     this.defaultSql,
     this.reference,
@@ -1649,6 +1848,7 @@ final class _Field {
   final FieldElement element;
   final String kind, sqlName, dartType, keyType;
   final bool nullable, unique, explicitKey, version, json;
+  final String? documentFromJson;
   final int? vectorDimensions;
   final String? vectorMetric;
   bool generated;
@@ -1656,8 +1856,14 @@ final class _Field {
   final String? defaultSql;
   final DartObject? reference;
   String get name => element.name!;
+  bool get document => kind == 'document';
   bool get writable => !element.isFinal && element.setter != null;
   String codec(String prefix) {
+    if (document) {
+      final body =
+          '${prefix}Codecs.document($documentFromJson, (value) => value.toJson())';
+      return nullable ? '${prefix}Codecs.nullable($body)' : body;
+    }
     if (kind == 'vector') return '${prefix}Codecs.vector($vectorDimensions)';
     return nullable
         ? '${prefix}Codecs.nullable(${prefix}Codecs.$kind)'
@@ -1945,8 +2151,9 @@ String _emit(
     code.writeln('${model.name}Fields._();');
     code.writeln('static final instance = ${model.name}Fields._();');
     for (final field in model.fields) {
+      final wrapper = field.document ? 'DocumentField' : 'MappedField';
       code.writeln(
-        'final ${field.name} = ${prefix}MappedField(${model.name}Columns.${field.name});',
+        'final ${field.name} = $prefix$wrapper(${model.name}Columns.${field.name});',
       );
     }
     final json = model.fields.where((field) => field.json).toList();

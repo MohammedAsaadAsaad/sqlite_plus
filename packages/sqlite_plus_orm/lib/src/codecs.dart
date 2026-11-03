@@ -18,7 +18,7 @@ abstract class ValueCodec<V> {
   V decode(Object? value);
 }
 
-/// Built-in codecs for the seven mapped Dart types.
+/// Built-in codecs for mapped Dart values, including one JSON object.
 abstract final class Codecs {
   /// Signed 64-bit integer stored as `INTEGER`.
   static const ValueCodec<BigInt> bigInt = _BigIntCodec();
@@ -40,6 +40,18 @@ abstract final class Codecs {
 
   /// UTC timestamp stored as `TEXT`.
   static const ValueCodec<DateTime> dateTime = _DateTimeCodec();
+
+  /// One JSON object stored as `TEXT`.
+  ///
+  /// [fromJson] receives a map whose nested objects are also
+  /// `Map<String, Object?>`. [toJson] returns that kind of map. `null`,
+  /// bools, finite numbers, strings, lists, and objects are stored. A string
+  /// column that is already JSON uses [text] and `@DbJson` instead.
+  static ValueCodec<T> document<T>(
+    T Function(Map<String, Object?> json) fromJson,
+    Object? Function(T value) toJson,
+  ) =>
+      _DocumentCodec<T>(fromJson, toJson);
 
   /// [dimensions] little-endian float32 values stored as `BLOB`.
   ///
@@ -189,6 +201,80 @@ final class _DateTimeCodec extends ValueCodec<DateTime> {
     }
     return parsed;
   }
+}
+
+final class _DocumentCodec<T> extends ValueCodec<T> {
+  const _DocumentCodec(this.fromJson, this.toJson);
+  final T Function(Map<String, Object?> json) fromJson;
+  final Object? Function(T value) toJson;
+
+  @override
+  String get sqlType => 'TEXT';
+
+  @override
+  Object encode(T value) {
+    final encoded = toJson(value);
+    if (encoded is! Map) {
+      throw const OrmCodecException(
+        'Document toJson() must return a JSON object',
+      );
+    }
+    return jsonEncode(_documentObject(encoded));
+  }
+
+  @override
+  T decode(Object? value) {
+    if (value is! String) {
+      throw const OrmCodecException('Expected SQL TEXT for a document');
+    }
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(value);
+    } on FormatException {
+      throw const OrmCodecException('Document text is not valid JSON');
+    }
+    if (decoded is! Map) {
+      throw const OrmCodecException('A document must be a JSON object');
+    }
+    try {
+      return fromJson(_documentObject(decoded));
+    } on OrmCodecException {
+      rethrow;
+    } catch (error) {
+      throw OrmCodecException('Document fromJson() failed', error);
+    }
+  }
+}
+
+Map<String, Object?> _documentObject(Map<dynamic, dynamic> value) {
+  final object = <String, Object?>{};
+  for (final entry in value.entries) {
+    final key = entry.key;
+    if (key is! String) {
+      throw const OrmCodecException('Document JSON keys must be strings');
+    }
+    object[key] = _documentValue(entry.value);
+  }
+  return object;
+}
+
+Object? _documentValue(Object? value) {
+  if (value == null || value is String || value is bool || value is int) {
+    return value;
+  }
+  if (value is double) {
+    if (!value.isFinite) {
+      throw const OrmCodecException('Document JSON numbers must be finite');
+    }
+    return value;
+  }
+  if (value is Map) return _documentObject(value);
+  if (value is List) {
+    return <Object?>[for (final item in value) _documentValue(item)];
+  }
+  throw const OrmCodecException(
+    'Document JSON values must be null, bool, number, string, list, or object',
+  );
 }
 
 final class _VectorCodec extends ValueCodec<List<double>> {

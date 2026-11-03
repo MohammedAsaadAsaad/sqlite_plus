@@ -1985,6 +1985,12 @@ result=pass
 - On the committed tree, `dart pub publish --dry-run` reported 0 warnings for `sqlite_plus` (690 KB), `sqlite_plus_orm` (504 KB), and `sqlite_plus_generator` (406 KB). This environment has no pub.dev credential, so nothing was uploaded.
 - The pub.dev API lists `0.1.3` as latest for `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator`. The uploads were accepted in that order. A package page can take up to 10 minutes to show the new version. M9 stays unchecked. B5 stays unchecked. Item 108 stays open. This is not a full SQLite claim.
 
+## 2026-11-03 — ORM documents
+
+- `@DbDocument()` stores one object as JSON text. `Codecs.document` calls the class `fromJson` and `toJson`. Nested objects are `Map<String, Object?>`. `DocumentField.path` binds `json_extract`. A query decodes the rows it returns. The model schema records `"document": true` and the column stays `TEXT`.
+- The generator emits `Codecs.document` and `DocumentField`. `fromJson(Map<String, dynamic>)` is wrapped. A `String` field, a key, a version, a virtual table, and a missing `fromJson` or `toJson` are reported before a file is written. The part does not import another package.
+- In this tree the same ORM is `0.1.4` and depends on `sqlite_plus` `^0.1.5`, beside `sqlite_plus_arabic` `0.1.0` and `sqlite_plus_vec` `0.1.0`. `sqlite_plus_generator` is `0.1.5`.
+
 ## 2026-11-03 — Arabic FTS and vec0 nearest neighbors
 
 - `DbModules`, `DbTokenizers`, and `DbVectorMetrics` are documented `String` constants. `DbVectorLimits` documents 1 and 4096. `module`, `tokenizer`, and `metric` stay strings, so a name that is not in the list can still be written by hand. The ORM creates `fts5`, `rtree`, and `vec0`. An unknown module is rejected. An unknown tokenizer or metric identifier is kept until the table is created. `ForeignKeyAction`, `MigrationSafety`, `EntityState`, and `MigrationKind` stay enums.
@@ -2002,6 +2008,19 @@ result=pass
 - `saveSqlCipher` replaces the whole file and flushes it. That write is not the rollback journal. `openInMemory` and `openDatabase` do not call the codec. The cell geometry of a reserve of 0 is the previous page size, so an unencrypted rebuild takes the same path. Fast page patches still return no image when the reserve is nonzero and the compact rebuild runs. Auto-vacuum together with a reserve is rejected.
 - `test/fixtures/sqlcipher4-default.db` is SQLCipher 4.5.6 community with the default 256000 iterations. `sqlcipher4-kdf2.db` is the same CLI with `cipher_default_kdf_iter = 2`. Both open here and return `kept` and a value of length 3000. A file written here opens in that CLI, `integrity_check` is `ok`, and a raw `x'` key opens. An encrypted FTS5 `MATCH` and an R-tree box reopen. WAL files, SQLCipher 1–3, rekey, a plaintext header, and auto-vacuum with the reserve are unsupported.
 - `packages/sqlite_plus` is version `0.1.4` and depends on `pointycastle` 4.0.0. `sqlite_plus_orm` stays `0.1.3`. `dart format` passed. `dart analyze --fatal-infos` passed. `dart test` passed 10607 tests on Dart 3.13.7, Linux x64. No wall-clock timing was run. No speedup is claimed. The ORM and generator suites were not re-run. This tree has not been uploaded. M9 stays unchecked. B5 stays unchecked. Item 108 stays open. This is not a full SQLCipher claim, not a full SQLite claim, and not a DB Browser clone.
+
+## 2026-11-03 — Documents, Arabic search, and vec0 in one tree
+
+- `@DbDocument()` stores one object as JSON text beside the Arabic tokenizer and `vec0`. `row.card.path(r'$.title')` binds `json_extract`. A returned row is decoded. `Kept Garden` comes back with 320 pages. A later save writes pages 321 and revision 1. The other note stays at revision 0. `search('الحديقة')` returns `في الحديقة`. `nearest(const [0.9, 0.1], k: 1)` returns `[1.0, 0.0]`.
+- `sqlite_plus` is `0.1.5`. `sqlite_plus_orm` is `0.1.4` and depends on `sqlite_plus` `^0.1.5`. `sqlite_plus_generator` is `0.1.5` and depends on `sqlite_plus_orm` `^0.1.4`. `sqlite_plus_arabic` and `sqlite_plus_vec` are `0.1.0`. The engine page lists each package with a reading-note example.
+- `packages/sqlite_plus/lib` and `packages/sqlite_plus/test` match the revision that passed 10609 engine tests. That suite was not re-run. `dart format` in that package reported 0 changed files. `dart analyze --fatal-infos` passed.
+- `packages/sqlite_plus_orm`: `dart format` passed, `dart analyze --fatal-infos` passed, and `dart test` passed 190 tests on Dart 3.13.7, Linux x64.
+- `packages/sqlite_plus_generator`: `dart format` passed, `dart analyze --fatal-infos` passed, and `dart test` passed 78 tests.
+- `packages/sqlite_plus_arabic`: `dart format` passed, `dart analyze --fatal-infos` passed, and `dart test` passed 3 tests.
+- `packages/sqlite_plus_vec`: `dart format` passed, `dart analyze --fatal-infos` passed, and `dart test` passed 4 tests.
+- Each package example passed `dart analyze --fatal-infos` and 1 test: the engine tour, the reading log, the generated library, the Arabic garden note, and the nearest vector.
+- The earlier Arabic entry's 188 ORM tests and 70 generator tests are that revision before `@DbDocument` was merged. The document-only counts are not the counts of this tree.
+- macOS, Windows, Android, iOS, and pub.dev were not run. This tree has not been uploaded. M9 stays unchecked. B5 stays unchecked. Item 108 stays open. This is not a full SQLite claim, not a full SQLCipher claim, not a sqlite-vec file, and not the ICU Arabic tokenizer.
 
 ## 2026-11-02 — Package-wide generator
 

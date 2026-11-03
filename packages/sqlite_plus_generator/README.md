@@ -190,6 +190,51 @@ final matched = await purchases.query
 
 `matched` is the 22.5 and 30 purchases: each total doubled is above 40. The part registers `purchase_doubled`.
 
+## A card stored as one object
+
+`@DbDocument()` is a class with `toJson` and `fromJson`. The column is `TEXT`. The part stores `Codecs.document` and a `DocumentField`, so the filter is `row.card.path`.
+
+```dart
+@DbEntity(table: 'notes')
+class Note {
+  Note({this.id, required this.card, this.revision = 0});
+
+  final BigInt? id;
+  @DbDocument()
+  Card card;
+  @DbVersion()
+  int revision;
+}
+
+class Card {
+  Card({required this.title, required this.pages});
+
+  final String title;
+  final int pages;
+
+  Map<String, Object?> toJson() => {'title': title, 'pages': pages};
+
+  factory Card.fromJson(Map<String, Object?> json) => Card(
+    title: json['title']! as String,
+    pages: json['pages']! as int,
+  );
+}
+```
+
+The part contains `DocumentField(NoteColumns.card)` and, on that column, `Codecs.document(Card.fromJson, (value) => value.toJson())`. `fromJson(Map<String, dynamic>)` is wrapped as `(Map<String, Object?> json) => Card.fromJson(Map<String, dynamic>.from(json))`. A `String` field still uses `@DbJson` and `row.path`.
+
+```dart
+final notes = context.set(NoteMapping.instance);
+notes.add(Note(card: Card(title: 'Kept Garden', pages: 320)));
+notes.add(Note(card: Card(title: 'Other Atlas', pages: 40)));
+await context.saveChanges();
+final kept = await notes.query
+    .filter((row) => row.card.path(r'$.title').equalTo('Kept Garden'))
+    .single();
+```
+
+`kept.card.pages` is 320. The SQL is `json_extract("card", ?) = ?`, with parameters `$.title` and `Kept Garden`. `Other Atlas` stays stored text. After `kept.card = Card(title: 'Kept Garden', pages: 321)` and another save, the next read has pages 321 and revision 1. The other note stays at revision 0.
+
 ## Arabic words and nearest vectors
 
 `DbModules.fts5` and `'fts5'` both become `virtualModule: "fts5"`. `tokenizer: DbTokenizers.porter` becomes `tokenizer: "porter"`. `tokenizer: 'arabic'` becomes `tokenizer: "arabic"`. The part grows a `search` method either way.
@@ -323,13 +368,14 @@ A renamed SQL column is not guessed. Keep `@DbColumn(name: 'title')` when only t
 | `@DbVersion()` | The revision column |
 | `<Parent>Id` or `@DbReference` | `reference` and `collection` |
 | `@DbJson()` on one `String` | `path` |
+| `@DbDocument()` on an object | `row.card.path`, stored with `fromJson` and `toJson` |
 | `@DbScalar()` on a method or getter | `row.twice()`, registered as `table_method` |
 | `@DbEntity(module: DbModules.fts5)` | `USING fts5` and `search`. `'fts5'` is the same string |
 | `tokenizer: DbTokenizers.porter` or `tokenizer: 'arabic'` | `tokenize = 'porter'` or `tokenize = 'arabic'` |
 | `@DbEntity(module: DbModules.rtree)` | `USING rtree` and `bounds` |
 | `@DbEntity(module: DbModules.vec0)` and `@DbVector(4)` | `Codecs.vector(4)`, `float[4]`, and `nearest` |
 
-The write is deterministic and formatted. Hand-written files and symbolic links stay in place. Fields are `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, `DateTime`, and, on `vec0`, `List<double>`. Nullable aliases of the scalar types are included. A generic, an inherited field, or an unsupported type is reported before any file is written. An unknown module, a tokenizer on a table that is not FTS5, a vector off `vec0`, a dimension outside 1 to 4096, and a column named `distance` or `k` on `vec0` are reported the same way. The part does not import `sqlite_plus_arabic` or `sqlite_plus_vec`. The application registers those packages before it creates the tables.
+The write is deterministic and formatted. Hand-written files and symbolic links stay in place. Fields are `int`, `BigInt`, `double`, `bool`, `String`, `Uint8List`, `DateTime`, and, on `vec0`, `List<double>`. Nullable aliases of the scalar types are included. `@DbDocument()` adds one class that has `fromJson` and `toJson`. A generic, an inherited field, or an unsupported type is reported before any file is written. An unknown module, a tokenizer on a table that is not FTS5, a vector off `vec0`, a dimension outside 1 to 4096, and a column named `distance` or `k` on `vec0` are reported the same way. The part does not import `sqlite_plus_arabic` or `sqlite_plus_vec`. The application registers those packages before it creates the tables.
 
 ## The other packages
 
