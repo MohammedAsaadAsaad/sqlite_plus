@@ -317,10 +317,18 @@ List<String> _splitTop(String input) {
 }
 
 /// Shared metrics for the code view and the SQL editor.
+///
+/// [inherit] stays false and [letterSpacing] stays zero. A text field otherwise
+/// keeps the theme's body letter spacing, and the caret then sits a space or
+/// more ahead of these glyphs.
 const sqlCodeFont = TextStyle(
+  inherit: false,
   fontFamily: 'JetBrainsMono',
   fontSize: 13,
   height: 22 / 13,
+  letterSpacing: 0,
+  wordSpacing: 0,
+  textBaseline: TextBaseline.alphabetic,
   color: Color(0xFFE7F3EE),
 );
 

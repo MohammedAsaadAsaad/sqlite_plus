@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite_plus_browser/browser_app.dart';
 import 'package:sqlite_plus_browser/src/grid.dart';
@@ -12,6 +13,26 @@ Future<void> _frames(WidgetTester tester) async {
 Future<void> _finish(WidgetTester tester, BrowserSession session) async {
   await tester.pumpWidget(const SizedBox.shrink());
   await session.close();
+}
+
+RenderEditable _editable(WidgetTester tester) {
+  final root = tester.renderObject<RenderObject>(
+    find.descendant(
+      of: find.byKey(const Key('sql-input')),
+      matching: find.byType(EditableText),
+    ),
+  );
+  RenderEditable? found;
+  void visit(RenderObject object) {
+    if (object is RenderEditable) {
+      found = object;
+      return;
+    }
+    object.visitChildren(visit);
+  }
+
+  visit(root);
+  return found!;
 }
 
 void main() {
@@ -83,6 +104,63 @@ void main() {
     expect(field.controller!.text, 'SELECT ');
     expect(field.style!.fontFamily, 'JetBrainsMono');
     expect(field.style!.color, const Color(0x00000000));
+    expect(field.style!.letterSpacing, 0);
+    await _finish(tester, session);
+  });
+
+  testWidgets('the caret lines up with the highlighted glyphs', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.text('SQL'));
+    await _frames(tester);
+    const source = 'CREATE INDEX idx_name ON events (';
+    await tester.enterText(find.byKey(const Key('sql-input')), source);
+    await _frames(tester);
+
+    final text = tester
+        .widget<TextField>(find.byKey(const Key('sql-input')))
+        .controller!
+        .text;
+    final index = text.indexOf('events');
+    expect(index, greaterThan(10));
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byKey(const Key('sql-highlight')),
+    );
+    final editable = _editable(tester);
+    final boxes = paragraph.getBoxesForSelection(
+      TextSelection(baseOffset: index, extentOffset: index + 6),
+    );
+    expect(boxes, hasLength(1));
+    final caret = editable.localToGlobal(
+      editable.getLocalRectForCaret(TextPosition(offset: index)).topLeft,
+    );
+    final glyph =
+        paragraph.localToGlobal(Offset(boxes.single.left, boxes.single.top));
+    expect((caret.dx - glyph.dx).abs(), lessThan(1));
+    final end = editable.localToGlobal(
+      editable.getLocalRectForCaret(TextPosition(offset: index + 6)).topLeft,
+    );
+    final glyphEnd = paragraph.localToGlobal(
+      Offset(boxes.single.right, boxes.single.top),
+    );
+    expect((end.dx - glyphEnd.dx).abs(), lessThan(1));
+    final style = tester
+        .widget<EditableText>(
+          find.descendant(
+            of: find.byKey(const Key('sql-input')),
+            matching: find.byType(EditableText),
+          ),
+        )
+        .style;
+    expect(style.letterSpacing, 0);
+    expect(style.fontFamily, 'JetBrainsMono');
     await _finish(tester, session);
   });
 

@@ -387,6 +387,7 @@ class _SqlPaneState extends State<SqlPane> {
                     child: Stack(
                       children: [
                         Text.rich(
+                          key: const Key('sql-highlight'),
                           TextSpan(
                             style: sqlCodeFont,
                             children: sqlHighlightSpans(text),
