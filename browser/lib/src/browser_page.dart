@@ -31,6 +31,7 @@ class _BrowserPageState extends State<BrowserPage> {
   BrowserPane _pane = BrowserPane.data;
   String? _message;
   bool _busy = false;
+  final List<String> _log = [];
 
   BrowserSession get session => widget.session;
 
@@ -99,6 +100,7 @@ class _BrowserPageState extends State<BrowserPage> {
                         Navigator.of(context).pop();
                         _select(object);
                       },
+                      onDraft: _draft,
                     ),
                   ),
                 ),
@@ -106,11 +108,12 @@ class _BrowserPageState extends State<BrowserPage> {
               ? Row(
                   children: [
                     SizedBox(
-                      width: 340,
+                      width: 620,
                       child: SchemaPane(
                         objects: session.objects,
                         selected: _selected,
                         onSelect: _select,
+                        onDraft: _draft,
                       ),
                     ),
                     Expanded(child: _work()),
@@ -166,8 +169,12 @@ class _BrowserPageState extends State<BrowserPage> {
                   catalog: session.objects,
                   slice: _slice,
                   busy: _busy,
+                  onFirst: _slice.offset == 0 ? null : () => _load(0),
                   onPrevious: _slice.offset == 0 ? null : () => _move(-1),
                   onNext: _hasNext ? () => _move(1) : null,
+                  onLast:
+                      _lastOffset == null ? null : () => _load(_lastOffset!),
+                  onJump: _jump,
                   onInsert: _selected == null ? null : _insert,
                   onEdit: _edit,
                   onDelete: _delete,
@@ -177,6 +184,7 @@ class _BrowserPageState extends State<BrowserPage> {
                   controller: _sql,
                   objects: session.objects,
                   result: _result,
+                  log: _log,
                   busy: _busy,
                   onRun: _runSql,
                 ),
@@ -235,6 +243,35 @@ class _BrowserPageState extends State<BrowserPage> {
     }
   }
 
+  int? get _lastOffset {
+    if (!_slice.totalKnown || _slice.total <= 0 || _slice.limit <= 0) {
+      return null;
+    }
+    final last = ((_slice.total - 1) ~/ _slice.limit) * _slice.limit;
+    if (last == _slice.offset) return null;
+    return last;
+  }
+
+  void _jump(int page) {
+    if (_slice.limit <= 0) return;
+    var offset = (page - 1) * _slice.limit;
+    if (offset < 0) offset = 0;
+    if (_slice.totalKnown && _slice.total > 0) {
+      final last = ((_slice.total - 1) ~/ _slice.limit) * _slice.limit;
+      if (offset > last) offset = last;
+    }
+    _load(offset);
+  }
+
+  void _draft(String sql) {
+    _sql.text = sql;
+    _sql.selection = TextSelection.collapsed(offset: sql.length);
+    setState(() {
+      _pane = BrowserPane.sql;
+      _message = null;
+    });
+  }
+
   bool get _hasNext {
     if (_slice.totalKnown) {
       return _slice.offset + _slice.rows.length < _slice.total;
@@ -277,11 +314,16 @@ class _BrowserPageState extends State<BrowserPage> {
     return _guard(() async {
       final result = await session.run(_sql.text);
       if (!mounted) return;
+      final statement = _sql.text.trim();
       setState(() {
         _result = result;
         _message = result.isQuery
             ? '${result.rows.length} rows'
             : '${result.changes} changed';
+        if (statement.isNotEmpty) {
+          _log.add(statement.replaceAll(RegExp(r'\s+'), ' '));
+          if (_log.length > 12) _log.removeAt(0);
+        }
       });
       final selected = _selected;
       if (selected != null &&
@@ -372,6 +414,7 @@ class _BrowserPageState extends State<BrowserPage> {
         _slice = TableSlice.empty;
         _result = null;
         _message = null;
+        _log.clear();
       });
     });
   }
@@ -394,6 +437,7 @@ class _BrowserPageState extends State<BrowserPage> {
         _slice = TableSlice.empty;
         _result = null;
         _message = null;
+        _log.clear();
       });
     });
   }

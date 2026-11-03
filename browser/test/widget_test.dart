@@ -37,6 +37,12 @@ void main() {
     expect(find.text('Memory · unsaved'), findsOneWidget);
     expect(find.text('PK'), findsOneWidget);
     expect(find.text('TEXT'), findsOneWidget);
+    expect(find.text('Tables (1)'), findsOneWidget);
+    expect(find.text('Indices (0)'), findsOneWidget);
+    expect(find.text('Views (0)'), findsOneWidget);
+    expect(find.text('Triggers (0)'), findsOneWidget);
+    expect(find.text('"title" TEXT NOT NULL'), findsOneWidget);
+    expect(find.text('"id" INTEGER PRIMARY KEY'), findsOneWidget);
     await _finish(tester, session);
   });
 

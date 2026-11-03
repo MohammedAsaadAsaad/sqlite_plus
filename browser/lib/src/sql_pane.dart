@@ -11,6 +11,7 @@ class SqlPane extends StatefulWidget {
     required this.controller,
     required this.objects,
     required this.result,
+    required this.log,
     required this.busy,
     required this.onRun,
   });
@@ -18,6 +19,7 @@ class SqlPane extends StatefulWidget {
   final TextEditingController controller;
   final List<SchemaObject> objects;
   final StatementResult? result;
+  final List<String> log;
   final bool busy;
   final VoidCallback onRun;
 
@@ -145,6 +147,40 @@ class _SqlPaneState extends State<SqlPane> {
             Text('${result.rows.length} rows · ${result.columns.join(', ')}'),
           if (result != null && !result.isQuery)
             Text('${result.changes} rows changed'),
+          if (widget.log.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'SQL log',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 72,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7FBF9),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFD5E2DB)),
+                ),
+                child: ListView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  children: [
+                    for (var index = 0; index < widget.log.length; index++)
+                      Text(
+                        '${index + 1}  ${widget.log[index]}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           Expanded(
             child: result != null && result.isQuery && result.columns.isNotEmpty

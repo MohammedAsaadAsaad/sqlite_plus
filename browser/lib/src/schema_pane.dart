@@ -1,346 +1,453 @@
 import 'package:flutter/material.dart';
 
+import 'format.dart';
 import 'session.dart';
 
-const _rail = Color(0xFF17241F);
-const _railText = Color(0xFFE7F3EE);
-const _muted = Color(0xFF93A89F);
-const _accent = Color(0xFF7DDBB6);
-const _gold = Color(0xFFF0D78C);
-const _selected = Color(0xFF243832);
+const _nameWidth = 220.0;
+const _typeWidth = 120.0;
+const _schemaWidth = 360.0;
+const _line = Color(0xFFE4E4E4);
+const _header = Color(0xFFF0F0F0);
+const _selected = Color(0xFFD6E8F8);
+const _ink = Color(0xFF1C1C1C);
+const _muted = Color(0xFF5C6560);
 
-/// Tables, columns, keys, indexes, views, and triggers.
-class SchemaPane extends StatelessWidget {
+const createTableDraft = '''CREATE TABLE name (
+  id INTEGER PRIMARY KEY,
+  title TEXT
+)''';
+
+const createIndexDraft = 'CREATE INDEX idx_name ON name(title)';
+
+/// Name, type, and schema text, in the shape of a database structure tree.
+class SchemaPane extends StatefulWidget {
   const SchemaPane({
     super.key,
     required this.objects,
     required this.selected,
     required this.onSelect,
+    required this.onDraft,
   });
 
   final List<SchemaObject> objects;
   final SchemaObject? selected;
   final ValueChanged<SchemaObject> onSelect;
+  final ValueChanged<String> onDraft;
+
+  @override
+  State<SchemaPane> createState() => _SchemaPaneState();
+}
+
+class _SchemaPaneState extends State<SchemaPane> {
+  final _open = <String, bool>{};
+
+  bool _isOpen(String key, {required bool fallback}) => _open[key] ?? fallback;
+
+  void _toggle(String key, {required bool fallback}) {
+    setState(() => _open[key] = !_isOpen(key, fallback: fallback));
+  }
 
   @override
   Widget build(BuildContext context) {
     final tables = [
-      for (final object in objects)
-        if (object.type == 'table') object
+      for (final object in widget.objects)
+        if (object.type == 'table') object,
     ];
     final views = [
-      for (final object in objects)
-        if (object.type == 'view') object
+      for (final object in widget.objects)
+        if (object.type == 'view') object,
     ];
     final triggers = [
-      for (final object in objects)
+      for (final object in widget.objects)
         if (object.type == 'trigger') object,
     ];
     final indexes = [
-      for (final object in objects)
-        if (object.type == 'index') object
+      for (final object in widget.objects)
+        if (object.type == 'index') object,
     ];
     return ColoredBox(
-      color: _rail,
-      child: ListView(
-        key: const Key('schema-list'),
-        padding: const EdgeInsets.fromLTRB(12, 18, 12, 28),
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(8, 0, 8, 4),
-            child: Text(
-              'Schema',
-              style: TextStyle(
-                color: _railText,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(8, 0, 8, 12),
-            child: Text(
-              'Tables, keys, indexes, views, triggers',
-              style: TextStyle(color: _muted, fontSize: 12),
-            ),
-          ),
-          if (objects.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                'No tables yet. Run CREATE TABLE in SQL, or add the sample rows.',
-                style: TextStyle(color: _muted, height: 1.4),
-              ),
-            ),
-          if (tables.isNotEmpty)
-            _group('Tables', tables.length, [
-              for (final table in tables) _relation(table, indexes, triggers),
-            ]),
-          if (indexes.isNotEmpty)
-            _group('Indexes', indexes.length, [
-              for (final index in indexes) _indexLine(index, keyed: false),
-            ]),
-          if (views.isNotEmpty)
-            _group('Views', views.length, [
-              for (final view in views) _relation(view, const [], const []),
-            ]),
-          if (triggers.isNotEmpty)
-            _group('Triggers', triggers.length, [
-              for (final trigger in triggers) _leaf(trigger),
-            ]),
-        ],
-      ),
-    );
-  }
-
-  Widget _group(String title, int count, List<Widget> children) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+            child: Wrap(
+              spacing: 4,
               children: [
-                Text(
-                  title.toUpperCase(),
-                  style: const TextStyle(
-                    color: _accent,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.1,
-                  ),
+                TextButton.icon(
+                  onPressed: () => widget.onDraft(createTableDraft),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Create table'),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  '$count',
-                  style: const TextStyle(color: _accent, fontSize: 11),
+                TextButton.icon(
+                  onPressed: () => widget.onDraft(createIndexDraft),
+                  icon: const Icon(Icons.key_outlined, size: 18),
+                  label: const Text('Create index'),
                 ),
               ],
             ),
           ),
-          ...children,
+          const Divider(height: 1),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = _nameWidth + _typeWidth + _schemaWidth;
+                return Scrollbar(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: width < constraints.maxWidth
+                          ? constraints.maxWidth
+                          : width,
+                      height: constraints.maxHeight,
+                      child: Column(
+                        children: [
+                          _cells(
+                            name: 'Name',
+                            type: 'Type',
+                            schema: 'Schema',
+                            header: true,
+                            leading: const SizedBox(width: 18),
+                          ),
+                          Expanded(
+                            child: ListView(
+                              key: const Key('schema-list'),
+                              children: [
+                                if (widget.objects.isEmpty)
+                                  const Padding(
+                                    padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
+                                    child: Text(
+                                      'No tables yet. Create one, or add the sample rows.',
+                                      style: TextStyle(color: _muted),
+                                    ),
+                                  ),
+                                _folder(
+                                  label: 'Tables (${tables.length})',
+                                  store: 'folder-tables',
+                                  open:
+                                      _isOpen('folder-tables', fallback: true),
+                                  children: [
+                                    for (final table in tables)
+                                      _relation(table),
+                                  ],
+                                ),
+                                _folder(
+                                  label: 'Indices (${indexes.length})',
+                                  store: 'folder-indices',
+                                  open: _isOpen(
+                                    'folder-indices',
+                                    fallback: indexes.isNotEmpty,
+                                  ),
+                                  children: [
+                                    for (final index in indexes) _index(index),
+                                  ],
+                                ),
+                                _folder(
+                                  label: 'Views (${views.length})',
+                                  store: 'folder-views',
+                                  open: _isOpen(
+                                    'folder-views',
+                                    fallback: views.isNotEmpty,
+                                  ),
+                                  children: [
+                                    for (final view in views) _relation(view),
+                                  ],
+                                ),
+                                _folder(
+                                  label: 'Triggers (${triggers.length})',
+                                  store: 'folder-triggers',
+                                  open: _isOpen(
+                                    'folder-triggers',
+                                    fallback: triggers.isNotEmpty,
+                                  ),
+                                  children: [
+                                    for (final trigger in triggers)
+                                      _objectRow(trigger),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _relation(
-    SchemaObject object,
-    List<SchemaObject> indexes,
-    List<SchemaObject> triggers,
-  ) {
-    final ownedIndexes = [
-      for (final index in indexes)
-        if (index.table == object.name) index,
-    ];
-    final ownedTriggers = [
-      for (final trigger in triggers)
-        if (trigger.table == object.name) trigger,
-    ];
-    final active =
-        selected?.name == object.name && selected?.type == object.type;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: active ? _selected : const Color(0xFF1E2C27),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: active ? _gold : const Color(0xFF2C3C36),
-          ),
+  Widget _folder({
+    required String label,
+    required String store,
+    required bool open,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _entry(
+          indent: 0,
+          icon: open ? Icons.expand_more : Icons.chevron_right,
+          name: label,
+          onTap: () => _toggle(store, fallback: open),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        if (open) ...children,
+      ],
+    );
+  }
+
+  Widget _relation(SchemaObject object) {
+    final key = 'open-${object.type}-${object.name}';
+    final open = _isOpen(key, fallback: true);
+    final active = widget.selected?.name == object.name &&
+        widget.selected?.type == object.type;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _entry(
+          indent: 16,
+          icon: open ? Icons.expand_more : Icons.chevron_right,
+          second: object.type == 'view'
+              ? Icons.visibility_outlined
+              : Icons.table_chart_outlined,
+          name: object.name,
+          type: object.type,
+          schema: _oneLine(object.sql),
+          active: active,
+          itemKey: Key('schema-${object.type}-${object.name}'),
+          onTap: () {
+            widget.onSelect(object);
+            if (!open) _toggle(key, fallback: true);
+          },
+          onExpand: () => _toggle(key, fallback: true),
+        ),
+        if (open)
+          for (final column in object.columns)
+            _entry(
+              indent: 48,
+              icon: Icons.view_week_outlined,
+              name: column.name,
+              type: column.type,
+              schema: columnDefinition(column, object.foreignKeys),
+              mark: column.primaryKey ? 'PK' : null,
+            ),
+      ],
+    );
+  }
+
+  Widget _index(SchemaObject object) {
+    final columns = object.indexColumns.join(', ');
+    final schema =
+        _oneLine(object.sql).isNotEmpty ? _oneLine(object.sql) : columns;
+    return _entry(
+      indent: 16,
+      icon: Icons.key_outlined,
+      name: object.name,
+      type: object.unique ? 'unique' : 'index',
+      schema: schema,
+      active: widget.selected?.name == object.name &&
+          widget.selected?.type == object.type,
+      itemKey: Key('schema-${object.type}-${object.name}'),
+      onTap: () => widget.onSelect(object),
+    );
+  }
+
+  Widget _objectRow(SchemaObject object) {
+    final icon = object.type == 'trigger'
+        ? Icons.bolt_outlined
+        : Icons.visibility_outlined;
+    return _entry(
+      indent: 16,
+      icon: icon,
+      name: object.name,
+      type: object.type,
+      schema: _oneLine(object.sql),
+      active: widget.selected?.name == object.name &&
+          widget.selected?.type == object.type,
+      itemKey: Key('schema-${object.type}-${object.name}'),
+      onTap: () => widget.onSelect(object),
+    );
+  }
+
+  Widget _entry({
+    required double indent,
+    required IconData icon,
+    IconData? second,
+    required String name,
+    String type = '',
+    String schema = '',
+    String? mark,
+    bool active = false,
+    Key? itemKey,
+    VoidCallback? onTap,
+    VoidCallback? onExpand,
+  }) {
+    final leading = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (onExpand == null)
+          Icon(icon, size: 16, color: _muted)
+        else
+          InkWell(
+            onTap: onExpand,
+            child: Icon(icon, size: 16, color: _muted),
+          ),
+        if (second != null) ...[
+          const SizedBox(width: 4),
+          Icon(second, size: 16, color: const Color(0xFF0E7C66)),
+        ],
+      ],
+    );
+    final row = _cells(
+      indent: indent,
+      leading: leading,
+      name: name,
+      type: type,
+      schema: schema,
+      mark: mark,
+      active: active,
+    );
+    if (onTap == null) return row;
+    return InkWell(key: itemKey, onTap: onTap, child: row);
+  }
+
+  Widget _cells({
+    double indent = 0,
+    Widget? leading,
+    required String name,
+    required String type,
+    required String schema,
+    String? mark,
+    bool header = false,
+    bool active = false,
+  }) {
+    final style = TextStyle(
+      color: _ink,
+      fontSize: header ? 12 : 13,
+      fontWeight: header ? FontWeight.w700 : FontWeight.w500,
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: header
+            ? _header
+            : active
+                ? _selected
+                : Colors.white,
+        border: const Border(bottom: BorderSide(color: _line)),
+      ),
+      child: SizedBox(
+        height: header ? 32 : 34,
+        child: Row(
           children: [
-            InkWell(
-              key: Key('schema-${object.type}-${object.name}'),
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => onSelect(object),
+            SizedBox(
+              width: _nameWidth,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+                padding: EdgeInsets.only(left: 8 + indent, right: 8),
                 child: Row(
                   children: [
-                    Icon(
-                      object.type == 'view'
-                          ? Icons.visibility_outlined
-                          : Icons.table_chart_outlined,
-                      size: 18,
-                      color: _accent,
-                    ),
-                    const SizedBox(width: 8),
+                    if (leading != null) leading,
+                    if (leading != null) const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        object.name,
+                        name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _railText,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: style,
                       ),
-                    ),
-                    Text(
-                      '${object.columns.length}',
-                      style: const TextStyle(color: _muted, fontSize: 12),
                     ),
                   ],
                 ),
               ),
             ),
-            for (final column in object.columns) _column(column),
-            for (final key in object.foreignKeys) _foreignKey(key),
-            for (final index in ownedIndexes) _indexLine(index, keyed: true),
-            for (final trigger in ownedTriggers)
-              _metaRow(
-                icon: Icons.bolt_outlined,
-                title: trigger.name,
-                detail: 'trigger',
+            SizedBox(
+              width: _typeWidth,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        type,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: style.copyWith(
+                          color: header ? _ink : _muted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    if (mark != null) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        mark,
+                        style: const TextStyle(
+                          color: Color(0xFF8A6A12),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            const SizedBox(height: 6),
+            ),
+            SizedBox(
+              width: _schemaWidth,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Text(
+                  schema,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style.copyWith(
+                    fontFamily: header ? null : 'monospace',
+                    fontSize: header ? 12 : 12,
+                    fontWeight: FontWeight.w400,
+                    color: header ? _ink : const Color(0xFF24312C),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _column(ColumnInfo column) {
-    final marks = <String>[
-      if (column.primaryKey) 'PK',
-      if (column.notNull && !column.primaryKey) 'NOT NULL',
-    ];
-    final fallback = column.defaultValue;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(36, 3, 10, 3),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              column.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: _railText, fontSize: 13),
-            ),
-          ),
-          if (column.type.isNotEmpty)
-            Text(
-              column.type,
-              style: const TextStyle(color: _muted, fontSize: 11),
-            ),
-          if (fallback != null && fallback.isNotEmpty) ...[
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                fallback,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: _gold, fontSize: 11),
-              ),
-            ),
-          ],
-          if (marks.isNotEmpty) ...[
-            const SizedBox(width: 6),
-            Text(
-              marks.join(' '),
-              style: const TextStyle(
-                color: _gold,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+/// Column text for the schema column: name, type, key, default, and actions.
+String columnDefinition(ColumnInfo column, List<ForeignKeyInfo> keys) {
+  final buffer = StringBuffer(quoteIdent(column.name));
+  if (column.type.isNotEmpty) buffer.write(' ${column.type}');
+  if (column.primaryKey) buffer.write(' PRIMARY KEY');
+  if (column.notNull && !column.primaryKey) buffer.write(' NOT NULL');
+  final fallback = column.defaultValue;
+  if (fallback != null && fallback.isNotEmpty) {
+    buffer.write(' DEFAULT $fallback');
   }
-
-  Widget _foreignKey(ForeignKeyInfo key) {
+  for (final key in keys) {
+    if (key.from != column.name) continue;
     final target = key.to == null || key.to!.isEmpty
         ? key.table
-        : '${key.table}.${key.to}';
-    final actions = <String>[
-      if (key.onUpdate.isNotEmpty && key.onUpdate.toUpperCase() != 'NO ACTION')
-        'ON UPDATE ${key.onUpdate}',
-      if (key.onDelete.isNotEmpty && key.onDelete.toUpperCase() != 'NO ACTION')
-        'ON DELETE ${key.onDelete}',
-    ];
-    return _metaRow(
-      icon: Icons.link,
-      title: '${key.from} → $target',
-      detail: actions.join(' · '),
-    );
+        : '${key.table}(${key.to})';
+    buffer.write(' REFERENCES $target');
+    if (key.onUpdate.isNotEmpty && key.onUpdate.toUpperCase() != 'NO ACTION') {
+      buffer.write(' ON UPDATE ${key.onUpdate}');
+    }
+    if (key.onDelete.isNotEmpty && key.onDelete.toUpperCase() != 'NO ACTION') {
+      buffer.write(' ON DELETE ${key.onDelete}');
+    }
   }
+  return buffer.toString();
+}
 
-  Widget _indexLine(SchemaObject index, {required bool keyed}) {
-    final columns = index.indexColumns.join(', ');
-    final detail = [
-      if (index.unique) 'UNIQUE',
-      if (columns.isNotEmpty) columns,
-    ].join(' · ');
-    return _metaRow(
-      icon: Icons.key_outlined,
-      title: index.name,
-      detail: detail,
-      onTap: () => onSelect(index),
-      itemKey: keyed ? Key('schema-${index.type}-${index.name}') : null,
-      active: selected?.name == index.name && selected?.type == index.type,
-    );
-  }
-
-  Widget _leaf(SchemaObject object) {
-    return _metaRow(
-      icon: Icons.bolt_outlined,
-      title: object.name,
-      detail: object.table,
-      onTap: () => onSelect(object),
-      itemKey: Key('schema-${object.type}-${object.name}'),
-      active: selected?.name == object.name && selected?.type == object.type,
-    );
-  }
-
-  Widget _metaRow({
-    required IconData icon,
-    required String title,
-    required String detail,
-    VoidCallback? onTap,
-    Key? itemKey,
-    bool active = false,
-  }) {
-    final row = Padding(
-      padding: const EdgeInsets.fromLTRB(36, 3, 10, 3),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: active ? _gold : _muted),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _railText,
-                fontSize: 12,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ),
-          if (detail.isNotEmpty) ...[
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                detail,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: const TextStyle(color: _gold, fontSize: 11),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-    if (onTap == null) return row;
-    return InkWell(key: itemKey, onTap: onTap, child: row);
-  }
+String _oneLine(String? sql) {
+  if (sql == null || sql.isEmpty) return '';
+  return sql.replaceAll(RegExp(r'\s+'), ' ').trim();
 }

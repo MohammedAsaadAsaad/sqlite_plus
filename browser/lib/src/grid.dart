@@ -8,12 +8,14 @@ class CellGrid extends StatelessWidget {
     super.key,
     required this.columns,
     required this.rows,
+    this.filters,
     this.onCell,
     this.onDelete,
   });
 
   final List<String> columns;
   final List<List<Object?>> rows;
+  final List<TextEditingController>? filters;
   final void Function(int row, int column)? onCell;
   final void Function(int row)? onDelete;
 
@@ -39,6 +41,34 @@ class CellGrid extends StatelessWidget {
                   if (delete) const SizedBox(width: 52),
                 ],
               ),
+              if (filters != null && filters!.length == columns.length)
+                _line(
+                  context,
+                  filter: true,
+                  children: [
+                    for (final controller in filters!)
+                      SizedBox(
+                        width: width,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: TextField(
+                            controller: controller,
+                            style: const TextStyle(fontSize: 12),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              hintText: 'Filter',
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (delete) const SizedBox(width: 52),
+                  ],
+                ),
               Expanded(
                 child: ListView.builder(
                   itemExtent: rowHeight,
@@ -90,20 +120,23 @@ class CellGrid extends StatelessWidget {
     required List<Widget> children,
     bool header = false,
     bool stripe = false,
+    bool filter = false,
   }) {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: header
             ? const Color(0xFFE6F0EA)
-            : stripe
-                ? const Color(0xFFF7FBF9)
-                : Colors.white,
+            : filter
+                ? const Color(0xFFF4F7F5)
+                : stripe
+                    ? const Color(0xFFF7FBF9)
+                    : Colors.white,
         border: Border(
           bottom: BorderSide(color: Theme.of(context).dividerColor),
         ),
       ),
       child: SizedBox(
-        height: header ? 36 : rowHeight,
+        height: header ? 36 : (filter ? 44 : rowHeight),
         child: Row(children: children),
       ),
     );

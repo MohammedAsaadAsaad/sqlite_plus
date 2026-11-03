@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 
+import 'format.dart';
 import 'grid.dart';
 import 'session.dart';
 
-/// One page of the selected table or view.
-class DataPane extends StatelessWidget {
+/// One page of the selected table or view, with a filter row and a pager.
+class DataPane extends StatefulWidget {
   const DataPane({
     super.key,
     required this.object,
     required this.catalog,
     required this.slice,
     required this.busy,
+    required this.onFirst,
     required this.onPrevious,
     required this.onNext,
+    required this.onLast,
+    required this.onJump,
     required this.onInsert,
     required this.onEdit,
     required this.onDelete,
@@ -23,16 +27,85 @@ class DataPane extends StatelessWidget {
   final List<SchemaObject> catalog;
   final TableSlice slice;
   final bool busy;
+  final VoidCallback? onFirst;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
+  final VoidCallback? onLast;
+  final ValueChanged<int>? onJump;
   final VoidCallback? onInsert;
   final void Function(ColumnInfo column, BigInt rowid, Object? current)? onEdit;
   final void Function(BigInt rowid)? onDelete;
   final VoidCallback onShowSql;
 
   @override
+  State<DataPane> createState() => _DataPaneState();
+}
+
+class _DataPaneState extends State<DataPane> {
+  final _filters = <TextEditingController>[];
+  final _go = TextEditingController();
+
+  TableSlice get slice => widget.slice;
+
+  @override
+  void initState() {
+    super.initState();
+    _ensureFilters();
+  }
+
+  @override
+  void didUpdateWidget(DataPane oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _ensureFilters();
+    final previous = oldWidget.object;
+    final next = widget.object;
+    if (previous?.name != next?.name || previous?.type != next?.type) {
+      for (final filter in _filters) {
+        filter.removeListener(_refresh);
+        filter.clear();
+        filter.addListener(_refresh);
+      }
+      _go.clear();
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final filter in _filters) {
+      filter.dispose();
+    }
+    _go.dispose();
+    super.dispose();
+  }
+
+  void _ensureFilters() {
+    final count = slice.columns.length;
+    while (_filters.length < count) {
+      final controller = TextEditingController();
+      controller.addListener(_refresh);
+      _filters.add(controller);
+    }
+    while (_filters.length > count) {
+      final removed = _filters.removeLast();
+      removed.removeListener(_refresh);
+      removed.dispose();
+    }
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  void _submitGo() {
+    final page = int.tryParse(_go.text.trim());
+    final jump = widget.onJump;
+    if (page == null || page < 1 || jump == null) return;
+    jump(page);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final object = this.object;
+    final object = widget.object;
     if (object == null) {
       return const Center(
         child: Padding(
@@ -57,10 +130,8 @@ class DataPane extends StatelessWidget {
         ],
       );
     }
-    final start = slice.rows.isEmpty ? slice.offset : slice.offset + 1;
-    final end = slice.offset + slice.rows.length;
-    final range =
-        slice.totalKnown ? '$start–$end of ${slice.total}' : '$start–$end';
+    final visible = _visibleRows();
+    final filtering = _filters.any((filter) => filter.text.trim().isNotEmpty);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -78,30 +149,19 @@ class DataPane extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              Text(range, key: const Key('page-range')),
               IconButton(
                 key: const Key('show-sql'),
                 tooltip: 'Create statement',
-                onPressed: object.sql == null ? null : onShowSql,
+                onPressed: object.sql == null ? null : widget.onShowSql,
                 icon: const Icon(Icons.info_outline),
               ),
               IconButton(
                 key: const Key('insert-row'),
                 tooltip: 'Insert default row',
-                onPressed: busy || object.type != 'table' ? null : onInsert,
+                onPressed: widget.busy || object.type != 'table'
+                    ? null
+                    : widget.onInsert,
                 icon: const Icon(Icons.add),
-              ),
-              OutlinedButton.icon(
-                key: const Key('page-previous'),
-                onPressed: busy ? null : onPrevious,
-                icon: const Icon(Icons.chevron_left),
-                label: const Text('Previous'),
-              ),
-              OutlinedButton.icon(
-                key: const Key('page-next'),
-                onPressed: busy ? null : onNext,
-                icon: const Icon(Icons.chevron_right),
-                label: const Text('Next'),
               ),
             ],
           ),
@@ -129,10 +189,7 @@ class DataPane extends StatelessWidget {
                         horizontal: 8,
                         vertical: 4,
                       ),
-                      child: Text(
-                        fact,
-                        style: const TextStyle(fontSize: 12),
-                      ),
+                      child: Text(fact, style: const TextStyle(fontSize: 12)),
                     ),
                   ),
               ],
@@ -140,7 +197,7 @@ class DataPane extends StatelessWidget {
           ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -149,48 +206,145 @@ class DataPane extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: slice.rows.isEmpty
+                child: slice.rows.isEmpty && !filtering
                     ? const Center(child: Text('This table has no rows.'))
                     : CellGrid(
                         key: const Key('result-grid'),
                         columns: [
                           for (final column in slice.columns) column.name,
                         ],
+                        filters: _filters,
                         rows: [
-                          for (final row in slice.rows)
-                            slice.hasRowid ? row.skip(1).toList() : row,
+                          for (final index in visible)
+                            slice.hasRowid
+                                ? slice.rows[index].skip(1).toList()
+                                : slice.rows[index],
                         ],
-                        onCell: (index, column) {
-                          final source = slice.rows[index];
-                          final rowid = slice.hasRowid && source.first is BigInt
-                              ? source.first as BigInt
-                              : null;
-                          if (rowid == null || onEdit == null) return;
-                          final values =
-                              slice.hasRowid ? source.skip(1).toList() : source;
-                          onEdit!(
-                            slice.columns[column],
-                            rowid,
-                            column < values.length ? values[column] : null,
-                          );
-                        },
+                        onCell: (index, column) =>
+                            _edit(visible[index], column),
                         onDelete: slice.hasRowid
-                            ? (index) {
-                                final source = slice.rows[index];
-                                if (source.first is! BigInt ||
-                                    onDelete == null) {
-                                  return;
-                                }
-                                onDelete!(source.first as BigInt);
-                              }
+                            ? (index) => _delete(visible[index])
                             : null,
                       ),
               ),
             ),
           ),
         ),
+        if (filtering && visible.isEmpty)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text('No rows on this page match the filter.'),
+          ),
+        _pager(),
       ],
     );
+  }
+
+  Widget _pager() {
+    final start = slice.rows.isEmpty ? slice.offset : slice.offset + 1;
+    final end = slice.offset + slice.rows.length;
+    final range =
+        slice.totalKnown ? '$start–$end of ${slice.total}' : '$start–$end';
+    return Material(
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 0, 12, 8),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              IconButton(
+                key: const Key('page-first'),
+                tooltip: 'First page',
+                onPressed: widget.busy ? null : widget.onFirst,
+                icon: const Icon(Icons.first_page),
+              ),
+              IconButton(
+                key: const Key('page-previous'),
+                tooltip: 'Previous',
+                onPressed: widget.busy ? null : widget.onPrevious,
+                icon: const Icon(Icons.chevron_left),
+              ),
+              Text(range, key: const Key('page-range')),
+              IconButton(
+                key: const Key('page-next'),
+                tooltip: 'Next',
+                onPressed: widget.busy ? null : widget.onNext,
+                icon: const Icon(Icons.chevron_right),
+              ),
+              IconButton(
+                key: const Key('page-last'),
+                tooltip: 'Last page',
+                onPressed: widget.busy ? null : widget.onLast,
+                icon: const Icon(Icons.last_page),
+              ),
+              const SizedBox(width: 12),
+              const Text('Go to'),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 72,
+                child: TextField(
+                  key: const Key('page-go'),
+                  controller: _go,
+                  enabled: !widget.busy && widget.onJump != null,
+                  keyboardType: TextInputType.number,
+                  onSubmitted: (_) => _submitGo(),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: '1',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<int> _visibleRows() {
+    final shown = <int>[];
+    for (var index = 0; index < slice.rows.length; index++) {
+      final source = slice.rows[index];
+      final values = slice.hasRowid ? source.skip(1).toList() : source;
+      if (_matches(values)) shown.add(index);
+    }
+    return shown;
+  }
+
+  bool _matches(List<Object?> values) {
+    for (var column = 0;
+        column < _filters.length && column < values.length;
+        column++) {
+      final query = _filters[column].text.trim().toLowerCase();
+      if (query.isEmpty) continue;
+      if (!formatCell(values[column]).toLowerCase().contains(query)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _edit(int index, int column) {
+    final source = slice.rows[index];
+    final rowid = slice.hasRowid && source.first is BigInt
+        ? source.first as BigInt
+        : null;
+    final edit = widget.onEdit;
+    if (rowid == null || edit == null) return;
+    final values = slice.hasRowid ? source.skip(1).toList() : source;
+    edit(
+      slice.columns[column],
+      rowid,
+      column < values.length ? values[column] : null,
+    );
+  }
+
+  void _delete(int index) {
+    final source = slice.rows[index];
+    final remove = widget.onDelete;
+    if (source.first is! BigInt || remove == null) return;
+    remove(source.first as BigInt);
   }
 
   List<String> _facts(SchemaObject object) {
@@ -216,7 +370,7 @@ class DataPane extends StatelessWidget {
       final action = actions.isEmpty ? '' : ' · ${actions.join(' · ')}';
       facts.add('${key.from} → $target$action');
     }
-    for (final index in catalog) {
+    for (final index in widget.catalog) {
       if (index.type != 'index' || index.table != object.name) continue;
       final columns = index.indexColumns.join(', ');
       final mark = index.unique ? 'UNIQUE ' : '';
@@ -226,7 +380,7 @@ class DataPane extends StatelessWidget {
             : '$mark${index.name} ($columns)',
       );
     }
-    for (final trigger in catalog) {
+    for (final trigger in widget.catalog) {
       if (trigger.type == 'trigger' && trigger.table == object.name) {
         facts.add('trigger ${trigger.name}');
       }

@@ -37,7 +37,7 @@ class BrowserApp extends StatelessWidget {
           ),
         ),
         drawerTheme: const DrawerThemeData(
-          backgroundColor: Color(0xFF17241F),
+          backgroundColor: Colors.white,
         ),
         dividerColor: line,
         cardTheme: const CardThemeData(
