@@ -270,4 +270,106 @@ void main() {
     await _frames(tester);
     await _finish(tester, session);
   });
+
+  testWidgets('a phone keeps the query and the result apart', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run('CREATE TABLE tiny (n INTEGER)');
+    await session.run('INSERT INTO tiny(n) VALUES (0)');
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.byKey(const Key('pane-sql')));
+    await _frames(tester);
+    await tester.enterText(
+      find.byKey(const Key('sql-input')),
+      'SELECT n FROM tiny',
+    );
+    expect(find.byKey(const Key('sql-grid')), findsNothing);
+    expect(find.byKey(const Key('sql-page-next')), findsNothing);
+    await tester.tap(find.byKey(const Key('run-sql')));
+    await _frames(tester);
+    expect(find.byKey(const Key('sql-grid')), findsOneWidget);
+    expect(find.text('0'), findsOneWidget);
+    expect(find.byKey(const Key('sql-input')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('sql-show-query')));
+    await _frames(tester);
+    expect(find.byKey(const Key('sql-input')), findsOneWidget);
+    expect(find.byKey(const Key('sql-grid')), findsNothing);
+    await _finish(tester, session);
+  });
+
+  testWidgets('create table and create index stay in a form', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.text('Create table'));
+    await _frames(tester);
+    await tester.enterText(find.byKey(const Key('create-table-name')), 'notes');
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('create-table-save')));
+    await _frames(tester);
+    expect(find.byKey(const Key('schema-table-notes')), findsOneWidget);
+    expect(find.byKey(const Key('sql-input')), findsNothing);
+    expect(find.text('New table'), findsNothing);
+
+    await tester.tap(find.text('Create index'));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('create-index-column-title')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('create-index-save')));
+    await _frames(tester);
+    expect(
+        find.byKey(const Key('schema-index-idx_notes_title')), findsOneWidget);
+    expect(find.byKey(const Key('sql-input')), findsNothing);
+    await _finish(tester, session);
+  });
+
+  testWidgets('the graph adds a foreign key between two tables',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run(
+      'CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT)',
+    );
+    await session.run(
+      'CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT)',
+    );
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.text('Graph'));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('graph-link-books')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('graph-column-authors-id')));
+    await _frames(tester);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('link-column-name')))
+          .controller!
+          .text,
+      'authors_id',
+    );
+    await tester.tap(find.byKey(const Key('link-save')));
+    await _frames(tester);
+    expect(find.text('authors_id'), findsWidgets);
+    expect(find.text('→ authors.id'), findsOneWidget);
+    await _finish(tester, session);
+  });
 }

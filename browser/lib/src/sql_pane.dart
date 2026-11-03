@@ -5,6 +5,8 @@ import 'session.dart';
 import 'sql_complete.dart';
 import 'sql_view.dart';
 
+enum _SqlScreen { query, result }
+
 /// One SQL statement, a caret-side popup of the next tokens, and its result.
 class SqlPane extends StatefulWidget {
   const SqlPane({
@@ -41,6 +43,8 @@ class _SqlPaneState extends State<SqlPane> {
   var _applying = false;
   var _menuOpen = false;
   var _textWidth = 0.0;
+  var _compact = false;
+  var _screen = _SqlScreen.query;
 
   static const _lineHeight = 22.0;
   static const _visibleLines = 6;
@@ -58,6 +62,11 @@ class _SqlPaneState extends State<SqlPane> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_changed);
       widget.controller.addListener(_changed);
+    }
+    if (_compact &&
+        !identical(widget.result, oldWidget.result) &&
+        widget.result != null) {
+      _screen = _SqlScreen.result;
     }
     _schedulePortal();
   }
@@ -97,17 +106,18 @@ class _SqlPaneState extends State<SqlPane> {
   }
 
   void _hideMenu() {
-    if (!_menuOpen) return;
+    if (!_menuOpen && !_portal.isShowing) return;
     setState(() => _menuOpen = false);
-    _portal.hide();
+    if (_portal.isShowing) _portal.hide();
   }
 
   void _schedulePortal() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_menuOpen && _suggestions.isNotEmpty) {
+      final editorMounted = _textKey.currentContext != null;
+      if (editorMounted && _menuOpen && _suggestions.isNotEmpty) {
         _portal.show();
-      } else {
+      } else if (_portal.isShowing) {
         _portal.hide();
       }
     });
@@ -140,94 +150,208 @@ class _SqlPaneState extends State<SqlPane> {
   @override
   Widget build(BuildContext context) {
     final result = widget.result;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _compact = constraints.maxWidth < 640;
+        if (_compact) return _compactPane(result);
+        return _widePane(result);
+      },
+    );
+  }
+
+  Widget _compactPane(StatementResult? result) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(
+            children: [
+              Expanded(
+                  child: _screenButton(
+                      'Query', _SqlScreen.query, const Key('sql-show-query'))),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: _screenButton('Result', _SqlScreen.result,
+                      const Key('sql-show-result'))),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _screen == _SqlScreen.query
+              ? _queryBody(result)
+              : _resultBody(result),
+        ),
+      ],
+    );
+  }
+
+  Widget _screenButton(String label, _SqlScreen screen, Key key) {
+    final selected = _screen == screen;
+    return FilledButton(
+      key: key,
+      style: FilledButton.styleFrom(
+        backgroundColor: selected ? const Color(0xFF0E7C66) : Colors.white,
+        foregroundColor: selected ? Colors.white : const Color(0xFF14211C),
+        side: const BorderSide(color: Color(0xFFD5E2DB)),
+        elevation: 0,
+      ),
+      onPressed: () => setState(() => _screen = screen),
+      child: Text(label),
+    );
+  }
+
+  Widget _queryBody(StatementResult? result) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Text(
-                'Statement',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const Spacer(),
-              FilledButton.icon(
-                key: const Key('run-sql'),
-                onPressed: widget.busy ? null : widget.onRun,
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Run'),
-              ),
-            ],
+          _statementHeader(),
+          const SizedBox(height: 8),
+          Expanded(child: _editorPortal(expand: true)),
+          if (result != null && !result.isQuery) ...[
+            const SizedBox(height: 8),
+            Text('${result.changes} rows changed'),
+          ],
+          ..._logChildren(),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultBody(StatementResult? result) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Result',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 8),
-          OverlayPortal(
-            controller: _portal,
-            overlayChildBuilder: _menu,
-            child: TapRegion(
-              groupId: _menuGroup,
-              onTapOutside: (_) => _hideMenu(),
-              child: _editor(),
-            ),
+          if (result == null)
+            const Expanded(
+              child: Center(child: Text('Run a statement to see rows here.')),
+            )
+          else if (!result.isQuery)
+            Text('${result.changes} rows changed')
+          else ...[
+            Expanded(child: _gridFrame(result)),
+            _pager(result),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _statementHeader() {
+    return Row(
+      children: [
+        Text(
+          'Statement',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const Spacer(),
+        FilledButton.icon(
+          key: const Key('run-sql'),
+          onPressed: widget.busy ? null : widget.onRun,
+          icon: const Icon(Icons.play_arrow),
+          label: const Text('Run'),
+        ),
+      ],
+    );
+  }
+
+  Widget _editorPortal({required bool expand}) {
+    return OverlayPortal(
+      controller: _portal,
+      overlayChildBuilder: _menu,
+      child: TapRegion(
+        groupId: _menuGroup,
+        onTapOutside: (_) => _hideMenu(),
+        child: _editor(expand: expand),
+      ),
+    );
+  }
+
+  List<Widget> _logChildren() {
+    if (widget.log.isEmpty) return const [];
+    return [
+      const SizedBox(height: 8),
+      const Text(
+        'SQL log',
+        style: TextStyle(fontWeight: FontWeight.w700),
+      ),
+      const SizedBox(height: 4),
+      SizedBox(
+        height: 72,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7FBF9),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFD5E2DB)),
           ),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            children: [
+              for (var index = 0; index < widget.log.length; index++)
+                Text(
+                  '${index + 1}  ${widget.log[index]}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                ),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _gridFrame(StatementResult result) {
+    if (!result.isQuery || result.columns.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD5E2DB)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: CellGrid(
+          key: const Key('sql-grid'),
+          columns: result.columns,
+          rows: result.rows,
+        ),
+      ),
+    );
+  }
+
+  Widget _widePane(StatementResult? result) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _statementHeader(),
+          const SizedBox(height: 8),
+          _editorPortal(expand: false),
           const SizedBox(height: 8),
           if (result != null && !result.isQuery)
             Text('${result.changes} rows changed'),
-          if (widget.log.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            const Text(
-              'SQL log',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 4),
-            SizedBox(
-              height: 72,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF7FBF9),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFD5E2DB)),
-                ),
-                child: ListView(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  children: [
-                    for (var index = 0; index < widget.log.length; index++)
-                      Text(
-                        '${index + 1}  ${widget.log[index]}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 12,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ..._logChildren(),
           const SizedBox(height: 8),
           Expanded(
-            child: result != null && result.isQuery && result.columns.isNotEmpty
-                ? DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFD5E2DB)),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: CellGrid(
-                        key: const Key('sql-grid'),
-                        columns: result.columns,
-                        rows: result.rows,
-                      ),
-                    ),
-                  )
-                : const SizedBox.shrink(),
+            child:
+                result == null ? const SizedBox.shrink() : _gridFrame(result),
           ),
           if (result != null && result.isQuery) _pager(result),
         ],
@@ -235,9 +359,78 @@ class _SqlPaneState extends State<SqlPane> {
     );
   }
 
-  Widget _editor() {
+  Widget _editor({bool expand = false}) {
     final text = widget.controller.text;
     final lines = text.isEmpty ? const [''] : text.split('\n');
+    final scroll = LayoutBuilder(
+      builder: (context, constraints) {
+        final measured = _measure(text);
+        final gutter = 44.0;
+        final inner = constraints.maxWidth - 24;
+        final textWidth = measured > inner - gutter ? measured : inner - gutter;
+        _textWidth = textWidth;
+        return Scrollbar(
+          controller: _scroll,
+          child: SingleChildScrollView(
+            controller: _scroll,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _gutter(lines.length),
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    key: _textKey,
+                    width: textWidth,
+                    child: Stack(
+                      children: [
+                        Text.rich(
+                          TextSpan(
+                            style: sqlCodeFont,
+                            children: sqlHighlightSpans(text),
+                          ),
+                          strutStyle: sqlCodeStrut,
+                        ),
+                        TextField(
+                          key: const Key('sql-input'),
+                          controller: widget.controller,
+                          focusNode: _focus,
+                          maxLines: null,
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          smartDashesType: SmartDashesType.disabled,
+                          smartQuotesType: SmartQuotesType.disabled,
+                          textCapitalization: TextCapitalization.none,
+                          style: sqlCodeFont.copyWith(
+                            color: const Color(0x00000000),
+                          ),
+                          strutStyle: sqlCodeStrut,
+                          cursorColor: const Color(0xFF7DDBB6),
+                          cursorWidth: 1.5,
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            contentPadding: EdgeInsets.zero,
+                            filled: false,
+                            border: InputBorder.none,
+                            hintText:
+                                text.isEmpty ? 'SELECT title FROM books' : null,
+                            hintStyle: sqlCodeFont.copyWith(
+                              color: const Color(0xFF6E847C),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
     return DecoratedBox(
       decoration: BoxDecoration(
         color: const Color(0xFF17241F),
@@ -246,83 +439,12 @@ class _SqlPaneState extends State<SqlPane> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          height: 24 + _visibleLines * _lineHeight,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final measured = _measure(text);
-              final gutter = 44.0;
-              final inner = constraints.maxWidth - 24;
-              final textWidth =
-                  measured > inner - gutter ? measured : inner - gutter;
-              _textWidth = textWidth;
-              return Scrollbar(
-                controller: _scroll,
-                child: SingleChildScrollView(
-                  controller: _scroll,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _gutter(lines.length),
-                        const SizedBox(width: 16),
-                        SizedBox(
-                          key: _textKey,
-                          width: textWidth,
-                          child: Stack(
-                            children: [
-                              Text.rich(
-                                TextSpan(
-                                  style: sqlCodeFont,
-                                  children: sqlHighlightSpans(text),
-                                ),
-                                strutStyle: sqlCodeStrut,
-                              ),
-                              TextField(
-                                key: const Key('sql-input'),
-                                controller: widget.controller,
-                                focusNode: _focus,
-                                maxLines: null,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                smartDashesType: SmartDashesType.disabled,
-                                smartQuotesType: SmartQuotesType.disabled,
-                                textCapitalization: TextCapitalization.none,
-                                style: sqlCodeFont.copyWith(
-                                  color: const Color(0x00000000),
-                                ),
-                                strutStyle: sqlCodeStrut,
-                                cursorColor: const Color(0xFF7DDBB6),
-                                cursorWidth: 1.5,
-                                decoration: InputDecoration(
-                                  isCollapsed: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  filled: false,
-                                  border: InputBorder.none,
-                                  hintText: text.isEmpty
-                                      ? 'SELECT title FROM books'
-                                      : null,
-                                  hintStyle: sqlCodeFont.copyWith(
-                                    color: const Color(0xFF6E847C),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+        child: expand
+            ? scroll
+            : SizedBox(
+                height: 24 + _visibleLines * _lineHeight,
+                child: scroll,
+              ),
       ),
     );
   }

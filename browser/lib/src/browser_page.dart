@@ -7,12 +7,13 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 
 import 'cell_dialog.dart';
 import 'data_pane.dart';
+import 'schema_graph.dart';
 import 'schema_pane.dart';
 import 'session.dart';
 import 'sql_pane.dart';
 import 'sql_view.dart';
 
-enum BrowserPane { data, sql }
+enum BrowserPane { data, sql, graph }
 
 /// Schema, rows, and a SQL editor. Wide windows keep the schema beside the work.
 class BrowserPage extends StatefulWidget {
@@ -101,7 +102,7 @@ class _BrowserPageState extends State<BrowserPage> {
                         Navigator.of(context).pop();
                         _select(object);
                       },
-                      onDraft: _draft,
+                      onApply: _applySchema,
                     ),
                   ),
                 ),
@@ -114,7 +115,7 @@ class _BrowserPageState extends State<BrowserPage> {
                         objects: session.objects,
                         selected: _selected,
                         onSelect: _select,
-                        onDraft: _draft,
+                        onApply: _applySchema,
                       ),
                     ),
                     Expanded(child: _work()),
@@ -124,11 +125,9 @@ class _BrowserPageState extends State<BrowserPage> {
           bottomNavigationBar: wide
               ? null
               : NavigationBar(
-                  selectedIndex: _pane == BrowserPane.data ? 0 : 1,
+                  selectedIndex: _paneIndex,
                   onDestinationSelected: (index) {
-                    setState(() {
-                      _pane = index == 0 ? BrowserPane.data : BrowserPane.sql;
-                    });
+                    setState(() => _pane = BrowserPane.values[index]);
                   },
                   destinations: const [
                     NavigationDestination(
@@ -140,6 +139,11 @@ class _BrowserPageState extends State<BrowserPage> {
                       icon: Icon(Icons.code),
                       label: 'SQL',
                       key: Key('pane-sql'),
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.account_tree_outlined),
+                      label: 'Graph',
+                      key: Key('pane-graph'),
                     ),
                   ],
                 ),
@@ -164,37 +168,46 @@ class _BrowserPageState extends State<BrowserPage> {
             ),
           ),
         Expanded(
-          child: _pane == BrowserPane.data
-              ? DataPane(
-                  object: _selected,
-                  catalog: session.objects,
-                  slice: _slice,
-                  busy: _busy,
-                  onFirst: _slice.offset == 0 ? null : () => _load(0),
-                  onPrevious: _slice.offset == 0 ? null : () => _move(-1),
-                  onNext: _hasNext ? () => _move(1) : null,
-                  onLast:
-                      _lastOffset == null ? null : () => _load(_lastOffset!),
-                  onJump: _jump,
-                  onInsert: _selected == null ? null : _insert,
-                  onEdit: _edit,
-                  onDelete: _delete,
-                  onShowSql: _showSql,
-                )
-              : SqlPane(
-                  controller: _sql,
+          child: _pane == BrowserPane.graph
+              ? SchemaGraph(
                   objects: session.objects,
-                  result: _result,
-                  log: _log,
-                  busy: _busy,
-                  onRun: () => _runSql(),
-                  onPrevious: _result != null && _result!.offset > 0
-                      ? () => _runSql(offset: _result!.offset - _result!.limit)
-                      : null,
-                  onNext: _result != null && _result!.more
-                      ? () => _runSql(offset: _result!.offset + _result!.limit)
-                      : null,
-                ),
+                  onOpen: _select,
+                  onApply: _applySchema,
+                )
+              : _pane == BrowserPane.data
+                  ? DataPane(
+                      object: _selected,
+                      catalog: session.objects,
+                      slice: _slice,
+                      busy: _busy,
+                      onFirst: _slice.offset == 0 ? null : () => _load(0),
+                      onPrevious: _slice.offset == 0 ? null : () => _move(-1),
+                      onNext: _hasNext ? () => _move(1) : null,
+                      onLast: _lastOffset == null
+                          ? null
+                          : () => _load(_lastOffset!),
+                      onJump: _jump,
+                      onInsert: _selected == null ? null : _insert,
+                      onEdit: _edit,
+                      onDelete: _delete,
+                      onShowSql: _showSql,
+                    )
+                  : SqlPane(
+                      controller: _sql,
+                      objects: session.objects,
+                      result: _result,
+                      log: _log,
+                      busy: _busy,
+                      onRun: () => _runSql(),
+                      onPrevious: _result != null && _result!.offset > 0
+                          ? () =>
+                              _runSql(offset: _result!.offset - _result!.limit)
+                          : null,
+                      onNext: _result != null && _result!.more
+                          ? () =>
+                              _runSql(offset: _result!.offset + _result!.limit)
+                          : null,
+                    ),
         ),
       ],
     );
@@ -203,36 +216,47 @@ class _BrowserPageState extends State<BrowserPage> {
   Widget _paneSwitch() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: SegmentedButton<BrowserPane>(
-        style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return const Color(0xFF0E7C66);
-            }
-            return Colors.white;
-          }),
-          foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) return Colors.white;
-            return const Color(0xFF14211C);
-          }),
-          side: const WidgetStatePropertyAll(
-            BorderSide(color: Color(0xFFD5E2DB)),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SegmentedButton<BrowserPane>(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const Color(0xFF0E7C66);
+                }
+                return Colors.white;
+              }),
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) return Colors.white;
+                return const Color(0xFF14211C);
+              }),
+              side: const WidgetStatePropertyAll(
+                BorderSide(color: Color(0xFFD5E2DB)),
+              ),
+            ),
+            segments: const [
+              ButtonSegment(
+                value: BrowserPane.data,
+                label: Text('Rows'),
+                icon: Icon(Icons.table_rows_outlined),
+              ),
+              ButtonSegment(
+                value: BrowserPane.sql,
+                label: Text('SQL'),
+                icon: Icon(Icons.code),
+              ),
+              ButtonSegment(
+                value: BrowserPane.graph,
+                label: Text('Graph'),
+                icon: Icon(Icons.account_tree_outlined),
+              ),
+            ],
+            selected: {_pane},
+            onSelectionChanged: (value) => setState(() => _pane = value.single),
           ),
         ),
-        segments: const [
-          ButtonSegment(
-            value: BrowserPane.data,
-            label: Text('Rows'),
-            icon: Icon(Icons.table_rows_outlined),
-          ),
-          ButtonSegment(
-            value: BrowserPane.sql,
-            label: Text('SQL'),
-            icon: Icon(Icons.code),
-          ),
-        ],
-        selected: {_pane},
-        onSelectionChanged: (value) => setState(() => _pane = value.single),
       ),
     );
   }
@@ -278,12 +302,40 @@ class _BrowserPageState extends State<BrowserPage> {
     return '$start–$end';
   }
 
-  void _draft(String sql) {
-    _sql.text = sql;
-    _sql.selection = TextSelection.collapsed(offset: _sql.text.length);
-    setState(() {
-      _pane = BrowserPane.sql;
-      _message = null;
+  int get _paneIndex => switch (_pane) {
+        BrowserPane.data => 0,
+        BrowserPane.sql => 1,
+        BrowserPane.graph => 2,
+      };
+
+  Future<void> _applySchema(String sql) {
+    return _guard(() async {
+      final result = await session.run(sql);
+      if (!mounted) return;
+      setState(() {
+        _message = result.isQuery
+            ? _queryMessage(result)
+            : '${result.changes} changed';
+        final statement = sql.trim().replaceAll(RegExp(r'\s+'), ' ');
+        if (statement.isNotEmpty) {
+          _log.add(statement);
+          if (_log.length > 12) _log.removeAt(0);
+        }
+      });
+      final selected = _selected;
+      if (selected != null &&
+          session.objects.any(
+            (object) =>
+                object.name == selected.name && object.type == selected.type,
+          )) {
+        _selected = session.objects.firstWhere(
+          (object) =>
+              object.name == selected.name && object.type == selected.type,
+        );
+        if (_selected!.type == 'table' || _selected!.type == 'view') {
+          await _load(_slice.offset);
+        }
+      }
     });
   }
 

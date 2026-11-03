@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite_plus_browser/src/format.dart';
+import 'package:sqlite_plus_browser/src/schema_sql.dart';
 import 'package:sqlite_plus_browser/src/session.dart';
 import 'package:sqlite_plus_browser/src/sql_view.dart';
 
@@ -274,5 +275,91 @@ void main() {
         session.objects.singleWhere((object) => object.name == 'tr');
     expect(trigger.type, 'trigger');
     expect(trigger.table, 'books');
+  });
+
+  test('a form builds a table, an index, and a foreign key', () async {
+    expect(
+      createTableSql('', const [ColumnDraft(name: 'id', type: 'INTEGER')]),
+      isNull,
+    );
+    expect(createTableSql('notes', const []), isNull);
+    expect(
+      createTableSql('notes', const [
+        ColumnDraft(name: 'id', type: 'INTEGER'),
+        ColumnDraft(name: 'ID', type: 'TEXT'),
+      ]),
+      isNull,
+    );
+    expect(
+      createTableSql('notes', const [
+        ColumnDraft(name: 'id', type: 'INTEGER', primaryKey: true),
+        ColumnDraft(name: 'title', type: 'TEXT', notNull: true),
+      ]),
+      'CREATE TABLE "notes" (\n'
+      '  "id" INTEGER PRIMARY KEY,\n'
+      '  "title" TEXT NOT NULL\n'
+      ')',
+    );
+    expect(
+      createTableSql('pair', const [
+        ColumnDraft(name: 'a', type: 'INTEGER', primaryKey: true),
+        ColumnDraft(name: 'b', type: 'INTEGER', primaryKey: true),
+      ]),
+      contains('PRIMARY KEY ("a", "b")'),
+    );
+    expect(
+      createIndexSql(table: 'notes', columns: ['title']),
+      'CREATE INDEX "idx_notes_title" ON "notes" ("title")',
+    );
+    expect(
+      createIndexSql(
+        table: 'notes',
+        columns: ['title'],
+        name: 'uq',
+        unique: true,
+      ),
+      'CREATE UNIQUE INDEX "uq" ON "notes" ("title")',
+    );
+    expect(
+      linkColumnSql(
+        child: 'books',
+        column: 'authors_id',
+        type: 'INTEGER',
+        parent: 'authors',
+        parentColumn: 'id',
+      ),
+      'ALTER TABLE "books" ADD COLUMN "authors_id" INTEGER '
+      'REFERENCES "authors" ("id")',
+    );
+
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    await session.run(createTableSql('authors', const [
+      ColumnDraft(name: 'id', type: 'INTEGER', primaryKey: true),
+      ColumnDraft(name: 'name', type: 'TEXT'),
+    ])!);
+    await session.run(createTableSql('books', const [
+      ColumnDraft(name: 'id', type: 'INTEGER', primaryKey: true),
+      ColumnDraft(name: 'title', type: 'TEXT', notNull: true),
+    ])!);
+    await session.run(createIndexSql(table: 'books', columns: ['title'])!);
+    await session.run(linkColumnSql(
+      child: 'books',
+      column: 'authors_id',
+      type: 'INTEGER',
+      parent: 'authors',
+      parentColumn: 'id',
+    )!);
+    final books =
+        session.objects.singleWhere((object) => object.name == 'books');
+    expect(books.columns.map((column) => column.name), contains('authors_id'));
+    final link = books.foreignKeys.single;
+    expect(link.from, 'authors_id');
+    expect(link.table, 'authors');
+    expect(link.to, 'id');
+    final index = session.objects
+        .singleWhere((object) => object.name == 'idx_books_title');
+    expect(index.indexColumns, ['title']);
   });
 }

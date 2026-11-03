@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'format.dart';
+import 'object_dialogs.dart';
 import 'session.dart';
 
 const _nameWidth = 220.0;
@@ -12,13 +13,6 @@ const _selected = Color(0xFFD6E8F8);
 const _ink = Color(0xFF1C1C1C);
 const _muted = Color(0xFF5C6560);
 
-const createTableDraft = '''CREATE TABLE name (
-  id INTEGER PRIMARY KEY,
-  title TEXT
-)''';
-
-const createIndexDraft = 'CREATE INDEX idx_name ON name(title)';
-
 /// Name, type, and schema text, in the shape of a database structure tree.
 class SchemaPane extends StatefulWidget {
   const SchemaPane({
@@ -26,13 +20,13 @@ class SchemaPane extends StatefulWidget {
     required this.objects,
     required this.selected,
     required this.onSelect,
-    required this.onDraft,
+    required this.onApply,
   });
 
   final List<SchemaObject> objects;
   final SchemaObject? selected;
   final ValueChanged<SchemaObject> onSelect;
-  final ValueChanged<String> onDraft;
+  final Future<void> Function(String sql) onApply;
 
   @override
   State<SchemaPane> createState() => _SchemaPaneState();
@@ -76,12 +70,24 @@ class _SchemaPaneState extends State<SchemaPane> {
               spacing: 4,
               children: [
                 TextButton.icon(
-                  onPressed: () => widget.onDraft(createTableDraft),
+                  onPressed: () async {
+                    final sql = await showCreateTable(context);
+                    if (!context.mounted || sql == null) return;
+                    widget.onApply(sql);
+                  },
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Create table'),
                 ),
                 TextButton.icon(
-                  onPressed: () => widget.onDraft(createIndexDraft),
+                  onPressed: () async {
+                    final tables = [
+                      for (final object in widget.objects)
+                        if (object.type == 'table') object,
+                    ];
+                    final sql = await showCreateIndex(context, tables);
+                    if (!context.mounted || sql == null) return;
+                    widget.onApply(sql);
+                  },
                   icon: const Icon(Icons.key_outlined, size: 18),
                   label: const Text('Create index'),
                 ),
