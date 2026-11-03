@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -12,6 +13,7 @@ import 'schema_pane.dart';
 import 'session.dart';
 import 'sql_pane.dart';
 import 'sql_view.dart';
+import 'work_progress.dart';
 
 enum BrowserPane { data, sql, graph }
 
@@ -33,6 +35,8 @@ class _BrowserPageState extends State<BrowserPage> {
   BrowserPane _pane = BrowserPane.data;
   String? _message;
   bool _busy = false;
+  bool _progressShown = false;
+  String? _progressDetail;
   final List<String> _log = [];
 
   BrowserSession get session => widget.session;
@@ -106,27 +110,36 @@ class _BrowserPageState extends State<BrowserPage> {
                     ),
                   ),
                 ),
-          body: wide
-              ? Row(
-                  children: [
-                    SizedBox(
-                      width: 620,
-                      child: SchemaPane(
-                        objects: session.objects,
-                        selected: _selected,
-                        onSelect: _select,
-                        onApply: _applySchema,
-                      ),
-                    ),
-                    Expanded(child: _work()),
-                  ],
-                )
-              : _work(),
+          body: Stack(
+            children: [
+              wide
+                  ? Row(
+                      children: [
+                        SizedBox(
+                          width: 620,
+                          child: SchemaPane(
+                            objects: session.objects,
+                            selected: _selected,
+                            onSelect: _select,
+                            onApply: _applySchema,
+                          ),
+                        ),
+                        Expanded(child: _work()),
+                      ],
+                    )
+                  : _work(),
+              if (_progressShown)
+                Positioned.fill(
+                  child: WorkProgress(detail: _progressDetail),
+                ),
+            ],
+          ),
           bottomNavigationBar: wide
               ? null
               : NavigationBar(
                   selectedIndex: _paneIndex,
                   onDestinationSelected: (index) {
+                    if (_busy) return;
                     setState(() => _pane = BrowserPane.values[index]);
                   },
                   destinations: const [
@@ -158,7 +171,12 @@ class _BrowserPageState extends State<BrowserPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (wide) _paneSwitch(),
-        if (_busy) const LinearProgressIndicator(minHeight: 2),
+        if (_busy && !_progressShown)
+          const LinearProgressIndicator(
+            minHeight: 3,
+            color: Color(0xFF0E7C66),
+            backgroundColor: Color(0xFFD6EBE4),
+          ),
         if (_message != null)
           Material(
             color: const Color(0xFFE7F2EC),
@@ -254,7 +272,10 @@ class _BrowserPageState extends State<BrowserPage> {
               ),
             ],
             selected: {_pane},
-            onSelectionChanged: (value) => setState(() => _pane = value.single),
+            onSelectionChanged: (value) {
+              if (_busy) return;
+              setState(() => _pane = value.single);
+            },
           ),
         ),
       ),
@@ -336,7 +357,7 @@ class _BrowserPageState extends State<BrowserPage> {
           await _load(_slice.offset);
         }
       }
-    });
+    }, progress: _oneLine(sql));
   }
 
   bool get _hasNext {
@@ -414,7 +435,13 @@ class _BrowserPageState extends State<BrowserPage> {
           _slice = TableSlice.empty;
         });
       }
-    });
+    }, progress: _oneLine(_sql.text));
+  }
+
+  String? _oneLine(String sql) {
+    final collapsed = sql.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (collapsed.isEmpty) return null;
+    return collapsed;
   }
 
   Future<void> _insert() {
@@ -595,8 +622,20 @@ class _BrowserPageState extends State<BrowserPage> {
     return discard ?? false;
   }
 
-  Future<void> _guard(Future<void> Function() body) async {
-    setState(() => _busy = true);
+  Future<void> _guard(
+    Future<void> Function() body, {
+    String? progress,
+  }) async {
+    if (!mounted) return;
+    setState(() {
+      _busy = true;
+      if (progress != null) {
+        _progressShown = true;
+        _progressDetail = progress;
+      }
+    });
+    if (progress != null) await _afterPaint();
+    if (!mounted) return;
     try {
       await body();
     } on SqlException catch (error) {
@@ -606,8 +645,28 @@ class _BrowserPageState extends State<BrowserPage> {
     } catch (error) {
       _showMessage('$error');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _progressShown = false;
+          _progressDetail = null;
+        });
+      }
     }
+  }
+
+  /// Waits until the progress card has been built and painted.
+  Future<void> _afterPaint() {
+    final binding = WidgetsBinding.instance;
+    final done = Completer<void>();
+    binding.addPostFrameCallback((_) {
+      binding.addPostFrameCallback((_) {
+        if (!done.isCompleted) done.complete();
+      });
+      binding.scheduleFrame();
+    });
+    binding.scheduleFrame();
+    return done.future;
   }
 
   void _showMessage(String text) {

@@ -4,8 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite_plus_browser/browser_app.dart';
 import 'package:sqlite_plus_browser/src/grid.dart';
 import 'package:sqlite_plus_browser/src/session.dart';
+import 'package:sqlite_plus_browser/src/work_progress.dart';
 
 Future<void> _frames(WidgetTester tester) async {
+  await tester.pump();
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
 }
@@ -448,6 +450,56 @@ void main() {
     await _frames(tester);
     expect(find.text('authors_id'), findsWidgets);
     expect(find.text('→ authors.id'), findsOneWidget);
+    await _finish(tester, session);
+  });
+
+  testWidgets('the progress card names the running statement', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: WorkProgress(
+          detail: 'CREATE INDEX idx_name ON events (category)',
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('work-progress')), findsOneWidget);
+    expect(find.text('Running'), findsOneWidget);
+    expect(
+      find.byKey(const Key('work-progress-detail')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('idx_name'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('running a statement shows the progress card first',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.text('SQL'));
+    await _frames(tester);
+    await tester.enterText(
+      find.byKey(const Key('sql-input')),
+      'CREATE TABLE pace (id INTEGER)',
+    );
+    await tester.tap(find.byKey(const Key('run-sql')));
+    await tester.pump();
+    expect(find.byKey(const Key('work-progress')), findsOneWidget);
+    expect(find.text('Running'), findsOneWidget);
+    expect(find.textContaining('CREATE TABLE pace'), findsWidgets);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const Key('work-progress')), findsNothing);
+    expect(find.text('0 changed'), findsOneWidget);
+    expect(find.byKey(const Key('schema-table-pace')), findsOneWidget);
     await _finish(tester, session);
   });
 }
