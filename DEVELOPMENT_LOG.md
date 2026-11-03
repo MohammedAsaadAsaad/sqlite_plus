@@ -2031,7 +2031,7 @@ result=pass
 ## 2026-11-03 — Browser arm64 APK
 
 - `flutter build apk --release --target-platform android-arm64` produced one release package. `aapt dump badging` reports `dev.sqliteplus.sqlite_plus_browser`, versionName `1.0.0`, versionCode `1`, minSdk `24`, targetSdk `36`, compileSdk `36`, and `native-code: arm64-v8a`. The file is 19405861 bytes, sha256 `7c09e4e709cf487d66e021caab354429547e1ff6923be124296bac11159be66d`. `lib/arm64-v8a` contains `libapp.so` and `libflutter.so`. The build finished at 21:40 Asia/Hebron on 3 November 2026. The release type is signed with the Android debug keystore. The launcher label is `sqlite_plus_browser`.
-- `file_picker` 8.3.7 declares compileSdk 34. `browser/android/build.gradle.kts` raises every Android library module to 36 so `flutter_plugin_android_lifecycle` can link. The engine suites were not re-run. The package was not installed on a device or an emulator. iOS, macOS, and Windows were not launched. The repository ignores `*.apk`, so the package stays in `browser/dist/sqlite-plus-browser-arm64-v8a.apk` on the machine that built it. M9 stays unchecked. B5 stays unchecked. Item 108 stays open.
+- `file_picker` 8.3.7 declares compileSdk 34. `browser/android/build.gradle.kts` raises every Android library module to 36 so `flutter_plugin_android_lifecycle` can link. The engine suites were not re-run. The package was not installed on a device or an emulator. iOS, macOS, and Windows were not launched. The package is committed at `browser/dist/sqlite-plus-browser-arm64-v8a.apk` so it can be downloaded. Other `*.apk` files stay ignored. M9 stays unchecked. B5 stays unchecked. Item 108 stays open.
 
 ## 2026-11-02 — Package-wide generator
 
