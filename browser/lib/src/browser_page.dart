@@ -48,6 +48,13 @@ class _BrowserPageState extends State<BrowserPage> {
       builder: (context, _) {
         return Scaffold(
           appBar: AppBar(
+            bottom: const PreferredSize(
+              preferredSize: Size.fromHeight(3),
+              child: ColoredBox(
+                color: Color(0xFF0E7C66),
+                child: SizedBox(height: 3, width: double.infinity),
+              ),
+            ),
             title: Text(
                 session.dirty ? '${session.label} · unsaved' : session.label),
             actions: [
@@ -98,18 +105,14 @@ class _BrowserPageState extends State<BrowserPage> {
           body: wide
               ? Row(
                   children: [
-                    ColoredBox(
-                      color: Colors.white,
-                      child: SizedBox(
-                        width: 300,
-                        child: SchemaPane(
-                          objects: session.objects,
-                          selected: _selected,
-                          onSelect: _select,
-                        ),
+                    SizedBox(
+                      width: 340,
+                      child: SchemaPane(
+                        objects: session.objects,
+                        selected: _selected,
+                        onSelect: _select,
                       ),
                     ),
-                    const VerticalDivider(width: 1),
                     Expanded(child: _work()),
                   ],
                 )
@@ -160,6 +163,7 @@ class _BrowserPageState extends State<BrowserPage> {
           child: _pane == BrowserPane.data
               ? DataPane(
                   object: _selected,
+                  catalog: session.objects,
                   slice: _slice,
                   busy: _busy,
                   onPrevious: _slice.offset == 0 ? null : () => _move(-1),
@@ -185,6 +189,21 @@ class _BrowserPageState extends State<BrowserPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: SegmentedButton<BrowserPane>(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const Color(0xFF0E7C66);
+            }
+            return Colors.white;
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) return Colors.white;
+            return const Color(0xFF14211C);
+          }),
+          side: const WidgetStatePropertyAll(
+            BorderSide(color: Color(0xFFD5E2DB)),
+          ),
+        ),
         segments: const [
           ButtonSegment(
             value: BrowserPane.data,

@@ -91,14 +91,13 @@ class CellGrid extends StatelessWidget {
     bool header = false,
     bool stripe = false,
   }) {
-    final scheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: header
-            ? scheme.surfaceContainerHighest
+            ? const Color(0xFFE6F0EA)
             : stripe
-                ? scheme.surfaceContainerLow
-                : scheme.surface,
+                ? const Color(0xFFF7FBF9)
+                : Colors.white,
         border: Border(
           bottom: BorderSide(color: Theme.of(context).dividerColor),
         ),
@@ -110,7 +109,7 @@ class CellGrid extends StatelessWidget {
     );
   }
 
-  Widget _label(String text, {required bool header}) {
+  Widget _label(String text, {required bool header, Color? color}) {
     return SizedBox(
       width: width,
       child: Padding(
@@ -121,8 +120,10 @@ class CellGrid extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: header ? 12 : 13,
-            fontWeight: header ? FontWeight.w700 : FontWeight.w400,
-            letterSpacing: header ? 0.2 : 0,
+            fontWeight: header ? FontWeight.w700 : FontWeight.w500,
+            letterSpacing: header ? 0.3 : 0,
+            color: color ??
+                (header ? const Color(0xFF1A3C32) : const Color(0xFF14211C)),
           ),
         ),
       ),
@@ -134,14 +135,9 @@ class CellGrid extends StatelessWidget {
     final child = _label(
       formatCell(value),
       header: false,
+      color: missing ? const Color(0xFF8AA097) : null,
     );
-    final styled = missing
-        ? DefaultTextStyle.merge(
-            style: TextStyle(color: Theme.of(context).hintColor),
-            child: child,
-          )
-        : child;
-    if (onTap == null) return styled;
-    return InkWell(onTap: onTap, child: styled);
+    if (onTap == null) return child;
+    return InkWell(onTap: onTap, child: child);
   }
 }

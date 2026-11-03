@@ -8,6 +8,7 @@ class DataPane extends StatelessWidget {
   const DataPane({
     super.key,
     required this.object,
+    required this.catalog,
     required this.slice,
     required this.busy,
     required this.onPrevious,
@@ -19,6 +20,7 @@ class DataPane extends StatelessWidget {
   });
 
   final SchemaObject? object;
+  final List<SchemaObject> catalog;
   final TableSlice slice;
   final bool busy;
   final VoidCallback? onPrevious;
@@ -109,44 +111,126 @@ class DataPane extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text('This table has no rowid. Change it with SQL.'),
           ),
+        if (_facts(object).isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final fact in _facts(object))
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE7F2EC),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: Text(
+                        fact,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         Expanded(
-          child: slice.rows.isEmpty
-              ? const Center(child: Text('This table has no rows.'))
-              : CellGrid(
-                  key: const Key('result-grid'),
-                  columns: [
-                    for (final column in slice.columns) column.name,
-                  ],
-                  rows: [
-                    for (final row in slice.rows)
-                      slice.hasRowid ? row.skip(1).toList() : row,
-                  ],
-                  onCell: (index, column) {
-                    final source = slice.rows[index];
-                    final rowid = slice.hasRowid && source.first is BigInt
-                        ? source.first as BigInt
-                        : null;
-                    if (rowid == null || onEdit == null) return;
-                    final values =
-                        slice.hasRowid ? source.skip(1).toList() : source;
-                    onEdit!(
-                      slice.columns[column],
-                      rowid,
-                      column < values.length ? values[column] : null,
-                    );
-                  },
-                  onDelete: slice.hasRowid
-                      ? (index) {
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFD5E2DB)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: slice.rows.isEmpty
+                    ? const Center(child: Text('This table has no rows.'))
+                    : CellGrid(
+                        key: const Key('result-grid'),
+                        columns: [
+                          for (final column in slice.columns) column.name,
+                        ],
+                        rows: [
+                          for (final row in slice.rows)
+                            slice.hasRowid ? row.skip(1).toList() : row,
+                        ],
+                        onCell: (index, column) {
                           final source = slice.rows[index];
-                          if (source.first is! BigInt || onDelete == null) {
-                            return;
-                          }
-                          onDelete!(source.first as BigInt);
-                        }
-                      : null,
-                ),
+                          final rowid = slice.hasRowid && source.first is BigInt
+                              ? source.first as BigInt
+                              : null;
+                          if (rowid == null || onEdit == null) return;
+                          final values =
+                              slice.hasRowid ? source.skip(1).toList() : source;
+                          onEdit!(
+                            slice.columns[column],
+                            rowid,
+                            column < values.length ? values[column] : null,
+                          );
+                        },
+                        onDelete: slice.hasRowid
+                            ? (index) {
+                                final source = slice.rows[index];
+                                if (source.first is! BigInt ||
+                                    onDelete == null) {
+                                  return;
+                                }
+                                onDelete!(source.first as BigInt);
+                              }
+                            : null,
+                      ),
+              ),
+            ),
+          ),
         ),
       ],
     );
+  }
+
+  List<String> _facts(SchemaObject object) {
+    final facts = <String>[];
+    for (final column in object.columns) {
+      final value = column.defaultValue;
+      if (value != null && value.isNotEmpty) {
+        facts.add('${column.name} default $value');
+      }
+    }
+    for (final key in object.foreignKeys) {
+      final target = key.to == null || key.to!.isEmpty
+          ? key.table
+          : '${key.table}.${key.to}';
+      final actions = <String>[
+        if (key.onUpdate.isNotEmpty &&
+            key.onUpdate.toUpperCase() != 'NO ACTION')
+          'ON UPDATE ${key.onUpdate}',
+        if (key.onDelete.isNotEmpty &&
+            key.onDelete.toUpperCase() != 'NO ACTION')
+          'ON DELETE ${key.onDelete}',
+      ];
+      final action = actions.isEmpty ? '' : ' · ${actions.join(' · ')}';
+      facts.add('${key.from} → $target$action');
+    }
+    for (final index in catalog) {
+      if (index.type != 'index' || index.table != object.name) continue;
+      final columns = index.indexColumns.join(', ');
+      final mark = index.unique ? 'UNIQUE ' : '';
+      facts.add(
+        columns.isEmpty
+            ? '$mark${index.name}'
+            : '$mark${index.name} ($columns)',
+      );
+    }
+    for (final trigger in catalog) {
+      if (trigger.type == 'trigger' && trigger.table == object.name) {
+        facts.add('trigger ${trigger.name}');
+      }
+    }
+    return facts;
   }
 }

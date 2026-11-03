@@ -22,7 +22,7 @@ class BrowserApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: scheme,
-        scaffoldBackgroundColor: const Color(0xFFF4F7F5),
+        scaffoldBackgroundColor: const Color(0xFFEEF3F0),
         useMaterial3: true,
         visualDensity: VisualDensity.standard,
         appBarTheme: const AppBarTheme(
@@ -36,11 +36,17 @@ class BrowserApp extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
+        drawerTheme: const DrawerThemeData(
+          backgroundColor: Color(0xFF17241F),
+        ),
         dividerColor: line,
         cardTheme: const CardThemeData(
           color: Colors.white,
           elevation: 0,
           margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(

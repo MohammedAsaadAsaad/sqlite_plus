@@ -99,4 +99,42 @@ void main() {
     expect(second.rows.first[1], BigInt.from(50));
     expect(second.rows.last[1], BigInt.from(54));
   });
+
+  test('schema keeps defaults, foreign keys, indexes, and triggers', () async {
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    await session.run('CREATE TABLE authors (id INTEGER PRIMARY KEY)');
+    await session.run(
+      "CREATE TABLE books ("
+      "id INTEGER PRIMARY KEY, "
+      "title TEXT NOT NULL DEFAULT 'Kept', "
+      "author_id INTEGER REFERENCES authors(id) ON DELETE CASCADE)",
+    );
+    await session.run(
+      'CREATE UNIQUE INDEX idx_title ON books(title)',
+    );
+    await session.run(
+      'CREATE TRIGGER tr AFTER INSERT ON books BEGIN SELECT 1; END',
+    );
+    final books =
+        session.objects.singleWhere((object) => object.name == 'books');
+    final title = books.columns.singleWhere((column) => column.name == 'title');
+    expect(title.defaultValue, contains('Kept'));
+    expect(title.notNull, isTrue);
+    final link = books.foreignKeys.single;
+    expect(link.from, 'author_id');
+    expect(link.table, 'authors');
+    expect(link.to, 'id');
+    expect(link.onDelete.toLowerCase(), contains('cascade'));
+    final index =
+        session.objects.singleWhere((object) => object.name == 'idx_title');
+    expect(index.unique, isTrue);
+    expect(index.indexColumns, ['title']);
+    expect(index.table, 'books');
+    final trigger =
+        session.objects.singleWhere((object) => object.name == 'tr');
+    expect(trigger.type, 'trigger');
+    expect(trigger.table, 'books');
+  });
 }

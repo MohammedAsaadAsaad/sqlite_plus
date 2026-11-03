@@ -69,5 +69,11 @@ void main() {
     expect(labels('SELECT '), containsAll(['*', 'title', 'pages']));
     expect(labels('SELECT id, name FROM books, authors WHERE i'),
         containsAll(['books.id', 'authors.id']));
+    expect(labels('SELECT title '), ['FROM', 'AS']);
+    expect(labels('SELECT title F'), ['FROM']);
+    expect(labels('SELECT * FROM '), containsAll(['books', 'authors']));
+    expect(labels('SELECT * FROM '), isNot(contains('SELECT')));
+    expect(labels('INSERT '), ['INTO']);
+    expect(labels('SELECT * FROM books WHERE pages = '), isEmpty);
   });
 }

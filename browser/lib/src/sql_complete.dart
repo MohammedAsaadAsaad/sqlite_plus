@@ -1,87 +1,21 @@
-import 'format.dart';
 import 'session.dart';
 
-/// One completion for the word at the cursor.
+/// One completion for the token at the cursor.
 class SqlCompletion {
   const SqlCompletion({
     required this.label,
     required this.insert,
     required this.kind,
+    required this.detail,
     required this.prefixStart,
   });
 
   final String label;
   final String insert;
   final String kind;
+  final String detail;
   final int prefixStart;
 }
-
-const _keywords = [
-  'SELECT',
-  'FROM',
-  'WHERE',
-  'AND',
-  'OR',
-  'NOT',
-  'NULL',
-  'IS',
-  'IN',
-  'LIKE',
-  'BETWEEN',
-  'INSERT',
-  'INTO',
-  'VALUES',
-  'UPDATE',
-  'SET',
-  'DELETE',
-  'CREATE',
-  'TABLE',
-  'VIEW',
-  'INDEX',
-  'DROP',
-  'ALTER',
-  'ADD',
-  'COLUMN',
-  'ORDER',
-  'BY',
-  'GROUP',
-  'HAVING',
-  'LIMIT',
-  'OFFSET',
-  'JOIN',
-  'LEFT',
-  'INNER',
-  'CROSS',
-  'ON',
-  'AS',
-  'DISTINCT',
-  'PRIMARY',
-  'KEY',
-  'INTEGER',
-  'TEXT',
-  'REAL',
-  'BLOB',
-  'DEFAULT',
-  'BEGIN',
-  'COMMIT',
-  'ROLLBACK',
-  'PRAGMA',
-  'WITH',
-  'UNION',
-  'ALL',
-  'EXISTS',
-  'CASE',
-  'WHEN',
-  'THEN',
-  'ELSE',
-  'END',
-  'ASC',
-  'DESC',
-  'REPLACE',
-  'RETURNING',
-  'WITHOUT',
-  'ROWID',
-];
 
 const _starters = [
   'SELECT',
@@ -89,33 +23,20 @@ const _starters = [
   'UPDATE',
   'DELETE',
   'CREATE',
-  'WITH',
-  'PRAGMA',
   'DROP',
   'ALTER',
+  'PRAGMA',
   'BEGIN',
+  'WITH',
 ];
 
-const _tableContext = {'from', 'join', 'into', 'update'};
-const _columnContext = {
-  'select',
-  'where',
-  'and',
-  'or',
-  'set',
-  'by',
-  'having',
-  'on',
-  'distinct',
-  'values',
-};
-
-/// Completions for [text] at [cursor], using the open schema.
+/// Completions that can follow the text already written. A prefix filters
+/// that list. Nothing outside the current slot is offered.
 List<SqlCompletion> sqlCompletions({
   required String text,
   required int cursor,
   required List<SchemaObject> objects,
-  int limit = 12,
+  int limit = 8,
 }) {
   final end = cursor < 0 ? text.length : cursor.clamp(0, text.length);
   if (_insideString(text, end)) return const [];
@@ -133,110 +54,289 @@ List<SqlCompletion> sqlCompletions({
     }
     qualifier = text.substring(nameStart, nameEnd);
   }
-  final before = sqlWords(text.substring(
-      0, qualifier == null ? start : start - 1 - (qualifier.length)));
-  final previous = before.isEmpty ? '' : before.last;
-  final earlier = before.length < 2 ? '' : before[before.length - 2];
   final relations = [
     for (final object in objects)
       if (object.type == 'table' || object.type == 'view') object,
   ];
+  final tokens = _tokens(
+    text.substring(0, qualifier == null ? start : start - 1 - qualifier.length),
+  );
+  final names = tokens.map((token) => token.toLowerCase()).toList();
+  final previous = names.isEmpty ? '' : names.last;
+  final earlier = names.length < 2 ? '' : names[names.length - 2];
   final mentioned = [
     for (final object in relations)
-      if (before.contains(object.name.toLowerCase())) object,
+      if (names.contains(object.name.toLowerCase())) object,
   ];
-  final wantsTable = _tableContext.contains(previous) ||
-      (previous == 'table' && earlier != 'create') ||
-      (previous == 'view' && earlier != 'create');
-  final wantsColumn = qualifier != null ||
-      _columnContext.contains(previous) ||
-      (prefix.isNotEmpty &&
-          !wantsTable &&
-          (before.contains('select') ||
-              before.contains('update') ||
-              before.contains('where')));
 
   final items = <SqlCompletion>[];
-  void add(String label, String insert, String kind) {
+  void add(
+    String label,
+    String insert,
+    String kind,
+    String detail, {
+    String? match,
+  }) {
     if (items.length >= limit) return;
-    if (items.any((item) => item.insert == insert && item.kind == kind)) {
-      return;
-    }
+    final haystack = (match ?? label).toLowerCase();
+    if (prefix.isNotEmpty && !haystack.startsWith(prefix)) return;
+    if (items.any((item) => item.insert == insert)) return;
     items.add(SqlCompletion(
       label: label,
       insert: insert,
       kind: kind,
+      detail: detail,
       prefixStart: start,
     ));
   }
 
-  bool matches(String name) =>
-      prefix.isEmpty || name.toLowerCase().startsWith(prefix);
+  void addWords(List<String> words) {
+    for (final word in words) {
+      add(word, word, 'keyword', '');
+    }
+  }
+
+  void addColumns(List<SchemaObject> scope) {
+    final counts = <String, int>{};
+    for (final object in scope) {
+      for (final column in object.columns) {
+        counts[column.name] = (counts[column.name] ?? 0) + 1;
+      }
+    }
+    for (final object in scope) {
+      for (final column in object.columns) {
+        final shared = (counts[column.name] ?? 0) > 1;
+        final label = shared ? '${object.name}.${column.name}' : column.name;
+        add(label, label, 'column', column.type, match: column.name);
+      }
+    }
+  }
+
+  void addTables() {
+    for (final object in relations) {
+      add(object.name, object.name, object.type, object.type);
+    }
+  }
 
   if (qualifier != null) {
-    final owner = relations.cast<SchemaObject?>().firstWhere(
-          (object) => object!.name.toLowerCase() == qualifier!.toLowerCase(),
-          orElse: () => null,
-        );
-    if (owner != null) {
-      for (final column in owner.columns) {
-        if (matches(column.name)) add(column.name, column.name, 'column');
+    for (final object in relations) {
+      if (object.name.toLowerCase() == qualifier.toLowerCase()) {
+        addColumns([object]);
       }
     }
     return items;
   }
 
-  if (previous == 'select' && prefix.isEmpty) {
-    add('*', '*', 'keyword');
-  }
+  final beforeFrom = names.contains('select') && !names.contains('from');
+  final columnScope = mentioned.isEmpty ? relations : mentioned;
 
-  if (wantsTable || prefix.isEmpty && !wantsColumn) {
-    for (final object in relations) {
-      if (wantsTable && matches(object.name)) {
-        add(object.name, object.name, object.type);
-      }
-    }
+  if (previous.isEmpty) {
+    addWords(_starters);
+    return items;
   }
-
-  if (wantsColumn) {
-    final scope = mentioned.isEmpty ? relations : mentioned;
-    final names = <String, int>{};
-    for (final object in scope) {
-      for (final column in object.columns) {
-        names[column.name] = (names[column.name] ?? 0) + 1;
-      }
-    }
-    for (final object in scope) {
-      for (final column in object.columns) {
-        final shared = (names[column.name] ?? 0) > 1;
-        final label = shared ? '${object.name}.${column.name}' : column.name;
-        if (matches(column.name) || matches(label)) {
-          add(label, label, 'column');
-        }
-      }
-    }
+  if (previous == ',') {
+    if (beforeFrom) addColumns(columnScope);
+    return items;
   }
-
-  final keywordSource =
-      prefix.isEmpty && !wantsTable && !wantsColumn ? _starters : _keywords;
-  if (prefix.isNotEmpty || (!wantsTable && !wantsColumn)) {
-    for (final keyword in keywordSource) {
-      if (matches(keyword)) add(keyword, keyword, 'keyword');
-    }
-  } else if (prefix.isNotEmpty) {
-    for (final keyword in _keywords) {
-      if (matches(keyword)) add(keyword, keyword, 'keyword');
-    }
+  if (previous == 'select' || previous == 'distinct') {
+    add('*', '*', 'keyword', '');
+    if (previous == 'select') add('DISTINCT', 'DISTINCT', 'keyword', '');
+    addColumns(columnScope);
+    return items;
   }
-
-  final definingName = earlier == 'create' &&
-      (previous == 'table' || previous == 'view' || previous == 'index');
-  if (prefix.isNotEmpty && !wantsTable && !definingName) {
-    for (final object in relations) {
-      if (matches(object.name)) add(object.name, object.name, object.type);
+  if (previous == '*' && beforeFrom) {
+    addWords(['FROM', 'AS']);
+    return items;
+  }
+  if (previous == 'from' ||
+      previous == 'join' ||
+      previous == 'into' ||
+      previous == 'update' ||
+      (previous == 'table' && earlier != 'create') ||
+      (previous == 'view' && earlier != 'create') ||
+      previous == 'references') {
+    addTables();
+    return items;
+  }
+  if (previous == 'where' ||
+      previous == 'having' ||
+      previous == 'on' ||
+      previous == 'and' ||
+      previous == 'or') {
+    addColumns(columnScope);
+    if (previous == 'where' || previous == 'having') {
+      addWords(['NOT', 'EXISTS']);
     }
+    return items;
+  }
+  if (previous == 'by') {
+    addColumns(columnScope);
+    addWords(['ASC', 'DESC']);
+    return items;
+  }
+  if (previous == 'order' || previous == 'group') {
+    addWords(['BY']);
+    return items;
+  }
+  if (previous == 'limit') {
+    addWords(['OFFSET']);
+    return items;
+  }
+  if (previous == 'insert') {
+    addWords(['INTO']);
+    return items;
+  }
+  if (previous == 'delete') {
+    addWords(['FROM']);
+    return items;
+  }
+  if (previous == 'create') {
+    addWords(['TABLE', 'VIEW', 'INDEX', 'TRIGGER']);
+    return items;
+  }
+  if (previous == 'drop') {
+    addWords(['TABLE', 'VIEW', 'INDEX', 'TRIGGER']);
+    return items;
+  }
+  if (previous == 'alter') {
+    addWords(['TABLE']);
+    return items;
+  }
+  if (previous == 'add') {
+    addWords(['COLUMN']);
+    return items;
+  }
+  if (previous == 'set') {
+    addColumns(columnScope);
+    return items;
+  }
+  if (previous == 'as') {
+    addWords(['FROM', 'WHERE', 'JOIN']);
+    return items;
+  }
+  if (previous == 'left' || previous == 'inner' || previous == 'cross') {
+    addWords(['JOIN']);
+    return items;
+  }
+  if (previous == 'primary') {
+    addWords(['KEY']);
+    return items;
+  }
+  if (previous == 'not') {
+    addWords(['NULL']);
+    return items;
+  }
+  if (_isRelation(previous, relations)) {
+    if (earlier == 'from' || earlier == 'join') {
+      addWords(
+          ['WHERE', 'JOIN', 'LEFT', 'INNER', 'ORDER', 'GROUP', 'LIMIT', 'AS']);
+    } else if (earlier == 'update') {
+      addWords(['SET']);
+    } else if (earlier == 'into') {
+      addWords(['VALUES']);
+    } else if (earlier == 'table' && names.contains('alter')) {
+      addWords(['ADD', 'RENAME', 'DROP']);
+    }
+    return items;
+  }
+  if (previous == '*' || _isColumn(previous, relations)) {
+    if (beforeFrom) {
+      addWords(['FROM', 'AS']);
+    } else if (names.contains('where') ||
+        names.contains('having') ||
+        names.contains('on')) {
+      addWords(['AND', 'OR', 'IS', 'LIKE', 'IN', 'BETWEEN', 'ORDER', 'LIMIT']);
+    } else if (names.contains('set')) {
+      addWords(['WHERE']);
+    } else if (names.contains('by')) {
+      addWords(['ASC', 'DESC', 'LIMIT']);
+    }
+    return items;
+  }
+  if (_ops.contains(previous)) return items;
+  if (_number(previous)) {
+    if (names.contains('where') ||
+        names.contains('having') ||
+        names.contains('on')) {
+      addWords(['AND', 'OR', 'ORDER', 'LIMIT']);
+    } else if (names.contains('limit')) {
+      addWords(['OFFSET']);
+    }
+    return items;
+  }
+  if (previous == '(' && names.contains('create') && names.contains('table')) {
+    addWords(['INTEGER', 'TEXT', 'REAL', 'BLOB', 'PRIMARY', 'NOT', 'UNIQUE']);
   }
   return items;
+}
+
+const _ops = {'=', '<', '>', '!', '+', '-', '/', '%'};
+
+bool _number(String token) {
+  if (token.isEmpty) return false;
+  for (final unit in token.codeUnits) {
+    if (unit < 48 || unit > 57) return false;
+  }
+  return true;
+}
+
+bool _isRelation(String name, List<SchemaObject> relations) {
+  return relations.any((object) => object.name.toLowerCase() == name);
+}
+
+bool _isColumn(String name, List<SchemaObject> relations) {
+  for (final object in relations) {
+    for (final column in object.columns) {
+      if (column.name.toLowerCase() == name) return true;
+    }
+  }
+  return false;
+}
+
+/// Words and the symbols that change what can be typed next.
+List<String> _tokens(String text) {
+  final tokens = <String>[];
+  final buffer = StringBuffer();
+  String? quote;
+  for (var i = 0; i < text.length; i++) {
+    final char = text[i];
+    if (quote != null) {
+      if (char == quote) {
+        final doubled = i + 1 < text.length && text[i + 1] == quote;
+        if (doubled) {
+          i++;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (char == "'" || char == '"') {
+      _keep(tokens, buffer);
+      quote = char;
+      continue;
+    }
+    if (_ident(char.codeUnitAt(0))) {
+      buffer.write(char);
+      continue;
+    }
+    _keep(tokens, buffer);
+    if (char == '*' ||
+        char == ',' ||
+        char == '(' ||
+        char == ')' ||
+        _ops.contains(char)) {
+      tokens.add(char);
+    }
+  }
+  _keep(tokens, buffer);
+  return tokens;
+}
+
+void _keep(List<String> tokens, StringBuffer buffer) {
+  if (buffer.isEmpty) return;
+  tokens.add(buffer.toString());
+  buffer.clear();
 }
 
 bool _insideString(String text, int cursor) {

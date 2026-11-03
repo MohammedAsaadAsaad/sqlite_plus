@@ -4,7 +4,7 @@ import 'grid.dart';
 import 'session.dart';
 import 'sql_complete.dart';
 
-/// One SQL statement, completions from the open schema, and its result.
+/// One SQL statement, a popup of the next valid tokens, and its result.
 class SqlPane extends StatefulWidget {
   const SqlPane({
     super.key,
@@ -26,10 +26,14 @@ class SqlPane extends StatefulWidget {
 }
 
 class _SqlPaneState extends State<SqlPane> {
+  final _link = LayerLink();
+  final _portal = OverlayPortalController();
+
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_changed);
+    _schedulePortal();
   }
 
   @override
@@ -39,6 +43,7 @@ class _SqlPaneState extends State<SqlPane> {
       oldWidget.controller.removeListener(_changed);
       widget.controller.addListener(_changed);
     }
+    _schedulePortal();
   }
 
   @override
@@ -48,7 +53,20 @@ class _SqlPaneState extends State<SqlPane> {
   }
 
   void _changed() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    _schedulePortal();
+  }
+
+  void _schedulePortal() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_suggestions.isEmpty) {
+        _portal.hide();
+      } else {
+        _portal.show();
+      }
+    });
   }
 
   List<SqlCompletion> get _suggestions {
@@ -77,7 +95,6 @@ class _SqlPaneState extends State<SqlPane> {
   @override
   Widget build(BuildContext context) {
     final result = widget.result;
-    final suggestions = _suggestions;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: Column(
@@ -101,37 +118,28 @@ class _SqlPaneState extends State<SqlPane> {
             ],
           ),
           const SizedBox(height: 8),
-          TextField(
-            key: const Key('sql-input'),
-            controller: widget.controller,
-            minLines: 4,
-            maxLines: 8,
-            style: const TextStyle(fontFamily: 'monospace', height: 1.4),
-            decoration: const InputDecoration(
-              hintText: 'SELECT title FROM books',
-              alignLabelWithHint: true,
-            ),
-          ),
-          if (suggestions.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 40,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: suggestions.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final item = suggestions[index];
-                  return ActionChip(
-                    key: Key('suggest-${item.insert}'),
-                    avatar: Icon(_icon(item.kind), size: 16),
-                    label: Text(item.label),
-                    onPressed: () => _apply(item),
-                  );
-                },
+          OverlayPortal(
+            controller: _portal,
+            overlayChildBuilder: (context) => _menu(),
+            child: CompositedTransformTarget(
+              link: _link,
+              child: TextField(
+                key: const Key('sql-input'),
+                controller: widget.controller,
+                minLines: 4,
+                maxLines: 8,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 14,
+                  height: 1.45,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'SELECT title FROM books',
+                  alignLabelWithHint: true,
+                ),
               ),
             ),
-          ],
+          ),
           const SizedBox(height: 8),
           if (result != null && result.isQuery)
             Text('${result.rows.length} rows · ${result.columns.join(', ')}'),
@@ -140,14 +148,88 @@ class _SqlPaneState extends State<SqlPane> {
           const SizedBox(height: 8),
           Expanded(
             child: result != null && result.isQuery && result.columns.isNotEmpty
-                ? CellGrid(
-                    key: const Key('sql-grid'),
-                    columns: result.columns,
-                    rows: result.rows,
+                ? DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFD5E2DB)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: CellGrid(
+                        key: const Key('sql-grid'),
+                        columns: result.columns,
+                        rows: result.rows,
+                      ),
+                    ),
                   )
                 : const SizedBox.shrink(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _menu() {
+    final suggestions = _suggestions;
+    return CompositedTransformFollower(
+      link: _link,
+      showWhenUnlinked: false,
+      targetAnchor: Alignment.bottomLeft,
+      followerAnchor: Alignment.topLeft,
+      offset: const Offset(0, 6),
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Material(
+          color: Colors.white,
+          elevation: 12,
+          shadowColor: const Color(0x6614221C),
+          borderRadius: BorderRadius.circular(12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360, maxHeight: 248),
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              shrinkWrap: true,
+              itemCount: suggestions.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final item = suggestions[index];
+                return ListTile(
+                  key: Key('suggest-${item.insert}'),
+                  dense: true,
+                  visualDensity: VisualDensity.compact,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  leading:
+                      Icon(_icon(item.kind), size: 18, color: _tint(item.kind)),
+                  title: Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: item.detail.isEmpty
+                      ? null
+                      : Text(
+                          item.detail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                  trailing: Text(
+                    item.kind,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF5E736B),
+                    ),
+                  ),
+                  onTap: () => _apply(item),
+                );
+              },
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -161,7 +243,19 @@ class _SqlPaneState extends State<SqlPane> {
       case 'column':
         return Icons.view_column_outlined;
       default:
-        return Icons.code;
+        return Icons.data_object;
+    }
+  }
+
+  Color _tint(String kind) {
+    switch (kind) {
+      case 'column':
+        return const Color(0xFF8A6A12);
+      case 'table':
+      case 'view':
+        return const Color(0xFF0E7C66);
+      default:
+        return const Color(0xFF1C4E44);
     }
   }
 }

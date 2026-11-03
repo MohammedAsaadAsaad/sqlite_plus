@@ -11,6 +11,9 @@ class SchemaObject {
     required this.table,
     required this.sql,
     this.columns = const [],
+    this.foreignKeys = const [],
+    this.indexColumns = const [],
+    this.unique = false,
   });
 
   final String type;
@@ -20,6 +23,15 @@ class SchemaObject {
 
   /// Columns for a table or view. Empty for an index or trigger.
   final List<ColumnInfo> columns;
+
+  /// Foreign keys of a table.
+  final List<ForeignKeyInfo> foreignKeys;
+
+  /// Indexed columns when [type] is `index`.
+  final List<String> indexColumns;
+
+  /// True when an index was declared UNIQUE.
+  final bool unique;
 }
 
 /// A column from `PRAGMA table_info`.
@@ -29,12 +41,31 @@ class ColumnInfo {
     required this.type,
     required this.notNull,
     required this.primaryKey,
+    this.defaultValue,
   });
 
   final String name;
   final String type;
   final bool notNull;
   final bool primaryKey;
+  final String? defaultValue;
+}
+
+/// One column of a foreign key from `PRAGMA foreign_key_list`.
+class ForeignKeyInfo {
+  const ForeignKeyInfo({
+    required this.from,
+    required this.table,
+    required this.to,
+    required this.onUpdate,
+    required this.onDelete,
+  });
+
+  final String from;
+  final String table;
+  final String? to;
+  final String onUpdate;
+  final String onDelete;
 }
 
 /// One page of a table.
@@ -340,27 +371,49 @@ class BrowserSession extends ChangeNotifier {
           sql: row[3] as String?,
         ),
     ];
+    final indexMeta = <String, ({bool unique, List<String> columns})>{};
     final filled = <SchemaObject>[];
     for (final object in listed) {
-      if (object.type != 'table' && object.type != 'view') {
-        filled.add(object);
+      if (object.type == 'table') {
+        final columns = await _columns(database, object.name);
+        final foreignKeys = await _foreignKeys(database, object.name);
+        await _readIndexes(database, object.name, indexMeta);
+        filled.add(SchemaObject(
+          type: object.type,
+          name: object.name,
+          table: object.table,
+          sql: object.sql,
+          columns: columns,
+          foreignKeys: foreignKeys,
+        ));
         continue;
       }
-      List<ColumnInfo> columns;
-      try {
-        columns = await _columns(database, object.name);
-      } on SqlException {
-        columns = const [];
+      if (object.type == 'view') {
+        filled.add(SchemaObject(
+          type: object.type,
+          name: object.name,
+          table: object.table,
+          sql: object.sql,
+          columns: await _columns(database, object.name),
+        ));
+        continue;
       }
-      filled.add(SchemaObject(
-        type: object.type,
-        name: object.name,
-        table: object.table,
-        sql: object.sql,
-        columns: columns,
-      ));
+      filled.add(object);
     }
-    objects = filled;
+    objects = [
+      for (final object in filled)
+        if (object.type == 'index' && indexMeta.containsKey(object.name))
+          SchemaObject(
+            type: object.type,
+            name: object.name,
+            table: object.table,
+            sql: object.sql,
+            indexColumns: indexMeta[object.name]!.columns,
+            unique: indexMeta[object.name]!.unique,
+          )
+        else
+          object,
+    ];
   }
 
   List<ColumnInfo> _knownColumns(String table) {
@@ -381,9 +434,14 @@ class BrowserSession extends ChangeNotifier {
 
   Future<List<ColumnInfo>> _columns(
       MutableSqliteDatabase database, String table) async {
-    final result = await database.query(
-      'PRAGMA table_info(${pragmaIdent(table)})',
-    );
+    final QueryResult result;
+    try {
+      result = await database.query(
+        'PRAGMA table_info(${pragmaIdent(table)})',
+      );
+    } on SqlException {
+      return const [];
+    }
     return [
       for (final row in result.rows)
         ColumnInfo(
@@ -391,8 +449,64 @@ class BrowserSession extends ChangeNotifier {
           type: (row[2] as String?) ?? '',
           notNull: _flag(row[3]),
           primaryKey: _flag(row[5]),
+          defaultValue: row[4]?.toString(),
         ),
     ];
+  }
+
+  Future<List<ForeignKeyInfo>> _foreignKeys(
+      MutableSqliteDatabase database, String table) async {
+    try {
+      final result = await database.query(
+        'PRAGMA foreign_key_list(${pragmaIdent(table)})',
+      );
+      return [
+        for (final row in result.rows)
+          ForeignKeyInfo(
+            from: row[3]! as String,
+            table: row[2]! as String,
+            to: row[4] as String?,
+            onUpdate: (row[5] as String?) ?? '',
+            onDelete: (row[6] as String?) ?? '',
+          ),
+      ];
+    } on SqlException {
+      return const [];
+    }
+  }
+
+  Future<void> _readIndexes(
+    MutableSqliteDatabase database,
+    String table,
+    Map<String, ({bool unique, List<String> columns})> into,
+  ) async {
+    QueryResult list;
+    try {
+      list = await database.query(
+        'PRAGMA index_list(${pragmaIdent(table)})',
+      );
+    } on SqlException {
+      return;
+    }
+    for (final row in list.rows) {
+      final name = row[1];
+      if (name is! String || name.startsWith('sqlite_')) continue;
+      QueryResult info;
+      try {
+        info = await database.query(
+          'PRAGMA index_info(${pragmaIdent(name)})',
+        );
+      } on SqlException {
+        continue;
+      }
+      into[name] = (
+        unique: _flag(row[2]),
+        columns: [
+          for (final column in info.rows)
+            if (column[2] is String) column[2]! as String,
+        ],
+      );
+    }
   }
 
   MutableSqliteDatabase _required() {
