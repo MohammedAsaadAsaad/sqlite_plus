@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite_plus_browser/browser_app.dart';
 import 'package:sqlite_plus_browser/src/grid.dart';
+import 'package:sqlite_plus_browser/src/recent_files.dart';
 import 'package:sqlite_plus_browser/src/session.dart';
 import 'package:sqlite_plus_browser/src/work_progress.dart';
 
@@ -394,7 +397,7 @@ void main() {
     await tester.pumpWidget(BrowserApp(session: session));
     await _frames(tester);
 
-    await tester.tap(find.text('Create table'));
+    await tester.tap(find.byKey(const Key('schema-add-table')));
     await _frames(tester);
     await tester.enterText(find.byKey(const Key('create-table-name')), 'notes');
     await _frames(tester);
@@ -404,7 +407,7 @@ void main() {
     expect(find.byKey(const Key('sql-input')), findsNothing);
     expect(find.text('New table'), findsNothing);
 
-    await tester.tap(find.text('Create index'));
+    await tester.tap(find.byKey(const Key('schema-add-index')));
     await _frames(tester);
     await tester.tap(find.byKey(const Key('create-index-column-title')));
     await _frames(tester);
@@ -413,6 +416,16 @@ void main() {
     expect(
         find.byKey(const Key('schema-index-idx_notes_title')), findsOneWidget);
     expect(find.byKey(const Key('sql-input')), findsNothing);
+    expect(find.text('Create table'), findsNothing);
+    expect(find.text('Create index'), findsNothing);
+    await tester.tap(find.byKey(const Key('schema-index-idx_notes_title')));
+    await _frames(tester);
+    expect(
+        tester.widget<Text>(find.byKey(const Key('index-entries'))).data, '0');
+    expect(
+      tester.widget<Text>(find.byKey(const Key('index-size'))).data,
+      endsWith('KB'),
+    );
     await _finish(tester, session);
   });
 
@@ -517,7 +530,7 @@ void main() {
     await tester.pumpWidget(BrowserApp(session: session));
     await _frames(tester);
 
-    await tester.tap(find.text('Add column'));
+    await tester.tap(find.byKey(const Key('schema-add-column-events')));
     await _frames(tester);
     await tester.enterText(find.byKey(const Key('add-column-name')), 'note');
     await tester.tap(find.byKey(const Key('add-column-null')));
@@ -535,6 +548,49 @@ void main() {
     expect(find.text('note'), findsOneWidget);
     expect(find.textContaining('"note" TEXT NOT NULL'), findsWidgets);
     expect(find.byKey(const Key('sql-input')), findsNothing);
+    await _finish(tester, session);
+  });
+
+  testWidgets('home offers open and the recent databases', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final dir = Directory.systemTemp.createTempSync('browser-recents');
+    addTearDown(() {
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
+    });
+    final seed = BrowserSession();
+    await seed.openEmpty();
+    await seed.run(
+      'CREATE TABLE events (id INTEGER PRIMARY KEY, category TEXT)',
+    );
+    await seed.run("INSERT INTO events (category) VALUES ('kept')");
+    final bytes = seed.exportBytes();
+    await seed.close();
+    final location = '${dir.path}/sample.db';
+    File(location).writeAsBytesSync(bytes);
+    final store = RecentStore.directory(dir);
+    await store.remember(name: 'sample.db', bytes: bytes, location: location);
+    final reloaded = RecentStore.directory(dir);
+    await reloaded.load();
+    expect(reloaded.files.single.name, 'sample.db');
+
+    final session = BrowserSession();
+    await tester.pumpWidget(BrowserApp(session: session, recents: reloaded));
+    await _frames(tester);
+    expect(find.text('Sqlite Browser'), findsWidgets);
+    expect(find.byKey(const Key('home-open')), findsOneWidget);
+    expect(find.text('sample.db'), findsOneWidget);
+    expect(find.byKey(const Key('schema-list')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('recent-0')));
+    await _frames(tester);
+    expect(find.byKey(const Key('schema-table-events')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('schema-table-events')));
+    await _frames(tester);
+    expect(find.text('kept'), findsOneWidget);
+    expect(find.byKey(const Key('home-open')), findsNothing);
     await _finish(tester, session);
   });
 }

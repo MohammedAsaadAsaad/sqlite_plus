@@ -1,7 +1,7 @@
 name: sqlite_plus_browser
 description: Browse, query, and edit a sqlite_plus database on desktop and mobile.
 publish_to: none
-version: 1.0.0+12
+version: 1.0.0+13
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
@@ -20,6 +20,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/app_icon.png
   fonts:
     - family: JetBrainsMono
       fonts:

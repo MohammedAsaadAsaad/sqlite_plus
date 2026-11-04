@@ -8,6 +8,9 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 
 import 'cell_dialog.dart';
 import 'data_pane.dart';
+import 'home_pane.dart';
+import 'launch_bridge.dart';
+import 'recent_files.dart';
 import 'schema_graph.dart';
 import 'schema_pane.dart';
 import 'session.dart';
@@ -19,9 +22,14 @@ enum BrowserPane { data, sql, graph }
 
 /// Schema, rows, and a SQL editor. Wide windows keep the schema beside the work.
 class BrowserPage extends StatefulWidget {
-  const BrowserPage({super.key, required this.session});
+  const BrowserPage({
+    super.key,
+    required this.session,
+    required this.recents,
+  });
 
   final BrowserSession session;
+  final RecentStore recents;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
@@ -42,6 +50,14 @@ class _BrowserPageState extends State<BrowserPage> {
   BrowserSession get session => widget.session;
 
   @override
+  void initState() {
+    super.initState();
+    LaunchBridge.listen(_onLaunched);
+    widget.recents.load();
+    _takeLaunch();
+  }
+
+  @override
   void dispose() {
     _sql.dispose();
     super.dispose();
@@ -49,12 +65,14 @@ class _BrowserPageState extends State<BrowserPage> {
 
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= 900;
     return AnimatedBuilder(
-      animation: session,
+      animation: Listenable.merge([session, widget.recents]),
       builder: (context, _) {
+        final wide = MediaQuery.sizeOf(context).width >= 900;
+        final open = session.isOpen;
         return Scaffold(
           appBar: AppBar(
+            toolbarHeight: open ? 68 : kToolbarHeight,
             bottom: const PreferredSize(
               preferredSize: Size.fromHeight(3),
               child: ColoredBox(
@@ -62,8 +80,7 @@ class _BrowserPageState extends State<BrowserPage> {
                 child: SizedBox(height: 3, width: double.infinity),
               ),
             ),
-            title: Text(
-                session.dirty ? '${session.label} · unsaved' : session.label),
+            title: _title(),
             actions: [
               IconButton(
                 key: const Key('new-database'),
@@ -80,7 +97,7 @@ class _BrowserPageState extends State<BrowserPage> {
               IconButton(
                 key: const Key('save-database'),
                 tooltip: 'Save',
-                onPressed: _busy ? null : _saveDatabase,
+                onPressed: _busy || !open ? null : _saveDatabase,
                 icon: const Icon(Icons.save_outlined),
               ),
               PopupMenuButton<String>(
@@ -95,7 +112,7 @@ class _BrowserPageState extends State<BrowserPage> {
               ),
             ],
           ),
-          drawer: wide
+          drawer: wide || !open
               ? null
               : Drawer(
                   child: SafeArea(
@@ -110,31 +127,41 @@ class _BrowserPageState extends State<BrowserPage> {
                     ),
                   ),
                 ),
-          body: Stack(
-            children: [
-              wide
-                  ? Row(
-                      children: [
-                        SizedBox(
-                          width: 620,
-                          child: SchemaPane(
-                            objects: session.objects,
-                            selected: _selected,
-                            onSelect: _select,
-                            onApply: _applySchema,
-                          ),
-                        ),
-                        Expanded(child: _work()),
-                      ],
-                    )
-                  : _work(),
-              if (_progressShown)
-                Positioned.fill(
-                  child: WorkProgress(detail: _progressDetail),
+          body: open
+              ? Stack(
+                  children: [
+                    wide
+                        ? Row(
+                            children: [
+                              SizedBox(
+                                width: 620,
+                                child: SchemaPane(
+                                  objects: session.objects,
+                                  selected: _selected,
+                                  onSelect: _select,
+                                  onApply: _applySchema,
+                                ),
+                              ),
+                              Expanded(child: _work()),
+                            ],
+                          )
+                        : _work(),
+                    if (_progressShown)
+                      Positioned.fill(
+                        child: WorkProgress(detail: _progressDetail),
+                      ),
+                  ],
+                )
+              : HomePane(
+                  files: widget.recents.files,
+                  onOpen: _busy ? () {} : _openDatabase,
+                  onNew: _busy ? () {} : _newDatabase,
+                  onRecent: _busy ? (_) {} : _openRecent,
+                  onForget: (file) {
+                    widget.recents.forget(file);
+                  },
                 ),
-            ],
-          ),
-          bottomNavigationBar: wide
+          bottomNavigationBar: wide || !open
               ? null
               : NavigationBar(
                   selectedIndex: _paneIndex,
@@ -162,6 +189,34 @@ class _BrowserPageState extends State<BrowserPage> {
                 ),
         );
       },
+    );
+  }
+
+  Widget _title() {
+    final file = session.isOpen
+        ? (session.dirty ? '${session.label} · unsaved' : session.label)
+        : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Sqlite Browser',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        if (file != null)
+          Text(
+            file,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF5C6560),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+      ],
     );
   }
 
@@ -524,6 +579,7 @@ class _BrowserPageState extends State<BrowserPage> {
   }
 
   Future<void> _sample() {
+    if (!session.isOpen) return Future.value();
     return _guard(() async {
       await session.insertSample();
       final books = session.objects.where((object) => object.name == 'books');
@@ -547,18 +603,35 @@ class _BrowserPageState extends State<BrowserPage> {
     });
   }
 
-  Future<void> _openDatabase() async {
-    if (!await _confirmDiscard()) return;
-    final picked = await FilePicker.platform.pickFiles(withData: true);
-    if (picked == null || picked.files.isEmpty) return;
-    final file = picked.files.single;
-    final bytes = file.bytes;
-    if (bytes == null) {
-      _showMessage('This platform did not return the file bytes.');
-      return;
+  Future<void> _takeLaunch() async {
+    final opened = await LaunchBridge.takeLaunch();
+    if (opened == null || !mounted || session.isOpen) return;
+    await _openImage(opened.bytes, opened.name, location: opened.location);
+  }
+
+  Future<void> _onLaunched(OpenedFile opened) async {
+    if (!mounted || _busy) return;
+    if (session.isOpen && !await _confirmDiscard()) return;
+    await _openImage(opened.bytes, opened.name, location: opened.location);
+  }
+
+  Future<void> _openRecent(RecentFile file) async {
+    if (session.isOpen && !await _confirmDiscard()) return;
+    try {
+      final bytes = await widget.recents.read(file);
+      await _openImage(bytes, file.name, location: file.location);
+    } catch (error) {
+      _showMessage('$error');
     }
+  }
+
+  Future<void> _openImage(
+    Uint8List bytes,
+    String name, {
+    String? location,
+  }) async {
     await _guard(() async {
-      await session.openBytes(bytes, label: file.name);
+      await session.openBytes(bytes, label: name);
       if (!mounted) return;
       setState(() {
         _selected = null;
@@ -568,6 +641,34 @@ class _BrowserPageState extends State<BrowserPage> {
         _log.clear();
       });
     });
+    if (!session.isOpen || session.label != name) return;
+    try {
+      await widget.recents.remember(
+        name: name,
+        bytes: bytes,
+        location: location,
+      );
+    } catch (error) {
+      _showMessage('$error');
+    }
+  }
+
+  Future<void> _openDatabase() async {
+    if (session.isOpen && !await _confirmDiscard()) return;
+    final picked = await FilePicker.platform.pickFiles(withData: true);
+    if (picked == null || picked.files.isEmpty) return;
+    final file = picked.files.single;
+    final bytes = file.bytes;
+    if (bytes == null) {
+      _showMessage('This platform did not return the file bytes.');
+      return;
+    }
+    final path = file.path;
+    final location =
+        path != null && path.isNotEmpty && !path.startsWith('content:')
+            ? path
+            : null;
+    await _openImage(bytes, file.name, location: location);
   }
 
   Future<void> _saveDatabase() async {
@@ -586,8 +687,19 @@ class _BrowserPageState extends State<BrowserPage> {
       await file.writeAsBytes(bytes, flush: true);
     }
     final leaf = saved.split(RegExp(r'[/\\]')).last;
-    session.markSaved(leaf.isEmpty ? name : leaf);
-    _showMessage('Saved $leaf');
+    final stored = leaf.isEmpty ? name : leaf;
+    session.markSaved(stored);
+    try {
+      await widget.recents.remember(
+        name: stored,
+        bytes: bytes,
+        location: saved,
+      );
+    } catch (error) {
+      _showMessage('$error');
+      return;
+    }
+    _showMessage('Saved $stored');
   }
 
   Future<String?> _chooseSavePath(String name, Uint8List bytes) async {

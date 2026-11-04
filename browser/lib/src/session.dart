@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqlite_plus/sqlite_plus.dart';
 
 import 'format.dart';
+import 'index_stats.dart';
 
 /// One object from `sqlite_schema`.
 class SchemaObject {
@@ -14,6 +15,9 @@ class SchemaObject {
     this.foreignKeys = const [],
     this.indexColumns = const [],
     this.unique = false,
+    this.rootPage,
+    this.entries,
+    this.byteSize,
   });
 
   final String type;
@@ -32,6 +36,15 @@ class SchemaObject {
 
   /// True when an index was declared UNIQUE.
   final bool unique;
+
+  /// `sqlite_schema.rootpage` for this object.
+  final int? rootPage;
+
+  /// Cells of an index, including keys promoted onto interior pages.
+  final int? entries;
+
+  /// Pages used by an index, in bytes. Null until the page walk succeeds.
+  final int? byteSize;
 }
 
 /// A column from `PRAGMA table_info`.
@@ -187,6 +200,9 @@ class BrowserSession extends ChangeNotifier {
 
   /// Schema objects, excluding `sqlite_%` names.
   List<SchemaObject> objects = const [];
+
+  /// True after [openEmpty] or [openBytes], until [close].
+  bool get isOpen => _database != null;
 
   /// Opens an empty database.
   Future<void> openEmpty() {
@@ -468,7 +484,7 @@ class BrowserSession extends ChangeNotifier {
 
   Future<void> _loadSchema(MutableSqliteDatabase database) async {
     final result = await database.query(
-      'SELECT type, name, tbl_name, sql FROM sqlite_schema '
+      'SELECT type, name, tbl_name, rootpage, sql FROM sqlite_schema '
       "WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name",
     );
     final listed = [
@@ -477,7 +493,8 @@ class BrowserSession extends ChangeNotifier {
           type: row[0]! as String,
           name: row[1]! as String,
           table: (row[2] as String?) ?? row[1]! as String,
-          sql: row[3] as String?,
+          rootPage: _root(row[3]),
+          sql: row[4] as String?,
         ),
     ];
     final indexMeta = <String, ({bool unique, List<String> columns})>{};
@@ -492,6 +509,7 @@ class BrowserSession extends ChangeNotifier {
           name: object.name,
           table: object.table,
           sql: object.sql,
+          rootPage: object.rootPage,
           columns: columns,
           foreignKeys: foreignKeys,
         ));
@@ -503,26 +521,55 @@ class BrowserSession extends ChangeNotifier {
           name: object.name,
           table: object.table,
           sql: object.sql,
+          rootPage: object.rootPage,
           columns: await _columns(database, object.name),
         ));
         continue;
       }
       filled.add(object);
     }
+    Uint8List? image;
+    if (filled.any((object) => object.type == 'index')) {
+      try {
+        image = database.exportImage();
+      } on Object {
+        image = null;
+      }
+    }
     objects = [
       for (final object in filled)
-        if (object.type == 'index' && indexMeta.containsKey(object.name))
-          SchemaObject(
-            type: object.type,
-            name: object.name,
-            table: object.table,
-            sql: object.sql,
-            indexColumns: indexMeta[object.name]!.columns,
-            unique: indexMeta[object.name]!.unique,
-          )
+        if (object.type == 'index')
+          _indexObject(object, indexMeta[object.name], image)
         else
           object,
     ];
+  }
+
+  SchemaObject _indexObject(
+    SchemaObject object,
+    ({bool unique, List<String> columns})? meta,
+    Uint8List? image,
+  ) {
+    IndexMeasure? measured;
+    final root = object.rootPage;
+    if (image != null && root != null && root > 0) {
+      try {
+        measured = measureIndex(image, root);
+      } on FormatException {
+        measured = null;
+      }
+    }
+    return SchemaObject(
+      type: object.type,
+      name: object.name,
+      table: object.table,
+      sql: object.sql,
+      rootPage: object.rootPage,
+      indexColumns: meta?.columns ?? const [],
+      unique: meta?.unique ?? false,
+      entries: measured?.entries,
+      byteSize: measured?.bytes,
+    );
   }
 
   List<ColumnInfo> _knownColumns(String table) {
@@ -632,6 +679,12 @@ class BrowserSession extends ChangeNotifier {
 }
 
 bool _flag(Object? value) => value == BigInt.one || value == 1 || value == true;
+
+int? _root(Object? value) {
+  if (value is BigInt) return value.toInt();
+  if (value is int) return value;
+  return null;
+}
 
 int _asInt(Object? value) {
   if (value is BigInt) return value.toInt();

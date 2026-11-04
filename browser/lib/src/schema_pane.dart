@@ -64,58 +64,6 @@ class _SchemaPaneState extends State<SchemaPane> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-            child: Wrap(
-              spacing: 4,
-              children: [
-                TextButton.icon(
-                  onPressed: () async {
-                    final sql = await showCreateTable(context);
-                    if (!context.mounted || sql == null) return;
-                    widget.onApply(sql);
-                  },
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Create table'),
-                ),
-                TextButton.icon(
-                  key: const Key('add-column'),
-                  onPressed: () async {
-                    final tables = [
-                      for (final object in widget.objects)
-                        if (object.type == 'table') object,
-                    ];
-                    final selected = widget.selected;
-                    final sql = await showAddColumn(
-                      context,
-                      tables,
-                      initialTable: selected != null && selected.type == 'table'
-                          ? selected.name
-                          : null,
-                    );
-                    if (!context.mounted || sql == null) return;
-                    widget.onApply(sql);
-                  },
-                  icon: const Icon(Icons.view_column_outlined, size: 18),
-                  label: const Text('Add column'),
-                ),
-                TextButton.icon(
-                  onPressed: () async {
-                    final tables = [
-                      for (final object in widget.objects)
-                        if (object.type == 'table') object,
-                    ];
-                    final sql = await showCreateIndex(context, tables);
-                    if (!context.mounted || sql == null) return;
-                    widget.onApply(sql);
-                  },
-                  icon: const Icon(Icons.key_outlined, size: 18),
-                  label: const Text('Create index'),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -154,6 +102,9 @@ class _SchemaPaneState extends State<SchemaPane> {
                                   store: 'folder-tables',
                                   open:
                                       _isOpen('folder-tables', fallback: true),
+                                  onAdd: _createTable,
+                                  addKey: const Key('schema-add-table'),
+                                  addTooltip: 'Create table',
                                   children: [
                                     for (final table in tables)
                                       _relation(table),
@@ -166,6 +117,9 @@ class _SchemaPaneState extends State<SchemaPane> {
                                     'folder-indices',
                                     fallback: indexes.isNotEmpty,
                                   ),
+                                  onAdd: _createIndex,
+                                  addKey: const Key('schema-add-index'),
+                                  addTooltip: 'Create index',
                                   children: [
                                     for (final index in indexes) _index(index),
                                   ],
@@ -209,11 +163,40 @@ class _SchemaPaneState extends State<SchemaPane> {
     );
   }
 
+  Future<void> _createTable() async {
+    final sql = await showCreateTable(context);
+    if (!mounted || sql == null) return;
+    widget.onApply(sql);
+  }
+
+  Future<void> _createIndex() async {
+    final tables = [
+      for (final object in widget.objects)
+        if (object.type == 'table') object,
+    ];
+    final sql = await showCreateIndex(context, tables);
+    if (!mounted || sql == null) return;
+    widget.onApply(sql);
+  }
+
+  Future<void> _addColumn(String table) async {
+    final tables = [
+      for (final object in widget.objects)
+        if (object.type == 'table') object,
+    ];
+    final sql = await showAddColumn(context, tables, initialTable: table);
+    if (!mounted || sql == null) return;
+    widget.onApply(sql);
+  }
+
   Widget _folder({
     required String label,
     required String store,
     required bool open,
     required List<Widget> children,
+    VoidCallback? onAdd,
+    Key? addKey,
+    String? addTooltip,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -223,6 +206,9 @@ class _SchemaPaneState extends State<SchemaPane> {
           icon: open ? Icons.expand_more : Icons.chevron_right,
           name: label,
           onTap: () => _toggle(store, fallback: open),
+          action: onAdd == null
+              ? null
+              : _plus(onAdd, key: addKey, tooltip: addTooltip),
         ),
         if (open) ...children,
       ],
@@ -248,6 +234,13 @@ class _SchemaPaneState extends State<SchemaPane> {
           schema: _oneLine(object.sql),
           active: active,
           itemKey: Key('schema-${object.type}-${object.name}'),
+          action: object.type == 'table'
+              ? _plus(
+                  () => _addColumn(object.name),
+                  key: Key('schema-add-column-${object.name}'),
+                  tooltip: 'Add column',
+                )
+              : null,
           onTap: () {
             widget.onSelect(object);
             if (!open) _toggle(key, fallback: true);
@@ -270,14 +263,19 @@ class _SchemaPaneState extends State<SchemaPane> {
 
   Widget _index(SchemaObject object) {
     final columns = object.indexColumns.join(', ');
-    final schema =
+    final sql =
         _oneLine(object.sql).isNotEmpty ? _oneLine(object.sql) : columns;
+    final entries = object.entries;
+    final size = object.byteSize;
+    final facts = entries == null
+        ? ''
+        : '$entries entries · ${formatBytes(size ?? 0)} · ';
     return _entry(
       indent: 16,
       icon: Icons.key_outlined,
       name: object.name,
       type: object.unique ? 'unique' : 'index',
-      schema: schema,
+      schema: '$facts$sql',
       active: widget.selected?.name == object.name &&
           widget.selected?.type == object.type,
       itemKey: Key('schema-${object.type}-${object.name}'),
@@ -312,6 +310,7 @@ class _SchemaPaneState extends State<SchemaPane> {
     String? mark,
     bool active = false,
     Key? itemKey,
+    Widget? action,
     VoidCallback? onTap,
     VoidCallback? onExpand,
   }) {
@@ -339,6 +338,7 @@ class _SchemaPaneState extends State<SchemaPane> {
       schema: schema,
       mark: mark,
       active: active,
+      action: action,
     );
     if (onTap == null) return row;
     return InkWell(key: itemKey, onTap: onTap, child: row);
@@ -353,6 +353,7 @@ class _SchemaPaneState extends State<SchemaPane> {
     String? mark,
     bool header = false,
     bool active = false,
+    Widget? action,
   }) {
     final style = TextStyle(
       color: _ink,
@@ -380,7 +381,7 @@ class _SchemaPaneState extends State<SchemaPane> {
                   children: [
                     if (leading != null) leading,
                     if (leading != null) const SizedBox(width: 6),
-                    Expanded(
+                    Flexible(
                       child: Text(
                         name,
                         maxLines: 1,
@@ -388,6 +389,7 @@ class _SchemaPaneState extends State<SchemaPane> {
                         style: style,
                       ),
                     ),
+                    if (action != null) action,
                   ],
                 ),
               ),
@@ -472,6 +474,21 @@ String columnDefinition(ColumnInfo column, List<ForeignKeyInfo> keys) {
     }
   }
   return buffer.toString();
+}
+
+Widget _plus(VoidCallback onPressed, {Key? key, String? tooltip}) {
+  return IconButton(
+    key: key,
+    tooltip: tooltip,
+    onPressed: onPressed,
+    icon: const Icon(Icons.add, size: 18, color: Color(0xFF0E7C66)),
+    style: IconButton.styleFrom(
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      minimumSize: const Size(28, 28),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+    ),
+  );
 }
 
 String _oneLine(String? sql) {

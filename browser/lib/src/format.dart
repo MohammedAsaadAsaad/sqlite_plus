@@ -218,3 +218,19 @@ String editableText(Object? value) {
   if (value == null || value is List<int>) return '';
   return '$value';
 }
+
+/// A file size in bytes, shown as B, KB, or MB.
+String formatBytes(int bytes) {
+  if (bytes < 0) return '0 B';
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) {
+    final kb = bytes / 1024;
+    return kb == kb.roundToDouble()
+        ? '${kb.toInt()} KB'
+        : '${kb.toStringAsFixed(1)} KB';
+  }
+  final mb = bytes / (1024 * 1024);
+  return mb == mb.roundToDouble()
+      ? '${mb.toInt()} MB'
+      : '${mb.toStringAsFixed(1)} MB';
+}

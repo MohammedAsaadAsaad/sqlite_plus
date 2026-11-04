@@ -141,10 +141,25 @@ class _CreateTableDialogState extends State<_CreateTableDialog> {
                   hintText: 'events',
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Columns',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Text(
+                    '${_columns.length}',
+                    style: const TextStyle(color: Color(0xFF5C6560)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
               const Text(
-                'Columns',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                'Key sets the primary key. Block sets NOT NULL.',
+                style: TextStyle(color: Color(0xFF5C6560), fontSize: 12),
               ),
               const SizedBox(height: 8),
               for (var index = 0; index < _columns.length; index++)
@@ -155,7 +170,7 @@ class _CreateTableDialogState extends State<_CreateTableDialog> {
                   key: const Key('create-column-add'),
                   onPressed: _addColumn,
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add column'),
+                  label: const Text('Column'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -185,21 +200,53 @@ class _CreateTableDialogState extends State<_CreateTableDialog> {
 
   Widget _columnRow(int index) {
     final column = _columns[index];
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAF8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD9E2DC)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            key: Key('create-column-name-$index'),
-            controller: column.name,
-            decoration: const InputDecoration(
-              isDense: true,
-              hintText: 'name',
-            ),
+          Row(
+            children: [
+              SizedBox(
+                width: 22,
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    color: Color(0xFF5C6560),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: TextField(
+                  key: Key('create-column-name-$index'),
+                  controller: column.name,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: 'name',
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Remove',
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints.tightFor(width: 36, height: 36),
+                onPressed: _columns.length == 1 ? null : () => _remove(index),
+                icon: const Icon(Icons.close, size: 18),
+              ),
+            ],
           ),
           Row(
             children: [
+              const SizedBox(width: 22),
               PopupMenuButton<String>(
                 key: Key('create-column-type-$index'),
                 initialValue: column.type,
@@ -213,7 +260,7 @@ class _CreateTableDialogState extends State<_CreateTableDialog> {
                       const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                   child: Text(
                     column.type,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -249,15 +296,6 @@ class _CreateTableDialogState extends State<_CreateTableDialog> {
                       ? const Color(0xFF0E7C66)
                       : const Color(0xFFB7C4BE),
                 ),
-              ),
-              IconButton(
-                tooltip: 'Remove',
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints.tightFor(width: 36, height: 36),
-                onPressed: _columns.length == 1 ? null : () => _remove(index),
-                icon: const Icon(Icons.close, size: 18),
               ),
             ],
           ),

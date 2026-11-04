@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite_plus_browser/src/format.dart';
+import 'package:sqlite_plus_browser/src/index_stats.dart';
 import 'package:sqlite_plus_browser/src/schema_sql.dart';
 import 'package:sqlite_plus_browser/src/session.dart';
 import 'package:sqlite_plus_browser/src/sql_view.dart';
@@ -449,5 +450,43 @@ void main() {
     expect(link.from, 'author_id');
     expect(link.table, 'authors');
     expect(link.to, 'id');
+  });
+
+  test('an index reports its leaf entries and page size', () async {
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    await session.run(
+      'CREATE TABLE events (id INTEGER PRIMARY KEY, category TEXT, value REAL)',
+    );
+    await session.run(
+      'CREATE INDEX idx_events_category_value ON events (category, value)',
+    );
+    final empty = session.objects
+        .singleWhere((object) => object.name == 'idx_events_category_value');
+    expect(empty.entries, 0);
+    expect(empty.byteSize, greaterThan(0));
+    expect(empty.byteSize! % 512, 0);
+
+    final values = [
+      for (var i = 0; i < 300; i++) "('c$i', $i)",
+    ].join(', ');
+    await session.run(
+      'INSERT INTO events (category, value) VALUES $values',
+    );
+    await session.run(
+      'CREATE INDEX idx_kept ON events (category) WHERE value > 0',
+    );
+    final full = session.objects
+        .singleWhere((object) => object.name == 'idx_events_category_value');
+    final partial =
+        session.objects.singleWhere((object) => object.name == 'idx_kept');
+    expect(full.entries, 300);
+    expect(full.byteSize, greaterThan(empty.byteSize!));
+    expect(partial.entries, 299);
+    final image = session.exportBytes();
+    final measured = measureIndex(image, full.rootPage!);
+    expect(measured.entries, full.entries);
+    expect(measured.bytes, full.byteSize);
   });
 }

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 import 'src/browser_page.dart';
+import 'src/recent_files.dart';
 import 'src/session.dart';
 
 /// Desktop and mobile shell for one [BrowserSession].
 class BrowserApp extends StatelessWidget {
-  const BrowserApp({super.key, required this.session});
+  BrowserApp({super.key, required this.session, RecentStore? recents})
+      : recents = recents ?? RecentStore.memory();
 
   final BrowserSession session;
+  final RecentStore recents;
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +21,7 @@ class BrowserApp extends StatelessWidget {
       surface: const Color(0xFFF4F7F5),
     );
     return MaterialApp(
-      title: 'sqlite_plus browser',
+      title: 'Sqlite Browser',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: scheme,
@@ -63,7 +66,7 @@ class BrowserApp extends StatelessWidget {
           ),
         ),
       ),
-      home: BrowserPage(session: session),
+      home: BrowserPage(session: session, recents: recents),
     );
   }
 }

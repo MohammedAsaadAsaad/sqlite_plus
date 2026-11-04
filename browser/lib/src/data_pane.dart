@@ -121,8 +121,12 @@ class _DataPaneState extends State<DataPane> {
         children: [
           Text(
             object.name,
-            style: Theme.of(context).textTheme.titleMedium,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
+          if (object.type == 'index') ...[
+            const SizedBox(height: 12),
+            _IndexFacts(object: object),
+          ],
           const SizedBox(height: 12),
           SqlCodeView(source: formatSql(object.sql ?? object.name)),
         ],
@@ -384,5 +388,83 @@ class _DataPaneState extends State<DataPane> {
       }
     }
     return facts;
+  }
+}
+
+class _IndexFacts extends StatelessWidget {
+  const _IndexFacts({required this.object});
+
+  final SchemaObject object;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = object.entries;
+    final size = object.byteSize;
+    final columns = object.indexColumns.join(', ');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _stat(
+              'Entries',
+              entries == null ? 'Unknown' : '$entries',
+              valueKey: const Key('index-entries'),
+            ),
+            _stat(
+              'Size',
+              size == null ? 'Unknown' : formatBytes(size),
+              valueKey: const Key('index-size'),
+            ),
+            _stat('Table', object.table),
+            if (columns.isNotEmpty) _stat('Columns', columns),
+            if (object.unique) _stat('Kind', 'Unique'),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Entries count the keys stored in this index. Size is the pages it uses.',
+          style: TextStyle(color: Color(0xFF5C6560), fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  Widget _stat(String label, String value, {Key? valueKey}) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFD6EBE4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF5C6560),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              key: valueKey,
+              style: const TextStyle(
+                color: Color(0xFF14211C),
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
