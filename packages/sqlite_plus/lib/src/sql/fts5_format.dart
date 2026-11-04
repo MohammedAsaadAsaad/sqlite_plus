@@ -37,7 +37,10 @@ final class FtsSegmentRef {
 
 const fts5LeafLimit = 4050;
 
-int fts5LeafRowid(int segid, int page) => (segid << 37) + page;
+// JavaScript bitwise shifts truncate to 32 bits. FTS5 segment block IDs use
+// bit 37; arithmetic keeps their exact value across VM and JS (the supported
+// 16-bit segment IDs and page range fit JavaScript's 53-bit integer precision).
+int fts5LeafRowid(int segid, int page) => segid * 137438953472 + page;
 
 void writeVarint(BytesBuilder out, int value) {
   if (value < 0) {

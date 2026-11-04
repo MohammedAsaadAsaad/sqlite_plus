@@ -84,3 +84,10 @@ A Flutter browser can list schema, page rows, edit cells, and run SQL only for f
 - [ ] B5 Leave plots and CSV import or export to the Flutter application. They do not change the engine. `examples/notes` exports CSV, imports those rows as new notes, and plots one bar per UTC update day. `examples/notes/tool/note_exchange_check.dart` passed. This machine has no Flutter SDK, so the widgets were not executed. That does not check this box.
 
 Every milestone must include `dart format`, `dart analyze`, tests, documented discrepancies and a compatibility matrix update. ORM metadata can be developed in parallel after the engine API contract is stable.
+
+## sqlite_plus_search Phase 1
+
+- [x] Repository integration inspection; see packages/sqlite_plus_search/doc/ARCHITECTURE.md.
+- [ ] Search release acceptance. Core keyword/vector/hybrid, feedback and incremental
+  indexing are implemented; real-model, large-scale physical persistence, real-device recovery and broader
+  platform gates remain open. VM/Node search assertions now pass. See packages/sqlite_plus_search/doc/IMPLEMENTATION_PLAN.md.

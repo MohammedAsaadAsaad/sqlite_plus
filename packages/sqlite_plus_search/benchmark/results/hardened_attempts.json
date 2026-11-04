@@ -1,0 +1,38 @@
+{
+  "started_utc": "2026-11-04T18:50:34.132064+00:00",
+  "timeout_per_size_seconds": 120,
+  "source_sha256": {
+    "lib/sqlite_plus_search.dart": "ecbcfba4530347b4244bbbc410bda6859316a3ef81eb6911fc4590f94579982b",
+    "lib/src/analyzer.dart": "a63f136fad4d8c14a04ddca85820bfdfce6b1b3f021cd56053180396785b44a4",
+    "lib/src/embedding.dart": "2abe60e3b41068c462b615d4a89f0cf7c80353d06185ff1150f9d7bbeca32a1d",
+    "lib/src/evaluation.dart": "3c95c1059bb8a84d6eb0adb3bd855479947daac72e00a5f5b1c4b53972946ef0",
+    "lib/src/integrity.dart": "964c1a15571e04b3f7c84e681efa90e3f5c0a5c12ea9930ba86dc8bbe920b917",
+    "lib/src/learning.dart": "c1dbb6069503457ae3eb6bf606672bdf5b33f3e4aa88ea0836e16fa0ffc31f94",
+    "lib/src/ranking.dart": "5fb76b67e675816113201513f4210260b0ffa3416af413b8512eb22fe9f6965e",
+    "lib/src/search.dart": "bb3c0da71598bf741a45516798221b00d350303f3fc0835f895aee35ff7b0993",
+    "lib/src/synchronization.dart": "1499e13fff7c918dd8c6051f68cd9029b53b5cf80a24c89c9ed621cd4ca03eb7"
+  },
+  "attempts": [
+    {
+      "records": 1000,
+      "status": "completed",
+      "exit_code": 0,
+      "wall_seconds": 7.440037568000207,
+      "progress": "source_ready records=1000\nindex_ready records=1000"
+    },
+    {
+      "records": 10000,
+      "status": "completed",
+      "exit_code": 0,
+      "wall_seconds": 79.35275466099984,
+      "progress": "source_ready records=10000\nindex_ready records=10000"
+    },
+    {
+      "records": 100000,
+      "status": "timeout",
+      "exit_code": 124,
+      "wall_seconds": 120.01014213300004,
+      "progress": "source_ready records=100000"
+    }
+  ]
+}

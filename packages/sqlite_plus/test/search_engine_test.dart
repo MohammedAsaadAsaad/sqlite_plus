@@ -6,6 +6,16 @@ import 'package:sqlite_plus/src/sql/fts5_format.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('FTS5 block IDs retain bit 37 and agree with exact integer arithmetic',
+      () {
+    for (final segment in [1, 2, 100, 65535]) {
+      for (final page in [1, 17, 1073741824]) {
+        expect(fts5LeafRowid(segment, page),
+            ((BigInt.from(segment) << 37) + BigInt.from(page)).toInt());
+      }
+    }
+    expect(fts5LeafRowid(1, 1), 137438953473);
+  });
   test('one FTS5 leaf matches the pinned Hello World record', () {
     final leaf = encodeLeaf([
       FtsPosting(Uint8List.fromList('0database'.codeUnits), [
