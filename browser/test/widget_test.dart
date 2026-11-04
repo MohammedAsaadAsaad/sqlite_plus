@@ -779,4 +779,100 @@ void main() {
     expect(session.dirty, isFalse);
     await _finish(tester, session);
   });
+
+  testWidgets('deleting a row or a delete statement asks first',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run(
+      'CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT)',
+    );
+    await session.run(
+      "INSERT INTO books (title) VALUES ('Kept Garden'), ('Other Atlas')",
+    );
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('schema-table-books')));
+    await _frames(tester);
+
+    await tester.tap(find.byKey(const Key('delete-row-0')));
+    await _frames(tester);
+    expect(find.text('Delete this row?'), findsOneWidget);
+    expect(find.text('This removes one row from books.'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('delete-dismiss')));
+    await _frames(tester);
+    expect(find.text('Kept Garden'), findsOneWidget);
+    expect(find.text('Other Atlas'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('delete-row-0')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('confirm-delete')));
+    await _frames(tester);
+    expect(find.text('Kept Garden'), findsNothing);
+    expect(find.text('Other Atlas'), findsOneWidget);
+
+    await tester.tap(find.text('SQL'));
+    await _frames(tester);
+    await tester.enterText(
+      find.byKey(const Key('sql-input')),
+      'DELETE FROM books',
+    );
+    await tester.tap(find.byKey(const Key('run-sql')));
+    await _frames(tester);
+    expect(find.text('Delete these rows?'), findsOneWidget);
+    expect(find.text('DELETE FROM books'), findsWidgets);
+    await tester.tap(find.byKey(const Key('delete-dismiss')));
+    await _frames(tester);
+    await tester.tap(find.text('Rows'));
+    await _frames(tester);
+    expect(find.text('Other Atlas'), findsOneWidget);
+
+    await tester.tap(find.text('SQL'));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('run-sql')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('confirm-delete')));
+    await _frames(tester);
+    expect(find.text('1 changed'), findsOneWidget);
+    await tester.tap(find.text('Rows'));
+    await _frames(tester);
+    expect(find.text('Other Atlas'), findsNothing);
+    await _finish(tester, session);
+  });
+
+  testWidgets('a column suggestion shows its declared type', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run(
+      'CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, pages INTEGER)',
+    );
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+    await tester.tap(find.text('SQL'));
+    await _frames(tester);
+    await tester.enterText(find.byKey(const Key('sql-input')), 'SELECT ');
+    await _frames(tester);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('suggest-type-title'))).data,
+      'TEXT',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('suggest-type-id'))).data,
+      'INTEGER',
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('suggest-type-pages'))).data,
+      'INTEGER',
+    );
+    expect(find.text('column'), findsNothing);
+    await _finish(tester, session);
+  });
 }

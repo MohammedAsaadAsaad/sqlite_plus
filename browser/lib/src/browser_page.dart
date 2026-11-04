@@ -8,6 +8,7 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 
 import 'cell_dialog.dart';
 import 'data_pane.dart';
+import 'format.dart';
 import 'home_pane.dart';
 import 'launch_bridge.dart';
 import 'recent_files.dart';
@@ -526,7 +527,7 @@ class _BrowserPageState extends State<BrowserPage> {
     return _load(next < 0 ? 0 : next);
   }
 
-  Future<void> _runSql({int? offset}) {
+  Future<void> _runSql({int? offset}) async {
     final current = _result;
     if (offset != null && current != null && current.cached != null) {
       final page = current.window(offset);
@@ -534,9 +535,19 @@ class _BrowserPageState extends State<BrowserPage> {
         _result = page;
         _notice = PageNotice(_queryMessage(page), NoticeKind.note);
       });
-      return Future.value();
+      return;
     }
-    return _guard(() async {
+    if (offset == null && _removesData(_sql.text)) {
+      final words = sqlWords(_sql.text);
+      final drop = words.isNotEmpty && words.first == 'drop';
+      final proceed = await _confirmDelete(
+        drop ? 'Drop this object?' : 'Delete these rows?',
+        _oneLine(_sql.text) ?? '',
+        drop: drop,
+      );
+      if (!proceed || !mounted) return;
+    }
+    await _guard(() async {
       final result = await session.run(_sql.text, offset: offset ?? 0);
       if (!mounted) return;
       final statement = _sql.text.trim();
@@ -573,6 +584,13 @@ class _BrowserPageState extends State<BrowserPage> {
     return collapsed;
   }
 
+  bool _removesData(String sql) {
+    final words = sqlWords(sql);
+    if (words.isEmpty) return false;
+    final first = words.first;
+    return first == 'delete' || first == 'drop';
+  }
+
   Future<void> _insert() {
     final selected = _selected;
     if (selected == null || selected.type != 'table') return Future.value();
@@ -582,13 +600,54 @@ class _BrowserPageState extends State<BrowserPage> {
     });
   }
 
-  Future<void> _delete(BigInt rowid) {
+  Future<void> _delete(BigInt rowid) async {
     final selected = _selected;
-    if (selected == null) return Future.value();
-    return _guard(() async {
+    if (selected == null) return;
+    final proceed = await _confirmDelete(
+      'Delete this row?',
+      'This removes one row from ${selected.name}.',
+    );
+    if (!proceed || !mounted) return;
+    await _guard(() async {
       await session.deleteRow(selected.name, rowid);
       await _load(_slice.offset);
     });
+  }
+
+  Future<bool> _confirmDelete(
+    String title,
+    String body, {
+    bool drop = false,
+  }) async {
+    final answer = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(
+          Icons.warning_amber_rounded,
+          color: Color(0xFFC4473A),
+          size: 32,
+        ),
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            key: const Key('delete-dismiss'),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('confirm-delete'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFC4473A),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(drop ? 'Drop' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+    return answer ?? false;
   }
 
   Future<void> _edit(ColumnInfo column, BigInt rowid, Object? current) async {

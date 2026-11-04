@@ -62,6 +62,15 @@ void main() {
     expect(labels('SEL').first, 'SELECT');
     expect(labels('SELECT title FROM bo'), contains('books'));
     expect(labels('SELECT books.'), ['id', 'title', 'pages']);
+    final typed = sqlCompletions(
+      text: 'SELECT books.',
+      cursor: 'SELECT books.'.length,
+      objects: const [books, authors],
+    );
+    expect(typed.singleWhere((item) => item.label == 'id').detail, 'INTEGER');
+    expect(typed.singleWhere((item) => item.label == 'title').detail, 'TEXT');
+    expect(
+        typed.singleWhere((item) => item.label == 'pages').detail, 'INTEGER');
     expect(labels('SELECT * FROM books WHERE pa'), contains('pages'));
     expect(labels("SELECT 'SEL"), isEmpty);
     expect(labels('CREATE TABLE bo'), isNot(contains('books')));

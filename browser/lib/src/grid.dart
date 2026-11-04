@@ -77,6 +77,7 @@ class CellGrid extends StatelessWidget {
                           SizedBox(
                             width: 52,
                             child: IconButton(
+                              key: Key('delete-row-$index'),
                               tooltip: 'Delete row',
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,

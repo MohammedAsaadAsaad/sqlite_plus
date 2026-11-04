@@ -537,8 +537,8 @@ class _SqlPaneState extends State<SqlPane> {
     );
     painter.dispose();
     final origin = box.localToGlobal(Offset.zero, ancestor: overlayObject);
-    const menuWidth = 236.0;
-    final menuHeight = suggestions.length * 34.0 + 8;
+    const menuWidth = 300.0;
+    final menuHeight = suggestions.length * 36.0 + 8;
     final screen = overlayObject.size;
     final keyboard = MediaQuery.viewInsetsOf(overlayContext).bottom;
     var left = origin.dx + caret.dx;
@@ -577,7 +577,7 @@ class _SqlPaneState extends State<SqlPane> {
                 key: Key('suggest-${item.insert}'),
                 onTap: () => _apply(item),
                 child: SizedBox(
-                  height: 34,
+                  height: 36,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: Row(
@@ -602,13 +602,7 @@ class _SqlPaneState extends State<SqlPane> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          item.kind,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Color(0xFF5E736B),
-                          ),
-                        ),
+                        _caption(item),
                       ],
                     ),
                   ),
@@ -626,6 +620,36 @@ class _SqlPaneState extends State<SqlPane> {
     final start = result.offset + 1;
     final end = result.offset + result.rows.length;
     return '$start–$end';
+  }
+
+  Widget _caption(SqlCompletion item) {
+    final type = item.kind == 'column' ? item.detail.trim() : '';
+    final text = type.isEmpty ? item.kind : type;
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 132),
+      padding: type.isEmpty
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: type.isEmpty
+          ? null
+          : BoxDecoration(
+              color: const Color(0xFFE7F2EC),
+              borderRadius: BorderRadius.circular(8),
+            ),
+      child: Text(
+        text,
+        key: Key('suggest-type-${item.insert}'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: type.isEmpty ? null : 'JetBrainsMono',
+          fontSize: type.isEmpty ? 10 : 11,
+          fontWeight: type.isEmpty ? FontWeight.w500 : FontWeight.w700,
+          color:
+              type.isEmpty ? const Color(0xFF5E736B) : const Color(0xFF0E7C66),
+        ),
+      ),
+    );
   }
 
   IconData _icon(String kind) {
