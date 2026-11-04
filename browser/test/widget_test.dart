@@ -797,20 +797,22 @@ void main() {
     await _frames(tester);
     await tester.tap(find.text('Dart classes'));
     await _frames(tester);
-    expect(
-      find.byKey(const Key('model-step-2')),
-      findsOneWidget,
-    );
-    expect(
-      tester.widget<Text>(find.byKey(const Key('model-step-2'))).data,
-      contains('sqlite_plus_generator --input lib/models.dart'),
-    );
+    expect(find.byKey(const Key('model-step-2')), findsNothing);
+    expect(find.text('dart run sqlite_plus_generator'), findsNothing);
+    expect(find.byKey(const Key('model-class-Books')), findsOneWidget);
     expect(
       tester
-          .widget<SelectableText>(find.byKey(const Key('models-source')))
-          .data,
+          .widget<SelectableText>(find.byKey(const Key('model-code-Books')))
+          .textSpan!
+          .toPlainText(),
       contains('class Books'),
     );
+    await tester.tap(find.byKey(const Key('models-help')));
+    await _frames(tester);
+    expect(find.byKey(const Key('model-step-2')), findsOneWidget);
+    expect(find.text('dart run sqlite_plus_generator'), findsOneWidget);
+    expect(find.text('Put the classes in lib/'), findsOneWidget);
+    expect(find.textContaining('--input'), findsNothing);
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
       (call) async => null,
@@ -824,7 +826,7 @@ void main() {
     );
     await tester.tap(find.text('Close'));
     await _frames(tester);
-    expect(find.byKey(const Key('models-source')), findsNothing);
+    expect(find.byKey(const Key('model-class-Books')), findsNothing);
     await _finish(tester, session);
   });
 

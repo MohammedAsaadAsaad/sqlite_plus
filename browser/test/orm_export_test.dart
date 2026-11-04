@@ -29,12 +29,10 @@ void main() {
       source,
       contains("import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';"),
     );
-    expect(
-      source,
-      contains(
-        'dart run sqlite_plus_generator --input lib/models.dart',
-      ),
-    );
+    expect(source, contains('dart run sqlite_plus_generator'));
+    expect(source, isNot(contains('--input')));
+    expect(source, contains('lib/models.dart'));
+    expect(source, contains('sqlite_plus_migrations.g.dart'));
     expect(source, contains("@DbEntity(table: 'authors')"));
     expect(source, contains('class Authors {'));
     expect(source, contains('@DbKey(generated: true)'));
@@ -64,5 +62,21 @@ void main() {
     expect(source, isNot(contains("table: 'docs'")));
     expect(source, isNot(contains("table: 'docs_content'")));
     expect(source, isNot(contains('class Names')));
+    final parts = splitModelLibrary(source);
+    expect(parts.classes.map((block) => block.name), [
+      'Authors',
+      'Books',
+      'Pair',
+    ]);
+    expect(parts.classes[1].table, 'books');
+    expect(parts.imports.first, "import 'dart:typed_data';");
+    expect(
+      parts.notes,
+      contains(
+        'docs is a virtual table. Write its fts5, rtree, or vec0 class by hand.',
+      ),
+    );
+    expect(parts.notes, contains('View names is not a generated class.'));
+    expect(parts.notes.join('\n'), isNot(contains('dart run')));
   });
 }

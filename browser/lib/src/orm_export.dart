@@ -2,12 +2,50 @@ import 'format.dart';
 import 'schema_sql.dart';
 import 'session.dart';
 
-/// Steps shown with the exported library and repeated at the top of the file.
+/// One step for saving the classes and generating the whole package.
+class OrmModelStep {
+  const OrmModelStep(this.title, this.detail, {this.command});
+
+  final String title;
+  final String detail;
+
+  /// A command or snippet shown on its own line.
+  final String? command;
+}
+
+/// Steps shown from How to use and repeated at the top of the file.
 const ormModelSteps = [
-  'Save this file as lib/models.dart in a Dart package.',
-  'Add sqlite_plus_orm to dependencies and sqlite_plus_generator to dev_dependencies.',
-  'From the package root, run dart run sqlite_plus_generator --input lib/models.dart.',
-  'Open the database with final context = DbContext(connection, generatedModel); then await context.migrations.ensureCreated();',
+  OrmModelStep(
+    'Put the classes in lib/',
+    'Save this file in the Dart package, for example as lib/models.dart. '
+        'Keep every class from this file in that one library. A reference '
+        'names a class in the same library.',
+  ),
+  OrmModelStep(
+    'Add the packages',
+    'Add sqlite_plus_orm to dependencies and sqlite_plus_generator to '
+        'dev_dependencies.',
+  ),
+  OrmModelStep(
+    'Generate for the whole project',
+    'From the package root, run this command. It reads every public '
+        '@DbEntity class under lib/ and writes the parts. The part directive '
+        'is added for you.',
+    command: 'dart run sqlite_plus_generator',
+  ),
+  OrmModelStep(
+    'Open the package model',
+    'Import lib/sqlite_plus_migrations.g.dart. Hide generatedModel on each '
+        'model import, and use the package model for the context.',
+    command: 'final context = DbContext(connection, generatedModel);\n'
+        'await context.migrations.ensureCreated();',
+  ),
+];
+
+/// Short notes repeated under the steps. They are not classes.
+const ormModelHints = [
+  'A single integer primary key is BigInt? with @DbKey(generated: true).',
+  '@DbColumn(name:) keeps the SQL column name. One @DbReference is one column.',
 ];
 
 /// A library of `@DbEntity` classes for the open tables.
@@ -64,17 +102,23 @@ String ormModels(List<SchemaObject> objects) {
   buffer
     ..writeln("import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';")
     ..writeln();
-  for (final step in ormModelSteps) {
-    buffer.writeln('// $step');
+  buffer.writeln('// How to use');
+  for (var i = 0; i < ormModelSteps.length; i++) {
+    final step = ormModelSteps[i];
+    buffer.writeln('// ${i + 1}. ${step.title}');
+    for (final line in step.detail.split('\n')) {
+      buffer.writeln('//    $line');
+    }
+    final command = step.command;
+    if (command != null) {
+      for (final line in command.split('\n')) {
+        buffer.writeln('//    $line');
+      }
+    }
   }
-  buffer
-    ..writeln('//')
-    ..writeln(
-      '// A single integer primary key is BigInt? with @DbKey(generated: true).',
-    )
-    ..writeln(
-      '// @DbColumn(name:) keeps the SQL column name. One @DbReference is one column.',
-    );
+  for (final hint in ormModelHints) {
+    buffer.writeln('// $hint');
+  }
   final notes = <String>[
     for (final table in planned)
       if (table.skip != null) table.skip!,
@@ -102,6 +146,68 @@ String ormModels(List<SchemaObject> objects) {
       ..writeln(_class(table, objects));
   }
   return buffer.toString();
+}
+
+/// One `@DbEntity` class cut out of [ormModels] for its own card.
+class ModelClassBlock {
+  const ModelClassBlock({
+    required this.name,
+    required this.table,
+    required this.source,
+  });
+
+  final String name;
+  final String table;
+  final String source;
+}
+
+/// Imports, leftover notes, and the classes in an exported library.
+class ModelLibraryParts {
+  const ModelLibraryParts({
+    required this.imports,
+    required this.notes,
+    required this.classes,
+  });
+
+  final List<String> imports;
+  final List<String> notes;
+  final List<ModelClassBlock> classes;
+}
+
+/// Splits an [ormModels] library into the pieces the dialog shows.
+ModelLibraryParts splitModelLibrary(String source) {
+  final marker = RegExp(r'^@DbEntity', multiLine: true);
+  final starts = [for (final match in marker.allMatches(source)) match.start];
+  final head = starts.isEmpty ? source : source.substring(0, starts.first);
+  final imports = <String>[];
+  final notes = <String>[];
+  for (final raw in head.split('\n')) {
+    final line = raw.trimRight();
+    final trimmed = line.trimLeft();
+    if (trimmed.startsWith('import ')) {
+      imports.add(trimmed);
+      continue;
+    }
+    if (!trimmed.startsWith('//')) continue;
+    final text = trimmed.substring(2).trim();
+    if (text.isEmpty || text == 'How to use') continue;
+    if (RegExp(r'^\d+\.\s').hasMatch(text)) continue;
+    if (trimmed.startsWith('//    ')) continue;
+    if (ormModelHints.contains(text)) continue;
+    notes.add(text);
+  }
+  final classes = <ModelClassBlock>[];
+  for (var i = 0; i < starts.length; i++) {
+    final end = i + 1 < starts.length ? starts[i + 1] : source.length;
+    final chunk = source.substring(starts[i], end).trim();
+    final name =
+        RegExp(r'\bclass\s+([A-Za-z_]\w*)').firstMatch(chunk)?.group(1) ??
+            'Class';
+    final tableMatch = RegExp(r"table:\s*'((?:\\'|[^'])*)'").firstMatch(chunk);
+    final table = (tableMatch?.group(1) ?? name).replaceAll(r"\'", "'");
+    classes.add(ModelClassBlock(name: name, table: table, source: chunk));
+  }
+  return ModelLibraryParts(imports: imports, notes: notes, classes: classes);
 }
 
 bool _internal(String name) => name.toLowerCase().startsWith('sqlite_');
