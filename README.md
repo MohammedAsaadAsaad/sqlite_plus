@@ -124,6 +124,7 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | [`sqlite_plus_arabic`](packages/sqlite_plus_arabic) · [pub.dev](https://pub.dev/packages/sqlite_plus_arabic) | FTS5 tokenizer `arabic`. `حديقة` and `الحديقة` share a token |
 | [`sqlite_plus_vec`](packages/sqlite_plus_vec) · [pub.dev](https://pub.dev/packages/sqlite_plus_vec) | `vec0` nearest neighbors. A full scan of float32 vectors |
 | [`sqlite_plus_geo`](packages/sqlite_plus_geo) · [pub.dev](https://pub.dev/packages/sqlite_plus_geo) | Geometry, spatial SQL, and R-tree queries in Pure Dart |
+| [`sqlite_plus_search`](packages/sqlite_plus_search) | Phase 1 development: offline keyword/local-vector/hybrid search, indexing and local feedback; production embedding model pending |
 | [`browser`](browser) | Flutter browser for a database image on phone and desktop |
 
 | You want | Command |
@@ -216,7 +217,7 @@ Packages require Dart >=3.6.0. From the repository root:
 ```sh
 dart pub get --enforce-lockfile
 dart format .
-for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator sqlite_plus_arabic sqlite_plus_vec sqlite_plus_geo; do
+for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator sqlite_plus_arabic sqlite_plus_vec sqlite_plus_geo sqlite_plus_search; do
   (cd packages/$package && dart analyze --fatal-infos && dart test) || exit
 done
 ```

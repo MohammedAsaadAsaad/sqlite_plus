@@ -221,3 +221,24 @@ runtime imports/execution. Items 77–82 add a separate unpromised image round
 trip in an in-process store and a compiled `dart:js_interop` file. They do not
 establish power-loss durability. The Chrome page on Linux is recorded on its
 own row. Android and iOS are recorded on their own rows.
+
+## Search package development
+
+`sqlite_plus_search` implements persistent keyword/local-provider vector/RRF search,
+Arabic/Unicode lexical processing, local feedback, explicit integrity diagnostics
+and trigger-log replay. On Dart 3.13.7/Linux, **61 search tests pass**, including
+pinned-native snapshot/FTS integrity checks. The full engine suite passes **10609
+with 1 skip** with the pinned CLI installed and local socket permission available.
+
+Hardening fixes original-error masking on failed commits, JavaScript FTS block-ID
+truncation, invalid stored vectors and secondary-unique REPLACE displacement.
+Shared VM/Node search assertions pass, including index/model round trips. 80
+storage fault points verify modelled recovery. Held-out synthetic rank-feature
+fixtures pass; no real-model semantic or cross-language quality claim is made.
+
+Development format 2 requires an explicit rebuild of earlier search indexes.
+The AOT 1000/10000 runs complete; 100000 indexing times out and 1000000 is unrun.
+Physical FTS update persistence remains expensive. Real browser IO, other OS runs,
+remote CI, real-device power-loss, external-writer ownership and production local
+model integration remain open. See the package implementation plan and benchmark
+report for exact evidence and limits. No new SQL compatibility claim is implied.

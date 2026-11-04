@@ -2278,3 +2278,179 @@ result=pass
 
 - `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.0`. The ORM depends on `sqlite_plus: ^0.1.0`. The generator depends on `sqlite_plus_orm: ^0.1.0`. `openInMemory` and `openDatabase` are the familiar names in this release. The previous names remain. `0.0.3` is still the newest version on pub.dev until this release is uploaded.
 - M9 stays unchecked. Item 108 stays open.
+
+## 2026-11-04 — Search integration inspection
+
+- Created feature/sqlite-plus-search and documented engine/Arabic/vec integration,
+  filtered vector candidate correctness, connection ownership and transactional
+  change-log design. No runtime code changed in this milestone; format, analysis
+  and tests are not applicable to this documentation-only commit.
+- Search implementation and real multilingual model integration remain pending.
+
+## 2026-11-04 — Search scaffold and local embedding boundary
+
+- Added workspace package and local embedding interface; deterministic lookup
+  fixture is explicitly not a semantic model. Validate dimensions, finite/nonzero
+  vectors and float32 overflow/underflow using sqlite_plus_vec codecs.
+- Dart 3.13.7/Linux: offline pub resolution, format, fatal-info analysis and 3
+  tests passed. CLI required XDG_CONFIG_HOME=/tmp/sqlite-search-config with CI=true;
+  analyzer state redirected with ANALYZER_STATE_LOCATION_OVERRIDE. Home stayed
+  unchanged. No production model, search release or benchmark claims.
+
+## 2026-11-04 — Search lexical foundation
+
+- Added configurable Arabic mark/alef/ya/hamza and digit normalization, optional
+  existing Arabic light stemming, and escaped literal MATCH expressions. General
+  Unicode tokenization and BM25 remain in sqlite_plus, avoiding duplicate engines.
+- Dart 3.13.7/Linux: format, fatal-info analysis and 7 search tests pass, including
+  English BM25 ordering, Arabic normalization/stemming and Greek/CJK retrieval.
+  These tests establish lexical behavior only, not multilingual semantics.
+
+## 2026-11-04 — Persistent keyword search facade
+
+- Added existing-table indexing, persisted metadata/mapping/FTS, schema/analyzer
+  guards, atomic explicit rebuild, filtered exact candidates and deterministic
+  pagination. Per-database facade queue rejects caller-owned transactions.
+- 15 search tests pass on Dart 3.13.7/Linux, with format, fatal-info analysis and
+  runnable example. Reopen, failed-rebuild rollback, mapping recovery, source edits
+  followed by explicit rebuild and quoted/text keys are covered. Physical crash
+  injection is not covered. Engine metadata reads use NOT INDEXED after reproducing
+  stale empty unique lookups inside transactions; regression retained.
+
+## 2026-11-04 — Search local vector integration
+
+- Persist float32 embeddings/model identity; exact eligible-vector cosine ranking
+  reuses sqlite_plus_vec codecs/distance without vec0's k/post-filter recall trap.
+- Format, fatal-info analysis and 17 tests pass on Dart 3.13.7/Linux. New tests
+  cover synthetic vector ranking, filtered top-k, persistence/model mismatch and
+  atomic rollback on provider failure. Production semantic model still pending.
+
+## 2026-11-04 — Search hybrid fusion
+
+- Added RRF, optional component-rank/base-score explanations and deterministic
+  hybrid pagination after filtering. No keyword fallback for missing embeddings.
+- Format, fatal-info analysis and 19 tests pass on Dart 3.13.7/Linux, including
+  duplicate/missing rank arithmetic and filtered hybrid retrieval. Real-model
+  multilingual integration remains pending.
+
+## 2026-11-04 — Search bounded local rank learning
+
+- Two-feature bounded logistic feedback updates a collection-local linear rank
+  adjustment. Persisted/versioned parameters support reset/export/validated import;
+  duplicate labels are rejected and context history is capped at 1000 returned hits.
+- Format, fatal-info analysis and 21 tests pass on Dart 3.13.7/Linux. Synthetic
+  feedback moves a judged result from rank 2 to 1 (MRR .5 -> 1, NDCG@10
+  .6309297535714574 -> 1); this is not held-out semantic quality. Evaluation fixtures
+  cover known Recall@10/MRR/NDCG@10. Embedding weights are never trained.
+
+## 2026-11-04 — Search incremental synchronization
+
+- Transactional source triggers capture changed keys. Searches coalesce and replay
+  only affected records/embeddings atomically, acknowledging only processed log
+  entries. Missing triggers fail explicitly. Source records remain application-owned.
+- Format, fatal-info analysis and 23 tests pass on Dart 3.13.7/Linux: insert/update/
+  delete, unchanged-column suppression, primary-key changes, rollback, pending-log
+  reopen and failed-provider retry. No physical crash-injection coverage. Source
+  key lookup scans and secondary-unique REPLACE coverage remain limitations.
+
+## 2026-11-04 — Search evaluation and AOT scale gate
+
+- Added known Recall@10/MRR/NDCG@10 fixtures, language-analyzer extension contract,
+  malformed-input/model-limit checks and an initial-write batch boundary regression.
+- The per-record AOT implementation timed out at 120 seconds for 1000 records.
+  Batching initial writes in groups of 100 completed: 7.901779 s indexing, median
+  warm keyword 81.981 ms, hybrid 93.300 ms, update+replay+hybrid 2881.557 ms,
+  feedback 2.142 ms. Raw results/host details are committed in the search benchmark
+  directory. Memory backend, synthetic 2D provider, one shared-host Linux process.
+- 10000 records reached source creation and timed out during indexing at 180 s;
+  100000 similarly timed out at 60 s. No completed metrics for either. 1000000
+  not practical before scale work. Benchmark milestone remains incomplete.
+- 27 deterministic search tests pass with format/fatal-info analysis. Existing
+  vec/Arabic tests: 4/3 pass. Relevant engine suites: 30 pass, 3 skipped because
+  the pinned native SQLite executable is unavailable. Full engine suite not run.
+
+## 2026-11-04 — Search documentation, example and CI configuration
+
+- Added Linux/macOS/Windows deterministic search CI and JavaScript compilation.
+  Remote CI was not run. The VM example demonstrates synthetic hybrid retrieval,
+  local feedback and automatic insert indexing. Root package/status docs updated.
+- JavaScript compilation succeeds but Node 24.19.0 execution fails on engine FTS
+  insertion with UNIQUE constraint failed: rowid. tool/fts_js_repro.dart reproduces
+  this using only sqlite_plus and passes on the VM. Browser support is explicitly
+  blocked, rather than inferred from compilation. No engine SQL code was changed.
+- Development version remains unpublished. Production local embedding runtime,
+  real-model multilingual evaluation, large-scale optimization, cross-platform
+  execution and physical crash-injection gates remain open. No network, native
+  bindings, telemetry, automatic downloads or embedding-weight training were added.
+
+## 2026-11-04 — Search hardening H1: crash boundaries
+
+- Replaced permissive malformed-embedding assertions with ArgumentError checks;
+  float32 overflow is now normalized to that documented public validation boundary.
+- Added 12 crash scenarios covering 80 injected storage-operation failures across
+  rebuild, incremental replay and feedback, delete/persist journals and both volatile
+  and immediate persistence. Check atomic index/log and weight/label publication,
+  successful retry and repeated recovery/integrity. This is a storage fault model,
+  not a claim of real-device power-loss validation or every torn-byte pattern.
+- Tests exposed that rollback after a failed commit masked the original storage
+  error on the poisoned engine. Preserve the original error/stack during cleanup.
+- Format, fatal-info analysis and all 39 search tests pass on Dart 3.13.7/Linux.
+
+## 2026-11-04 — Search hardening H2: JavaScript runtime
+
+- Fixed FTS5 block IDs: JavaScript truncates segid << 37 to 32-bit operations;
+  multiplication by 137438953472 preserves the supported IDs. Added exact boundary
+  arithmetic tests. No tokenizer/ranking or SQL syntax semantics were changed.
+- Built official SQLite 3.53.1 manually as development-only tooling; source ID is
+  the exact repository pin. 66 targeted engine FTS/oracle tests pass, including
+  native leaf comparisons/cross-open integrity. Engine/search fatal-info analysis
+  and formatting pass. Full engine suite is also running; not yet claimed passed.
+- A shared assertion program passes on Linux VM and compiled JavaScript/Node
+  24.19.0. Covers multilingual lexical queries, filter-before-vector-top-k, RRF,
+  learning, rollback, incremental updates, index/model reopen, reset/import.
+  CI executes it. Actual browser persistence and other OS runs are still open.
+
+## 2026-11-04 — Search hardening H3: adversarial correctness
+
+- All 56 deterministic search tests pass. New coverage compares 24 seeded edit/
+  savepoint sequences against fresh rebuilds in all three modes; coordinates two
+  handles around blocked/failed inference and proves independent databases progress;
+  evaluates disjoint held-out synthetic queries/documents and an unchanged control.
+- Nine corruption/rebuild cases cover mapping, zero/short vectors, missing FTS rows,
+  corrupt FTS blocks/posting index, metadata and same-named trigger replacement.
+  Explicit verifyIndex checks a persisted SHA-256 fingerprint. crypto is pure Dart;
+  verification is read-only/full-scan, never an automatic per-query penalty.
+- Corrupt stored vectors and JSON metadata now fail clearly. Invalid provider
+  metadata is rejected even for empty collections; changing provider identity during
+  inference and original provider failure propagation are tested.
+- Secondary-unique REPLACE previously left displaced index entries with recursive
+  triggers off. Replay now reconciles missing source keys; regression passes.
+- Format/fatal-info analysis pass, 80 crash fault points remain verified (including
+  recovered integrity baselines), and updated JavaScript/Node assertions pass.
+
+## 2026-11-04 — Search hardening H4: indexing and final gates
+
+- Index format 2 loads normalized content before one external-content FTS rebuild;
+  batches contain 1000 derived records. Explicit rebuild is required for earlier
+  development indexes. Source data is never migrated. The engine's positional
+  external-content loader requires body first after the rowid alias; regression,
+  native comparison and VM/Node tests verify the owned schema arrangement.
+- Replay replaces FTS/vector rows once, uses typed key equality where suitable,
+  and exposes synchronize. Tests verify coalesced inference count, NOCASE key
+  changes, explicit old-format rejection/rebuild and the 1000-row batch boundary.
+- Added real 1001-hit retention/expiry and repeated-feedback influence-bound tests.
+  61 search tests pass (60 deterministic plus optional pinned-native integration).
+  Format/fatal-info analysis and offline enforced-lockfile resolution pass.
+- Full engine rerun: 10609 pass, 1 skip, with exact pinned SQLite 3.53.1. Initial
+  sandboxed run had 9 loopback socket permission errors; affected tests and full
+  rerun with required local socket permission pass. Updated VM/Node assertions pass.
+- Actual AOT, synthetic 2D/memory/shared Linux: 1000 indexing 2.549333 s; 10000
+  indexing 26.926220 s (historical attempt timed out at 180 s). 100000 still times
+  out during indexing at 120 s; 1000000 not practical yet. Raw results and source
+  hashes are committed. No concurrent test load was deliberately run during samples.
+- Performance remains a release blocker: 10000 source update 12.795218 s, replay
+  20.004185 s. Logical embedding updates are incremental, but underlying physical
+  FTS/trigger persistence still reserializes data. No production-scale claim.
+- Production embeddings/real-model multilingual quality, broader platforms, real
+  browser IO, external-writer ownership and real-device/torn-byte crash gates remain
+  open. No automatic model download, native binding or runtime network was added.

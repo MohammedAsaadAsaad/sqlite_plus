@@ -1,0 +1,31 @@
+{
+  "machine": "x86_64",
+  "kernel": "6.18.57",
+  "cpu": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+  "host": "shared managed environment; CPU not isolated",
+  "baseline_attempt": {
+    "records": 1000,
+    "implementation": "per-record initial derived writes",
+    "timeout_seconds": 120,
+    "exit_code": 124,
+    "last_stage": "source_ready",
+    "completed_metrics": false
+  },
+  "larger_attempts": [
+    {
+      "records": 10000,
+      "timeout_seconds": 180,
+      "exit_code": 124,
+      "last_stage": "source_ready",
+      "completed_metrics": false
+    },
+    {
+      "records": 100000,
+      "timeout_seconds": 60,
+      "exit_code": 124,
+      "last_stage": "source_ready",
+      "completed_metrics": false
+    }
+  ],
+  "million_record_status": "Not run: smaller sizes exceeded indexing time budgets."
+}
