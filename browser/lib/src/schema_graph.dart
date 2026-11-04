@@ -2,12 +2,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'object_dialogs.dart';
 import 'schema_sql.dart';
 import 'session.dart';
 
-/// Tables on a board that pans in both directions.
+/// Tables on a board that pans and zooms.
 ///
 /// A table moves when it is dragged. A column links to a column on another
 /// table only after the relationship is confirmed.
@@ -38,11 +39,14 @@ class _Picked {
 
 class _SchemaGraphState extends State<SchemaGraph> {
   final Map<String, Offset> _positions = {};
+  final Map<int, Offset> _pointers = {};
   Offset _origin = Offset.zero;
   Size _view = Size.zero;
+  double _scale = 1;
+  double _pinchDistance = 0;
+  double _pinchScale = 1;
   _Picked? _picked;
   String? _cardDrag;
-  int? _boardPointer;
 
   List<SchemaObject> get _tables => [
         for (final object in widget.objects)
@@ -95,12 +99,49 @@ class _SchemaGraphState extends State<SchemaGraph> {
   Offset _clampOrigin(Offset origin, Size canvas) {
     final view = _view;
     if (view.isEmpty) return origin;
-    final minX = math.min(0.0, view.width - canvas.width);
-    final minY = math.min(0.0, view.height - canvas.height);
+    final width = canvas.width * _scale;
+    final height = canvas.height * _scale;
+    final minX = math.min(0.0, view.width - width);
+    final minY = math.min(0.0, view.height - height);
     return Offset(
       origin.dx.clamp(minX, 0).toDouble(),
       origin.dy.clamp(minY, 0).toDouble(),
     );
+  }
+
+  void _zoomTo(double next, Offset focal, Size canvas) {
+    final scale = next.clamp(0.45, 2.6);
+    final scene = (focal - _origin) / _scale;
+    final origin = focal - scene * scale;
+    setState(() {
+      _scale = scale;
+      _origin = _clampOrigin(origin, canvas);
+    });
+  }
+
+  void _zoomStep(double factor, Size canvas) {
+    _zoomTo(
+      _scale * factor,
+      Offset(_view.width / 2, _view.height / 2),
+      canvas,
+    );
+  }
+
+  double _pointerSpan() {
+    final points = _pointers.values.toList();
+    if (points.length < 2) return 0;
+    final gap = (points[0] - points[1]).distance;
+    return gap < 1 ? 1 : gap;
+  }
+
+  Offset _pointerCenter() {
+    final points = _pointers.values.toList();
+    if (points.isEmpty) return Offset.zero;
+    var sum = Offset.zero;
+    for (final point in points) {
+      sum += point;
+    }
+    return sum / points.length.toDouble();
   }
 
   void _pan(Offset delta, Size canvas) {
@@ -218,7 +259,7 @@ class _SchemaGraphState extends State<SchemaGraph> {
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Text(
-              'Drag a table to move it. Tap a column, then a column on another table. The link is saved when you confirm.',
+              'Drag a table to move it. Pinch or use the buttons to zoom. Tap a column, then a column on another table. The link is saved when you confirm.',
               style: TextStyle(color: Color(0xFF5E736B)),
             ),
           ),
@@ -230,82 +271,144 @@ class _SchemaGraphState extends State<SchemaGraph> {
                   builder: (context, constraints) {
                     _view = Size(constraints.maxWidth, constraints.maxHeight);
                     return ClipRect(
-                      child: Listener(
-                        behavior: HitTestBehavior.opaque,
-                        onPointerSignal: (event) {
-                          if (event is PointerScrollEvent) {
-                            _pan(
-                              Offset(
-                                  -event.scrollDelta.dx, -event.scrollDelta.dy),
-                              canvas,
-                            );
-                          }
-                        },
-                        onPointerPanZoomUpdate: (event) {
-                          if (_cardDrag != null) return;
-                          _pan(event.pan, canvas);
-                        },
-                        onPointerDown: (event) {
-                          if (_cardDrag != null) return;
-                          _boardPointer = event.pointer;
-                        },
-                        onPointerMove: (event) {
-                          if (_cardDrag != null ||
-                              event.pointer != _boardPointer) {
-                            return;
-                          }
-                          _pan(event.delta, canvas);
-                        },
-                        onPointerUp: (event) {
-                          if (event.pointer == _boardPointer) {
-                            _boardPointer = null;
-                          }
-                        },
-                        onPointerCancel: (event) {
-                          if (event.pointer == _boardPointer) {
-                            _boardPointer = null;
-                          }
-                        },
-                        child: SizedBox(
-                          width: constraints.maxWidth,
-                          height: constraints.maxHeight,
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                left: _origin.dx,
-                                top: _origin.dy,
-                                width: canvas.width,
-                                height: canvas.height,
-                                child: DecoratedBox(
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFE7EEEA),
-                                  ),
-                                  child: CustomPaint(
-                                    painter: _BoardPainter(),
-                                    child: Stack(
-                                      children: [
-                                        Positioned.fill(
-                                          child: CustomPaint(
-                                            painter: _EdgePainter(edges),
+                      child: SizedBox(
+                        width: constraints.maxWidth,
+                        height: constraints.maxHeight,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: Listener(
+                                behavior: HitTestBehavior.opaque,
+                                onPointerSignal: (event) {
+                                  if (event is! PointerScrollEvent) return;
+                                  final zoom = HardwareKeyboard
+                                          .instance.isControlPressed ||
+                                      HardwareKeyboard.instance.isMetaPressed;
+                                  if (zoom) {
+                                    final factor =
+                                        event.scrollDelta.dy > 0 ? 0.9 : 1.1;
+                                    _zoomTo(
+                                      _scale * factor,
+                                      event.localPosition,
+                                      canvas,
+                                    );
+                                    return;
+                                  }
+                                  _pan(
+                                    Offset(
+                                      -event.scrollDelta.dx,
+                                      -event.scrollDelta.dy,
+                                    ),
+                                    canvas,
+                                  );
+                                },
+                                onPointerPanZoomUpdate: (event) {
+                                  if (_cardDrag != null) return;
+                                  _pan(event.panDelta, canvas);
+                                },
+                                onPointerDown: (event) {
+                                  _pointers[event.pointer] =
+                                      event.localPosition;
+                                  if (_pointers.length == 2) {
+                                    _pinchDistance = _pointerSpan();
+                                    _pinchScale = _scale;
+                                  }
+                                },
+                                onPointerMove: (event) {
+                                  _pointers[event.pointer] =
+                                      event.localPosition;
+                                  if (_pointers.length >= 2 &&
+                                      _pinchDistance >= 1) {
+                                    _zoomTo(
+                                      _pinchScale *
+                                          _pointerSpan() /
+                                          _pinchDistance,
+                                      _pointerCenter(),
+                                      canvas,
+                                    );
+                                    return;
+                                  }
+                                  if (_cardDrag != null) return;
+                                  _pan(event.delta, canvas);
+                                },
+                                onPointerUp: (event) =>
+                                    _pointers.remove(event.pointer),
+                                onPointerCancel: (event) =>
+                                    _pointers.remove(event.pointer),
+                                child: Stack(
+                                  children: [
+                                    Positioned(
+                                      key: const Key('graph-board'),
+                                      left: _origin.dx,
+                                      top: _origin.dy,
+                                      width: canvas.width * _scale,
+                                      height: canvas.height * _scale,
+                                      child: FittedBox(
+                                        alignment: Alignment.topLeft,
+                                        fit: BoxFit.fill,
+                                        child: SizedBox(
+                                          width: canvas.width,
+                                          height: canvas.height,
+                                          child: DecoratedBox(
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFE7EEEA),
+                                            ),
+                                            child: CustomPaint(
+                                              painter: _BoardPainter(),
+                                              child: Stack(
+                                                children: [
+                                                  Positioned.fill(
+                                                    child: CustomPaint(
+                                                      painter:
+                                                          _EdgePainter(edges),
+                                                    ),
+                                                  ),
+                                                  for (final table in tables)
+                                                    Positioned(
+                                                      key: Key(
+                                                        'graph-table-${table.name}',
+                                                      ),
+                                                      left: rects[table.name]!
+                                                          .left,
+                                                      top: rects[table.name]!
+                                                          .top,
+                                                      width: rects[table.name]!
+                                                          .width,
+                                                      height: rects[table.name]!
+                                                          .height,
+                                                      child: _card(table),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                        for (final table in tables)
-                                          Positioned(
-                                            key: Key(
-                                                'graph-table-${table.name}'),
-                                            left: rects[table.name]!.left,
-                                            top: rects[table.name]!.top,
-                                            width: rects[table.name]!.width,
-                                            height: rects[table.name]!.height,
-                                            child: _card(table),
-                                          ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                            Positioned(
+                              right: 12,
+                              bottom: 12,
+                              child: Column(
+                                children: [
+                                  _zoomButton(
+                                    Icons.add,
+                                    const Key('graph-zoom-in'),
+                                    () => _zoomStep(1.25, canvas),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _zoomButton(
+                                    Icons.remove,
+                                    const Key('graph-zoom-out'),
+                                    () => _zoomStep(0.8, canvas),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -316,16 +419,37 @@ class _SchemaGraphState extends State<SchemaGraph> {
     );
   }
 
+  Widget _zoomButton(IconData icon, Key key, VoidCallback onPressed) {
+    return Material(
+      color: Colors.white,
+      elevation: 3,
+      shadowColor: const Color(0x3314221C),
+      shape: const CircleBorder(
+        side: BorderSide(color: Color(0xFFD5E2DB)),
+      ),
+      child: InkWell(
+        key: key,
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(icon, color: const Color(0xFF0E7C66)),
+        ),
+      ),
+    );
+  }
+
   Widget _card(SchemaObject table) {
     final picked = _picked;
     final armed = picked?.table == table.name;
     return Listener(
       onPointerDown: (_) => _cardDrag = table.name,
       onPointerMove: (event) {
-        if (_cardDrag != table.name) return;
+        if (_cardDrag != table.name || _pointers.length > 1) return;
         setState(() {
           final current = _positions[table.name] ?? Offset.zero;
-          final next = current + event.delta;
+          final next = current + event.localDelta;
           _positions[table.name] = Offset(
             math.max(8, next.dx),
             math.max(8, next.dy),

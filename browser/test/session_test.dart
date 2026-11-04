@@ -517,6 +517,31 @@ void main() {
     );
   });
 
+  test('a column search and sort cover the whole table', () async {
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    await session.run(
+      'CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, pages INTEGER)',
+    );
+    await session.run(
+      "INSERT INTO books (title, pages) VALUES ('Kept Garden', 320), "
+      "('Other Atlas', 40)",
+    );
+    final ascending = await session.slice(
+      'books',
+      orderBy: 'pages',
+      ascending: true,
+    );
+    expect('${ascending.rows.first.last}', '40');
+    expect('${ascending.rows.last.last}', '320');
+    final found = await session.slice('books', contains: {'title': 'kept'});
+    expect(found.rows, hasLength(1));
+    expect(found.rows.single[2], 'Kept Garden');
+    expect(await session.countRows('books', contains: {'title': 'kept'}), 1);
+    expect(await session.countRows('books'), 2);
+  });
+
   test('a failed script rolls the database back', () async {
     final session = BrowserSession();
     await session.openEmpty();

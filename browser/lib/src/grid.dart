@@ -8,14 +8,27 @@ class CellGrid extends StatelessWidget {
     super.key,
     required this.columns,
     required this.rows,
-    this.filters,
+    this.sortColumn,
+    this.sortAscending = true,
+    this.searched = const {},
+    this.onColumn,
     this.onCell,
     this.onDelete,
   });
 
   final List<String> columns;
   final List<List<Object?>> rows;
-  final List<TextEditingController>? filters;
+
+  /// The column currently ordered, when the header menu is in use.
+  final String? sortColumn;
+
+  final bool sortAscending;
+
+  /// Columns that have a search.
+  final Set<String> searched;
+
+  /// Opens the sort and search menu for one column.
+  final ValueChanged<String>? onColumn;
   final void Function(int row, int column)? onCell;
   final void Function(int row)? onDelete;
 
@@ -37,38 +50,10 @@ class CellGrid extends StatelessWidget {
                 context,
                 header: true,
                 children: [
-                  for (final name in columns) _label(name, header: true),
+                  for (final name in columns) _header(name),
                   if (delete) const SizedBox(width: 52),
                 ],
               ),
-              if (filters != null && filters!.length == columns.length)
-                _line(
-                  context,
-                  filter: true,
-                  children: [
-                    for (final controller in filters!)
-                      SizedBox(
-                        width: width,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: TextField(
-                            controller: controller,
-                            style: const TextStyle(fontSize: 12),
-                            decoration: const InputDecoration(
-                              isDense: true,
-                              hintText: 'Filter',
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (delete) const SizedBox(width: 52),
-                  ],
-                ),
               Expanded(
                 child: ListView.builder(
                   itemExtent: rowHeight,
@@ -115,28 +100,73 @@ class CellGrid extends StatelessWidget {
     );
   }
 
+  Widget _header(String name) {
+    final open = onColumn;
+    if (open == null) return _label(name, header: true);
+    final sorted = sortColumn == name;
+    final active = sorted || searched.contains(name);
+    final icon = sorted
+        ? (sortAscending ? Icons.arrow_upward : Icons.arrow_downward)
+        : searched.contains(name)
+            ? Icons.filter_alt
+            : Icons.arrow_drop_down;
+    return SizedBox(
+      width: width,
+      child: InkWell(
+        key: Key('column-menu-$name'),
+        onTap: () => open(name),
+        child: Row(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: Color(0xFF1A3C32),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Icon(
+                icon,
+                size: active ? 14 : 18,
+                color:
+                    active ? const Color(0xFF0E7C66) : const Color(0xFF5C6560),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _line(
     BuildContext context, {
     required List<Widget> children,
     bool header = false,
     bool stripe = false,
-    bool filter = false,
   }) {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: header
             ? const Color(0xFFE6F0EA)
-            : filter
-                ? const Color(0xFFF4F7F5)
-                : stripe
-                    ? const Color(0xFFF7FBF9)
-                    : Colors.white,
+            : stripe
+                ? const Color(0xFFF7FBF9)
+                : Colors.white,
         border: Border(
           bottom: BorderSide(color: Theme.of(context).dividerColor),
         ),
       ),
       child: SizedBox(
-        height: header ? 36 : (filter ? 44 : rowHeight),
+        height: header ? 36 : rowHeight,
         child: Row(children: children),
       ),
     );

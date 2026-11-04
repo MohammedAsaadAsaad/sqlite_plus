@@ -22,6 +22,12 @@ class DataPane extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onShowSql,
+    this.sortColumn,
+    this.sortAscending = true,
+    this.searches = const {},
+    this.onSort,
+    this.onSearch,
+    this.onClearColumn,
   });
 
   final SchemaObject? object;
@@ -37,64 +43,39 @@ class DataPane extends StatefulWidget {
   final void Function(ColumnInfo column, BigInt rowid, Object? current)? onEdit;
   final void Function(BigInt rowid)? onDelete;
   final VoidCallback onShowSql;
+  final String? sortColumn;
+  final bool sortAscending;
+  final Map<String, String> searches;
+  final void Function(String column, bool ascending)? onSort;
+  final void Function(String column, String query)? onSearch;
+  final ValueChanged<String>? onClearColumn;
 
   @override
   State<DataPane> createState() => _DataPaneState();
 }
 
 class _DataPaneState extends State<DataPane> {
-  final _filters = <TextEditingController>[];
   final _go = TextEditingController();
 
   TableSlice get slice => widget.slice;
 
-  @override
-  void initState() {
-    super.initState();
-    _ensureFilters();
-  }
+  bool get _searching =>
+      widget.searches.values.any((value) => value.trim().isNotEmpty);
 
   @override
   void didUpdateWidget(DataPane oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _ensureFilters();
     final previous = oldWidget.object;
     final next = widget.object;
     if (previous?.name != next?.name || previous?.type != next?.type) {
-      for (final filter in _filters) {
-        filter.removeListener(_refresh);
-        filter.clear();
-        filter.addListener(_refresh);
-      }
       _go.clear();
     }
   }
 
   @override
   void dispose() {
-    for (final filter in _filters) {
-      filter.dispose();
-    }
     _go.dispose();
     super.dispose();
-  }
-
-  void _ensureFilters() {
-    final count = slice.columns.length;
-    while (_filters.length < count) {
-      final controller = TextEditingController();
-      controller.addListener(_refresh);
-      _filters.add(controller);
-    }
-    while (_filters.length > count) {
-      final removed = _filters.removeLast();
-      removed.removeListener(_refresh);
-      removed.dispose();
-    }
-  }
-
-  void _refresh() {
-    if (mounted) setState(() {});
   }
 
   void _submitGo() {
@@ -132,8 +113,6 @@ class _DataPaneState extends State<DataPane> {
         ],
       );
     }
-    final visible = _visibleRows();
-    final filtering = _filters.any((filter) => filter.text.trim().isNotEmpty);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -208,35 +187,37 @@ class _DataPaneState extends State<DataPane> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: slice.rows.isEmpty && !filtering
-                    ? const Center(child: Text('This table has no rows.'))
+                child: slice.rows.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searching
+                              ? 'No rows match this search.'
+                              : 'This table has no rows.',
+                        ),
+                      )
                     : CellGrid(
                         key: const Key('result-grid'),
                         columns: [
                           for (final column in slice.columns) column.name,
                         ],
-                        filters: _filters,
+                        sortColumn: widget.sortColumn,
+                        sortAscending: widget.sortAscending,
+                        searched: {
+                          for (final entry in widget.searches.entries)
+                            if (entry.value.trim().isNotEmpty) entry.key,
+                        },
+                        onColumn: widget.busy ? null : _columnMenu,
                         rows: [
-                          for (final index in visible)
-                            slice.hasRowid
-                                ? slice.rows[index].skip(1).toList()
-                                : slice.rows[index],
+                          for (final row in slice.rows)
+                            slice.hasRowid ? row.skip(1).toList() : row,
                         ],
-                        onCell: (index, column) =>
-                            _edit(visible[index], column),
-                        onDelete: slice.hasRowid
-                            ? (index) => _delete(visible[index])
-                            : null,
+                        onCell: _edit,
+                        onDelete: slice.hasRowid ? _delete : null,
                       ),
               ),
             ),
           ),
         ),
-        if (filtering && visible.isEmpty)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text('No rows on this page match the filter.'),
-          ),
         _pager(),
       ],
     );
@@ -304,27 +285,26 @@ class _DataPaneState extends State<DataPane> {
     );
   }
 
-  List<int> _visibleRows() {
-    final shown = <int>[];
-    for (var index = 0; index < slice.rows.length; index++) {
-      final source = slice.rows[index];
-      final values = slice.hasRowid ? source.skip(1).toList() : source;
-      if (_matches(values)) shown.add(index);
+  Future<void> _columnMenu(String name) async {
+    final result = await showDialog<_ColumnMenuResult>(
+      context: context,
+      builder: (context) => _ColumnMenu(
+        name: name,
+        search: widget.searches[name] ?? '',
+      ),
+    );
+    if (result == null || !mounted) return;
+    if (result.clear) {
+      widget.onClearColumn?.call(name);
+      return;
     }
-    return shown;
-  }
-
-  bool _matches(List<Object?> values) {
-    for (var column = 0;
-        column < _filters.length && column < values.length;
-        column++) {
-      final query = _filters[column].text.trim().toLowerCase();
-      if (query.isEmpty) continue;
-      if (!formatCell(values[column]).toLowerCase().contains(query)) {
-        return false;
-      }
+    final ascending = result.ascending;
+    if (ascending != null) {
+      widget.onSort?.call(name, ascending);
+      return;
     }
-    return true;
+    final query = result.search;
+    if (query != null) widget.onSearch?.call(name, query);
   }
 
   void _edit(int index, int column) {
@@ -463,6 +443,138 @@ class _IndexFacts extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ColumnMenuResult {
+  const _ColumnMenuResult.sort(this.ascending)
+      : search = null,
+        clear = false;
+
+  const _ColumnMenuResult.search(this.search)
+      : ascending = null,
+        clear = false;
+
+  const _ColumnMenuResult.clear()
+      : ascending = null,
+        search = null,
+        clear = true;
+
+  final bool? ascending;
+  final String? search;
+  final bool clear;
+}
+
+class _ColumnMenu extends StatefulWidget {
+  const _ColumnMenu({required this.name, required this.search});
+
+  final String name;
+  final String search;
+
+  @override
+  State<_ColumnMenu> createState() => _ColumnMenuState();
+}
+
+class _ColumnMenuState extends State<_ColumnMenu> {
+  late final TextEditingController _search =
+      TextEditingController(text: widget.search);
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width < 420
+        ? MediaQuery.sizeOf(context).width - 48
+        : 360.0;
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      child: SizedBox(
+        width: width,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.name,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF14211C),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Sort this column, or search the whole table.',
+                style: TextStyle(color: Color(0xFF5C6560), fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('column-sort-asc'),
+                      onPressed: () => Navigator.of(context)
+                          .pop(const _ColumnMenuResult.sort(true)),
+                      icon: const Icon(Icons.arrow_upward, size: 16),
+                      label: const Text('A to Z'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('column-sort-desc'),
+                      onPressed: () => Navigator.of(context)
+                          .pop(const _ColumnMenuResult.sort(false)),
+                      icon: const Icon(Icons.arrow_downward, size: 16),
+                      label: const Text('Z to A'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                key: const Key('column-search'),
+                controller: _search,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (value) =>
+                    Navigator.of(context).pop(_ColumnMenuResult.search(value)),
+                decoration: const InputDecoration(
+                  labelText: 'Search',
+                  prefixIcon: Icon(Icons.search),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    key: const Key('column-clear'),
+                    onPressed: () => Navigator.of(context)
+                        .pop(const _ColumnMenuResult.clear()),
+                    child: const Text('Clear'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    key: const Key('column-search-apply'),
+                    onPressed: () => Navigator.of(context)
+                        .pop(_ColumnMenuResult.search(_search.text)),
+                    child: const Text('Search'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

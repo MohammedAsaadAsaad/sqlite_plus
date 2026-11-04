@@ -309,6 +309,9 @@ class BrowserSession extends ChangeNotifier {
     String table, {
     int offset = 0,
     int limit = 50,
+    String? orderBy,
+    bool ascending = true,
+    Map<String, String> contains = const {},
   }) {
     return _enqueue(() async {
       final database = _required();
@@ -317,26 +320,33 @@ class BrowserSession extends ChangeNotifier {
           known.isNotEmpty ? known : await _columns(database, table);
       final quoted = quoteIdent(table);
       final window = limit + 1;
+      final query = _rowQuery(
+        contains: contains,
+        orderBy: orderBy,
+        ascending: ascending,
+      );
+      final key = _countKey(table, query);
       QueryResult page;
       var hasRowid = true;
       try {
         page = await database.browse(
-          'SELECT rowid AS _browser_rowid, * FROM $quoted LIMIT ? OFFSET ?',
-          [window, offset],
+          'SELECT rowid AS _browser_rowid, * FROM $quoted'
+          '${query.where}${query.order} LIMIT ? OFFSET ?',
+          [...query.args, window, offset],
         );
       } on SqlException {
         hasRowid = false;
         page = await database.browse(
-          'SELECT * FROM $quoted LIMIT ? OFFSET ?',
-          [window, offset],
+          'SELECT * FROM $quoted${query.where}${query.order} LIMIT ? OFFSET ?',
+          [...query.args, window, offset],
         );
       }
       final more = page.rows.length > limit;
       final rows = more ? page.rows.sublist(0, limit) : page.rows;
-      var total = _rowCounts[table];
+      var total = _rowCounts[key];
       if (!more) {
         total = offset + rows.length;
-        _rowCounts[table] = total;
+        _rowCounts[key] = total;
       }
       return TableSlice(
         columns: columns,
@@ -350,16 +360,24 @@ class BrowserSession extends ChangeNotifier {
   }
 
   /// Exact row count for [table]. Later pages reuse it until a write.
-  Future<int> countRows(String table) {
+  ///
+  /// [contains] limits the count to rows whose column text includes the value.
+  Future<int> countRows(
+    String table, {
+    Map<String, String> contains = const {},
+  }) {
     return _enqueue(() async {
-      final known = _rowCounts[table];
+      final query = _rowQuery(contains: contains);
+      final key = _countKey(table, query);
+      final known = _rowCounts[key];
       if (known != null) return known;
       final database = _required();
       final counted = await database.query(
-        'SELECT count(*) FROM ${quoteIdent(table)}',
+        'SELECT count(*) FROM ${quoteIdent(table)}${query.where}',
+        query.args,
       );
       final total = _asInt(counted.rows.single.single);
-      _rowCounts[table] = total;
+      _rowCounts[key] = total;
       return total;
     });
   }
@@ -703,6 +721,41 @@ class BrowserSession extends ChangeNotifier {
     _tail = run.then((_) {}, onError: (_) {});
     return run;
   }
+}
+
+class _RowQuery {
+  const _RowQuery(this.where, this.order, this.args);
+
+  final String where;
+  final String order;
+  final List<Object?> args;
+}
+
+_RowQuery _rowQuery({
+  Map<String, String> contains = const {},
+  String? orderBy,
+  bool ascending = true,
+}) {
+  final args = <Object?>[];
+  final clauses = <String>[];
+  final names = contains.keys.toList()..sort();
+  for (final name in names) {
+    final text = contains[name]?.trim() ?? '';
+    if (text.isEmpty) continue;
+    clauses.add('instr(lower(CAST(${quoteIdent(name)} AS TEXT)), ?) > 0');
+    args.add(text.toLowerCase());
+  }
+  final where = clauses.isEmpty ? '' : ' WHERE ${clauses.join(' AND ')}';
+  final column = orderBy?.trim() ?? '';
+  final order = column.isEmpty
+      ? ''
+      : ' ORDER BY ${quoteIdent(column)} COLLATE NOCASE '
+          '${ascending ? 'ASC' : 'DESC'}';
+  return _RowQuery(where, order, args);
+}
+
+String _countKey(String table, _RowQuery query) {
+  return '$table\u0000${query.where}\u0000${query.args.join('\u0001')}';
 }
 
 bool _flag(Object? value) => value == BigInt.one || value == 1 || value == true;

@@ -16,6 +16,7 @@ import 'schema_pane.dart';
 import 'session.dart';
 import 'sql_pane.dart';
 import 'sql_view.dart';
+import 'status_banner.dart';
 import 'work_progress.dart';
 
 enum BrowserPane { data, sql, graph }
@@ -41,7 +42,10 @@ class _BrowserPageState extends State<BrowserPage> {
   TableSlice _slice = TableSlice.empty;
   StatementResult? _result;
   BrowserPane _pane = BrowserPane.data;
-  String? _message;
+  PageNotice? _notice;
+  String? _sortColumn;
+  bool _sortAscending = true;
+  final Map<String, String> _searches = {};
   bool _busy = false;
   bool _progressShown = false;
   OverlayEntry? _progressEntry;
@@ -191,16 +195,18 @@ class _BrowserPageState extends State<BrowserPage> {
         : null;
     return Row(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.asset(
-            'assets/app_icon.png',
-            width: 32,
-            height: 32,
-            filterQuality: FilterQuality.medium,
+        if (MediaQuery.sizeOf(context).width >= 900) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/app_icon.png',
+              width: 32,
+              height: 32,
+              filterQuality: FilterQuality.medium,
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
+          const SizedBox(width: 10),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,13 +247,10 @@ class _BrowserPageState extends State<BrowserPage> {
             color: Color(0xFF0E7C66),
             backgroundColor: Color(0xFFD6EBE4),
           ),
-        if (_message != null)
-          Material(
-            color: const Color(0xFFE7F2EC),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(_message!),
-            ),
+        if (_notice != null)
+          StatusBanner(
+            notice: _notice!,
+            onClose: () => setState(() => _notice = null),
           ),
         Expanded(
           child: _pane == BrowserPane.graph
@@ -274,6 +277,12 @@ class _BrowserPageState extends State<BrowserPage> {
                       onEdit: _edit,
                       onDelete: _delete,
                       onShowSql: _showSql,
+                      sortColumn: _sortColumn,
+                      sortAscending: _sortAscending,
+                      searches: _searches,
+                      onSort: _sortBy,
+                      onSearch: _searchColumn,
+                      onClearColumn: _clearColumn,
                     )
                   : SqlPane(
                       controller: _sql,
@@ -351,7 +360,10 @@ class _BrowserPageState extends State<BrowserPage> {
     setState(() {
       _selected = object;
       _pane = BrowserPane.data;
-      _message = null;
+      _notice = null;
+      _sortColumn = null;
+      _sortAscending = true;
+      _searches.clear();
     });
     if (object.type == 'table' || object.type == 'view') {
       await _load(0);
@@ -399,9 +411,10 @@ class _BrowserPageState extends State<BrowserPage> {
       final result = await session.run(sql);
       if (!mounted) return;
       setState(() {
-        _message = result.isQuery
-            ? _queryMessage(result)
-            : '${result.changes} changed';
+        _notice = PageNotice(
+          result.isQuery ? _queryMessage(result) : '${result.changes} changed',
+          result.isQuery ? NoticeKind.note : NoticeKind.ok,
+        );
         final statement = sql.trim().replaceAll(RegExp(r'\s+'), ' ');
         if (statement.isNotEmpty) {
           _log.add(statement);
@@ -431,7 +444,7 @@ class _BrowserPageState extends State<BrowserPage> {
       await session.runAll(statements);
       if (!mounted) return;
       setState(() {
-        _message = 'Relationship saved';
+        _notice = const PageNotice('Relationship saved', NoticeKind.ok);
         for (final statement in statements) {
           final line = _oneLine(statement);
           if (line == null || line.isEmpty) continue;
@@ -470,14 +483,23 @@ class _BrowserPageState extends State<BrowserPage> {
     if (selected == null) return;
     if (selected.type != 'table' && selected.type != 'view') return;
     await _guard(() async {
-      final slice = await session.slice(selected.name, offset: offset);
+      final slice = await session.slice(
+        selected.name,
+        offset: offset,
+        orderBy: _sortColumn,
+        ascending: _sortAscending,
+        contains: _searches,
+      );
       if (!mounted) return;
       setState(() => _slice = slice);
     });
     if (!mounted || _selected?.name != selected.name || _slice.totalKnown) {
       return;
     }
-    final total = await session.countRows(selected.name);
+    final total = await session.countRows(
+      selected.name,
+      contains: _searches,
+    );
     if (!mounted || _selected?.name != selected.name) return;
     setState(() {
       _slice = TableSlice(
@@ -502,7 +524,7 @@ class _BrowserPageState extends State<BrowserPage> {
       final page = current.window(offset);
       setState(() {
         _result = page;
-        _message = _queryMessage(page);
+        _notice = PageNotice(_queryMessage(page), NoticeKind.note);
       });
       return Future.value();
     }
@@ -512,9 +534,10 @@ class _BrowserPageState extends State<BrowserPage> {
       final statement = _sql.text.trim();
       setState(() {
         _result = result;
-        _message = result.isQuery
-            ? _queryMessage(result)
-            : '${result.changes} changed';
+        _notice = PageNotice(
+          result.isQuery ? _queryMessage(result) : '${result.changes} changed',
+          result.isQuery ? NoticeKind.note : NoticeKind.ok,
+        );
         if (offset == null && statement.isNotEmpty) {
           _log.add(statement.replaceAll(RegExp(r'\s+'), ' '));
           if (_log.length > 12) _log.removeAt(0);
@@ -640,10 +663,35 @@ class _BrowserPageState extends State<BrowserPage> {
         _selected = null;
         _slice = TableSlice.empty;
         _result = null;
-        _message = null;
+        _notice = null;
         _log.clear();
+        _sortColumn = null;
+        _sortAscending = true;
+        _searches.clear();
       });
     });
+  }
+
+  Future<void> _sortBy(String column, bool ascending) {
+    _sortColumn = column;
+    _sortAscending = ascending;
+    return _load(0);
+  }
+
+  Future<void> _searchColumn(String column, String query) {
+    final text = query.trim();
+    if (text.isEmpty) {
+      _searches.remove(column);
+    } else {
+      _searches[column] = text;
+    }
+    return _load(0);
+  }
+
+  Future<void> _clearColumn(String column) {
+    _searches.remove(column);
+    if (_sortColumn == column) _sortColumn = null;
+    return _load(0);
   }
 
   Future<void> _takeLaunch() async {
@@ -680,8 +728,11 @@ class _BrowserPageState extends State<BrowserPage> {
         _selected = null;
         _slice = TableSlice.empty;
         _result = null;
-        _message = null;
+        _notice = null;
         _log.clear();
+        _sortColumn = null;
+        _sortAscending = true;
+        _searches.clear();
       });
     });
     if (!session.isOpen || session.label != name) return;
@@ -742,7 +793,8 @@ class _BrowserPageState extends State<BrowserPage> {
       _showMessage('$error');
       return;
     }
-    _showMessage('Saved $stored');
+    if (!mounted) return;
+    setState(() => _notice = PageNotice('Saved $stored', NoticeKind.ok));
   }
 
   Future<String?> _chooseSavePath(String name, Uint8List bytes) async {
@@ -845,6 +897,6 @@ class _BrowserPageState extends State<BrowserPage> {
 
   void _showMessage(String text) {
     if (!mounted) return;
-    setState(() => _message = text);
+    setState(() => _notice = PageNotice(text, NoticeKind.error));
   }
 }

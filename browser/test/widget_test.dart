@@ -460,7 +460,8 @@ void main() {
     expect(after.dy, greaterThan(before.dy + 20));
     final parked =
         tester.getTopLeft(find.byKey(const Key('graph-table-authors')));
-    await tester.dragFrom(parked + const Offset(260, 20), const Offset(-48, -32));
+    await tester.dragFrom(
+        parked + const Offset(260, 20), const Offset(-48, -32));
     await tester.pump();
     final panned =
         tester.getTopLeft(find.byKey(const Key('graph-table-authors')));
@@ -496,6 +497,15 @@ void main() {
     await _frames(tester);
     expect(find.text('→ authors.id'), findsOneWidget);
     expect(find.text('title'), findsWidgets);
+    final board = tester.getSize(find.byKey(const Key('graph-board')));
+    await tester.tap(find.byKey(const Key('graph-zoom-in')));
+    await tester.pump();
+    expect(
+      tester.getSize(find.byKey(const Key('graph-board'))).width,
+      greaterThan(board.width),
+    );
+    await tester.tap(find.byKey(const Key('graph-zoom-out')));
+    await tester.pump();
     await _finish(tester, session);
   });
 
@@ -671,6 +681,48 @@ void main() {
     await _frames(tester);
     expect(find.text('kept'), findsOneWidget);
     expect(find.byKey(const Key('home-open')), findsNothing);
+    await _finish(tester, session);
+  });
+
+  testWidgets('a column menu sorts and searches the whole table',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run(
+      'CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, pages INTEGER)',
+    );
+    await session.run(
+      "INSERT INTO books (title, pages) VALUES ('Kept Garden', 320), "
+      "('Other Atlas', 40)",
+    );
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('schema-table-books')));
+    await _frames(tester);
+    expect(find.text('Filter'), findsNothing);
+    expect(find.text('Kept Garden'), findsOneWidget);
+    expect(find.text('Other Atlas'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('column-menu-pages')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('column-sort-asc')));
+    await _frames(tester);
+    expect(
+      tester.getTopLeft(find.text('Other Atlas')).dy,
+      lessThan(tester.getTopLeft(find.text('Kept Garden')).dy),
+    );
+
+    await tester.tap(find.byKey(const Key('column-menu-title')));
+    await _frames(tester);
+    await tester.enterText(find.byKey(const Key('column-search')), 'Kept');
+    await tester.tap(find.byKey(const Key('column-search-apply')));
+    await _frames(tester);
+    expect(find.text('Kept Garden'), findsOneWidget);
+    expect(find.text('Other Atlas'), findsNothing);
     await _finish(tester, session);
   });
 }
