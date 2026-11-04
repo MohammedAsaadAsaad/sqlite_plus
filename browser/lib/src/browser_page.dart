@@ -91,35 +91,44 @@ class _BrowserPageState extends State<BrowserPage> {
             ),
             title: _title(),
             actions: [
-              IconButton(
-                key: const Key('new-database'),
-                tooltip: 'New',
-                onPressed: _busy ? null : _newDatabase,
-                icon: const Icon(Icons.note_add_outlined),
-              ),
-              IconButton(
-                key: const Key('open-database'),
-                tooltip: 'Open',
-                onPressed: _busy ? null : _openDatabase,
-                icon: const Icon(Icons.folder_open_outlined),
-              ),
-              IconButton(
-                key: const Key('save-database'),
-                tooltip: 'Save',
-                onPressed: _busy || !open ? null : _saveDatabase,
-                icon: const Icon(Icons.save_outlined),
-              ),
               PopupMenuButton<String>(
                 key: const Key('more-menu'),
+                tooltip: 'More',
                 onSelected: (value) {
+                  if (value == 'new') _newDatabase();
+                  if (value == 'open') _openDatabase();
+                  if (value == 'save') _saveDatabase();
                   if (value == 'sample') _sample();
                   if (value == 'models') _showModels();
                   if (value == 'close') _closeDatabase();
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
+                  _menuAction(
+                    value: 'new',
+                    icon: Icons.note_add_outlined,
+                    label: 'New',
+                    key: const Key('new-database'),
+                    enabled: !_busy,
+                  ),
+                  _menuAction(
+                    value: 'open',
+                    icon: Icons.folder_open_outlined,
+                    label: 'Open',
+                    key: const Key('open-database'),
+                    enabled: !_busy,
+                  ),
+                  _menuAction(
+                    value: 'save',
+                    icon: Icons.save_outlined,
+                    label: 'Save',
+                    key: const Key('save-database'),
+                    enabled: open && !_busy,
+                  ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
                     value: 'sample',
-                    child: Text('Add sample rows'),
+                    enabled: !_busy,
+                    child: const Text('Add sample rows'),
                   ),
                   if (open)
                     const PopupMenuItem(
@@ -1017,4 +1026,25 @@ class _BrowserPageState extends State<BrowserPage> {
     if (!mounted) return;
     setState(() => _notice = PageNotice(text, NoticeKind.error));
   }
+}
+
+PopupMenuItem<String> _menuAction({
+  required String value,
+  required IconData icon,
+  required String label,
+  required Key key,
+  required bool enabled,
+}) {
+  return PopupMenuItem<String>(
+    key: key,
+    value: value,
+    enabled: enabled,
+    child: Row(
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 12),
+        Text(label),
+      ],
+    ),
+  );
 }

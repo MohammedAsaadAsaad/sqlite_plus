@@ -799,6 +799,35 @@ void main() {
     await _finish(tester, session);
   });
 
+  testWidgets('New, Open, and Save are in the more menu', (tester) async {
+    tester.view.physicalSize = const Size(420, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+    expect(find.byKey(const Key('new-database')), findsNothing);
+    expect(find.byIcon(Icons.save_outlined), findsNothing);
+    final title = tester.renderObject<RenderParagraph>(
+      find.text('SQLite Browser'),
+    );
+    expect(title.didExceedMaxLines, isFalse);
+    await tester.tap(find.byKey(const Key('more-menu')));
+    await _frames(tester);
+    expect(find.text('New'), findsOneWidget);
+    expect(find.text('Open'), findsOneWidget);
+    expect(find.text('Save'), findsOneWidget);
+    expect(
+      tester
+          .widget<PopupMenuItem<String>>(find.byKey(const Key('save-database')))
+          .enabled,
+      isTrue,
+    );
+    await _finish(tester, session);
+  });
+
   testWidgets('a text column shows its length beside the symbol',
       (tester) async {
     tester.view.physicalSize = const Size(420, 740);
