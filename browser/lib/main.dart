@@ -1,19 +1,43 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'browser_app.dart';
 import 'src/course_progress.dart';
 import 'src/launch_bridge.dart';
+import 'src/linux_files.dart';
 import 'src/recent_files.dart';
 import 'src/session.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isLinux) await _registerLinux();
+  final opened = Platform.isLinux ? await openedSqliteArgument(args) : null;
   final session = BrowserSession();
   final recents = await _recents();
   final course = await _course();
-  runApp(BrowserApp(session: session, recents: recents, course: course));
+  runApp(
+    BrowserApp(
+      session: session,
+      recents: recents,
+      course: course,
+      launch: opened?.file,
+      launchMessage: opened?.message,
+    ),
+  );
+}
+
+Future<void> _registerLinux() async {
+  try {
+    final icon = await rootBundle.load('assets/app_icon.png');
+    await installLinuxFileAssociation(
+      executable: Platform.resolvedExecutable,
+      icon: icon.buffer.asUint8List(icon.offsetInBytes, icon.lengthInBytes),
+    );
+  } on Object {
+    // The database still opens when a desktop tool is missing.
+  }
 }
 
 Future<RecentStore> _recents() async {

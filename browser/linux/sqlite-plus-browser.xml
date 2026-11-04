@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/vnd.sqlite3">
+    <comment>SQLite database</comment>
+    <glob pattern="*.db"/>
+    <glob pattern="*.db3"/>
+    <glob pattern="*.sqlite"/>
+    <glob pattern="*.sqlite3"/>
+    <magic priority="50">
+      <match type="string" value="SQLite format 3" offset="0"/>
+    </magic>
+    <alias type="application/x-sqlite3"/>
+  </mime-type>
+</mime-info>

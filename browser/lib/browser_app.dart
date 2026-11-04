@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'src/browser_page.dart';
 import 'src/course_progress.dart';
+import 'src/launch_bridge.dart';
 import 'src/recent_files.dart';
 import 'src/session.dart';
 
@@ -12,12 +13,20 @@ class BrowserApp extends StatelessWidget {
     required this.session,
     RecentStore? recents,
     CourseProgress? course,
+    this.launch,
+    this.launchMessage,
   })  : recents = recents ?? RecentStore.memory(),
         course = course ?? CourseProgress.memory();
 
   final BrowserSession session;
   final RecentStore recents;
   final CourseProgress course;
+
+  /// A database passed on the command line or by the phone open action.
+  final OpenedFile? launch;
+
+  /// Why [launch] could not be read.
+  final String? launchMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +113,13 @@ class BrowserApp extends StatelessWidget {
           ),
         ),
       ),
-      home: BrowserPage(session: session, recents: recents, course: course),
+      home: BrowserPage(
+        session: session,
+        recents: recents,
+        course: course,
+        launch: launch,
+        launchMessage: launchMessage,
+      ),
     );
   }
 }
