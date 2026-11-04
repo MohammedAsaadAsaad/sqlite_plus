@@ -21,7 +21,7 @@ class BrowserApp extends StatelessWidget {
       surface: const Color(0xFFF4F7F5),
     );
     return MaterialApp(
-      title: 'Sqlite Browser',
+      title: 'SQLite Browser',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: scheme,
@@ -55,6 +55,37 @@ class BrowserApp extends StatelessWidget {
           style: FilledButton.styleFrom(
             backgroundColor: const Color(0xFF0E7C66),
             foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: ink,
+            side: const BorderSide(color: Color(0xFF0E7C66)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          indicatorColor: const Color(0xFFD6EBE4),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            return TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color:
+                  selected ? const Color(0xFF0E7C66) : const Color(0xFF5C6560),
+            );
+          }),
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(22)),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(

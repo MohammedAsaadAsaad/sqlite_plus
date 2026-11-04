@@ -7,10 +7,10 @@ import 'session.dart';
 const _nameWidth = 220.0;
 const _typeWidth = 120.0;
 const _schemaWidth = 360.0;
-const _line = Color(0xFFE4E4E4);
-const _header = Color(0xFFF0F0F0);
-const _selected = Color(0xFFD6E8F8);
-const _ink = Color(0xFF1C1C1C);
+const _line = Color(0xFFD9E2DC);
+const _header = Color(0xFFE7F2EC);
+const _selected = Color(0xFFD3EBE3);
+const _ink = Color(0xFF14211C);
 const _muted = Color(0xFF5C6560);
 
 /// Name, type, and schema text, in the shape of a database structure tree.
@@ -59,8 +59,11 @@ class _SchemaPaneState extends State<SchemaPane> {
       for (final object in widget.objects)
         if (object.type == 'index') object,
     ];
-    return ColoredBox(
-      color: Colors.white,
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(right: BorderSide(color: _line)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

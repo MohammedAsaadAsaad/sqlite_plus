@@ -44,7 +44,7 @@ class _BrowserPageState extends State<BrowserPage> {
   String? _message;
   bool _busy = false;
   bool _progressShown = false;
-  String? _progressDetail;
+  OverlayEntry? _progressEntry;
   final List<String> _log = [];
 
   BrowserSession get session => widget.session;
@@ -59,6 +59,7 @@ class _BrowserPageState extends State<BrowserPage> {
 
   @override
   void dispose() {
+    _removeProgress();
     _sql.dispose();
     super.dispose();
   }
@@ -128,30 +129,22 @@ class _BrowserPageState extends State<BrowserPage> {
                   ),
                 ),
           body: open
-              ? Stack(
-                  children: [
-                    wide
-                        ? Row(
-                            children: [
-                              SizedBox(
-                                width: 620,
-                                child: SchemaPane(
-                                  objects: session.objects,
-                                  selected: _selected,
-                                  onSelect: _select,
-                                  onApply: _applySchema,
-                                ),
-                              ),
-                              Expanded(child: _work()),
-                            ],
-                          )
-                        : _work(),
-                    if (_progressShown)
-                      Positioned.fill(
-                        child: WorkProgress(detail: _progressDetail),
-                      ),
-                  ],
-                )
+              ? wide
+                  ? Row(
+                      children: [
+                        SizedBox(
+                          width: 620,
+                          child: SchemaPane(
+                            objects: session.objects,
+                            selected: _selected,
+                            onSelect: _select,
+                            onApply: _applySchema,
+                          ),
+                        ),
+                        Expanded(child: _work()),
+                      ],
+                    )
+                  : _work()
               : HomePane(
                   files: widget.recents.files,
                   onOpen: _busy ? () {} : _openDatabase,
@@ -196,26 +189,42 @@ class _BrowserPageState extends State<BrowserPage> {
     final file = session.isOpen
         ? (session.dirty ? '${session.label} · unsaved' : session.label)
         : null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        const Text(
-          'Sqlite Browser',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-        ),
-        if (file != null)
-          Text(
-            file,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF5C6560),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.asset(
+            'assets/app_icon.png',
+            width: 32,
+            height: 32,
+            filterQuality: FilterQuality.medium,
           ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'SQLite Browser',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              if (file != null)
+                Text(
+                  file,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF5C6560),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -246,6 +255,7 @@ class _BrowserPageState extends State<BrowserPage> {
                   objects: session.objects,
                   onOpen: _select,
                   onApply: _applySchema,
+                  onApplyScript: _applyScript,
                 )
               : _pane == BrowserPane.data
                   ? DataPane(
@@ -413,6 +423,39 @@ class _BrowserPageState extends State<BrowserPage> {
         }
       }
     }, progress: _oneLine(sql));
+  }
+
+  Future<void> _applyScript(List<String> statements) {
+    final shown = statements.isEmpty ? null : _oneLine(statements.first);
+    return _guard(() async {
+      await session.runAll(statements);
+      if (!mounted) return;
+      setState(() {
+        _message = 'Relationship saved';
+        for (final statement in statements) {
+          final line = _oneLine(statement);
+          if (line == null || line.isEmpty) continue;
+          _log.add(line);
+        }
+        while (_log.length > 12) {
+          _log.removeAt(0);
+        }
+      });
+      final selected = _selected;
+      if (selected != null &&
+          session.objects.any(
+            (object) =>
+                object.name == selected.name && object.type == selected.type,
+          )) {
+        _selected = session.objects.firstWhere(
+          (object) =>
+              object.name == selected.name && object.type == selected.type,
+        );
+        if (_selected!.type == 'table' || _selected!.type == 'view') {
+          await _load(_slice.offset);
+        }
+      }
+    }, progress: shown);
   }
 
   bool get _hasNext {
@@ -743,10 +786,12 @@ class _BrowserPageState extends State<BrowserPage> {
       _busy = true;
       if (progress != null) {
         _progressShown = true;
-        _progressDetail = progress;
       }
     });
-    if (progress != null) await _afterPaint();
+    if (progress != null) {
+      _showProgress(progress);
+      await _afterPaint();
+    }
     if (!mounted) return;
     try {
       await body();
@@ -757,14 +802,31 @@ class _BrowserPageState extends State<BrowserPage> {
     } catch (error) {
       _showMessage('$error');
     } finally {
+      _removeProgress();
       if (mounted) {
         setState(() {
           _busy = false;
           _progressShown = false;
-          _progressDetail = null;
         });
       }
     }
+  }
+
+  /// Paints the running card on the root overlay, above the drawer and dialogs.
+  void _showProgress(String? progress) {
+    _removeProgress();
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) return;
+    final entry = OverlayEntry(
+      builder: (context) => WorkProgress(detail: progress),
+    );
+    _progressEntry = entry;
+    overlay.insert(entry);
+  }
+
+  void _removeProgress() {
+    _progressEntry?.remove();
+    _progressEntry = null;
   }
 
   /// Waits until the progress card has been built and painted.

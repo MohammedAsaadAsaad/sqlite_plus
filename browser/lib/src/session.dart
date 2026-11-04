@@ -255,6 +255,33 @@ class BrowserSession extends ChangeNotifier {
     });
   }
 
+  /// Runs [statements] in one transaction and reloads the schema.
+  ///
+  /// A failure rolls the transaction back and leaves the open image as it was.
+  Future<void> runAll(List<String> statements) {
+    if (statements.isEmpty) {
+      throw const SqlException('SQL is empty');
+    }
+    return _enqueue(() async {
+      final database = _required();
+      await database.execute('BEGIN');
+      try {
+        for (final statement in statements) {
+          await database.execute(statement);
+        }
+        await database.execute('COMMIT');
+      } catch (error) {
+        try {
+          await database.execute('ROLLBACK');
+        } catch (_) {}
+        rethrow;
+      }
+      _changed();
+      await _loadSchema(database);
+      notifyListeners();
+    });
+  }
+
   /// Creates two books so the grid has something to show.
   Future<void> insertSample() {
     return _enqueue(() async {

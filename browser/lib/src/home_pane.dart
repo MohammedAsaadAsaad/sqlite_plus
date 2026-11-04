@@ -29,75 +29,101 @@ class HomePane extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
       children: [
         Center(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: Image.asset(
-              'assets/app_icon.png',
-              width: 96,
-              height: 96,
-              filterQuality: FilterQuality.medium,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.all(Radius.circular(28)),
+                    border: Border.fromBorderSide(BorderSide(color: _line)),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(24, 28, 24, 24),
+                    child: Column(
+                      children: [
+                        _Mark(),
+                        SizedBox(height: 16),
+                        Text(
+                          'SQLite Browser',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _ink,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        SizedBox(
+                          width: 48,
+                          height: 3,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Color(0xFF0E7C66),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(99)),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Open a database, or pick one you used recently.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: _muted, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        key: Key('home-open'),
+                        onPressed: onOpen,
+                        icon: Icon(Icons.folder_open_outlined),
+                        label: Text('Open'),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        key: Key('home-new'),
+                        onPressed: onNew,
+                        icon: Icon(Icons.note_add_outlined),
+                        label: Text('New'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                const Text(
+                  'Recent',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (files.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Recent files will appear here.',
+                      style: TextStyle(color: _muted),
+                    ),
+                  )
+                else
+                  for (var index = 0; index < files.length; index++)
+                    _tile(files[index], index),
+              ],
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        const Text(
-          'Sqlite Browser',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _ink,
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Open a database, or pick one you used recently.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: _muted, fontSize: 14),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: FilledButton.icon(
-                key: const Key('home-open'),
-                onPressed: onOpen,
-                icon: const Icon(Icons.folder_open_outlined),
-                label: const Text('Open'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                key: const Key('home-new'),
-                onPressed: onNew,
-                icon: const Icon(Icons.note_add_outlined),
-                label: const Text('New'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 28),
-        const Text(
-          'Recent',
-          style: TextStyle(
-            color: _ink,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        if (files.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              'Recent files will appear here.',
-              style: TextStyle(color: _muted),
-            ),
-          )
-        else
-          for (var index = 0; index < files.length; index++)
-            _tile(files[index], index),
       ],
     );
   }
@@ -137,6 +163,23 @@ class HomePane extends StatelessWidget {
           ),
           onTap: () => onRecent(file),
         ),
+      ),
+    );
+  }
+}
+
+class _Mark extends StatelessWidget {
+  const _Mark();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: Image.asset(
+        'assets/app_icon.png',
+        width: 88,
+        height: 88,
+        filterQuality: FilterQuality.medium,
       ),
     );
   }

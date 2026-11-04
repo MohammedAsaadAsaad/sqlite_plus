@@ -1,63 +1,170 @@
+import 'dart:math' as math;
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'object_dialogs.dart';
 import 'schema_sql.dart';
 import 'session.dart';
 
-/// Tables as cards, with lines for foreign keys and a tap path that adds one.
+/// Tables on a board that pans in both directions.
+///
+/// A table moves when it is dragged. A column links to a column on another
+/// table only after the relationship is confirmed.
 class SchemaGraph extends StatefulWidget {
   const SchemaGraph({
     super.key,
     required this.objects,
     required this.onOpen,
     required this.onApply,
+    required this.onApplyScript,
   });
 
   final List<SchemaObject> objects;
   final ValueChanged<SchemaObject> onOpen;
   final Future<void> Function(String sql) onApply;
+  final Future<void> Function(List<String> statements) onApplyScript;
 
   @override
   State<SchemaGraph> createState() => _SchemaGraphState();
 }
 
+class _Picked {
+  const _Picked(this.table, this.column);
+
+  final String table;
+  final String column;
+}
+
 class _SchemaGraphState extends State<SchemaGraph> {
-  String? _linking;
+  final Map<String, Offset> _positions = {};
+  Offset _origin = Offset.zero;
+  Size _view = Size.zero;
+  _Picked? _picked;
+  String? _cardDrag;
+  int? _boardPointer;
 
   List<SchemaObject> get _tables => [
         for (final object in widget.objects)
           if (object.type == 'table') object,
       ];
 
-  Future<void> _link(
-      SchemaObject child, SchemaObject parent, ColumnInfo column) async {
-    final existing =
-        child.columns.map((item) => item.name.toLowerCase()).toSet();
-    var name = '${parent.name}_${column.name}';
-    var suffix = 2;
-    while (existing.contains(name.toLowerCase())) {
-      name = '${parent.name}_${column.name}_$suffix';
-      suffix++;
+  void _placeNew(List<SchemaObject> tables) {
+    final layout = _layout(tables, 960);
+    final names = {for (final table in tables) table.name};
+    _positions.removeWhere((name, _) => !names.contains(name));
+    for (final table in tables) {
+      _positions.putIfAbsent(
+        table.name,
+        () => layout.rects[table.name]?.topLeft ?? const Offset(24, 24),
+      );
     }
-    final type = column.type.trim().isEmpty ? 'INTEGER' : column.type.trim();
-    final chosen = await showDialog<String>(
+    final picked = _picked;
+    if (picked != null &&
+        !tables.any(
+          (table) =>
+              table.name == picked.table &&
+              table.columns.any((column) => column.name == picked.column),
+        )) {
+      _picked = null;
+    }
+  }
+
+  Map<String, Rect> _rects(List<SchemaObject> tables) {
+    return {
+      for (final table in tables)
+        table.name: Rect.fromLTWH(
+          _positions[table.name]?.dx ?? 24,
+          _positions[table.name]?.dy ?? 24,
+          _cardWidth,
+          _header + table.columns.length * _row,
+        ),
+    };
+  }
+
+  Size _canvas(Map<String, Rect> rects) {
+    var width = 1680.0;
+    var height = 1100.0;
+    for (final rect in rects.values) {
+      width = math.max(width, rect.right + 120);
+      height = math.max(height, rect.bottom + 120);
+    }
+    return Size(width, height);
+  }
+
+  Offset _clampOrigin(Offset origin, Size canvas) {
+    final view = _view;
+    if (view.isEmpty) return origin;
+    final minX = math.min(0.0, view.width - canvas.width);
+    final minY = math.min(0.0, view.height - canvas.height);
+    return Offset(
+      origin.dx.clamp(minX, 0).toDouble(),
+      origin.dy.clamp(minY, 0).toDouble(),
+    );
+  }
+
+  void _pan(Offset delta, Size canvas) {
+    setState(() => _origin = _clampOrigin(_origin + delta, canvas));
+  }
+
+  Future<void> _confirm(
+    SchemaObject child,
+    String childColumn,
+    SchemaObject parent,
+    String parentColumn,
+  ) async {
+    final plan = planColumnLink(
+      child: child,
+      childColumn: childColumn,
+      parent: parent,
+      parentColumn: parentColumn,
+      catalog: widget.objects,
+    );
+    final chosen = await showDialog<List<String>>(
       context: context,
       builder: (context) => _LinkDialog(
         child: child.name,
+        childColumn: childColumn,
         parent: parent.name,
-        parentColumn: column.name,
-        column: name,
-        type: type,
+        parentColumn: parentColumn,
+        plan: plan,
       ),
     );
-    if (!mounted || chosen == null) return;
-    setState(() => _linking = null);
-    widget.onApply(chosen);
+    if (!mounted || chosen == null || chosen.isEmpty) return;
+    setState(() => _picked = null);
+    widget.onApplyScript(chosen);
+  }
+
+  void _tapColumn(SchemaObject table, ColumnInfo column) {
+    final picked = _picked;
+    if (picked == null || picked.table == table.name) {
+      setState(() {
+        if (picked != null &&
+            picked.table == table.name &&
+            picked.column == column.name) {
+          _picked = null;
+        } else {
+          _picked = _Picked(table.name, column.name);
+        }
+      });
+      return;
+    }
+    final child =
+        _tables.where((item) => item.name == picked.table).firstOrNull;
+    if (child == null) {
+      setState(() => _picked = _Picked(table.name, column.name));
+      return;
+    }
+    _confirm(child, picked.column, table, column.name);
   }
 
   @override
   Widget build(BuildContext context) {
     final tables = _tables;
+    _placeNew(tables);
+    final rects = _rects(tables);
+    final canvas = _canvas(rects);
+    final edges = _edges(tables, rects);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -68,7 +175,8 @@ class _SchemaGraphState extends State<SchemaGraph> {
               Text(
                 'Graph',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF14211C),
                     ),
               ),
               const Spacer(),
@@ -85,7 +193,7 @@ class _SchemaGraphState extends State<SchemaGraph> {
             ],
           ),
         ),
-        if (_linking != null)
+        if (_picked != null)
           Material(
             color: const Color(0xFFD6EBE4),
             child: Padding(
@@ -94,11 +202,12 @@ class _SchemaGraphState extends State<SchemaGraph> {
                 children: [
                   Expanded(
                     child: Text(
-                        'Tap a column in another table. $_linking will reference it.'),
+                      'Tap a column on another table. ${_picked!.table}.${_picked!.column} will reference it after you confirm.',
+                    ),
                   ),
                   TextButton(
                     key: const Key('graph-link-cancel'),
-                    onPressed: () => setState(() => _linking = null),
+                    onPressed: () => setState(() => _picked = null),
                     child: const Text('Cancel'),
                   ),
                 ],
@@ -109,7 +218,7 @@ class _SchemaGraphState extends State<SchemaGraph> {
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Text(
-              'Tap Link, then a column in another table, to add a foreign key.',
+              'Drag a table to move it. Tap a column, then a column on another table. The link is saved when you confirm.',
               style: TextStyle(color: Color(0xFF5E736B)),
             ),
           ),
@@ -119,32 +228,83 @@ class _SchemaGraphState extends State<SchemaGraph> {
               ? const Center(child: Text('Create a table to see the graph.'))
               : LayoutBuilder(
                   builder: (context, constraints) {
-                    final layout = _layout(tables, constraints.maxWidth);
-                    return Scrollbar(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: SingleChildScrollView(
-                          child: SizedBox(
-                            width: layout.size.width,
-                            height: layout.size.height,
-                            child: Stack(
-                              children: [
-                                Positioned.fill(
+                    _view = Size(constraints.maxWidth, constraints.maxHeight);
+                    return ClipRect(
+                      child: Listener(
+                        behavior: HitTestBehavior.opaque,
+                        onPointerSignal: (event) {
+                          if (event is PointerScrollEvent) {
+                            _pan(
+                              Offset(
+                                  -event.scrollDelta.dx, -event.scrollDelta.dy),
+                              canvas,
+                            );
+                          }
+                        },
+                        onPointerPanZoomUpdate: (event) {
+                          if (_cardDrag != null) return;
+                          _pan(event.pan, canvas);
+                        },
+                        onPointerDown: (event) {
+                          if (_cardDrag != null) return;
+                          _boardPointer = event.pointer;
+                        },
+                        onPointerMove: (event) {
+                          if (_cardDrag != null ||
+                              event.pointer != _boardPointer) {
+                            return;
+                          }
+                          _pan(event.delta, canvas);
+                        },
+                        onPointerUp: (event) {
+                          if (event.pointer == _boardPointer) {
+                            _boardPointer = null;
+                          }
+                        },
+                        onPointerCancel: (event) {
+                          if (event.pointer == _boardPointer) {
+                            _boardPointer = null;
+                          }
+                        },
+                        child: SizedBox(
+                          width: constraints.maxWidth,
+                          height: constraints.maxHeight,
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                left: _origin.dx,
+                                top: _origin.dy,
+                                width: canvas.width,
+                                height: canvas.height,
+                                child: DecoratedBox(
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFE7EEEA),
+                                  ),
                                   child: CustomPaint(
-                                    painter: _EdgePainter(layout.edges),
+                                    painter: _BoardPainter(),
+                                    child: Stack(
+                                      children: [
+                                        Positioned.fill(
+                                          child: CustomPaint(
+                                            painter: _EdgePainter(edges),
+                                          ),
+                                        ),
+                                        for (final table in tables)
+                                          Positioned(
+                                            key: Key(
+                                                'graph-table-${table.name}'),
+                                            left: rects[table.name]!.left,
+                                            top: rects[table.name]!.top,
+                                            width: rects[table.name]!.width,
+                                            height: rects[table.name]!.height,
+                                            child: _card(table),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                                for (final table in tables)
-                                  Positioned(
-                                    key: Key('graph-table-${table.name}'),
-                                    left: layout.rects[table.name]!.left,
-                                    top: layout.rects[table.name]!.top,
-                                    width: layout.rects[table.name]!.width,
-                                    height: layout.rects[table.name]!.height,
-                                    child: _card(table),
-                                  ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -157,56 +317,70 @@ class _SchemaGraphState extends State<SchemaGraph> {
   }
 
   Widget _card(SchemaObject table) {
-    final armed = _linking == table.name;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: armed ? const Color(0xFF0E7C66) : const Color(0xFFD5E2DB),
-          width: armed ? 2 : 1,
+    final picked = _picked;
+    final armed = picked?.table == table.name;
+    return Listener(
+      onPointerDown: (_) => _cardDrag = table.name,
+      onPointerMove: (event) {
+        if (_cardDrag != table.name) return;
+        setState(() {
+          final current = _positions[table.name] ?? Offset.zero;
+          final next = current + event.delta;
+          _positions[table.name] = Offset(
+            math.max(8, next.dx),
+            math.max(8, next.dy),
+          );
+        });
+      },
+      onPointerUp: (_) {
+        if (_cardDrag == table.name) _cardDrag = null;
+      },
+      onPointerCancel: (_) {
+        if (_cardDrag == table.name) _cardDrag = null;
+      },
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: armed ? const Color(0xFF0E7C66) : const Color(0xFFD5E2DB),
+            width: armed ? 2 : 1,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1414221C),
+              blurRadius: 16,
+              offset: Offset(0, 6),
+            ),
+          ],
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            onTap: () => widget.onOpen(table),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
-            child: Container(
-              height: _header,
-              padding: const EdgeInsets.only(left: 12, right: 4),
-              decoration: const BoxDecoration(
-                color: Color(0xFFE6F0EA),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(13)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      table.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            GestureDetector(
+              onTap: () => widget.onOpen(table),
+              child: Container(
+                height: _header,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF14211C),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                ),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  table.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFF4F7F5),
+                    fontWeight: FontWeight.w700,
                   ),
-                  IconButton(
-                    key: Key('graph-link-${table.name}'),
-                    tooltip: 'Link',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints.tightFor(width: 36, height: 36),
-                    onPressed: () => setState(() => _linking = table.name),
-                    icon: const Icon(Icons.link, size: 18),
-                    color: const Color(0xFF0E7C66),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-          for (final column in table.columns) _column(table, column),
-        ],
+            for (final column in table.columns) _column(table, column),
+          ],
+        ),
       ),
     );
   }
@@ -216,20 +390,22 @@ class _SchemaGraphState extends State<SchemaGraph> {
       for (final key in table.foreignKeys)
         if (key.from.toLowerCase() == column.name.toLowerCase()) _fkLabel(key),
     ];
-    final target = _linking != null && _linking != table.name;
+    final picked = _picked;
+    final selected = picked != null &&
+        picked.table == table.name &&
+        picked.column == column.name;
+    final target = picked != null && picked.table != table.name;
     return InkWell(
       key: Key('graph-column-${table.name}-${column.name}'),
-      onTap: () {
-        if (_linking == null || _linking == table.name) return;
-        final child =
-            _tables.where((item) => item.name == _linking).firstOrNull;
-        if (child == null) return;
-        _link(child, table, column);
-      },
+      onTap: () => _tapColumn(table, column),
       child: Container(
         height: _row,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        color: target ? const Color(0xFFF3FAF7) : null,
+        color: selected
+            ? const Color(0xFFD6EBE4)
+            : target
+                ? const Color(0xFFF3FAF7)
+                : null,
         child: Row(
           children: [
             if (column.primaryKey)
@@ -242,6 +418,9 @@ class _SchemaGraphState extends State<SchemaGraph> {
                 column.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
               ),
             ),
             if (links.isNotEmpty)
@@ -266,60 +445,31 @@ class _SchemaGraphState extends State<SchemaGraph> {
   }
 }
 
-class _LinkDialog extends StatefulWidget {
+class _LinkDialog extends StatelessWidget {
   const _LinkDialog({
     required this.child,
+    required this.childColumn,
     required this.parent,
     required this.parentColumn,
-    required this.column,
-    required this.type,
+    required this.plan,
   });
 
   final String child;
+  final String childColumn;
   final String parent;
   final String parentColumn;
-  final String column;
-  final String type;
-
-  @override
-  State<_LinkDialog> createState() => _LinkDialogState();
-}
-
-class _LinkDialogState extends State<_LinkDialog> {
-  late final TextEditingController _name =
-      TextEditingController(text: widget.column);
-  late String _type = _types.contains(widget.type) ? widget.type : 'INTEGER';
-
-  @override
-  void initState() {
-    super.initState();
-    _name.addListener(() {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
+  final ColumnLink plan;
 
   @override
   Widget build(BuildContext context) {
-    final sql = linkColumnSql(
-      child: widget.child,
-      column: _name.text,
-      type: _type,
-      parent: widget.parent,
-      parentColumn: widget.parentColumn,
-    );
+    final refusal = plan.refusal;
     return Dialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       child: SizedBox(
         width: MediaQuery.sizeOf(context).width < 468
             ? MediaQuery.sizeOf(context).width - 48
-            : 420,
+            : 440,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
           child: Column(
@@ -327,34 +477,23 @@ class _LinkDialogState extends State<_LinkDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'New relationship',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                'Confirm relationship',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               Text(
-                '${widget.child} references ${widget.parent}.${widget.parentColumn}',
-                style: const TextStyle(color: Color(0xFF5E736B)),
-              ),
-              const SizedBox(height: 12),
-              TextField(
+                '$child.$childColumn → $parent.$parentColumn',
                 key: const Key('link-column-name'),
-                controller: _name,
-                decoration: const InputDecoration(
-                    labelText: 'New column on the child table'),
+                style: const TextStyle(
+                  color: Color(0xFF14211C),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                key: const Key('link-column-type'),
-                initialValue: _type,
-                decoration: const InputDecoration(labelText: 'Type'),
-                items: [
-                  for (final type in _types)
-                    DropdownMenuItem(value: type, child: Text(type)),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _type = value);
-                },
+              const SizedBox(height: 8),
+              Text(
+                refusal ??
+                    'The existing column keeps its rows and gains this foreign key. Indexes and triggers on $child are kept. Nothing is written until you confirm.',
+                style: const TextStyle(color: Color(0xFF5E736B)),
               ),
               const SizedBox(height: 16),
               Row(
@@ -367,10 +506,10 @@ class _LinkDialogState extends State<_LinkDialog> {
                   const SizedBox(width: 8),
                   FilledButton(
                     key: const Key('link-save'),
-                    onPressed: sql == null
-                        ? null
-                        : () => Navigator.of(context).pop(sql),
-                    child: const Text('Create link'),
+                    onPressed: plan.allowed
+                        ? () => Navigator.of(context).pop(plan.statements)
+                        : null,
+                    child: const Text('Confirm'),
                   ),
                 ],
               ),
@@ -382,18 +521,15 @@ class _LinkDialogState extends State<_LinkDialog> {
   }
 }
 
-const _types = ['INTEGER', 'TEXT', 'REAL', 'NUMERIC', 'BLOB'];
 const _cardWidth = 220.0;
 const _header = 48.0;
 const _row = 32.0;
 const _gap = 56.0;
 
 class _Layout {
-  _Layout(this.size, this.rects, this.edges);
+  _Layout(this.rects);
 
-  final Size size;
   final Map<String, Rect> rects;
-  final List<(Offset, Offset)> edges;
 }
 
 _Layout _layout(List<SchemaObject> tables, double viewport) {
@@ -402,7 +538,6 @@ _Layout _layout(List<SchemaObject> tables, double viewport) {
   var x = 24.0;
   var y = 24.0;
   var rowHeight = 0.0;
-  var maxX = width;
   for (final table in tables) {
     final height = _header + table.columns.length * _row;
     if (x > 24 && x + _cardWidth > width - 24) {
@@ -413,8 +548,14 @@ _Layout _layout(List<SchemaObject> tables, double viewport) {
     rects[table.name] = Rect.fromLTWH(x, y, _cardWidth, height);
     if (height > rowHeight) rowHeight = height;
     x += _cardWidth + _gap;
-    if (x > maxX) maxX = x;
   }
+  return _Layout(rects);
+}
+
+List<(Offset, Offset)> _edges(
+  List<SchemaObject> tables,
+  Map<String, Rect> rects,
+) {
   final edges = <(Offset, Offset)>[];
   for (final table in tables) {
     final from = rects[table.name];
@@ -445,12 +586,28 @@ _Layout _layout(List<SchemaObject> tables, double viewport) {
       ));
     }
   }
-  return _Layout(Size(maxX, y + rowHeight + 24), rects, edges);
+  return edges;
 }
 
 String _fkLabel(ForeignKeyInfo key) {
   if (key.to == null || key.to!.isEmpty) return '→ ${key.table}';
   return '→ ${key.table}.${key.to}';
+}
+
+class _BoardPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = const Color(0xFFD5E2DB);
+    const step = 28.0;
+    for (var x = step; x < size.width; x += step) {
+      for (var y = step; y < size.height; y += step) {
+        canvas.drawCircle(Offset(x, y), 1.1, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _EdgePainter extends CustomPainter {

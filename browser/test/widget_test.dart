@@ -448,21 +448,54 @@ void main() {
 
     await tester.tap(find.text('Graph'));
     await _frames(tester);
-    await tester.tap(find.byKey(const Key('graph-link-books')));
+    final before =
+        tester.getTopLeft(find.byKey(const Key('graph-table-books')));
+    await tester.drag(
+      find.byKey(const Key('graph-table-books')),
+      const Offset(70, 36),
+    );
+    await tester.pump();
+    final after = tester.getTopLeft(find.byKey(const Key('graph-table-books')));
+    expect(after.dx, greaterThan(before.dx + 40));
+    expect(after.dy, greaterThan(before.dy + 20));
+    final parked =
+        tester.getTopLeft(find.byKey(const Key('graph-table-authors')));
+    await tester.dragFrom(parked + const Offset(260, 20), const Offset(-48, -32));
+    await tester.pump();
+    final panned =
+        tester.getTopLeft(find.byKey(const Key('graph-table-authors')));
+    expect(panned.dx, lessThan(parked.dx - 20));
+    expect(panned.dy, lessThan(parked.dy - 15));
+
+    await tester.tap(find.byKey(const Key('graph-column-books-title')));
     await _frames(tester);
-    await tester.tap(find.byKey(const Key('graph-column-authors-id')));
+    await tester.tap(find.byKey(const Key('graph-column-authors-name')));
     await _frames(tester);
     expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('link-column-name')))
-          .controller!
-          .text,
-      'authors_id',
+      find.text('authors.name is not a primary key or a unique column.'),
+      findsOneWidget,
     );
+    expect(
+      tester.widget<FilledButton>(find.byKey(const Key('link-save'))).onPressed,
+      isNull,
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(Dialog),
+        matching: find.text('Cancel'),
+      ),
+    );
+    await _frames(tester);
+    expect(find.text('→ authors.id'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('graph-column-authors-id')));
+    await _frames(tester);
+    expect(find.text('books.title → authors.id'), findsOneWidget);
+    expect(find.text('→ authors.id'), findsNothing);
     await tester.tap(find.byKey(const Key('link-save')));
     await _frames(tester);
-    expect(find.text('authors_id'), findsWidgets);
     expect(find.text('→ authors.id'), findsOneWidget);
+    expect(find.text('title'), findsWidgets);
     await _finish(tester, session);
   });
 
@@ -513,6 +546,53 @@ void main() {
     expect(find.byKey(const Key('work-progress')), findsNothing);
     expect(find.text('0 changed'), findsOneWidget);
     expect(find.byKey(const Key('schema-table-pace')), findsOneWidget);
+    await _finish(tester, session);
+  });
+
+  testWidgets('creating an index shows progress above the schema drawer',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run('CREATE TABLE notes (title TEXT)');
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('schema-add-index')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('create-index-column-title')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('create-index-save')));
+    await tester.pump();
+    expect(find.byKey(const Key('work-progress')), findsOneWidget);
+    final card = tester.renderObject(find.byKey(const Key('work-progress')));
+    final hit = tester.hitTestOnBinding(
+      tester.getCenter(find.byKey(const Key('work-progress'))),
+    );
+    RenderObject? node = hit.path.first.target as RenderObject;
+    var above = false;
+    while (node != null) {
+      if (identical(node, card)) {
+        above = true;
+        break;
+      }
+      final parent = node.parent;
+      if (parent is! RenderObject) break;
+      node = parent;
+    }
+    expect(above, isTrue);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const Key('work-progress')), findsNothing);
+    expect(
+      find.byKey(const Key('schema-index-idx_notes_title')),
+      findsOneWidget,
+    );
     await _finish(tester, session);
   });
 
@@ -579,7 +659,7 @@ void main() {
     final session = BrowserSession();
     await tester.pumpWidget(BrowserApp(session: session, recents: reloaded));
     await _frames(tester);
-    expect(find.text('Sqlite Browser'), findsWidgets);
+    expect(find.text('SQLite Browser'), findsWidgets);
     expect(find.byKey(const Key('home-open')), findsOneWidget);
     expect(find.text('sample.db'), findsOneWidget);
     expect(find.byKey(const Key('schema-list')), findsNothing);

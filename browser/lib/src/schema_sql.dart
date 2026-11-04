@@ -1,4 +1,5 @@
 import 'format.dart';
+import 'session.dart';
 
 /// One column collected from the create-table form.
 class ColumnDraft {
@@ -121,6 +122,513 @@ String? _defaultLiteral(String raw, String type) {
     return raw;
   }
   return "'${raw.replaceAll("'", "''")}'";
+}
+
+/// A direct foreign key from an existing child column to a parent column.
+///
+/// sqlite_plus has no `ALTER TABLE` that adds a foreign key to a column that
+/// already exists. The statements below save the table again with that column
+/// referencing the parent, copy the rows, and put the indexes and triggers
+/// back. [ColumnLink.refusal] is set when that link is not allowed, and
+/// [ColumnLink.statements] stays empty so nothing can be run by mistake.
+ColumnLink planColumnLink({
+  required SchemaObject child,
+  required String childColumn,
+  required SchemaObject parent,
+  required String parentColumn,
+  required List<SchemaObject> catalog,
+}) {
+  if (child.type != 'table' || parent.type != 'table') {
+    return const ColumnLink(
+      statements: [],
+      refusal: 'A foreign key connects two tables.',
+    );
+  }
+  if (child.name.toLowerCase() == parent.name.toLowerCase()) {
+    return const ColumnLink(
+      statements: [],
+      refusal: 'Pick a column on another table.',
+    );
+  }
+  final from = _namedColumn(child, childColumn);
+  final to = _namedColumn(parent, parentColumn);
+  if (from == null || to == null) {
+    return const ColumnLink(
+      statements: [],
+      refusal: 'That column is not on the table.',
+    );
+  }
+  if (child.foreignKeys.any(
+    (key) => key.from.toLowerCase() == from.name.toLowerCase(),
+  )) {
+    return ColumnLink(
+      statements: const [],
+      refusal: '${child.name}.${from.name} already has a foreign key.',
+    );
+  }
+  if (!_parentIsKey(parent, to.name, catalog)) {
+    return ColumnLink(
+      statements: const [],
+      refusal:
+          '${parent.name}.${to.name} is not a primary key or a unique column.',
+    );
+  }
+  final sql = child.sql;
+  if (sql == null || sql.trim().isEmpty) {
+    return const ColumnLink(
+      statements: [],
+      refusal: 'This table has no stored definition to update.',
+    );
+  }
+  final temp = _tempTableName(child.name, catalog);
+  final create = rewriteTableForeignKey(
+    sql: sql,
+    column: from.name,
+    parent: parent.name,
+    parentColumn: to.name,
+    newName: temp,
+  );
+  if (create == null) {
+    return ColumnLink(
+      statements: const [],
+      refusal:
+          '${child.name}.${from.name} cannot take a foreign key in the stored definition.',
+    );
+  }
+  final statements = <String>[
+    create,
+    _copyRows(child, temp),
+    'DROP TABLE ${quoteIdent(child.name)}',
+    'ALTER TABLE ${quoteIdent(temp)} RENAME TO ${quoteIdent(child.name)}',
+  ];
+  for (final object in catalog) {
+    final onChild = object.table.toLowerCase() == child.name.toLowerCase();
+    final stored = object.sql;
+    if (!onChild || stored == null || stored.trim().isEmpty) continue;
+    if (object.type == 'index' && !object.name.startsWith('sqlite_')) {
+      statements.add(stored);
+    } else if (object.type == 'trigger') {
+      statements.add(stored);
+    }
+  }
+  return ColumnLink(statements: statements);
+}
+
+/// `CREATE TABLE` with [column] referencing [parentColumn], under [newName].
+///
+/// Null when the column cannot be found or it already has `REFERENCES`.
+String? rewriteTableForeignKey({
+  required String sql,
+  required String column,
+  required String parent,
+  required String parentColumn,
+  required String newName,
+}) {
+  final name = _tableNameSpan(sql);
+  final open = name == null ? null : _listOpen(sql, name.end);
+  final close = open == null ? null : _matchingParen(sql, open);
+  if (name == null || open == null || close == null) return null;
+  final parts = _splitCommas(sql, open + 1, close);
+  final target = column.toLowerCase();
+  _Span? part;
+  for (final candidate in parts) {
+    final ident = _firstIdentifier(sql, candidate.start, candidate.end);
+    if (ident != null && ident.text.toLowerCase() == target) {
+      part = candidate;
+      break;
+    }
+  }
+  if (part == null) return null;
+  if (_keywordAtDepth(sql, part.start, part.end, 'REFERENCES')) return null;
+  final clause =
+      ' REFERENCES ${quoteIdent(parent)} (${quoteIdent(parentColumn)})';
+  return sql.substring(0, name.start) +
+      quoteIdent(newName) +
+      sql.substring(name.end, part.end) +
+      clause +
+      sql.substring(part.end);
+}
+
+/// The statements for one confirmed column link, or a reason it is refused.
+class ColumnLink {
+  const ColumnLink({required this.statements, this.refusal});
+
+  final List<String> statements;
+  final String? refusal;
+
+  bool get allowed => refusal == null && statements.isNotEmpty;
+}
+
+ColumnInfo? _namedColumn(SchemaObject table, String name) {
+  for (final column in table.columns) {
+    if (column.name.toLowerCase() == name.toLowerCase()) return column;
+  }
+  return null;
+}
+
+bool _parentIsKey(
+  SchemaObject parent,
+  String column,
+  List<SchemaObject> catalog,
+) {
+  final keys = [
+    for (final item in parent.columns)
+      if (item.primaryKey) item,
+  ];
+  if (keys.length == 1 &&
+      keys.single.name.toLowerCase() == column.toLowerCase()) {
+    return true;
+  }
+  for (final object in catalog) {
+    if (object.type != 'index' || !object.unique) continue;
+    if (object.table.toLowerCase() != parent.name.toLowerCase()) continue;
+    if (object.indexColumns.length == 1 &&
+        object.indexColumns.single.toLowerCase() == column.toLowerCase()) {
+      return true;
+    }
+  }
+  final sql = parent.sql;
+  if (sql == null) return false;
+  final name = _tableNameSpan(sql);
+  final open = name == null ? null : _listOpen(sql, name.end);
+  final close = open == null ? null : _matchingParen(sql, open);
+  if (open == null || close == null) return false;
+  for (final part in _splitCommas(sql, open + 1, close)) {
+    final ident = _firstIdentifier(sql, part.start, part.end);
+    if (ident == null || ident.text.toLowerCase() != column.toLowerCase()) {
+      continue;
+    }
+    return _keywordAtDepth(sql, part.start, part.end, 'UNIQUE');
+  }
+  return false;
+}
+
+String _tempTableName(String table, List<SchemaObject> catalog) {
+  final taken = {
+    for (final object in catalog) object.name.toLowerCase(),
+  };
+  var name = '${table}__link';
+  var suffix = 2;
+  while (taken.contains(name.toLowerCase())) {
+    name = '${table}__link$suffix';
+    suffix++;
+  }
+  return name;
+}
+
+String _copyRows(SchemaObject child, String temp) {
+  final columns =
+      child.columns.map((column) => quoteIdent(column.name)).join(', ');
+  final source = quoteIdent(child.name);
+  final target = quoteIdent(temp);
+  final withoutRowid = _containsKeyword(child.sql ?? '', 'WITHOUT') &&
+      _containsKeyword(child.sql ?? '', 'ROWID');
+  final keys = [
+    for (final column in child.columns)
+      if (column.primaryKey) column,
+  ];
+  final rowidAlias =
+      keys.length == 1 && keys.single.type.trim().toUpperCase() == 'INTEGER';
+  if (withoutRowid || rowidAlias || columns.isEmpty) {
+    return 'INSERT INTO $target ($columns) SELECT $columns FROM $source';
+  }
+  return 'INSERT INTO $target (rowid, $columns) SELECT rowid, $columns FROM $source';
+}
+
+bool _containsKeyword(String sql, String word) {
+  final upper = word.toUpperCase();
+  String? quote;
+  var i = 0;
+  while (i < sql.length) {
+    final char = sql[i];
+    if (quote != null) {
+      if (char == quote) {
+        final doubled =
+            i + 1 < sql.length && sql[i + 1] == quote && quote != ']';
+        if (doubled) {
+          i += 2;
+          continue;
+        }
+        quote = null;
+      }
+      i++;
+      continue;
+    }
+    if (char == "'" || char == '"' || char == '`') {
+      quote = char;
+      i++;
+      continue;
+    }
+    if (char == '[') {
+      quote = ']';
+      i++;
+      continue;
+    }
+    if (_startsKeyword(sql, i, upper)) return true;
+    i++;
+  }
+  return false;
+}
+
+bool _startsKeyword(String sql, int index, String word) {
+  if (index > 0 && _identChar(sql.codeUnitAt(index - 1))) return false;
+  if (index + word.length > sql.length) return false;
+  if (sql.substring(index, index + word.length).toUpperCase() != word) {
+    return false;
+  }
+  final after = index + word.length;
+  if (after < sql.length && _identChar(sql.codeUnitAt(after))) return false;
+  return true;
+}
+
+bool _identChar(int unit) {
+  return (unit >= 65 && unit <= 90) ||
+      (unit >= 97 && unit <= 122) ||
+      (unit >= 48 && unit <= 57) ||
+      unit == 95;
+}
+
+class _Span {
+  const _Span(this.start, this.end);
+  final int start;
+  final int end;
+}
+
+class _Ident {
+  const _Ident(this.text, this.quoted);
+  final String text;
+  final bool quoted;
+}
+
+_Span? _tableNameSpan(String sql) {
+  final create = _keywordSpan(sql, 0, sql.length, 'CREATE');
+  if (create == null) return null;
+  final table = _keywordSpan(sql, create.end, sql.length, 'TABLE');
+  if (table == null) return null;
+  var cursor = table.end;
+  final ifWord = _keywordSpan(sql, cursor, sql.length, 'IF');
+  if (ifWord != null) {
+    final notWord = _keywordSpan(sql, ifWord.end, sql.length, 'NOT');
+    final exists = notWord == null
+        ? null
+        : _keywordSpan(sql, notWord.end, sql.length, 'EXISTS');
+    if (exists != null) cursor = exists.end;
+  }
+  return _identifierSpan(sql, cursor);
+}
+
+int? _listOpen(String sql, int from) {
+  String? quote;
+  for (var i = from; i < sql.length; i++) {
+    final char = sql[i];
+    if (quote != null) {
+      if (char == quote) quote = null;
+      continue;
+    }
+    if (char == "'" || char == '"' || char == '`' || char == '[') {
+      quote = char == '[' ? ']' : char;
+      continue;
+    }
+    if (char == '(') return i;
+  }
+  return null;
+}
+
+int? _matchingParen(String sql, int open) {
+  var depth = 0;
+  String? quote;
+  for (var i = open; i < sql.length; i++) {
+    final char = sql[i];
+    if (quote != null) {
+      if (char == quote) {
+        final doubled = i + 1 < sql.length &&
+            sql[i + 1] == quote &&
+            (quote == '"' || quote == "'" || quote == '`');
+        if (doubled) {
+          i++;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (char == "'" || char == '"' || char == '`') {
+      quote = char;
+      continue;
+    }
+    if (char == '[') {
+      quote = ']';
+      continue;
+    }
+    if (char == '-' && i + 1 < sql.length && sql[i + 1] == '-') {
+      final end = sql.indexOf('\n', i);
+      i = end < 0 ? sql.length - 1 : end;
+      continue;
+    }
+    if (char == '(') depth++;
+    if (char == ')') {
+      depth--;
+      if (depth == 0) return i;
+    }
+  }
+  return null;
+}
+
+List<_Span> _splitCommas(String sql, int start, int end) {
+  final parts = <_Span>[];
+  var depth = 0;
+  String? quote;
+  var part = start;
+  for (var i = start; i < end; i++) {
+    final char = sql[i];
+    if (quote != null) {
+      if (char == quote) {
+        final doubled = i + 1 < end &&
+            sql[i + 1] == quote &&
+            (quote == '"' || quote == "'" || quote == '`');
+        if (doubled) {
+          i++;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (char == "'" || char == '"' || char == '`') {
+      quote = char;
+      continue;
+    }
+    if (char == '[') {
+      quote = ']';
+      continue;
+    }
+    if (char == '(') depth++;
+    if (char == ')') {
+      if (depth > 0) depth--;
+      continue;
+    }
+    if (char == ',' && depth == 0) {
+      parts.add(_Span(part, i));
+      part = i + 1;
+    }
+  }
+  parts.add(_Span(part, end));
+  return parts;
+}
+
+_Ident? _firstIdentifier(String sql, int start, int end) {
+  final ident = _readIdentifier(sql, start, end);
+  if (ident == null) return null;
+  if (!ident.quoted) {
+    const constraints = {'CONSTRAINT', 'PRIMARY', 'UNIQUE', 'CHECK', 'FOREIGN'};
+    if (constraints.contains(ident.text.toUpperCase())) return null;
+  }
+  return ident;
+}
+
+bool _keywordAtDepth(String sql, int start, int end, String word) {
+  var depth = 0;
+  String? quote;
+  for (var i = start; i < end; i++) {
+    final char = sql[i];
+    if (quote != null) {
+      if (char == quote) {
+        final doubled = i + 1 < end &&
+            sql[i + 1] == quote &&
+            (quote == '"' || quote == "'" || quote == '`');
+        if (doubled) {
+          i++;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (char == "'" || char == '"' || char == '`') {
+      quote = char;
+      continue;
+    }
+    if (char == '[') {
+      quote = ']';
+      continue;
+    }
+    if (char == '(') {
+      depth++;
+      continue;
+    }
+    if (char == ')') {
+      if (depth > 0) depth--;
+      continue;
+    }
+    if (depth == 0 && _startsKeyword(sql, i, word)) return true;
+  }
+  return false;
+}
+
+_Span? _keywordSpan(String sql, int start, int end, String word) {
+  String? quote;
+  for (var i = start; i < end; i++) {
+    final char = sql[i];
+    if (quote != null) {
+      if (char == quote) quote = null;
+      continue;
+    }
+    if (char == "'" || char == '"' || char == '`' || char == '[') {
+      quote = char == '[' ? ']' : char;
+      continue;
+    }
+    if (_startsKeyword(sql, i, word)) return _Span(i, i + word.length);
+  }
+  return null;
+}
+
+_Span? _identifierSpan(String sql, int start) {
+  var i = start;
+  while (i < sql.length && ' \t\r\n'.contains(sql[i])) {
+    i++;
+  }
+  if (i >= sql.length) return null;
+  final char = sql[i];
+  if (char == '"' || char == '`' || char == '[') {
+    final closer = char == '[' ? ']' : char;
+    final end = sql.indexOf(closer, i + 1);
+    if (end < 0) return null;
+    return _Span(i, end + 1);
+  }
+  if (!_identChar(sql.codeUnitAt(i)) ||
+      (sql.codeUnitAt(i) >= 48 && sql.codeUnitAt(i) <= 57)) {
+    return null;
+  }
+  var end = i + 1;
+  while (end < sql.length && _identChar(sql.codeUnitAt(end))) {
+    end++;
+  }
+  return _Span(i, end);
+}
+
+_Ident? _readIdentifier(String sql, int start, int end) {
+  var i = start;
+  while (i < end && ' \t\r\n'.contains(sql[i])) {
+    i++;
+  }
+  if (i >= end) return null;
+  final char = sql[i];
+  if (char == '"' || char == '`' || char == '[') {
+    final closer = char == '[' ? ']' : char;
+    final stop = sql.indexOf(closer, i + 1);
+    if (stop < 0 || stop >= end) return null;
+    return _Ident(
+        sql.substring(i + 1, stop).replaceAll('$closer$closer', closer), true);
+  }
+  if (!_identChar(sql.codeUnitAt(i)) ||
+      (sql.codeUnitAt(i) >= 48 && sql.codeUnitAt(i) <= 57)) {
+    return null;
+  }
+  var stop = i + 1;
+  while (stop < end && _identChar(sql.codeUnitAt(stop))) {
+    stop++;
+  }
+  return _Ident(sql.substring(i, stop), false);
 }
 
 /// A new child column that references a parent column.

@@ -452,6 +452,88 @@ void main() {
     expect(link.to, 'id');
   });
 
+  test('a confirmed column link keeps the rows and the index', () async {
+    expect(
+      rewriteTableForeignKey(
+        sql: 'CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT)',
+        column: 'title',
+        parent: 'authors',
+        parentColumn: 'id',
+        newName: 'books__link',
+      ),
+      'CREATE TABLE "books__link" (id INTEGER PRIMARY KEY, title TEXT '
+      'REFERENCES "authors" ("id"))',
+    );
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    await session.run(
+      'CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT)',
+    );
+    await session.run(
+      'CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT)',
+    );
+    await session.run("INSERT INTO books (title) VALUES ('Kept')");
+    await session.run('CREATE INDEX idx_books_title ON books (title)');
+    final books =
+        session.objects.singleWhere((object) => object.name == 'books');
+    final authors =
+        session.objects.singleWhere((object) => object.name == 'authors');
+    final refused = planColumnLink(
+      child: books,
+      childColumn: 'title',
+      parent: authors,
+      parentColumn: 'name',
+      catalog: session.objects,
+    );
+    expect(refused.allowed, isFalse);
+    expect(refused.statements, isEmpty);
+    final plan = planColumnLink(
+      child: books,
+      childColumn: 'title',
+      parent: authors,
+      parentColumn: 'id',
+      catalog: session.objects,
+    );
+    expect(plan.refusal, isNull);
+    expect(plan.statements, isNotEmpty);
+    await session.runAll(plan.statements);
+    final linked =
+        session.objects.singleWhere((object) => object.name == 'books');
+    expect(linked.columns.map((column) => column.name), ['id', 'title']);
+    final key = linked.foreignKeys.single;
+    expect(key.from, 'title');
+    expect(key.table, 'authors');
+    expect(key.to, 'id');
+    final index = session.objects
+        .singleWhere((object) => object.name == 'idx_books_title');
+    expect(index.indexColumns, ['title']);
+    final page = await session.slice('books');
+    final title = page.columns.indexWhere((column) => column.name == 'title');
+    expect(page.rows.single[title + (page.hasRowid ? 1 : 0)], 'Kept');
+    expect(
+      session.objects.where((object) => object.name.endsWith('__link')),
+      isEmpty,
+    );
+  });
+
+  test('a failed script rolls the database back', () async {
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    Object? error;
+    try {
+      await session.runAll(const [
+        'CREATE TABLE nope (id INTEGER)',
+        'NOT SQL',
+      ]);
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error, isNotNull);
+    expect(session.objects.where((object) => object.name == 'nope'), isEmpty);
+  });
+
   test('an index reports its leaf entries and page size', () async {
     final session = BrowserSession();
     await session.openEmpty();
