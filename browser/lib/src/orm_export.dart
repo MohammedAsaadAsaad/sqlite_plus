@@ -23,8 +23,11 @@ const ormModelSteps = [
   ),
   OrmModelStep(
     'Add the packages',
-    'Add sqlite_plus_orm to dependencies and sqlite_plus_generator to '
-        'dev_dependencies.',
+    'Add sqlite_plus: ^0.1.7 and sqlite_plus_orm: ^0.1.7 to dependencies, '
+        'and sqlite_plus_generator: ^0.1.7 to dev_dependencies. '
+        'https://pub.dev/packages/sqlite_plus '
+        'https://pub.dev/packages/sqlite_plus_orm '
+        'https://pub.dev/packages/sqlite_plus_generator',
   ),
   OrmModelStep(
     'Generate for the whole project',

@@ -14,3 +14,5 @@ workspace:
   - packages/sqlite_plus_arabic/example
   - packages/sqlite_plus_vec
   - packages/sqlite_plus_vec/example
+  - packages/sqlite_plus_geo
+  - packages/sqlite_plus_geo/example

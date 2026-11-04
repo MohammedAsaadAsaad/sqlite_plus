@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7
+
+`sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.7`. `sqlite_plus_arabic` and `sqlite_plus_vec` are version `0.1.1`. `sqlite_plus_geo` is version `0.1.0`. Each package depends on these numbers. Each README links the other packages on pub.dev and includes a short example of each.
+
+`sqlite_plus_orm` 0.1.7 adopts an ordinary table that has no `PRIMARY KEY` through its SQLite row id. The browser writes that key as `BigInt?` with `@DbKey(generated: true)`. The versionCode 20 browser archive was not rebuilt.
+
 ## 0.1.5
 
 `sqlite_plus` is version `0.1.5`. `sqlite_plus_orm` is version `0.1.4`. `sqlite_plus_generator` is version `0.1.5`. `sqlite_plus_arabic` and `sqlite_plus_vec` are version `0.1.0`. This tree has not been uploaded. The pub.dev API still lists `sqlite_plus` and `sqlite_plus_orm` `0.1.3`, and `sqlite_plus_generator` `0.1.4`, as latest.

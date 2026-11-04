@@ -1,0 +1,19 @@
+name: sqlite_plus_geo
+description: Pure Dart geometry, spatial SQL, and R-tree queries for sqlite_plus.
+version: 0.1.0
+repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus_geo
+issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
+topics:
+  - sqlite
+  - gis
+  - geojson
+  - geometry
+resolution: workspace
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+dependencies:
+  sqlite_plus: ^0.1.7
+  sqlite_plus_orm: ^0.1.7
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0

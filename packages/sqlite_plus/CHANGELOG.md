@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.7
+
+The README names every package on pub.dev and shows a short example of each. The engine behavior is the 0.1.6 library.
+
+## 0.1.6
+
+Published version of the 0.1.5 library. `sqlite_plus_orm` 0.1.6 and `sqlite_plus_generator` 0.1.6 depend on this version.
+
 ## 0.1.5
 
 Custom FTS tokenizers and row-storing virtual tables on Dart 3.13.7, Linux x64. 10609 tests passed.

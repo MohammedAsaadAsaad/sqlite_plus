@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.7
+
+Depends on `sqlite_plus` ^0.1.7.
+
+- A generated integer key named `rowid`, `oid`, or `_rowid_` is the SQLite row id when the table has no `PRIMARY KEY` and `table_xinfo` does not list that name. `plan()` does not rebuild the table for that key.
+- A declared primary key, a `WITHOUT ROWID` table, and any other missing column still require a reviewed migration.
+- The README links the other packages on pub.dev, including a short example of each.
+
+## 0.1.6
+
+Depends on `sqlite_plus` ^0.1.6. Published number for the 0.1.4 library.
+
 ## 0.1.4
 
 Depends on `sqlite_plus` 0.1.5.

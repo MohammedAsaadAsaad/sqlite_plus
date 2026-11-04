@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+Depends on `sqlite_plus` ^0.1.7. The stemmer is unchanged. The README links the other packages on pub.dev and shows a short example of each.
+
 ## 0.1.0
 
 Light Arabic FTS5 tokenizer named `arabic`.

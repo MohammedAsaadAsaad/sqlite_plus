@@ -2240,6 +2240,12 @@ result=pass
 - The Linux file registration and the browser polish are both on `main`. Opening a SQLite file from the Linux file manager still reaches this program, and the course editor, the half-width schema rail, the Log tab, and the saved graph layout stay. A file path is still the key for `graphs.json`.
 - Flutter 3.47.9, Dart 3.13.7, Linux x64: `flutter analyze --fatal-infos` reported no issues and `flutter test` passed 58 tests at 13:51 Asia/Hebron on 4 November 2026. Eighteen session tests, one completion test, one model export test, five course tests, four Linux file tests, two graph-layout tests, and twenty-seven widget tests. The versionCode `20` package was not rebuilt. It does not include the Linux registration or this polish. `flutter build linux` was not run: this machine does not have `gtk+-3.0` or Ninja. iOS, macOS, and Windows were not launched. M9 stays unchecked. B5 stays unchecked. Item 108 stays open. This is not a full SQLite file browser.
 
+## 2026-11-04 — Package pages at 0.1.7
+
+- `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.7`. `sqlite_plus_arabic` and `sqlite_plus_vec` are version `0.1.1` and depend on `sqlite_plus` `^0.1.7`. `sqlite_plus_geo` is version `0.1.0` and depends on `sqlite_plus` `^0.1.7` and `sqlite_plus_orm` `^0.1.7`. Each README links the six package pages on pub.dev and includes a short example of each library.
+- The browser Dart-class steps name `sqlite_plus` `^0.1.7`, `sqlite_plus_orm` `^0.1.7`, and `sqlite_plus_generator` `^0.1.7`. The program still links the engine by path. The versionCode `20` archive was not rebuilt.
+- pub.dev already served `sqlite_plus` `0.1.6`, `sqlite_plus_orm` `0.1.6`, `sqlite_plus_generator` `0.1.6`, `sqlite_plus_arabic` `0.1.0`, and `sqlite_plus_vec` `0.1.0` before this note. `sqlite_plus_geo` was not on pub.dev.
+
 ## 2026-11-04 — Tables without a primary key
 
 - The Dart classes export now owns an ordinary table that has no `PRIMARY KEY`. The class key is the SQLite row id: `BigInt?` with `@DbKey(generated: true)`. The SQL name is `rowid`. If that name is already a column, the name is `oid`, then `_rowid_`. A table that already uses all three names stays in the Not generated notes. A `WITHOUT ROWID` table whose primary key was not detected stays there too. A declared integer primary key is unchanged.

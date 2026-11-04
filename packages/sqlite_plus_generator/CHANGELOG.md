@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.7
+
+Depends on `sqlite_plus_orm` ^0.1.7.
+
+- The README shows the other packages on pub.dev. A table with no `PRIMARY KEY` is represented by `@DbKey(generated: true)` on `BigInt? rowid`. The generator still requires that key on the class. It does not invent one.
+
+## 0.1.6
+
+Depends on `sqlite_plus_orm` ^0.1.6. Published number for the 0.1.5 library.
+
 ## 0.1.5
 
 Depends on `sqlite_plus_orm` 0.1.4.
