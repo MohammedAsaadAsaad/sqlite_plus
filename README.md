@@ -10,12 +10,13 @@ dependencies:
   sqlite_plus_orm: ^0.1.4
   sqlite_plus_arabic: ^0.1.0
   sqlite_plus_vec: ^0.1.0
+  sqlite_plus_geo: ^0.1.0
 
 dev_dependencies:
   sqlite_plus_generator: ^0.1.5
 ```
 
-`sqlite_plus_arabic` and `sqlite_plus_vec` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer and `sqlite_plus_vec` for a vector column. A package is loaded when the application imports it.
+`sqlite_plus_arabic`, `sqlite_plus_vec`, and `sqlite_plus_geo` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer, `sqlite_plus_vec` for a vector column, and `sqlite_plus_geo` for geometry. A package is loaded when the application imports it.
 
 ## Query
 
@@ -120,6 +121,7 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | [`sqlite_plus_generator`](packages/sqlite_plus_generator) | Classes in, `DocumentField`, `path`, `@DbScalar`, `search`, `nearest`, and `bounds` out |
 | [`sqlite_plus_arabic`](packages/sqlite_plus_arabic) | FTS5 tokenizer `arabic`. `حديقة` and `الحديقة` share a token |
 | [`sqlite_plus_vec`](packages/sqlite_plus_vec) | `vec0` nearest neighbors. A full scan of float32 vectors |
+| [`sqlite_plus_geo`](packages/sqlite_plus_geo) | Geometry, spatial SQL, and R-tree queries in Pure Dart |
 | [`browser`](browser) | Flutter browser for a database image on phone and desktop |
 
 | You want | Command |
@@ -129,6 +131,7 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | The generated library | `(cd packages/sqlite_plus_generator/example && dart run bin/main.dart)` |
 | Arabic search | `(cd packages/sqlite_plus_arabic/example && dart run bin/main.dart)` |
 | Nearest vector | `(cd packages/sqlite_plus_vec/example && dart run bin/main.dart)` |
+| Nearby facility | `(cd packages/sqlite_plus_geo/example && dart run bin/main.dart)` |
 | The database browser | `(cd browser && flutter run)` |
 
 ## Arabic search and a nearest vector
@@ -183,7 +186,9 @@ final nearest = await points.query.nearest(const [0.9, 0.1], k: 1).single();
 
 `nearest.embedding` is `[1.0, 0.0]`. `[0.9, 0.1]` is closer to that row than to `[0, 1]`. The created SQL contains `float[2] distance_metric=l2`. `l2` is Euclidean distance. `DbVectorMetrics.cosine` runs from 0 to 2. The vec README shows `k = 2`, the shadow table, and the same query in SQL.
 
-Register each package before `ensureCreated`, and register it again after the image is reopened. [`sqlite_plus_generator`](packages/sqlite_plus_generator) emits `tokenizer: "arabic"`, `Codecs.vector(2)`, `search`, and `nearest` from the classes above.
+[`sqlite_plus_geo`](packages/sqlite_plus_geo) stores EWKB and registers spatial SQL on the same connection. `GeoSession.nearest` orders by the chosen distance. `GeodesicModel.sphere` is metres. `GeodesicModel.planar` is the stored axes. `EXPLAIN QUERY PLAN` does not show the spatial index. `SpatialPlan.describe()` does. The package README lists the registered functions and the limits.
+
+Register each package before `ensureCreated`, and register it again after the image is reopened. [`sqlite_plus_generator`](packages/sqlite_plus_generator) emits `tokenizer: "arabic"`, `Codecs.vector(2)`, `search`, and `nearest` from the classes above. It does not emit a geometry field. The geo codec is `sqlite_plus_geo/orm.dart`.
 
 The two examples print:
 
@@ -209,7 +214,7 @@ Packages require Dart >=3.6.0. From the repository root:
 ```sh
 dart pub get --enforce-lockfile
 dart format .
-for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator sqlite_plus_arabic sqlite_plus_vec; do
+for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator sqlite_plus_arabic sqlite_plus_vec sqlite_plus_geo; do
   (cd packages/$package && dart analyze --fatal-infos && dart test) || exit
 done
 ```
