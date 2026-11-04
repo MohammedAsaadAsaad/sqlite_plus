@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'graph_layout.dart';
 import 'object_dialogs.dart';
 import 'schema_sql.dart';
 import 'session.dart';
@@ -20,12 +21,25 @@ class SchemaGraph extends StatefulWidget {
     required this.onOpen,
     required this.onApply,
     required this.onApplyScript,
+    this.layouts,
+    this.layoutKey,
+    this.onLayout,
   });
 
   final List<SchemaObject> objects;
   final ValueChanged<SchemaObject> onOpen;
   final Future<void> Function(String sql) onApply;
   final Future<void> Function(List<String> statements) onApplyScript;
+
+  /// Saved card positions. Null keeps the arrangement in this widget only.
+  final GraphLayoutStore? layouts;
+
+  /// Filesystem path or content URI of the open database. Null is a memory
+  /// database, and its arrangement is not written.
+  final String? layoutKey;
+
+  /// The positions after a drag or after tables are added or removed.
+  final ValueChanged<Map<String, GraphPoint>>? onLayout;
 
   @override
   State<SchemaGraph> createState() => _SchemaGraphState();
@@ -41,6 +55,9 @@ class _Picked {
 class _SchemaGraphState extends State<SchemaGraph> {
   final Map<String, Offset> _positions = {};
   final Map<int, Offset> _pointers = {};
+  String? _appliedKey;
+  var _loaded = false;
+  var _persistQueued = false;
   Offset _origin = Offset.zero;
   Size _view = Size.zero;
   double _scale = 1;
@@ -54,15 +71,71 @@ class _SchemaGraphState extends State<SchemaGraph> {
           if (object.type == 'table') object,
       ];
 
+  @override
+  void didUpdateWidget(SchemaGraph oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.layoutKey != widget.layoutKey) {
+      _appliedKey = widget.layoutKey;
+      _persist();
+    }
+  }
+
+  void _loadStored() {
+    if (_loaded && _appliedKey == widget.layoutKey) return;
+    if (!_loaded) {
+      _positions
+        ..clear()
+        ..addAll(_storedOffsets());
+      _loaded = true;
+    }
+    _appliedKey = widget.layoutKey;
+  }
+
+  Map<String, Offset> _storedOffsets() {
+    final saved = widget.layouts?.read(widget.layoutKey) ?? const {};
+    return {
+      for (final entry in saved.entries)
+        entry.key: Offset(entry.value.x, entry.value.y),
+    };
+  }
+
+  void _schedulePersist() {
+    if (_persistQueued) return;
+    _persistQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _persistQueued = false;
+      if (!mounted) return;
+      _persist();
+    });
+  }
+
+  void _persist() {
+    final points = {
+      for (final entry in _positions.entries)
+        entry.key: GraphPoint(entry.value.dx, entry.value.dy),
+    };
+    widget.onLayout?.call(points);
+    final key = widget.layoutKey;
+    final store = widget.layouts;
+    if (key == null || key.isEmpty || store == null) return;
+    store.save(key, points);
+  }
+
   void _placeNew(List<SchemaObject> tables) {
+    _loadStored();
     final layout = _layout(tables, 960);
     final names = {for (final table in tables) table.name};
+    final before = _positions.keys.toSet();
     _positions.removeWhere((name, _) => !names.contains(name));
+    var added = false;
     for (final table in tables) {
-      _positions.putIfAbsent(
-        table.name,
-        () => layout.rects[table.name]?.topLeft ?? const Offset(24, 24),
-      );
+      if (_positions.containsKey(table.name)) continue;
+      added = true;
+      _positions[table.name] =
+          layout.rects[table.name]?.topLeft ?? const Offset(24, 24);
+    }
+    if (before.difference(names).isNotEmpty || added) {
+      _schedulePersist();
     }
     final picked = _picked;
     if (picked != null &&
@@ -429,10 +502,14 @@ class _SchemaGraphState extends State<SchemaGraph> {
         });
       },
       onPointerUp: (_) {
-        if (_cardDrag == table.name) _cardDrag = null;
+        if (_cardDrag != table.name) return;
+        _cardDrag = null;
+        _persist();
       },
       onPointerCancel: (_) {
-        if (_cardDrag == table.name) _cardDrag = null;
+        if (_cardDrag != table.name) return;
+        _cardDrag = null;
+        _persist();
       },
       child: DecoratedBox(
         decoration: BoxDecoration(
