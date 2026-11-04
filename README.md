@@ -188,7 +188,9 @@ final nearest = await points.query.nearest(const [0.9, 0.1], k: 1).single();
 
 `nearest.embedding` is `[1.0, 0.0]`. `[0.9, 0.1]` is closer to that row than to `[0, 1]`. The created SQL contains `float[2] distance_metric=l2`. `l2` is Euclidean distance. `DbVectorMetrics.cosine` runs from 0 to 2. The vec README shows `k = 2`, the shadow table, and the same query in SQL.
 
-Register each package before `ensureCreated`, and register it again after the image is reopened. [`sqlite_plus_generator`](packages/sqlite_plus_generator) emits `tokenizer: "arabic"`, `Codecs.vector(2)`, `search`, and `nearest` from the classes above.
+[`sqlite_plus_geo`](packages/sqlite_plus_geo) stores EWKB and registers spatial SQL on the same connection. `GeoSession.nearest` orders by the chosen distance. `GeodesicModel.sphere` is metres. `GeodesicModel.planar` is the stored axes. `EXPLAIN QUERY PLAN` does not show the spatial index. `SpatialPlan.describe()` does. The package README lists the registered functions and the limits.
+
+Register each package before `ensureCreated`, and register it again after the image is reopened. [`sqlite_plus_generator`](packages/sqlite_plus_generator) emits `tokenizer: "arabic"`, `Codecs.vector(2)`, `search`, and `nearest` from the classes above. It does not emit a geometry field. The geo codec is `sqlite_plus_geo/orm.dart`.
 
 The two examples print:
 
