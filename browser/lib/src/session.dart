@@ -54,13 +54,20 @@ class ColumnInfo {
     required this.type,
     required this.notNull,
     required this.primaryKey,
+    this.keyPosition = 0,
     this.defaultValue,
   });
 
   final String name;
   final String type;
   final bool notNull;
+
+  /// True when this column is any part of the primary key.
   final bool primaryKey;
+
+  /// `PRAGMA table_info` key order, starting at 1. Zero when [primaryKey] is
+  /// false, or when an older caller only set the flag.
+  final int keyPosition;
   final String? defaultValue;
 }
 
@@ -72,6 +79,8 @@ class ForeignKeyInfo {
     required this.to,
     required this.onUpdate,
     required this.onDelete,
+    this.constraint = 0,
+    this.position = 0,
   });
 
   final String from;
@@ -79,6 +88,12 @@ class ForeignKeyInfo {
   final String? to;
   final String onUpdate;
   final String onDelete;
+
+  /// `PRAGMA foreign_key_list` id. Columns that share it are one key.
+  final int constraint;
+
+  /// Position of this column inside [constraint], starting at 0.
+  final int position;
 }
 
 /// One page of a table.
@@ -651,7 +666,8 @@ class BrowserSession extends ChangeNotifier {
           name: row[1]! as String,
           type: (row[2] as String?) ?? '',
           notNull: _flag(row[3]),
-          primaryKey: _flag(row[5]),
+          primaryKey: _integer(row[5]) > 0,
+          keyPosition: _integer(row[5]),
           defaultValue: row[4]?.toString(),
         ),
     ];
@@ -671,6 +687,8 @@ class BrowserSession extends ChangeNotifier {
             to: row[4] as String?,
             onUpdate: (row[5] as String?) ?? '',
             onDelete: (row[6] as String?) ?? '',
+            constraint: _integer(row[0]),
+            position: _integer(row[1]),
           ),
       ];
     } on SqlException {
@@ -761,6 +779,12 @@ String _countKey(String table, _RowQuery query) {
 }
 
 bool _flag(Object? value) => value == BigInt.one || value == 1 || value == true;
+
+int _integer(Object? value) {
+  if (value is BigInt) return value.toInt();
+  if (value is int) return value;
+  return 0;
+}
 
 int? _root(Object? value) {
   if (value is BigInt) return value.toInt();

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite_plus_browser/browser_app.dart';
 import 'package:sqlite_plus_browser/src/grid.dart';
@@ -777,6 +778,53 @@ void main() {
     expect(find.byKey(const Key('schema-table-books')), findsNothing);
     expect(session.isOpen, isFalse);
     expect(session.dirty, isFalse);
+    await _finish(tester, session);
+  });
+
+  testWidgets('Dart classes explain how to run the generator', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run(
+      'CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL)',
+    );
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('more-menu')));
+    await _frames(tester);
+    await tester.tap(find.text('Dart classes'));
+    await _frames(tester);
+    expect(
+      find.byKey(const Key('model-step-2')),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('model-step-2'))).data,
+      contains('sqlite_plus_generator --input lib/models.dart'),
+    );
+    expect(
+      tester
+          .widget<SelectableText>(find.byKey(const Key('models-source')))
+          .data,
+      contains('class Books'),
+    );
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async => null,
+    );
+    await tester.tap(find.byKey(const Key('models-copy')));
+    await _frames(tester);
+    expect(find.text('Copied'), findsOneWidget);
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      null,
+    );
+    await tester.tap(find.text('Close'));
+    await _frames(tester);
+    expect(find.byKey(const Key('models-source')), findsNothing);
     await _finish(tester, session);
   });
 

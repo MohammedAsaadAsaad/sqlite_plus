@@ -320,15 +320,25 @@ bool _parentIsKey(
       keys.single.name.toLowerCase() == column.toLowerCase()) {
     return true;
   }
+  return columnDeclaredUnique(parent, column, catalog);
+}
+
+/// True when [column] is a one-column `UNIQUE` index or `UNIQUE` in the
+/// stored definition. A primary key alone does not count.
+bool columnDeclaredUnique(
+  SchemaObject table,
+  String column,
+  List<SchemaObject> catalog,
+) {
   for (final object in catalog) {
     if (object.type != 'index' || !object.unique) continue;
-    if (object.table.toLowerCase() != parent.name.toLowerCase()) continue;
+    if (object.table.toLowerCase() != table.name.toLowerCase()) continue;
     if (object.indexColumns.length == 1 &&
         object.indexColumns.single.toLowerCase() == column.toLowerCase()) {
       return true;
     }
   }
-  final sql = parent.sql;
+  final sql = table.sql;
   if (sql == null) return false;
   final name = _tableNameSpan(sql);
   final open = name == null ? null : _listOpen(sql, name.end);
@@ -345,8 +355,8 @@ bool _parentIsKey(
 }
 
 /// True when the stored definition has a table-level primary key of several
-/// columns. `PRAGMA table_info` reports only the first of those columns as
-/// `pk = 1`, so that column must not be treated as a single-column key.
+/// columns. A caller that flagged only the first key column still needs this
+/// scan, because that column is not a single-column parent.
 bool _multiColumnPrimaryKey(String? sql) {
   if (sql == null) return false;
   final name = _tableNameSpan(sql);

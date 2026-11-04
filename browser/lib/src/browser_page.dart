@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -11,6 +12,8 @@ import 'data_pane.dart';
 import 'format.dart';
 import 'home_pane.dart';
 import 'launch_bridge.dart';
+import 'orm_dialog.dart';
+import 'orm_export.dart';
 import 'recent_files.dart';
 import 'schema_graph.dart';
 import 'schema_pane.dart';
@@ -110,6 +113,7 @@ class _BrowserPageState extends State<BrowserPage> {
                 key: const Key('more-menu'),
                 onSelected: (value) {
                   if (value == 'sample') _sample();
+                  if (value == 'models') _showModels();
                   if (value == 'close') _closeDatabase();
                 },
                 itemBuilder: (context) => [
@@ -117,6 +121,11 @@ class _BrowserPageState extends State<BrowserPage> {
                     value: 'sample',
                     child: Text('Add sample rows'),
                   ),
+                  if (open)
+                    const PopupMenuItem(
+                      value: 'models',
+                      child: Text('Dart classes'),
+                    ),
                   if (open)
                     const PopupMenuItem(
                       value: 'close',
@@ -719,6 +728,28 @@ class _BrowserPageState extends State<BrowserPage> {
       if (books.isEmpty || !mounted) return;
       await _select(books.single);
     });
+  }
+
+  Future<void> _showModels() {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => ModelsDialog(
+        source: ormModels(session.objects),
+        onSave: _saveModels,
+      ),
+    );
+  }
+
+  Future<String?> _saveModels(String source) async {
+    final bytes = Uint8List.fromList(utf8.encode(source));
+    final saved = await _chooseSavePath('models.dart', bytes);
+    if (saved == null) return null;
+    final file = File(saved);
+    if (!file.existsSync() || file.lengthSync() != bytes.length) {
+      await file.writeAsBytes(bytes, flush: true);
+    }
+    final leaf = saved.split(RegExp(r'[/\\]')).last;
+    return leaf.isEmpty ? 'models.dart' : leaf;
   }
 
   Future<void> _closeDatabase() async {
