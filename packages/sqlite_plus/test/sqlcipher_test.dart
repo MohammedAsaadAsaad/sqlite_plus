@@ -282,7 +282,13 @@ void main() {
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('SQLCipher 4.5.6 reads a file this engine encrypted', () async {
-    final cli = await Process.run('sqlcipher', ['-version']);
+    final ProcessResult cli;
+    try {
+      cli = await Process.run('sqlcipher', ['-version']);
+    } on ProcessException {
+      markTestSkipped('sqlcipher is not installed');
+      return;
+    }
     if (cli.exitCode != 0) {
       markTestSkipped('sqlcipher is not installed');
       return;
