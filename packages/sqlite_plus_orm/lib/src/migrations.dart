@@ -578,6 +578,26 @@ String _columnSql(Column<dynamic, dynamic> column, {required bool inlineKey}) =>
 bool _migrationColumnNullable(Column<dynamic, dynamic> column) =>
     column.nullable && (column.keyOrder == null || column.generated);
 
+/// A generated integer key that names the SQLite row id of a table with no
+/// declared primary key. `table_xinfo` does not list that row id.
+bool _implicitRowidKey(EntityType<dynamic> entity,
+    Column<dynamic, dynamic> column, _MigrationTable actual) {
+  if (entity.keys.length != 1 || !identical(column, entity.keys.single)) {
+    return false;
+  }
+  if (!column.generated || column.codec.sqlType != 'INTEGER') return false;
+  final name = _ormAsciiLower(column.sqlName);
+  if (name != 'rowid' && name != 'oid' && name != '_rowid_') return false;
+  if (RegExp(r'\bwithout\s+rowid\b', caseSensitive: false)
+      .hasMatch(actual.sql)) {
+    return false;
+  }
+  for (final row in actual.columns) {
+    if (row[5] != BigInt.zero) return false;
+  }
+  return true;
+}
+
 String _createTableSql(EntityType<dynamic> entity, DbModel model) {
   if (entity.virtualModule == DbModules.fts5) {
     final columns =
@@ -656,6 +676,7 @@ List<MigrationOperation> _tableDifferences(
   for (final column in entity.columns) {
     final row = columns[_ormAsciiLower(column.sqlName)];
     if (row == null) {
+      if (_implicitRowidKey(entity, column, actual)) continue;
       final safe = column.nullable &&
           column.keyOrder == null &&
           !column.unique &&

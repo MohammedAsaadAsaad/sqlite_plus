@@ -79,4 +79,55 @@ void main() {
     expect(parts.notes, contains('View names is not a generated class.'));
     expect(parts.notes.join('\n'), isNot(contains('dart run')));
   });
+
+  test('a table without a primary key is owned through its rowid', () async {
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    await session.run('CREATE TABLE boundary (name TEXT NOT NULL, geom BLOB)');
+    await session.run('CREATE TABLE tagged (rowid TEXT, name TEXT)');
+    await session
+        .run('CREATE TABLE shadowed (rowid TEXT, oid INTEGER, name TEXT)');
+    await session.run(
+      'CREATE TABLE occupied (rowid TEXT, oid INTEGER, _rowid_ REAL, name TEXT)',
+    );
+    await session.run(
+      'CREATE TABLE closed (id INTEGER PRIMARY KEY, name TEXT) WITHOUT ROWID',
+    );
+    final source = ormModels(session.objects);
+    expect(source, contains("@DbEntity(table: 'boundary')"));
+    expect(source, contains('class Boundary {'));
+    expect(
+      source,
+      contains('SQLite row id. boundary has no PRIMARY KEY.'),
+    );
+    expect(source, contains('@DbKey(generated: true)'));
+    expect(source, contains('final BigInt? rowid;'));
+    expect(source, contains('required this.name'));
+    expect(source, contains('final Uint8List? geom;'));
+    expect(source, contains("@DbEntity(table: 'tagged')"));
+    expect(source, contains('final BigInt? oid;'));
+    expect(source, contains('final String? rowid;'));
+    expect(source, contains("@DbColumn(name: '_rowid_')"));
+    expect(source, contains('final BigInt? rowid;'));
+    expect(source, contains("@DbColumn(name: 'rowid')"));
+    expect(source, contains('final String? rowid2;'));
+    expect(
+      source,
+      contains(
+        'occupied uses the names rowid, oid, and _rowid_ as columns, so the generator cannot name its row id.',
+      ),
+    );
+    expect(source, isNot(contains("table: 'occupied'")));
+    expect(source, contains("@DbEntity(table: 'closed')"));
+    expect(source, contains('@DbKey()\n  final BigInt id;'));
+    expect(source, isNot(contains('closed has no primary key')));
+    final parts = splitModelLibrary(source);
+    expect(parts.classes.map((block) => block.table), [
+      'boundary',
+      'closed',
+      'shadowed',
+      'tagged',
+    ]);
+  });
 }

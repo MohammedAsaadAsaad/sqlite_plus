@@ -135,6 +135,79 @@ void main() {
     ]);
   });
 
+  test('a table with no primary key is adopted through its rowid', () async {
+    await engine.execute('CREATE TABLE boundary(name TEXT)');
+    await engine.execute("INSERT INTO boundary(name) VALUES('North')");
+    await engine.execute('CREATE TABLE tagged(rowid TEXT, name TEXT)');
+    await engine
+        .execute("INSERT INTO tagged(rowid, name) VALUES('label', 'A')");
+    final boundary = _Mapping('boundary', [
+      _Field('rowid', Codecs.nullable(Codecs.bigInt), key: 0, generated: true),
+      _Field('name', Codecs.nullable(Codecs.text)),
+    ]);
+    final tagged = _Mapping('tagged', [
+      _Field('oid', Codecs.nullable(Codecs.bigInt), key: 0, generated: true),
+      _Field('rowid', Codecs.nullable(Codecs.text)),
+      _Field('name', Codecs.nullable(Codecs.text)),
+    ]);
+    final context =
+        DbContext(connection, DbModel([boundary.type, tagged.type]));
+    addTearDown(context.close);
+    await context.migrations.ensureCreated();
+    expect((await engine.query('SELECT rowid, name FROM boundary')).rows, [
+      [BigInt.one, 'North']
+    ]);
+    expect((await engine.query('SELECT oid, rowid, name FROM tagged')).rows, [
+      [BigInt.one, 'label', 'A']
+    ]);
+    expect((await context.migrations.plan()).isEmpty, isTrue);
+
+    final rows = context.set(boundary.type);
+    final existing = await rows.find(EntityKey([BigInt.one]));
+    expect(existing!.values['name'], 'North');
+    final added = rows.add(_Record({'name': 'South'}));
+    expect(await context.saveChanges(), 1);
+    expect(added.entity.values['rowid'], BigInt.two);
+    added.entity.values['name'] = 'East';
+    expect(await context.saveChanges(), 1);
+    rows.remove(existing);
+    expect(await context.saveChanges(), 1);
+    expect(
+        (await engine.query('SELECT rowid, name FROM boundary ORDER BY rowid'))
+            .rows,
+        [
+          [BigInt.two, 'East']
+        ]);
+
+    await engine.execute(
+        'CREATE TABLE closed(id INTEGER PRIMARY KEY, name TEXT) WITHOUT ROWID');
+    final closed = _Mapping('closed', [
+      _Field('rowid', Codecs.nullable(Codecs.bigInt), key: 0, generated: true),
+      _Field('name', Codecs.nullable(Codecs.text)),
+    ]);
+    final refused =
+        await SchemaMigrator(connection, DbModel([closed.type])).plan();
+    expect(refused.requiresApproval, isTrue);
+    expect(
+        refused.operations.map((operation) => operation.description).join('\n'),
+        contains('closed.rowid'));
+
+    await engine
+        .execute('CREATE TABLE keyed(id INTEGER PRIMARY KEY, name TEXT)');
+    final keyed = _Mapping('keyed', [
+      _Field('rowid', Codecs.nullable(Codecs.bigInt), key: 0, generated: true),
+      _Field('name', Codecs.nullable(Codecs.text)),
+    ]);
+    final declared =
+        await SchemaMigrator(connection, DbModel([keyed.type])).plan();
+    expect(declared.requiresApproval, isTrue);
+    expect(
+        declared.operations
+            .map((operation) => operation.description)
+            .join('\n'),
+        contains('keyed.rowid'));
+  });
+
   test('matching legacy table can be adopted without rewriting its rows',
       () async {
     await engine
