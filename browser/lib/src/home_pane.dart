@@ -13,6 +13,7 @@ class HomePane extends StatelessWidget {
     required this.files,
     required this.onOpen,
     required this.onNew,
+    required this.onLearn,
     required this.onRecent,
     required this.onForget,
   });
@@ -20,6 +21,7 @@ class HomePane extends StatelessWidget {
   final List<RecentFile> files;
   final VoidCallback onOpen;
   final VoidCallback onNew;
+  final VoidCallback onLearn;
   final ValueChanged<RecentFile> onRecent;
   final ValueChanged<RecentFile> onForget;
 
@@ -98,6 +100,13 @@ class HomePane extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  key: const Key('home-learn'),
+                  onPressed: onLearn,
+                  icon: const Icon(Icons.school_outlined),
+                  label: const Text('Learn SQL'),
                 ),
                 const SizedBox(height: 28),
                 const Text(

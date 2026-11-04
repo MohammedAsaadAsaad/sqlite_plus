@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
 
 import 'src/browser_page.dart';
+import 'src/course_progress.dart';
 import 'src/recent_files.dart';
 import 'src/session.dart';
 
 /// Desktop and mobile shell for one [BrowserSession].
 class BrowserApp extends StatelessWidget {
-  BrowserApp({super.key, required this.session, RecentStore? recents})
-      : recents = recents ?? RecentStore.memory();
+  BrowserApp({
+    super.key,
+    required this.session,
+    RecentStore? recents,
+    CourseProgress? course,
+  })  : recents = recents ?? RecentStore.memory(),
+        course = course ?? CourseProgress.memory();
 
   final BrowserSession session;
   final RecentStore recents;
+  final CourseProgress course;
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +104,7 @@ class BrowserApp extends StatelessWidget {
           ),
         ),
       ),
-      home: BrowserPage(session: session, recents: recents),
+      home: BrowserPage(session: session, recents: recents, course: course),
     );
   }
 }

@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:sqlite_plus/sqlite_plus.dart';
 
 import 'cell_dialog.dart';
+import 'course_page.dart';
+import 'course_progress.dart';
 import 'data_pane.dart';
 import 'format.dart';
 import 'home_pane.dart';
@@ -31,10 +33,12 @@ class BrowserPage extends StatefulWidget {
     super.key,
     required this.session,
     required this.recents,
+    required this.course,
   });
 
   final BrowserSession session;
   final RecentStore recents;
+  final CourseProgress course;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
@@ -98,6 +102,7 @@ class _BrowserPageState extends State<BrowserPage> {
                   if (value == 'new') _newDatabase();
                   if (value == 'open') _openDatabase();
                   if (value == 'save') _saveDatabase();
+                  if (value == 'learn') _openCourse();
                   if (value == 'sample') _sample();
                   if (value == 'models') _showModels();
                   if (value == 'close') _closeDatabase();
@@ -125,6 +130,13 @@ class _BrowserPageState extends State<BrowserPage> {
                     enabled: open && !_busy,
                   ),
                   const PopupMenuDivider(),
+                  _menuAction(
+                    value: 'learn',
+                    icon: Icons.school_outlined,
+                    label: 'Learn SQL',
+                    key: const Key('learn-sql'),
+                    enabled: true,
+                  ),
                   PopupMenuItem(
                     value: 'sample',
                     enabled: !_busy,
@@ -180,6 +192,7 @@ class _BrowserPageState extends State<BrowserPage> {
                   files: widget.recents.files,
                   onOpen: _busy ? () {} : _openDatabase,
                   onNew: _busy ? () {} : _newDatabase,
+                  onLearn: _openCourse,
                   onRecent: _busy ? (_) {} : _openRecent,
                   onForget: (file) {
                     widget.recents.forget(file);
@@ -734,6 +747,14 @@ class _BrowserPageState extends State<BrowserPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _openCourse() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => CoursePage(progress: widget.course),
       ),
     );
   }
