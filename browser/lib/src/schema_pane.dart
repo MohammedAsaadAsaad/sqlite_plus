@@ -308,7 +308,7 @@ class _SchemaPaneState extends State<SchemaPane> {
           onExpand: () => _toggle(key, fallback: true),
         ),
         if (open)
-          for (final column in object.columns)
+          for (final column in object.columns) ...[
             _entry(
               indent: 48,
               icon: Icons.view_week_outlined,
@@ -316,6 +316,17 @@ class _SchemaPaneState extends State<SchemaPane> {
               trailing: _columnMarks(column, object.foreignKeys),
               mark: column.primaryKey ? 'PK' : null,
             ),
+            for (final key in object.foreignKeys)
+              if (key.from == column.name)
+                _entry(
+                  indent: 72,
+                  icon: Icons.link,
+                  name: _referenceText(key),
+                  itemKey: Key(
+                    'schema-link-${object.name}-${column.name}-${key.constraint}',
+                  ),
+                ),
+          ],
       ],
     );
   }
@@ -325,6 +336,14 @@ class _SchemaPaneState extends State<SchemaPane> {
       indent: 16,
       icon: Icons.key_outlined,
       name: object.name,
+      trailing: object.indexColumns.isEmpty
+          ? null
+          : Text(
+              '(${object.indexColumns.join(', ')})',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: _muted, fontSize: 12),
+            ),
       mark: object.unique ? 'unique' : null,
       active: widget.selected?.name == object.name &&
           widget.selected?.type == object.type,
@@ -391,10 +410,12 @@ class _SchemaPaneState extends State<SchemaPane> {
       active: active,
       action: action,
     );
-    final tappable =
-        onTap == null ? row : InkWell(key: itemKey, onTap: onTap, child: row);
-    if (!anchor) return tappable;
-    return KeyedSubtree(key: _selectedAnchor, child: tappable);
+    final tappable = onTap == null ? row : InkWell(onTap: onTap, child: row);
+    final keyed = itemKey == null
+        ? tappable
+        : KeyedSubtree(key: itemKey, child: tappable);
+    if (!anchor) return keyed;
+    return KeyedSubtree(key: _selectedAnchor, child: keyed);
   }
 
   Widget _row({
@@ -439,7 +460,7 @@ class _SchemaPaneState extends State<SchemaPane> {
               ),
               if (trailing != null) ...[
                 const SizedBox(width: 6),
-                trailing,
+                Flexible(child: trailing),
               ],
               if (mark != null) ...[
                 const SizedBox(width: 6),
@@ -522,6 +543,19 @@ _TypeBadge _typeBadge(String declared) {
     return _TypeBadge(Icons.exposure_outlined, size);
   }
   return _TypeBadge(Icons.abc, size);
+}
+
+String _referenceText(ForeignKeyInfo key) {
+  final target =
+      key.to == null || key.to!.isEmpty ? key.table : '${key.table}.${key.to}';
+  final actions = <String>[
+    if (key.onUpdate.isNotEmpty && key.onUpdate.toUpperCase() != 'NO ACTION')
+      'ON UPDATE ${key.onUpdate}',
+    if (key.onDelete.isNotEmpty && key.onDelete.toUpperCase() != 'NO ACTION')
+      'ON DELETE ${key.onDelete}',
+  ];
+  final action = actions.isEmpty ? '' : ' · ${actions.join(' · ')}';
+  return '→ $target$action';
 }
 
 String? _declaredSize(String declared) {

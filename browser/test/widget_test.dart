@@ -511,7 +511,13 @@ void main() {
     expect(find.text('→ authors.id'), findsNothing);
     await tester.tap(find.byKey(const Key('link-save')));
     await _frames(tester);
-    expect(find.text('→ authors.id'), findsOneWidget);
+    expect(find.text('→ authors.id'), findsNWidgets(2));
+    await tester.tap(find.text('Rows'));
+    await _frames(tester);
+    expect(find.text('title → authors.id'), findsNothing);
+    expect(find.byKey(const Key('schema-link-books-title-0')), findsOneWidget);
+    await tester.tap(find.text('Graph'));
+    await _frames(tester);
     expect(find.text('title'), findsWidgets);
     await tester.tap(find.byKey(const Key('graph-column-books-title')));
     await _frames(tester);

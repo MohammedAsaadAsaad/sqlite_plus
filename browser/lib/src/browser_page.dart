@@ -290,7 +290,6 @@ class _BrowserPageState extends State<BrowserPage> {
               : _pane == BrowserPane.data
                   ? DataPane(
                       object: _selected,
-                      catalog: session.objects,
                       slice: _slice,
                       busy: _busy,
                       onFirst: _slice.offset == 0 ? null : () => _load(0),

@@ -10,7 +10,6 @@ class DataPane extends StatefulWidget {
   const DataPane({
     super.key,
     required this.object,
-    required this.catalog,
     required this.slice,
     required this.busy,
     required this.onFirst,
@@ -31,7 +30,6 @@ class DataPane extends StatefulWidget {
   });
 
   final SchemaObject? object;
-  final List<SchemaObject> catalog;
   final TableSlice slice;
   final bool busy;
   final VoidCallback? onFirst;
@@ -151,30 +149,6 @@ class _DataPaneState extends State<DataPane> {
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text('This table has no rowid. Change it with SQL.'),
-          ),
-        if (_facts(object).isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final fact in _facts(object))
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE7F2EC),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      child: Text(fact, style: const TextStyle(fontSize: 12)),
-                    ),
-                  ),
-              ],
-            ),
           ),
         Expanded(
           child: Padding(
@@ -327,47 +301,6 @@ class _DataPaneState extends State<DataPane> {
     final remove = widget.onDelete;
     if (source.first is! BigInt || remove == null) return;
     remove(source.first as BigInt);
-  }
-
-  List<String> _facts(SchemaObject object) {
-    final facts = <String>[];
-    for (final column in object.columns) {
-      final value = column.defaultValue;
-      if (value != null && value.isNotEmpty) {
-        facts.add('${column.name} default $value');
-      }
-    }
-    for (final key in object.foreignKeys) {
-      final target = key.to == null || key.to!.isEmpty
-          ? key.table
-          : '${key.table}.${key.to}';
-      final actions = <String>[
-        if (key.onUpdate.isNotEmpty &&
-            key.onUpdate.toUpperCase() != 'NO ACTION')
-          'ON UPDATE ${key.onUpdate}',
-        if (key.onDelete.isNotEmpty &&
-            key.onDelete.toUpperCase() != 'NO ACTION')
-          'ON DELETE ${key.onDelete}',
-      ];
-      final action = actions.isEmpty ? '' : ' · ${actions.join(' · ')}';
-      facts.add('${key.from} → $target$action');
-    }
-    for (final index in widget.catalog) {
-      if (index.type != 'index' || index.table != object.name) continue;
-      final columns = index.indexColumns.join(', ');
-      final mark = index.unique ? 'UNIQUE ' : '';
-      facts.add(
-        columns.isEmpty
-            ? '$mark${index.name}'
-            : '$mark${index.name} ($columns)',
-      );
-    }
-    for (final trigger in widget.catalog) {
-      if (trigger.type == 'trigger' && trigger.table == object.name) {
-        facts.add('trigger ${trigger.name}');
-      }
-    }
-    return facts;
   }
 }
 
