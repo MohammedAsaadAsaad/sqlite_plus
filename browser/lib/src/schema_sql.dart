@@ -124,6 +124,46 @@ String? _defaultLiteral(String raw, String type) {
   return "'${raw.replaceAll("'", "''")}'";
 }
 
+/// True when [column] on [child] can gain one foreign key.
+///
+/// A column that already references another table cannot gain a second one,
+/// and a column missing from the stored `CREATE TABLE` cannot either.
+bool columnCanReference(SchemaObject child, String column) {
+  if (child.type != 'table') return false;
+  final from = _namedColumn(child, column);
+  if (from == null) return false;
+  if (child.foreignKeys.any(
+    (key) => key.from.toLowerCase() == from.name.toLowerCase(),
+  )) {
+    return false;
+  }
+  final sql = child.sql;
+  if (sql == null || sql.trim().isEmpty) return false;
+  return rewriteTableForeignKey(
+        sql: sql,
+        column: from.name,
+        parent: 'parent',
+        parentColumn: 'id',
+        newName: child.name,
+      ) !=
+      null;
+}
+
+/// True when [column] can be the parent side of a foreign key.
+///
+/// That column is the table's only primary key, a one-column `UNIQUE` index,
+/// or `UNIQUE` on that column in the stored definition.
+bool columnAcceptsReference(
+  SchemaObject parent,
+  String column,
+  List<SchemaObject> catalog,
+) {
+  if (parent.type != 'table') return false;
+  final to = _namedColumn(parent, column);
+  if (to == null) return false;
+  return _parentIsKey(parent, to.name, catalog);
+}
+
 /// A direct foreign key from an existing child column to a parent column.
 ///
 /// sqlite_plus has no `ALTER TABLE` that adds a foreign key to a column that
@@ -275,7 +315,8 @@ bool _parentIsKey(
     for (final item in parent.columns)
       if (item.primaryKey) item,
   ];
-  if (keys.length == 1 &&
+  if (!_multiColumnPrimaryKey(parent.sql) &&
+      keys.length == 1 &&
       keys.single.name.toLowerCase() == column.toLowerCase()) {
     return true;
   }
@@ -301,6 +342,58 @@ bool _parentIsKey(
     return _keywordAtDepth(sql, part.start, part.end, 'UNIQUE');
   }
   return false;
+}
+
+/// True when the stored definition has a table-level primary key of several
+/// columns. `PRAGMA table_info` reports only the first of those columns as
+/// `pk = 1`, so that column must not be treated as a single-column key.
+bool _multiColumnPrimaryKey(String? sql) {
+  if (sql == null) return false;
+  final name = _tableNameSpan(sql);
+  final open = name == null ? null : _listOpen(sql, name.end);
+  final close = open == null ? null : _matchingParen(sql, open);
+  if (open == null || close == null) return false;
+  for (final part in _splitCommas(sql, open + 1, close)) {
+    final count = _tablePrimaryKeyColumns(sql, part.start, part.end);
+    if (count != null && count > 1) return true;
+  }
+  return false;
+}
+
+int? _tablePrimaryKeyColumns(String sql, int start, int end) {
+  final first = _identifierSpan(sql, start);
+  if (first == null || first.end > end) return null;
+  var keyFrom = first.start;
+  if (_bare(sql, first, 'CONSTRAINT')) {
+    final constraint = _identifierSpan(sql, first.end);
+    if (constraint == null || constraint.end > end) return null;
+    final primary = _identifierSpan(sql, constraint.end);
+    if (primary == null ||
+        primary.end > end ||
+        !_bare(sql, primary, 'PRIMARY')) {
+      return null;
+    }
+    keyFrom = primary.start;
+  } else if (!_bare(sql, first, 'PRIMARY')) {
+    return null;
+  }
+  final key = _keywordSpan(sql, keyFrom, end, 'KEY');
+  if (key == null) return null;
+  final list = _listOpen(sql, key.end);
+  if (list == null || list >= end) return null;
+  final stop = _matchingParen(sql, list);
+  if (stop == null || stop > end) return null;
+  var count = 0;
+  for (final column in _splitCommas(sql, list + 1, stop)) {
+    if (_readIdentifier(sql, column.start, column.end) != null) count++;
+  }
+  return count;
+}
+
+bool _bare(String sql, _Span span, String word) {
+  final char = sql[span.start];
+  if (char == '"' || char == '`' || char == '[') return false;
+  return sql.substring(span.start, span.end).toUpperCase() == word;
 }
 
 String _tempTableName(String table, List<SchemaObject> catalog) {

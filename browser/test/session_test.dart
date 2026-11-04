@@ -517,6 +517,50 @@ void main() {
     );
   });
 
+  test('only a key column on another table can be linked', () async {
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    await session.run(
+      'CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT UNIQUE)',
+    );
+    await session.run(
+      'CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, author_id INTEGER)',
+    );
+    await session.run(
+      'CREATE TABLE pair (a INTEGER, b INTEGER, PRIMARY KEY (a, b))',
+    );
+    await session.run('CREATE UNIQUE INDEX idx_books_title ON books (title)');
+    final authors =
+        session.objects.singleWhere((object) => object.name == 'authors');
+    final books =
+        session.objects.singleWhere((object) => object.name == 'books');
+    final pair = session.objects.singleWhere((object) => object.name == 'pair');
+    expect(columnCanReference(books, 'author_id'), isTrue);
+    expect(columnCanReference(books, 'missing'), isFalse);
+    expect(columnAcceptsReference(authors, 'id', session.objects), isTrue);
+    expect(columnAcceptsReference(authors, 'name', session.objects), isTrue);
+    expect(columnAcceptsReference(books, 'title', session.objects), isTrue);
+    expect(
+      columnAcceptsReference(books, 'author_id', session.objects),
+      isFalse,
+    );
+    expect(columnAcceptsReference(pair, 'a', session.objects), isFalse);
+    expect(columnAcceptsReference(pair, 'b', session.objects), isFalse);
+    final plan = planColumnLink(
+      child: books,
+      childColumn: 'author_id',
+      parent: authors,
+      parentColumn: 'id',
+      catalog: session.objects,
+    );
+    await session.runAll(plan.statements);
+    final linked =
+        session.objects.singleWhere((object) => object.name == 'books');
+    expect(columnCanReference(linked, 'author_id'), isFalse);
+    expect(columnCanReference(linked, 'title'), isTrue);
+  });
+
   test('a column search and sort cover the whole table', () async {
     final session = BrowserSession();
     await session.openEmpty();

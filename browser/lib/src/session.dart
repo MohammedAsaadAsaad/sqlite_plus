@@ -424,11 +424,13 @@ class BrowserSession extends ChangeNotifier {
     });
   }
 
-  /// Releases the image.
+  /// Releases the image and returns to an empty session.
   Future<void> close() {
     return _enqueue(() async {
       final previous = _database;
       _database = null;
+      label = 'Memory';
+      dirty = false;
       objects = const [];
       _rowCounts.clear();
       await previous?.close();

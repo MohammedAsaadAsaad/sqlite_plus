@@ -10,8 +10,9 @@ import 'session.dart';
 
 /// Tables on a board that pans and zooms.
 ///
-/// A table moves when it is dragged. A column links to a column on another
-/// table only after the relationship is confirmed.
+/// A table moves when it is dragged. After a column is chosen, only a key
+/// column on another table stays available. The link is written after it is
+/// confirmed.
 class SchemaGraph extends StatefulWidget {
   const SchemaGraph({
     super.key,
@@ -234,35 +235,6 @@ class _SchemaGraphState extends State<SchemaGraph> {
             ],
           ),
         ),
-        if (_picked != null)
-          Material(
-            color: const Color(0xFFD6EBE4),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Tap a column on another table. ${_picked!.table}.${_picked!.column} will reference it after you confirm.',
-                    ),
-                  ),
-                  TextButton(
-                    key: const Key('graph-link-cancel'),
-                    onPressed: () => setState(() => _picked = null),
-                    child: const Text('Cancel'),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
-            child: Text(
-              'Drag a table to move it. Pinch or use the buttons to zoom. Tap a column, then a column on another table. The link is saved when you confirm.',
-              style: TextStyle(color: Color(0xFF5E736B)),
-            ),
-          ),
         const SizedBox(height: 8),
         Expanded(
           child: tables.isEmpty
@@ -509,6 +481,21 @@ class _SchemaGraphState extends State<SchemaGraph> {
     );
   }
 
+  bool _available(SchemaObject table, ColumnInfo column) {
+    final picked = _picked;
+    if (picked == null) return true;
+    if (picked.table == table.name && picked.column == column.name) {
+      return true;
+    }
+    if (picked.table.toLowerCase() == table.name.toLowerCase()) return false;
+    final child =
+        _tables.where((item) => item.name == picked.table).firstOrNull;
+    if (child == null || !columnCanReference(child, picked.column)) {
+      return false;
+    }
+    return columnAcceptsReference(table, column.name, widget.objects);
+  }
+
   Widget _column(SchemaObject table, ColumnInfo column) {
     final links = [
       for (final key in table.foreignKeys)
@@ -518,24 +505,45 @@ class _SchemaGraphState extends State<SchemaGraph> {
     final selected = picked != null &&
         picked.table == table.name &&
         picked.column == column.name;
-    final target = picked != null && picked.table != table.name;
+    final available = _available(table, column);
+    final offered = available && picked != null && !selected;
+    final quiet = picked != null && !available;
+    final ink = selected
+        ? const Color(0xFF14211C)
+        : offered
+            ? const Color(0xFF0E7C66)
+            : quiet
+                ? const Color(0xFFB7C4BE)
+                : const Color(0xFF14211C);
     return InkWell(
       key: Key('graph-column-${table.name}-${column.name}'),
-      onTap: () => _tapColumn(table, column),
+      onTap: available ? () => _tapColumn(table, column) : null,
       child: Container(
         height: _row,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        color: selected
-            ? const Color(0xFFD6EBE4)
-            : target
-                ? const Color(0xFFF3FAF7)
-                : null,
+        padding: EdgeInsets.only(left: offered ? 9 : 12, right: 12),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFFD6EBE4)
+              : offered
+                  ? const Color(0xFFD8F3EA)
+                  : null,
+          border: offered
+              ? const Border(
+                  left: BorderSide(color: Color(0xFF0E7C66), width: 3),
+                )
+              : null,
+        ),
         child: Row(
           children: [
             if (column.primaryKey)
-              const Padding(
-                padding: EdgeInsets.only(right: 6),
-                child: Icon(Icons.key, size: 14, color: Color(0xFF8A6A12)),
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Icon(
+                  Icons.key,
+                  size: 14,
+                  color:
+                      quiet ? const Color(0xFFB7C4BE) : const Color(0xFF8A6A12),
+                ),
               ),
             Expanded(
               child: Text(
@@ -543,24 +551,39 @@ class _SchemaGraphState extends State<SchemaGraph> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: ink,
+                  fontWeight:
+                      selected || offered ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
+            if (offered)
+              const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(Icons.link, size: 16, color: Color(0xFF0E7C66)),
+              ),
             if (links.isNotEmpty)
               Flexible(
                 child: Text(
                   links.join(', '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style:
-                      const TextStyle(fontSize: 11, color: Color(0xFF0E7C66)),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: quiet
+                        ? const Color(0xFFB7C4BE)
+                        : const Color(0xFF0E7C66),
+                  ),
                 ),
               )
             else
               Text(
                 column.type,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF5E736B)),
+                style: TextStyle(
+                  fontSize: 11,
+                  color:
+                      quiet ? const Color(0xFFB7C4BE) : const Color(0xFF5E736B),
+                ),
               ),
           ],
         ),

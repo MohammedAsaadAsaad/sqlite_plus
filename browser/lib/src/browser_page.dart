@@ -109,10 +109,18 @@ class _BrowserPageState extends State<BrowserPage> {
                 key: const Key('more-menu'),
                 onSelected: (value) {
                   if (value == 'sample') _sample();
+                  if (value == 'close') _closeDatabase();
                 },
-                itemBuilder: (context) => const [
-                  PopupMenuItem(
-                      value: 'sample', child: Text('Add sample rows')),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'sample',
+                    child: Text('Add sample rows'),
+                  ),
+                  if (open)
+                    const PopupMenuItem(
+                      value: 'close',
+                      child: Text('Close database'),
+                    ),
                 ],
               ),
             ],
@@ -651,6 +659,26 @@ class _BrowserPageState extends State<BrowserPage> {
       final books = session.objects.where((object) => object.name == 'books');
       if (books.isEmpty || !mounted) return;
       await _select(books.single);
+    });
+  }
+
+  Future<void> _closeDatabase() async {
+    if (!session.isOpen) return;
+    if (!await _confirmDiscard()) return;
+    await _guard(() async {
+      await session.close();
+      if (!mounted) return;
+      setState(() {
+        _selected = null;
+        _slice = TableSlice.empty;
+        _result = null;
+        _notice = null;
+        _log.clear();
+        _sortColumn = null;
+        _sortAscending = true;
+        _searches.clear();
+        _pane = BrowserPane.data;
+      });
     });
   }
 

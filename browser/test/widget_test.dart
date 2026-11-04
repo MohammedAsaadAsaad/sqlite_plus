@@ -468,26 +468,32 @@ void main() {
     expect(panned.dx, lessThan(parked.dx - 20));
     expect(panned.dy, lessThan(parked.dy - 15));
 
+    expect(find.textContaining('Drag a table'), findsNothing);
+    expect(find.textContaining('Tap a column'), findsNothing);
     await tester.tap(find.byKey(const Key('graph-column-books-title')));
     await _frames(tester);
-    await tester.tap(find.byKey(const Key('graph-column-authors-name')));
-    await _frames(tester);
     expect(
-      find.text('authors.name is not a primary key or a unique column.'),
-      findsOneWidget,
-    );
-    expect(
-      tester.widget<FilledButton>(find.byKey(const Key('link-save'))).onPressed,
+      tester
+          .widget<InkWell>(find.byKey(const Key('graph-column-authors-name')))
+          .onTap,
       isNull,
     );
-    await tester.tap(
-      find.descendant(
-        of: find.byType(Dialog),
-        matching: find.text('Cancel'),
-      ),
+    expect(
+      tester
+          .widget<InkWell>(find.byKey(const Key('graph-column-books-id')))
+          .onTap,
+      isNull,
     );
+    expect(
+      tester
+          .widget<InkWell>(find.byKey(const Key('graph-column-authors-id')))
+          .onTap,
+      isNotNull,
+    );
+    expect(find.byIcon(Icons.link), findsOneWidget);
+    await tester.tap(find.byKey(const Key('graph-column-authors-name')));
     await _frames(tester);
-    expect(find.text('→ authors.id'), findsNothing);
+    expect(find.text('Confirm relationship'), findsNothing);
 
     await tester.tap(find.byKey(const Key('graph-column-authors-id')));
     await _frames(tester);
@@ -497,6 +503,16 @@ void main() {
     await _frames(tester);
     expect(find.text('→ authors.id'), findsOneWidget);
     expect(find.text('title'), findsWidgets);
+    await tester.tap(find.byKey(const Key('graph-column-books-title')));
+    await _frames(tester);
+    expect(
+      tester
+          .widget<InkWell>(find.byKey(const Key('graph-column-authors-id')))
+          .onTap,
+      isNull,
+    );
+    await tester.tap(find.byKey(const Key('graph-column-books-title')));
+    await _frames(tester);
     final board = tester.getSize(find.byKey(const Key('graph-board')));
     await tester.tap(find.byKey(const Key('graph-zoom-in')));
     await tester.pump();
@@ -723,6 +739,44 @@ void main() {
     await _frames(tester);
     expect(find.text('Kept Garden'), findsOneWidget);
     expect(find.text('Other Atlas'), findsNothing);
+    await _finish(tester, session);
+  });
+
+  testWidgets('close leaves the home screen and keeps a dirty database',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run('CREATE TABLE books (id INTEGER PRIMARY KEY)');
+    await session.run('INSERT INTO books DEFAULT VALUES');
+    expect(session.dirty, isTrue);
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+    expect(find.byKey(const Key('schema-table-books')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('more-menu')));
+    await _frames(tester);
+    await tester.tap(find.text('Close database'));
+    await _frames(tester);
+    expect(find.text('Unsaved changes'), findsOneWidget);
+    await tester.tap(find.text('Stay'));
+    await _frames(tester);
+    expect(find.byKey(const Key('schema-table-books')), findsOneWidget);
+    expect(session.isOpen, isTrue);
+
+    await tester.tap(find.byKey(const Key('more-menu')));
+    await _frames(tester);
+    await tester.tap(find.text('Close database'));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('discard-changes')));
+    await _frames(tester);
+    expect(find.byKey(const Key('home-open')), findsOneWidget);
+    expect(find.byKey(const Key('schema-table-books')), findsNothing);
+    expect(session.isOpen, isFalse);
+    expect(session.dirty, isFalse);
     await _finish(tester, session);
   });
 }
