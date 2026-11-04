@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite_plus_browser/browser_app.dart';
 import 'package:sqlite_plus_browser/src/grid.dart';
 import 'package:sqlite_plus_browser/src/recent_files.dart';
+import 'package:sqlite_plus_browser/src/schema_pane.dart';
 import 'package:sqlite_plus_browser/src/session.dart';
 import 'package:sqlite_plus_browser/src/work_progress.dart';
 
@@ -1180,6 +1181,52 @@ void main() {
     await tester.tap(find.byKey(const Key('related-rows-who')));
     await _frames(tester);
     expect(find.byKey(const Key('related-table')), findsNothing);
+    await _finish(tester, session);
+  });
+
+  testWidgets('the schema rail starts at half the window and can narrow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    final before = tester.getSize(find.byType(SchemaPane)).width;
+    expect(before, closeTo(700, 1));
+    await tester.drag(
+        find.byKey(const Key('schema-resize')), const Offset(-160, 0));
+    await _frames(tester);
+    expect(
+        tester.getSize(find.byType(SchemaPane)).width, lessThan(before - 100));
+    await _finish(tester, session);
+  });
+
+  testWidgets('ran statements are listed on the Log tab', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.text('SQL'));
+    await _frames(tester);
+    await tester.enterText(find.byKey(const Key('sql-input')), 'SELECT 1');
+    await tester.tap(find.byKey(const Key('run-sql')));
+    await _frames(tester);
+    expect(find.text('SQL log'), findsNothing);
+    await tester.tap(find.text('Log'));
+    await _frames(tester);
+    expect(find.text('SQL log'), findsOneWidget);
+    expect(find.byKey(const Key('sql-log-0')), findsOneWidget);
+    expect(find.textContaining('SELECT 1'), findsOneWidget);
     await _finish(tester, session);
   });
 }

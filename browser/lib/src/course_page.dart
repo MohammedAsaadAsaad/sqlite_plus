@@ -4,6 +4,8 @@ import 'course_grade.dart';
 import 'course_lessons.dart';
 import 'course_models.dart';
 import 'course_progress.dart';
+import 'session.dart';
+import 'sql_editor.dart';
 import 'sql_view.dart';
 
 const _ink = Color(0xFF14211C);
@@ -40,6 +42,7 @@ class _CoursePageState extends State<CoursePage> {
   QueryTable? _expected;
   List<QueryTable?> _examples = const [];
   List<Object?> _exampleErrors = const [];
+  List<SchemaObject> _schema = const [];
   final _sql = TextEditingController();
 
   CourseProgress get progress => widget.progress;
@@ -76,6 +79,7 @@ class _CoursePageState extends State<CoursePage> {
       _checked = false;
       _task = 0;
       _grade = null;
+      _schema = const [];
       _examples = List<QueryTable?>.filled(
         sqlCourse[index].examples.length,
         null,
@@ -121,14 +125,17 @@ class _CoursePageState extends State<CoursePage> {
       _preview = null;
       _expected = null;
       _grade = null;
+      _schema = const [];
     });
     try {
       final expected = await expectedTable(task);
       final preview = task.preview == null ? null : await previewTable(task);
+      final objects = await lessonObjects(task.setup);
       if (!mounted || ticket != _ticket) return;
       setState(() {
         _expected = expected;
         _preview = preview;
+        _schema = objects;
         _tablesReady = true;
       });
     } on Object catch (error) {
@@ -183,30 +190,177 @@ class _CoursePageState extends State<CoursePage> {
             ),
             title: Text(title),
           ),
-          body: switch (_stage) {
-            _Stage.list => _list(),
-            _Stage.examples => _examplesView(),
-            _Stage.questions => _questionsView(),
-            _Stage.practice => _practiceView(),
-            _Stage.done => _doneView(),
-          },
+          body: Column(
+            children: [
+              if (_showSteps) _steps(),
+              Expanded(child: _motion(_stageBody())),
+            ],
+          ),
         );
       },
     );
   }
 
+  bool get _showSteps =>
+      _stage == _Stage.examples ||
+      _stage == _Stage.questions ||
+      _stage == _Stage.practice;
+
+  Widget _stageBody() {
+    return switch (_stage) {
+      _Stage.list => _list(),
+      _Stage.examples => _examplesView(),
+      _Stage.questions => _questionsView(),
+      _Stage.practice => _practiceView(),
+      _Stage.done => _doneView(),
+    };
+  }
+
+  Widget _motion(Widget child) {
+    return TweenAnimationBuilder<double>(
+      key: ValueKey('${_stage.name}-$_level-$_question-$_task'),
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(16 * (1 - value), 0),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
+  Widget _steps() {
+    const labels = ['Examples', 'Questions', 'Write'];
+    final current = switch (_stage) {
+      _Stage.examples => 0,
+      _Stage.questions => 1,
+      _Stage.practice => 2,
+      _ => 0,
+    };
+    return ColoredBox(
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+        child: Row(
+          children: [
+            for (var index = 0; index < labels.length; index++) ...[
+              _step(index, current, labels[index]),
+              if (index < labels.length - 1)
+                Expanded(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 240),
+                    height: 2,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    color: index < current ? _ok : _line,
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _step(int index, int current, String label) {
+    final done = index < current;
+    final active = index == current;
+    final color = done || active ? _ok : const Color(0xFFB7C4BE);
+    return Column(
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 240),
+          width: 26,
+          height: 26,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: done || active ? _ok : Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: color),
+          ),
+          child: done
+              ? const Icon(Icons.check, size: 14, color: Colors.white)
+              : Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                    color: active ? Colors.white : color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: active ? _ink : _muted,
+            fontSize: 11,
+            fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _list() {
+    final passed = progress.passed.length;
+    final fraction = passed / sqlCourse.length;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
       children: [
-        const Text(
-          'Twelve levels, from a first query to a full report. Each level shows examples, then questions, then a statement this program runs.',
-          style: TextStyle(color: _muted, height: 1.4),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'This course runs on sqlite_plus. It is a practical path, not every SQLite feature.',
-          style: TextStyle(color: _note, height: 1.4),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _line),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'SQL practice',
+                  style: TextStyle(
+                    color: _ok,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Twelve levels, from a first query to a full report. Each level shows examples, then questions, then a statement this program runs.',
+                  style: TextStyle(color: _ink, height: 1.4),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'This course runs on sqlite_plus. It is a practical path, not every SQLite feature.',
+                  style: TextStyle(color: _note, height: 1.4),
+                ),
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    minHeight: 6,
+                    value: fraction,
+                    color: _ok,
+                    backgroundColor: const Color(0xFFD6EBE4),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '$passed of ${sqlCourse.length} levels passed',
+                  style: const TextStyle(color: _muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         for (var index = 0; index < sqlCourse.length; index++)
@@ -232,15 +386,29 @@ class _CoursePageState extends State<CoursePage> {
           onTap: open ? () => _openLevel(index) : null,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             child: Row(
               children: [
-                Text(
-                  '${index + 1}',
-                  style: TextStyle(
-                    color: open ? _ok : const Color(0xFFB7C4BE),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: done
+                        ? const Color(0xFFD6EBE4)
+                        : open
+                            ? const Color(0xFFF4F7F5)
+                            : const Color(0xFFF7FBF9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      color: open ? _ok : const Color(0xFFB7C4BE),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -293,9 +461,19 @@ class _CoursePageState extends State<CoursePage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             children: [
-              Text(
-                level.teach,
-                style: const TextStyle(color: _ink, height: 1.45),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _line),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    level.teach,
+                    style: const TextStyle(color: _ink, height: 1.5),
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               for (var i = 0; i < level.examples.length; i++)
@@ -338,10 +516,20 @@ class _CoursePageState extends State<CoursePage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
+                'Example ${index + 1}',
+                style: const TextStyle(
+                  color: _ok,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
                 example.title,
                 style: const TextStyle(
                   color: _ink,
                   fontWeight: FontWeight.w800,
+                  fontSize: 16,
                 ),
               ),
               const SizedBox(height: 6),
@@ -471,23 +659,53 @@ class _CoursePageState extends State<CoursePage> {
         ? (selected ? const Color(0xFFD6EBE4) : Colors.white)
         : (correct ? const Color(0xFFD6EBE4) : const Color(0xFFF8E4E1));
     final side = !show ? (selected ? _ok : _line) : (correct ? _ok : _error);
+    final letter = String.fromCharCode(65 + index);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: color,
-        shape: RoundedRectangleBorder(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: color,
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: side),
+          border: Border.all(color: side, width: selected ? 1.5 : 1),
         ),
-        child: InkWell(
-          key: Key('mcq-choice-$index'),
-          onTap: _checked ? null : () => setState(() => _choice = index),
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Text(
-              question.choices[index],
-              style: const TextStyle(color: _ink, height: 1.3),
+        child: Material(
+          color: const Color(0x00000000),
+          child: InkWell(
+            key: Key('mcq-choice-$index'),
+            onTap: _checked ? null : () => setState(() => _choice = index),
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? _ok : const Color(0xFFF4F7F5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      letter,
+                      style: TextStyle(
+                        color: selected ? Colors.white : _muted,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      question.choices[index],
+                      style: const TextStyle(color: _ink, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -530,6 +748,18 @@ class _CoursePageState extends State<CoursePage> {
               const _Label('Expected result'),
               const SizedBox(height: 8),
               _waiting(_expected),
+              if (_schema.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const _Label('Tables in this step'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final object in _schema) _tablePill(object),
+                  ],
+                ),
+              ],
               if (grade != null && grade.actual.columns.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 const _Label('Your result'),
@@ -543,15 +773,13 @@ class _CoursePageState extends State<CoursePage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextField(
-                key: const Key('task-sql'),
+              SqlEditor(
                 controller: _sql,
-                minLines: 3,
-                maxLines: 6,
-                style: sqlCodeFont.copyWith(color: _ink),
-                decoration: const InputDecoration(
-                  hintText: 'Write one SQL statement',
-                ),
+                objects: _schema,
+                visibleLines: 4,
+                hint: 'Write one SQL statement',
+                inputKey: const Key('task-sql'),
+                highlightKey: const Key('task-highlight'),
               ),
               if (grade != null) ...[
                 const SizedBox(height: 8),
@@ -609,6 +837,29 @@ class _CoursePageState extends State<CoursePage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
             children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.9, end: 1),
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) {
+                  return Transform.scale(scale: value, child: child);
+                },
+                child: const Align(
+                  alignment: Alignment.centerLeft,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Color(0xFFD6EBE4),
+                      shape: BoxShape.circle,
+                    ),
+                    child: SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: Icon(Icons.check, color: _ok, size: 28),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(
                 title,
                 style: const TextStyle(
@@ -650,15 +901,67 @@ class _CoursePageState extends State<CoursePage> {
     );
   }
 
+  Widget _tablePill(SchemaObject object) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE7F2EC),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        object.name,
+        style: const TextStyle(
+          color: _ok,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
   Widget _code(String statement) {
+    final lines = statement.isEmpty ? const [''] : statement.split('\n');
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: _ink,
+        color: const Color(0xFF17241F),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2C3C36)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: SelectableText(statement, style: sqlCodeFont),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (var i = 0; i < lines.length; i++)
+                    SizedBox(
+                      height: 22,
+                      width: 28,
+                      child: Text(
+                        '${i + 1}',
+                        textAlign: TextAlign.right,
+                        style: sqlCodeFont.copyWith(
+                          color: const Color(0xFF6E847C),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Text.rich(
+                TextSpan(
+                  style: sqlCodeFont,
+                  children: sqlHighlightSpans(statement),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

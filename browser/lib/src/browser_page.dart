@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -12,6 +13,7 @@ import 'course_page.dart';
 import 'course_progress.dart';
 import 'data_pane.dart';
 import 'format.dart';
+import 'graph_layout.dart';
 import 'home_pane.dart';
 import 'launch_bridge.dart';
 import 'orm_dialog.dart';
@@ -25,7 +27,7 @@ import 'sql_view.dart';
 import 'status_banner.dart';
 import 'work_progress.dart';
 
-enum BrowserPane { data, sql, graph }
+enum BrowserPane { data, sql, graph, log }
 
 /// Schema, rows, and a SQL editor. Wide windows keep the schema beside the work.
 class BrowserPage extends StatefulWidget {
@@ -34,6 +36,7 @@ class BrowserPage extends StatefulWidget {
     required this.session,
     required this.recents,
     required this.course,
+    required this.graphs,
     this.launch,
     this.launchMessage,
   });
@@ -41,6 +44,7 @@ class BrowserPage extends StatefulWidget {
   final BrowserSession session;
   final RecentStore recents;
   final CourseProgress course;
+  final GraphLayoutStore graphs;
   final OpenedFile? launch;
   final String? launchMessage;
 
@@ -62,6 +66,10 @@ class _BrowserPageState extends State<BrowserPage> {
   bool _progressShown = false;
   OverlayEntry? _progressEntry;
   final List<String> _log = [];
+  String? _graphKey;
+  Map<String, GraphPoint> _graphLayout = {};
+  var _railFraction = 0.5;
+  var _bodyWidth = 900.0;
 
   BrowserSession get session => widget.session;
 
@@ -177,19 +185,42 @@ class _BrowserPageState extends State<BrowserPage> {
                 ),
           body: open
               ? wide
-                  ? Row(
-                      children: [
-                        SizedBox(
-                          width: 620,
-                          child: SchemaPane(
-                            objects: session.objects,
-                            selected: _selected,
-                            onSelect: _select,
-                            onApply: _applySchema,
-                          ),
-                        ),
-                        Expanded(child: _work()),
-                      ],
+                  ? LayoutBuilder(
+                      builder: (context, constraints) {
+                        _bodyWidth = constraints.maxWidth;
+                        final total = _bodyWidth <= 0 ? 900.0 : _bodyWidth;
+                        final fraction =
+                            _railFraction.clamp(0.22, 0.75).toDouble();
+                        final rail = (total * fraction)
+                            .clamp(220.0, math.max(220.0, total - 280.0))
+                            .toDouble();
+                        return Row(
+                          children: [
+                            SizedBox(
+                              width: rail,
+                              child: SchemaPane(
+                                objects: session.objects,
+                                selected: _selected,
+                                onSelect: _select,
+                                onApply: _applySchema,
+                              ),
+                            ),
+                            _RailHandle(
+                              onDrag: (delta) {
+                                setState(() {
+                                  final width =
+                                      _bodyWidth <= 0 ? 900.0 : _bodyWidth;
+                                  _railFraction =
+                                      (_railFraction + delta / width)
+                                          .clamp(0.22, 0.75)
+                                          .toDouble();
+                                });
+                              },
+                            ),
+                            Expanded(child: _work()),
+                          ],
+                        );
+                      },
                     )
                   : _work()
               : Column(
@@ -236,6 +267,11 @@ class _BrowserPageState extends State<BrowserPage> {
                       icon: Icon(Icons.account_tree_outlined),
                       label: 'Graph',
                       key: Key('pane-graph'),
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      label: 'Log',
+                      key: Key('pane-log'),
                     ),
                   ],
                 ),
@@ -311,59 +347,64 @@ class _BrowserPageState extends State<BrowserPage> {
           child: _pane == BrowserPane.graph
               ? SchemaGraph(
                   objects: session.objects,
+                  layouts: widget.graphs,
+                  layoutKey: _graphKey,
+                  onLayout: (positions) => _graphLayout = positions,
                   onOpen: _select,
                   onApply: _applySchema,
                   onApplyScript: _applyScript,
                 )
-              : _pane == BrowserPane.data
-                  ? DataPane(
-                      object: _selected,
-                      slice: _slice,
-                      busy: _busy,
-                      onFirst: _slice.offset == 0 ? null : () => _load(0),
-                      onPrevious: _slice.offset == 0 ? null : () => _move(-1),
-                      onNext: _hasNext ? () => _move(1) : null,
-                      onLast: _lastOffset == null
-                          ? null
-                          : () => _load(_lastOffset!),
-                      onJump: _jump,
-                      onInsert: _selected == null ? null : _insert,
-                      onEdit: _edit,
-                      onDelete: _delete,
-                      onShowSql: _showSql,
-                      sortColumn: _sortColumn,
-                      sortAscending: _sortAscending,
-                      searches: _searches,
-                      onSort: _sortBy,
-                      onSearch: _searchColumn,
-                      onClearColumn: _clearColumn,
-                      loadRelated: ({
-                        required String table,
-                        required String column,
-                        required List<Object?> values,
-                      }) =>
-                          session.rowsMatching(
-                        table: table,
-                        column: column,
-                        values: values,
-                      ),
-                    )
-                  : SqlPane(
-                      controller: _sql,
-                      objects: session.objects,
-                      result: _result,
-                      log: _log,
-                      busy: _busy,
-                      onRun: () => _runSql(),
-                      onPrevious: _result != null && _result!.offset > 0
-                          ? () =>
-                              _runSql(offset: _result!.offset - _result!.limit)
-                          : null,
-                      onNext: _result != null && _result!.more
-                          ? () =>
-                              _runSql(offset: _result!.offset + _result!.limit)
-                          : null,
-                    ),
+              : _pane == BrowserPane.log
+                  ? _logPane()
+                  : _pane == BrowserPane.data
+                      ? DataPane(
+                          object: _selected,
+                          slice: _slice,
+                          busy: _busy,
+                          onFirst: _slice.offset == 0 ? null : () => _load(0),
+                          onPrevious:
+                              _slice.offset == 0 ? null : () => _move(-1),
+                          onNext: _hasNext ? () => _move(1) : null,
+                          onLast: _lastOffset == null
+                              ? null
+                              : () => _load(_lastOffset!),
+                          onJump: _jump,
+                          onInsert: _selected == null ? null : _insert,
+                          onEdit: _edit,
+                          onDelete: _delete,
+                          onShowSql: _showSql,
+                          sortColumn: _sortColumn,
+                          sortAscending: _sortAscending,
+                          searches: _searches,
+                          onSort: _sortBy,
+                          onSearch: _searchColumn,
+                          onClearColumn: _clearColumn,
+                          loadRelated: ({
+                            required String table,
+                            required String column,
+                            required List<Object?> values,
+                          }) =>
+                              session.rowsMatching(
+                            table: table,
+                            column: column,
+                            values: values,
+                          ),
+                        )
+                      : SqlPane(
+                          controller: _sql,
+                          objects: session.objects,
+                          result: _result,
+                          busy: _busy,
+                          onRun: () => _runSql(),
+                          onPrevious: _result != null && _result!.offset > 0
+                              ? () => _runSql(
+                                  offset: _result!.offset - _result!.limit)
+                              : null,
+                          onNext: _result != null && _result!.more
+                              ? () => _runSql(
+                                  offset: _result!.offset + _result!.limit)
+                              : null,
+                        ),
         ),
       ],
     );
@@ -407,6 +448,11 @@ class _BrowserPageState extends State<BrowserPage> {
                 value: BrowserPane.graph,
                 label: Text('Graph'),
                 icon: Icon(Icons.account_tree_outlined),
+              ),
+              ButtonSegment(
+                value: BrowserPane.log,
+                label: Text('Log'),
+                icon: Icon(Icons.receipt_long_outlined),
               ),
             ],
             selected: {_pane},
@@ -468,7 +514,66 @@ class _BrowserPageState extends State<BrowserPage> {
         BrowserPane.data => 0,
         BrowserPane.sql => 1,
         BrowserPane.graph => 2,
+        BrowserPane.log => 3,
       };
+
+  Widget _logPane() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'SQL log',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF14211C),
+                ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Statements from this session, oldest first.',
+            style: TextStyle(color: Color(0xFF5C6560), height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _log.isEmpty
+                ? const Center(child: Text('No statements yet.'))
+                : DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFD5E2DB)),
+                    ),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      itemCount: _log.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Text(
+                            '${index + 1}  ${_log[index]}',
+                            key: Key('sql-log-$index'),
+                            style: const TextStyle(
+                              fontFamily: 'JetBrainsMono',
+                              fontSize: 12,
+                              height: 1.35,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _applySchema(String sql) {
     return _guard(() async {
@@ -818,6 +923,8 @@ class _BrowserPageState extends State<BrowserPage> {
         _result = null;
         _notice = null;
         _log.clear();
+        _graphKey = null;
+        _graphLayout = {};
         _sortColumn = null;
         _sortAscending = true;
         _searches.clear();
@@ -837,6 +944,8 @@ class _BrowserPageState extends State<BrowserPage> {
         _result = null;
         _notice = null;
         _log.clear();
+        _graphKey = null;
+        _graphLayout = {};
         _sortColumn = null;
         _sortAscending = true;
         _searches.clear();
@@ -907,6 +1016,8 @@ class _BrowserPageState extends State<BrowserPage> {
         _result = null;
         _notice = null;
         _log.clear();
+        _graphKey = _graphIdentity(location);
+        _graphLayout = {};
         _sortColumn = null;
         _sortAscending = true;
         _searches.clear();
@@ -960,6 +1071,12 @@ class _BrowserPageState extends State<BrowserPage> {
     final leaf = saved.split(RegExp(r'[/\\]')).last;
     final stored = leaf.isEmpty ? name : leaf;
     session.markSaved(stored);
+    final carried =
+        _graphLayout.isNotEmpty ? _graphLayout : widget.graphs.read(_graphKey);
+    if (carried.isNotEmpty && _pane != BrowserPane.graph) {
+      widget.graphs.save(saved, carried);
+    }
+    if (mounted) setState(() => _graphKey = saved);
     try {
       await widget.recents.remember(
         name: stored,
@@ -1075,6 +1192,52 @@ class _BrowserPageState extends State<BrowserPage> {
   void _showMessage(String text) {
     if (!mounted) return;
     setState(() => _notice = PageNotice(text, NoticeKind.error));
+  }
+}
+
+String? _graphIdentity(String? location) {
+  if (location == null || location.trim().isEmpty) return null;
+  return location;
+}
+
+class _RailHandle extends StatelessWidget {
+  const _RailHandle({required this.onDrag});
+
+  final ValueChanged<double> onDrag;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        key: const Key('schema-resize'),
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragUpdate: (details) => onDrag(details.delta.dx),
+        child: const SizedBox(
+          width: 10,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Color(0xFFF7FBF9),
+              border: Border.symmetric(
+                vertical: BorderSide(color: Color(0xFFD5E2DB)),
+              ),
+            ),
+            child: Center(
+              child: SizedBox(
+                width: 2,
+                height: 36,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0xFF8AA399),
+                    borderRadius: BorderRadius.all(Radius.circular(2)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

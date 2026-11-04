@@ -2,6 +2,7 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 
 import 'course_models.dart';
 import 'format.dart';
+import 'session.dart';
 
 /// A small result table ready to show.
 class QueryTable {
@@ -193,6 +194,65 @@ Future<void> _runOne(MutableSqliteDatabase database, String statement) async {
     return;
   }
   await database.execute(statement);
+}
+
+/// Tables and views created by [setup], for the course statement editor.
+Future<List<SchemaObject>> lessonObjects(String setup) async {
+  final database = await MutableSqliteDatabase.create();
+  try {
+    await _runScript(database, setup);
+    final listed = await database.query(
+      'SELECT type, name, tbl_name, sql FROM sqlite_schema '
+      "WHERE name NOT LIKE 'sqlite_%' "
+      "AND type IN ('table', 'view') ORDER BY name",
+    );
+    final objects = <SchemaObject>[];
+    for (final row in listed.rows) {
+      final type = row[0]! as String;
+      final name = row[1]! as String;
+      objects.add(
+        SchemaObject(
+          type: type,
+          name: name,
+          table: (row[2] as String?) ?? name,
+          sql: row[3] as String?,
+          columns: await _lessonColumns(database, name),
+        ),
+      );
+    }
+    return objects;
+  } finally {
+    await database.close();
+  }
+}
+
+Future<List<ColumnInfo>> _lessonColumns(
+  MutableSqliteDatabase database,
+  String table,
+) async {
+  final QueryResult result;
+  try {
+    result = await database.query('PRAGMA table_info(${pragmaIdent(table)})');
+  } on SqlException {
+    return const [];
+  }
+  return [
+    for (final row in result.rows)
+      ColumnInfo(
+        name: row[1]! as String,
+        type: (row[2] as String?) ?? '',
+        notNull: row[3] == BigInt.one || row[3] == 1 || row[3] == true,
+        primaryKey: _lessonInt(row[5]) > 0,
+        keyPosition: _lessonInt(row[5]),
+        defaultValue: row[4]?.toString(),
+      ),
+  ];
+}
+
+int _lessonInt(Object? value) {
+  if (value is BigInt) return value.toInt();
+  if (value is int) return value;
+  return 0;
 }
 
 QueryTable _table(QueryResult result) {

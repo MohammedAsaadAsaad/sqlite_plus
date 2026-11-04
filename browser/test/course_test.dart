@@ -127,6 +127,16 @@ void main() {
     expect(broken.passed, isEmpty);
   });
 
+  test('a step offers the tables its setup creates', () async {
+    final objects = await lessonObjects(sqlCourse[0].tasks[0].setup);
+    expect(objects.map((object) => object.name), ['books']);
+    expect(objects.single.columns.map((column) => column.name), [
+      'title',
+      'pages',
+    ]);
+    expect(objects.single.columns.first.type, 'TEXT');
+  });
+
   testWidgets('a lesson asks, checks one statement, and opens the next level', (
     tester,
   ) async {
@@ -182,6 +192,10 @@ void main() {
     }
     await tester.tap(find.byKey(const Key('course-to-sql')));
     await _frames(tester);
+
+    await tester.enterText(find.byKey(const Key('task-sql')), 'SELECT ');
+    await _until(tester, find.byKey(const Key('suggest-title')));
+    expect(find.byKey(const Key('suggest-type-title')), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('task-sql')), 'SELECT 1');
     await tester.tap(find.byKey(const Key('task-check')));
