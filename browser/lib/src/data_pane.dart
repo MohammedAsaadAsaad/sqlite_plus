@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sqlite_plus/sqlite_plus.dart';
 
 import 'format.dart';
 import 'grid.dart';
@@ -27,6 +28,7 @@ class DataPane extends StatefulWidget {
     this.onSort,
     this.onSearch,
     this.onClearColumn,
+    this.loadRelated,
   });
 
   final SchemaObject? object;
@@ -48,12 +50,24 @@ class DataPane extends StatefulWidget {
   final void Function(String column, String query)? onSearch;
   final ValueChanged<String>? onClearColumn;
 
+  /// Reads the rows of another table that match the values on this page.
+  final Future<MatchedRows> Function({
+    required String table,
+    required String column,
+    required List<Object?> values,
+  })? loadRelated;
+
   @override
   State<DataPane> createState() => _DataPaneState();
 }
 
 class _DataPaneState extends State<DataPane> {
   final _go = TextEditingController();
+  String? _linkColumn;
+  ForeignKeyInfo? _linkKey;
+  MatchedRows? _linkRows;
+  var _linkBusy = false;
+  String? _linkNote;
 
   TableSlice get slice => widget.slice;
 
@@ -67,7 +81,20 @@ class _DataPaneState extends State<DataPane> {
     final next = widget.object;
     if (previous?.name != next?.name || previous?.type != next?.type) {
       _go.clear();
+      _clearLink();
+      return;
     }
+    if (_linkColumn != null && oldWidget.slice != widget.slice) {
+      _reloadLink();
+    }
+  }
+
+  void _clearLink() {
+    _linkColumn = null;
+    _linkKey = null;
+    _linkRows = null;
+    _linkBusy = false;
+    _linkNote = null;
   }
 
   @override
@@ -187,6 +214,15 @@ class _DataPaneState extends State<DataPane> {
                         ],
                         onCell: _edit,
                         onDelete: slice.hasRowid ? _delete : null,
+                        linkedColumns: {
+                          for (final key in object.foreignKeys) key.from,
+                        },
+                        onLink: widget.loadRelated == null ? null : _toggleLink,
+                        openLink: _linkColumn,
+                        relatedIndent: _relatedIndent(),
+                        relatedWidth: _linkColumn == null ? 0 : _relatedWidth(),
+                        relatedPanel:
+                            _linkColumn == null ? null : _relatedPanel(),
                       ),
               ),
             ),
@@ -194,6 +230,127 @@ class _DataPaneState extends State<DataPane> {
         ),
         _pager(),
       ],
+    );
+  }
+
+  List<ForeignKeyInfo> _links(String column) {
+    final object = widget.object;
+    if (object == null) return const [];
+    return [
+      for (final key in object.foreignKeys)
+        if (key.from == column) key,
+    ];
+  }
+
+  List<Object?> _pageValues(String column) {
+    final index = slice.columns.indexWhere((item) => item.name == column);
+    if (index < 0) return const [];
+    final values = <Object?>[];
+    final seen = <String>{};
+    for (final row in slice.rows) {
+      final cellIndex = slice.hasRowid ? index + 1 : index;
+      if (cellIndex >= row.length) continue;
+      final value = row[cellIndex];
+      if (value == null) continue;
+      if (seen.add(value.toString())) values.add(value);
+    }
+    return values;
+  }
+
+  double _relatedIndent() {
+    final name = _linkColumn;
+    if (name == null) return 0;
+    final index = slice.columns.indexWhere((item) => item.name == name);
+    if (index < 0) return 0;
+    return index * CellGrid.width;
+  }
+
+  double _relatedWidth() {
+    final rows = _linkRows;
+    final count =
+        rows == null || rows.columns.isEmpty ? 1 : rows.columns.length;
+    return count * _relatedCell + 36;
+  }
+
+  Future<void> _toggleLink(String column) async {
+    if (_linkColumn == column && !_linkBusy) {
+      setState(_clearLink);
+      return;
+    }
+    final keys = _links(column);
+    if (keys.isEmpty || widget.loadRelated == null) return;
+    final chosen = keys.length == 1 ? keys.single : await _chooseLink(keys);
+    if (!mounted || chosen == null) return;
+    setState(() {
+      _linkColumn = column;
+      _linkKey = chosen;
+      _linkRows = null;
+      _linkBusy = true;
+      _linkNote = null;
+    });
+    await _reloadLink();
+  }
+
+  Future<void> _reloadLink() async {
+    final key = _linkKey;
+    final column = _linkColumn;
+    final load = widget.loadRelated;
+    if (key == null || column == null || load == null) return;
+    final target = key.to;
+    if (target == null || target.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _linkBusy = false;
+        _linkRows = MatchedRows.empty;
+        _linkNote = 'This reference has no column.';
+      });
+      return;
+    }
+    try {
+      final rows = await load(
+        table: key.table,
+        column: target,
+        values: _pageValues(column),
+      );
+      if (!mounted || _linkColumn != column || _linkKey != key) return;
+      setState(() {
+        _linkRows = rows;
+        _linkBusy = false;
+        _linkNote = null;
+      });
+    } on SqlException catch (error) {
+      if (!mounted || _linkColumn != column) return;
+      setState(() {
+        _linkBusy = false;
+        _linkRows = MatchedRows.empty;
+        _linkNote = error.message;
+      });
+    }
+  }
+
+  Future<ForeignKeyInfo?> _chooseLink(List<ForeignKeyInfo> keys) {
+    return showDialog<ForeignKeyInfo>(
+      context: context,
+      builder: (context) => _RelatedChoiceDialog(keys: keys),
+    );
+  }
+
+  Widget _relatedPanel() {
+    final key = _linkKey;
+    final target = key == null
+        ? ''
+        : (key.to == null || key.to!.isEmpty)
+            ? key.table
+            : '${key.table}.${key.to}';
+    final rows = _linkRows;
+    return _RelatedPanel(
+      title: target,
+      busy: _linkBusy,
+      note: _linkNote,
+      columns: rows?.columns ?? const [],
+      rows: rows?.rows ?? const [],
+      more: rows?.more ?? false,
+      onClose: () => setState(_clearLink),
     );
   }
 
@@ -512,4 +669,242 @@ class _ColumnMenuState extends State<_ColumnMenu> {
       ),
     );
   }
+}
+
+const _relatedCell = 140.0;
+
+class _RelatedPanel extends StatelessWidget {
+  const _RelatedPanel({
+    required this.title,
+    required this.busy,
+    required this.note,
+    required this.columns,
+    required this.rows,
+    required this.more,
+    required this.onClose,
+  });
+
+  final String title;
+  final bool busy;
+  final String? note;
+  final List<String> columns;
+  final List<List<Object?>> rows;
+  final bool more;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = (columns.isEmpty ? 1 : columns.length) * _relatedCell + 36;
+    final bodyRows = rows.length > 4 ? 4 : rows.length;
+    final height =
+        busy || rows.isEmpty ? 92.0 : 36.0 + bodyRows * 32 + (more ? 22 : 0);
+    return SizedBox(
+      key: const Key('related-table'),
+      width: width,
+      height: height,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Color(0xFFF4FBF7),
+          border: Border(
+            left: BorderSide(color: Color(0xFF0E7C66), width: 3),
+            bottom: BorderSide(color: Color(0xFFD5E2DB)),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 32,
+              child: Row(
+                children: [
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.table_rows,
+                    size: 14,
+                    color: Color(0xFF0E7C66),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0E7C66),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('related-close'),
+                    tooltip: 'Hide related rows',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints.tightFor(width: 28, height: 28),
+                    onPressed: onClose,
+                    icon: const Icon(Icons.close, size: 16),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: busy
+                  ? const Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : rows.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                          child: Text(
+                            note ?? 'No related rows on this page.',
+                            style: const TextStyle(
+                              color: Color(0xFF5C6560),
+                              fontSize: 12,
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: rows.length + (more ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == rows.length) {
+                              return const Padding(
+                                padding: EdgeInsets.fromLTRB(12, 2, 12, 4),
+                                child: Text(
+                                  'More rows were left out.',
+                                  style: TextStyle(
+                                    color: Color(0xFF5C6560),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              );
+                            }
+                            final row = rows[index];
+                            return SizedBox(
+                              height: 32,
+                              child: Row(
+                                children: [
+                                  for (var column = 0;
+                                      column < columns.length;
+                                      column++)
+                                    SizedBox(
+                                      width: _relatedCell,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
+                                        child: Text(
+                                          formatCell(
+                                            column < row.length
+                                                ? row[column]
+                                                : null,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RelatedChoiceDialog extends StatefulWidget {
+  const _RelatedChoiceDialog({required this.keys});
+
+  final List<ForeignKeyInfo> keys;
+
+  @override
+  State<_RelatedChoiceDialog> createState() => _RelatedChoiceDialogState();
+}
+
+class _RelatedChoiceDialogState extends State<_RelatedChoiceDialog> {
+  late ForeignKeyInfo _choice = widget.keys.first;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Related rows',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'This column references more than one column. Which one should the rows use?',
+                style: TextStyle(color: Color(0xFF5C6560), fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              RadioGroup<ForeignKeyInfo>(
+                groupValue: _choice,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _choice = value);
+                },
+                child: Column(
+                  children: [
+                    for (final key in widget.keys)
+                      RadioListTile<ForeignKeyInfo>(
+                        key: Key(
+                          'related-choice-${key.table}-${key.to ?? ''}-${key.constraint}',
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        title: Text(_choiceLabel(key)),
+                        value: key,
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    key: const Key('related-load'),
+                    onPressed: () => Navigator.of(context).pop(_choice),
+                    child: const Text('Load'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _choiceLabel(ForeignKeyInfo key) {
+  final column = key.to;
+  if (column == null || column.isEmpty) return key.table;
+  return '${key.table}.$column';
 }

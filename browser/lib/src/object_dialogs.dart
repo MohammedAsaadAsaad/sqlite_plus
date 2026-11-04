@@ -318,6 +318,9 @@ class _AddColumnDialog extends StatefulWidget {
 class _AddColumnDialogState extends State<_AddColumnDialog> {
   final _name = TextEditingController();
   final _defaultValue = TextEditingController();
+  final _length = TextEditingController();
+  final _digits = TextEditingController();
+  final _places = TextEditingController();
   late String? _table = _initialTable();
   var _type = 'TEXT';
   var _notNull = false;
@@ -338,12 +341,18 @@ class _AddColumnDialogState extends State<_AddColumnDialog> {
     super.initState();
     _name.addListener(_refresh);
     _defaultValue.addListener(_refresh);
+    _length.addListener(_refresh);
+    _digits.addListener(_refresh);
+    _places.addListener(_refresh);
   }
 
   @override
   void dispose() {
     _name.dispose();
     _defaultValue.dispose();
+    _length.dispose();
+    _digits.dispose();
+    _places.dispose();
     super.dispose();
   }
 
@@ -366,13 +375,26 @@ class _AddColumnDialogState extends State<_AddColumnDialog> {
     return null;
   }
 
+  bool get _textLike => _type == 'TEXT' || _type == 'BLOB';
+
+  bool get _numeric =>
+      _type == 'INTEGER' || _type == 'REAL' || _type == 'NUMERIC';
+
+  String? get _typeSql => columnTypeSql(
+        base: _type,
+        length: _textLike ? _length.text : '',
+        digits: _numeric ? _digits.text : '',
+        places: _type == 'REAL' || _type == 'NUMERIC' ? _places.text : '',
+      );
+
   String? get _sql {
     final table = _selected;
-    if (table == null) return null;
+    final type = _typeSql;
+    if (table == null || type == null) return null;
     return addColumnSql(
       table: table.name,
       name: _name.text,
-      type: _type,
+      type: type,
       existing: [for (final column in table.columns) column.name],
       notNull: _notNull,
       defaultText: _defaultValue.text,
@@ -402,146 +424,242 @@ class _AddColumnDialogState extends State<_AddColumnDialog> {
   Widget build(BuildContext context) {
     final parent = _parent;
     final needsDefault = _notNull && _defaultValue.text.trim().isEmpty;
+    final type = _typeSql;
+    final height = MediaQuery.sizeOf(context).height;
     return Dialog(
       backgroundColor: Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-      child: SizedBox(
-        width: _dialogWidth(context, 460),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: _dialogWidth(context, 440),
+          maxHeight: height * 0.88,
+        ),
+        child: SizedBox(
+          width: _dialogWidth(context, 440),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'New column',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              if (widget.tables.isEmpty)
-                const Text('Create a table first.')
-              else ...[
-                DropdownButtonFormField<String>(
-                  key: const Key('add-column-table'),
-                  initialValue: _table,
-                  decoration: const InputDecoration(labelText: 'Table'),
-                  items: [
-                    for (final item in widget.tables)
-                      DropdownMenuItem(
-                          value: item.name, child: Text(item.name)),
-                  ],
-                  onChanged: (value) => setState(() => _table = value),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  key: const Key('add-column-name'),
-                  controller: _name,
-                  autofocus: true,
-                  textCapitalization: TextCapitalization.none,
-                  decoration: const InputDecoration(
-                    labelText: 'Column name',
-                    hintText: 'note',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  key: const Key('add-column-type'),
-                  initialValue: _type,
-                  decoration: const InputDecoration(labelText: 'Type'),
-                  items: [
-                    for (final type in _types)
-                      DropdownMenuItem(value: type, child: Text(type)),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _type = value);
-                  },
-                ),
-                SwitchListTile(
-                  key: const Key('add-column-null'),
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('NOT NULL'),
-                  value: _notNull,
-                  onChanged: (value) => setState(() => _notNull = value),
-                ),
-                TextField(
-                  key: const Key('add-column-default'),
-                  controller: _defaultValue,
-                  decoration: const InputDecoration(
-                    labelText: 'Default',
-                    hintText: 'Empty leaves existing rows null',
-                  ),
-                ),
-                if (needsDefault)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: Text(
-                      'Existing rows need a default.',
-                      style: TextStyle(color: Color(0xFF8A6A12)),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  key: const Key('add-column-reference-table'),
-                  initialValue: _referenceTable,
-                  decoration: const InputDecoration(labelText: 'References'),
-                  items: [
-                    const DropdownMenuItem(value: '', child: Text('None')),
-                    for (final item in widget.tables)
-                      DropdownMenuItem(
-                        value: item.name,
-                        child: Text(item.name),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Row(
+                        children: [
+                          _FormMark(icon: Icons.view_week_outlined),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'New column',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Add one column to a table that already exists.',
+                                  style: TextStyle(
+                                    color: Color(0xFF5C6560),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                  ],
-                  onChanged: _chooseReference,
-                ),
-                if (parent != null && parent.columns.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    key: Key('add-column-reference-column-${parent.name}'),
-                    initialValue: _referenceColumn,
-                    decoration:
-                        const InputDecoration(labelText: 'Referenced column'),
-                    items: [
-                      for (final column in parent.columns)
-                        DropdownMenuItem(
-                          value: column.name,
-                          child: Text(column.name),
+                      const SizedBox(height: 14),
+                      if (widget.tables.isEmpty)
+                        const Text('Create a table first.')
+                      else ...[
+                        _section(
+                          label: 'Column',
+                          children: [
+                            DropdownButtonFormField<String>(
+                              key: const Key('add-column-table'),
+                              initialValue: _table,
+                              isExpanded: true,
+                              decoration: _field('Table'),
+                              items: [
+                                for (final item in widget.tables)
+                                  DropdownMenuItem(
+                                    value: item.name,
+                                    child: Text(item.name),
+                                  ),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _table = value),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              key: const Key('add-column-name'),
+                              controller: _name,
+                              autofocus: true,
+                              textCapitalization: TextCapitalization.none,
+                              decoration: _field('Column name', hint: 'note'),
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'Type',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF5C6560),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              children: [
+                                for (final type in _types) _kind(type),
+                              ],
+                            ),
+                            _sizeFields(),
+                          ],
                         ),
+                        _section(
+                          label: 'Rules',
+                          children: [
+                            Row(
+                              children: [
+                                const Expanded(
+                                  child: Text(
+                                    'NOT NULL',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                                Switch(
+                                  key: const Key('add-column-null'),
+                                  value: _notNull,
+                                  onChanged: (value) =>
+                                      setState(() => _notNull = value),
+                                ),
+                              ],
+                            ),
+                            TextField(
+                              key: const Key('add-column-default'),
+                              controller: _defaultValue,
+                              decoration: _field(
+                                'Default',
+                                hint: 'Empty leaves existing rows null',
+                              ),
+                            ),
+                            if (needsDefault)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 6),
+                                child: Text(
+                                  'Existing rows need a default.',
+                                  style: TextStyle(color: Color(0xFF8A6A12)),
+                                ),
+                              ),
+                          ],
+                        ),
+                        _section(
+                          label: 'Reference',
+                          children: [
+                            DropdownButtonFormField<String>(
+                              key: const Key('add-column-reference-table'),
+                              initialValue: _referenceTable,
+                              isExpanded: true,
+                              decoration: _field('References'),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: '',
+                                  child: Text('None'),
+                                ),
+                                for (final item in widget.tables)
+                                  DropdownMenuItem(
+                                    value: item.name,
+                                    child: Text(item.name),
+                                  ),
+                              ],
+                              onChanged: _chooseReference,
+                            ),
+                            if (parent != null &&
+                                parent.columns.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              DropdownButtonFormField<String>(
+                                key: Key(
+                                    'add-column-reference-column-${parent.name}'),
+                                initialValue: _referenceColumn,
+                                isExpanded: true,
+                                decoration: _field('Referenced column'),
+                                items: [
+                                  for (final column in parent.columns)
+                                    DropdownMenuItem(
+                                      value: column.name,
+                                      child: Text(column.name),
+                                    ),
+                                ],
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() => _referenceColumn = value);
+                                },
+                              ),
+                            ],
+                            if (_referenceTable.isNotEmpty)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 6),
+                                child: Text(
+                                  'Existing rows stay null, so this column has no other default.',
+                                  style: TextStyle(
+                                    color: Color(0xFF5E736B),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        Container(
+                          key: const Key('add-column-preview'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF14211C),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            type ?? 'Size needs a whole number.',
+                            style: const TextStyle(
+                              color: Color(0xFFE7F6F1),
+                              fontFamily: 'JetBrainsMono',
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() => _referenceColumn = value);
-                    },
                   ),
-                ],
-                if (_referenceTable.isNotEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: Text(
-                      'Existing rows stay null, so this column has no other default.',
-                      style: TextStyle(color: Color(0xFF5E736B)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
                     ),
-                  ),
-              ],
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    key: const Key('add-column-save'),
-                    onPressed: _sql == null
-                        ? null
-                        : () => Navigator.of(context).pop(_sql),
-                    child: const Text('Add'),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      key: const Key('add-column-save'),
+                      onPressed: _sql == null
+                          ? null
+                          : () => Navigator.of(context).pop(_sql),
+                      child: const Text('Add'),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -549,6 +667,161 @@ class _AddColumnDialogState extends State<_AddColumnDialog> {
       ),
     );
   }
+
+  Widget _sizeFields() {
+    if (_textLike) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: TextField(
+          key: const Key('add-column-length'),
+          controller: _length,
+          keyboardType: TextInputType.number,
+          decoration: _field(
+            _type == 'BLOB' ? 'Blob length' : 'Text length',
+            hint: 'Empty keeps $_type',
+          ),
+          style: const TextStyle(fontFamily: 'JetBrainsMono'),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: TextField(
+              key: const Key('add-column-digits'),
+              controller: _digits,
+              keyboardType: TextInputType.number,
+              decoration: _field(
+                'Digits',
+                hint: 'Optional',
+              ),
+              style: const TextStyle(fontFamily: 'JetBrainsMono'),
+            ),
+          ),
+          if (_type == 'REAL' || _type == 'NUMERIC') ...[
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                key: const Key('add-column-places'),
+                controller: _places,
+                keyboardType: TextInputType.number,
+                decoration: _field('Decimal places', hint: 'Optional'),
+                style: const TextStyle(fontFamily: 'JetBrainsMono'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _kind(String type) {
+    final selected = _type == type;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6, bottom: 6),
+      child: Material(
+        color: selected ? const Color(0xFF0E7C66) : Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
+          key: Key('add-column-kind-$type'),
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => setState(() => _type = type),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFF0E7C66)
+                    : const Color(0xFFD9E2DC),
+              ),
+            ),
+            child: Text(
+              type,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : const Color(0xFF14211C),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _section({required String label, required List<Widget> children}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FBF9),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD9E2DC)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+              color: Color(0xFF5C6560),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _FormMark extends StatelessWidget {
+  const _FormMark({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFD6EBE4),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, size: 18, color: const Color(0xFF0E7C66)),
+    );
+  }
+}
+
+InputDecoration _field(String label, {String? hint}) {
+  const line = Color(0xFFD9E2DC);
+  final border = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: line),
+  );
+  return InputDecoration(
+    labelText: label,
+    hintText: hint,
+    isDense: true,
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    border: border,
+    enabledBorder: border,
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFF0E7C66), width: 1.5),
+    ),
+  );
 }
 
 double _dialogWidth(BuildContext context, double preferred) {

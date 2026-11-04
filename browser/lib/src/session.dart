@@ -128,6 +128,23 @@ class TableSlice {
   );
 }
 
+/// Rows of one table whose column matches the given values.
+class MatchedRows {
+  const MatchedRows({
+    required this.columns,
+    required this.rows,
+    required this.more,
+  });
+
+  final List<String> columns;
+  final List<List<Object?>> rows;
+
+  /// The value list or the page was longer than the returned rows.
+  final bool more;
+
+  static const empty = MatchedRows(columns: [], rows: [], more: false);
+}
+
 /// How many SQL result rows are shown at once.
 const sqlPageSize = 50;
 
@@ -394,6 +411,50 @@ class BrowserSession extends ChangeNotifier {
       final total = _asInt(counted.rows.single.single);
       _rowCounts[key] = total;
       return total;
+    });
+  }
+
+  /// Parent rows whose [column] is one of [values].
+  ///
+  /// Null values are skipped, because `NULL` does not match `NULL`. At most
+  /// [limit] values are sent, and the read stops after [limit] rows.
+  Future<MatchedRows> rowsMatching({
+    required String table,
+    required String column,
+    required List<Object?> values,
+    int limit = 50,
+  }) {
+    return _enqueue(() async {
+      final database = _required();
+      final known = _knownColumns(table);
+      final described =
+          known.isNotEmpty ? known : await _columns(database, table);
+      final names = [for (final item in described) item.name];
+      final usable = [
+        for (final value in values)
+          if (value != null) value,
+      ];
+      if (usable.isEmpty) {
+        return MatchedRows(columns: names, rows: const [], more: false);
+      }
+      final moreValues = usable.length > limit;
+      final capped = moreValues ? usable.sublist(0, limit) : usable;
+      final marks = List.filled(capped.length, '?').join(', ');
+      final page = await database.browse(
+        'SELECT * FROM ${quoteIdent(table)} '
+        'WHERE ${quoteIdent(column)} IN ($marks) '
+        'ORDER BY ${quoteIdent(column)} LIMIT ?',
+        [...capped, limit + 1],
+      );
+      final more = moreValues || page.rows.length > limit;
+      final rows = more && page.rows.length > limit
+          ? page.rows.sublist(0, limit)
+          : page.rows;
+      return MatchedRows(
+        columns: page.columns.isEmpty ? names : page.columns,
+        rows: rows,
+        more: more,
+      );
     });
   }
 

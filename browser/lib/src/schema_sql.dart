@@ -115,13 +115,67 @@ String? addColumnSql({
 String? _defaultLiteral(String raw, String type) {
   if (raw.toUpperCase() == 'NULL') return 'NULL';
   final numeric = RegExp(r'^[+-]?\d+(\.\d+)?$').hasMatch(raw);
-  final kind = type.trim().toUpperCase();
+  final kind = type.trim().toUpperCase().split('(').first.trim();
   const numbers = {'INTEGER', 'REAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'DECIMAL'};
   if (numeric &&
       (kind.isEmpty || numbers.contains(kind) || kind.startsWith('INT'))) {
     return raw;
   }
   return "'${raw.replaceAll("'", "''")}'";
+}
+
+/// The type written by the new-column form.
+///
+/// A blank size keeps [base]. Text with a length is `VARCHAR(n)`. An integer
+/// with a digit count is `INTEGER(n)`. Real and numeric take `type(digits)` or
+/// `type(digits, places)`. Blob with a length is `BLOB(n)`. A size that is not
+/// a whole number in range returns null so the form cannot save it.
+String? columnTypeSql({
+  required String base,
+  String length = '',
+  String digits = '',
+  String places = '',
+}) {
+  final kind = base.trim().toUpperCase();
+  final sized = _count(length);
+  final width = _count(digits);
+  final scale = _count(places, allowZero: true);
+  if (length.trim().isNotEmpty && sized == null) return null;
+  if (digits.trim().isNotEmpty && width == null) return null;
+  if (places.trim().isNotEmpty && scale == null) return null;
+  switch (kind) {
+    case 'TEXT':
+      if (width != null || scale != null) return null;
+      if (sized == null) return 'TEXT';
+      return 'VARCHAR($sized)';
+    case 'INTEGER':
+      if (sized != null || scale != null) return null;
+      if (width == null) return 'INTEGER';
+      return 'INTEGER($width)';
+    case 'REAL':
+    case 'NUMERIC':
+      if (sized != null) return null;
+      if (scale != null && width == null) return null;
+      if (width == null) return kind;
+      if (scale == null) return '$kind($width)';
+      return '$kind($width, $scale)';
+    case 'BLOB':
+      if (width != null || scale != null) return null;
+      if (sized == null) return 'BLOB';
+      return 'BLOB($sized)';
+    default:
+      return null;
+  }
+}
+
+/// A size from 1 to 999999, or 0 when [allowZero] is set. Blank is null.
+int? _count(String raw, {bool allowZero = false}) {
+  final text = raw.trim();
+  if (text.isEmpty) return null;
+  if (!RegExp(r'^\d{1,6}$').hasMatch(text)) return null;
+  final value = int.parse(text);
+  if (value == 0 && !allowZero) return null;
+  return value;
 }
 
 /// True when [column] on [child] can gain one foreign key.

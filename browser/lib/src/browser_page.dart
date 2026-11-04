@@ -309,6 +309,16 @@ class _BrowserPageState extends State<BrowserPage> {
                       onSort: _sortBy,
                       onSearch: _searchColumn,
                       onClearColumn: _clearColumn,
+                      loadRelated: ({
+                        required String table,
+                        required String column,
+                        required List<Object?> values,
+                      }) =>
+                          session.rowsMatching(
+                        table: table,
+                        column: column,
+                        values: values,
+                      ),
                     )
                   : SqlPane(
                       controller: _sql,

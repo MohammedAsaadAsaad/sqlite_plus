@@ -417,6 +417,26 @@ void main() {
       'ALTER TABLE "books" ADD COLUMN "author_id" INTEGER '
       'REFERENCES "authors" ("id")',
     );
+    expect(columnTypeSql(base: 'TEXT'), 'TEXT');
+    expect(columnTypeSql(base: 'TEXT', length: '160'), 'VARCHAR(160)');
+    expect(columnTypeSql(base: 'TEXT', length: '0'), isNull);
+    expect(columnTypeSql(base: 'TEXT', length: 'wide'), isNull);
+    expect(columnTypeSql(base: 'INTEGER'), 'INTEGER');
+    expect(columnTypeSql(base: 'INTEGER', digits: '11'), 'INTEGER(11)');
+    expect(
+        columnTypeSql(base: 'REAL', digits: '10', places: '2'), 'REAL(10, 2)');
+    expect(columnTypeSql(base: 'REAL', places: '2'), isNull);
+    expect(columnTypeSql(base: 'NUMERIC', digits: '8'), 'NUMERIC(8)');
+    expect(columnTypeSql(base: 'BLOB', length: '32'), 'BLOB(32)');
+    expect(
+      addColumnSql(
+        table: 'events',
+        name: 'rank',
+        type: 'INTEGER(11)',
+        defaultText: '3',
+      ),
+      'ALTER TABLE "events" ADD COLUMN "rank" INTEGER(11) DEFAULT 3',
+    );
 
     final session = BrowserSession();
     await session.openEmpty();
@@ -450,6 +470,50 @@ void main() {
     expect(link.from, 'author_id');
     expect(link.table, 'authors');
     expect(link.to, 'id');
+  });
+
+  test('related rows use one parent column from this page', () async {
+    final session = BrowserSession();
+    await session.openEmpty();
+    addTearDown(session.close);
+    await session.run(
+      'CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT UNIQUE)',
+    );
+    await session.run(
+      'CREATE TABLE books ('
+      'id INTEGER PRIMARY KEY, title TEXT, author_id INTEGER, '
+      'FOREIGN KEY (author_id) REFERENCES authors(id), '
+      'FOREIGN KEY (author_id) REFERENCES authors(name))',
+    );
+    await session.run(
+      "INSERT INTO authors (id, name) VALUES (1, 'Ada'), (2, 'Grace')",
+    );
+    await session.run(
+      "INSERT INTO books (title, author_id) VALUES ('Kept', 1)",
+    );
+    final books =
+        session.objects.singleWhere((object) => object.name == 'books');
+    final links = [
+      for (final key in books.foreignKeys)
+        if (key.from == 'author_id') key,
+    ];
+    expect(links, hasLength(2));
+    final matched = await session.rowsMatching(
+      table: 'authors',
+      column: 'name',
+      values: const ['Ada', null, 'Ada'],
+    );
+    final name = matched.columns.indexOf('name');
+    expect(matched.rows, hasLength(1));
+    expect(matched.rows.single[name], 'Ada');
+    expect(matched.more, isFalse);
+    final none = await session.rowsMatching(
+      table: 'authors',
+      column: 'id',
+      values: const [null],
+    );
+    expect(none.rows, isEmpty);
+    expect(none.columns, contains('name'));
   });
 
   test('a confirmed column link keeps the rows and the index', () async {

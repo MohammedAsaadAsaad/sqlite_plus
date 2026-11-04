@@ -1047,4 +1047,139 @@ void main() {
     expect(find.text('column'), findsNothing);
     await _finish(tester, session);
   });
+
+  testWidgets('a new column can set its text length and digit count',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run(
+      'CREATE TABLE events (id INTEGER PRIMARY KEY, category TEXT)',
+    );
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.byKey(const Key('schema-add-column-events')));
+    await _frames(tester);
+    expect(find.text('New column'), findsOneWidget);
+    expect(find.text('Text length'), findsOneWidget);
+    expect(find.text('Digits'), findsNothing);
+    await tester.enterText(find.byKey(const Key('add-column-length')), '160');
+    await _frames(tester);
+    expect(find.text('VARCHAR(160)'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('add-column-kind-INTEGER')));
+    await _frames(tester);
+    expect(find.text('Text length'), findsNothing);
+    expect(find.text('Digits'), findsOneWidget);
+    expect(find.text('Decimal places'), findsNothing);
+    await tester.enterText(find.byKey(const Key('add-column-digits')), '11');
+    await _frames(tester);
+    expect(find.text('INTEGER(11)'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('add-column-kind-REAL')));
+    await _frames(tester);
+    expect(find.text('Decimal places'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('add-column-digits')), '10');
+    await tester.enterText(find.byKey(const Key('add-column-places')), '2');
+    await _frames(tester);
+    expect(find.text('REAL(10, 2)'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('add-column-name')), 'amount');
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('add-column-save')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('schema-table-events')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('show-sql')));
+    await _frames(tester);
+    final sql = tester
+        .widget<SelectableText>(find.byKey(const Key('sql-code')))
+        .textSpan!
+        .toPlainText();
+    expect(sql, contains('"amount" REAL(10, 2)'));
+    await _finish(tester, session);
+  });
+
+  testWidgets('a reference opens one related table under its column',
+      (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run(
+      'CREATE TABLE authors (id INTEGER PRIMARY KEY, name TEXT UNIQUE)',
+    );
+    await session.run(
+      'CREATE TABLE people (id INTEGER PRIMARY KEY, name TEXT UNIQUE)',
+    );
+    await session.run(
+      'CREATE TABLE books ('
+      'id INTEGER PRIMARY KEY, '
+      'title TEXT REFERENCES authors(name), '
+      'author_id INTEGER REFERENCES authors(id))',
+    );
+    await session.run(
+      "INSERT INTO authors (id, name) VALUES (1, 'Ada'), (2, 'Grace')",
+    );
+    await session.run(
+      "INSERT INTO books (title, author_id) VALUES ('Kept', 1)",
+    );
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('schema-table-books')));
+    await _frames(tester);
+
+    expect(find.byKey(const Key('related-rows-author_id')), findsOneWidget);
+    expect(find.byKey(const Key('related-table')), findsNothing);
+    await tester.tap(find.byKey(const Key('related-rows-author_id')));
+    await _frames(tester);
+    expect(find.byKey(const Key('related-table')), findsOneWidget);
+    expect(find.text('authors.id'), findsWidgets);
+    expect(find.text('Ada'), findsOneWidget);
+    expect(find.text('Grace'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('related-rows-title')));
+    await _frames(tester);
+    expect(find.byKey(const Key('related-table')), findsOneWidget);
+    expect(find.text('authors.name'), findsWidgets);
+    expect(find.text('Ada'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('related-close')));
+    await _frames(tester);
+    expect(find.byKey(const Key('related-table')), findsNothing);
+
+    await session.run(
+      'CREATE TABLE notes ('
+      'id INTEGER PRIMARY KEY, who INTEGER, '
+      'FOREIGN KEY (who) REFERENCES authors(id), '
+      'FOREIGN KEY (who) REFERENCES people(id))',
+    );
+    await session.run("INSERT INTO people (id, name) VALUES (1, 'Person')");
+    await session.run("INSERT INTO notes (who) VALUES (1)");
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('schema-table-notes')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('related-rows-who')));
+    await _frames(tester);
+    expect(
+      find.text(
+        'This column references more than one column. Which one should the rows use?',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('people.id'));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('related-load')));
+    await _frames(tester);
+    expect(find.byKey(const Key('related-table')), findsOneWidget);
+    expect(find.text('Person'), findsOneWidget);
+    expect(find.text('Ada'), findsNothing);
+    await tester.tap(find.byKey(const Key('related-rows-who')));
+    await _frames(tester);
+    expect(find.byKey(const Key('related-table')), findsNothing);
+    await _finish(tester, session);
+  });
 }
