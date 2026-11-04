@@ -70,13 +70,16 @@ void main() {
     expect(find.text('320'), findsOneWidget);
     expect(find.text('Memory · unsaved'), findsOneWidget);
     expect(find.text('PK'), findsOneWidget);
-    expect(find.text('TEXT'), findsOneWidget);
+    expect(find.text('Schema'), findsNothing);
+    expect(find.text('TEXT'), findsNothing);
+    expect(find.byIcon(Icons.abc), findsOneWidget);
+    expect(find.byIcon(Icons.numbers), findsNWidgets(2));
     expect(find.text('Tables (1)'), findsOneWidget);
     expect(find.text('Indices (0)'), findsOneWidget);
     expect(find.text('Views (0)'), findsOneWidget);
     expect(find.text('Triggers (0)'), findsOneWidget);
-    expect(find.text('"title" TEXT NOT NULL'), findsOneWidget);
-    expect(find.text('"id" INTEGER PRIMARY KEY'), findsOneWidget);
+    expect(find.text('"title" TEXT NOT NULL'), findsNothing);
+    expect(find.text('"id" INTEGER PRIMARY KEY'), findsNothing);
     await tester.tap(find.byKey(const Key('show-sql')));
     await _frames(tester);
     final code =
@@ -659,8 +662,17 @@ void main() {
     await tester.tap(find.byKey(const Key('add-column-save')));
     await _frames(tester);
     expect(find.text('note'), findsOneWidget);
-    expect(find.textContaining('"note" TEXT NOT NULL'), findsWidgets);
+    expect(find.textContaining('"note" TEXT NOT NULL'), findsNothing);
     expect(find.byKey(const Key('sql-input')), findsNothing);
+    await tester.tap(find.byKey(const Key('schema-table-events')));
+    await _frames(tester);
+    await tester.tap(find.byKey(const Key('show-sql')));
+    await _frames(tester);
+    final noteSql = tester
+        .widget<SelectableText>(find.byKey(const Key('sql-code')))
+        .textSpan!
+        .toPlainText();
+    expect(noteSql, contains('"note" TEXT NOT NULL DEFAULT \'Kept\''));
     await _finish(tester, session);
   });
 
@@ -784,6 +796,33 @@ void main() {
     expect(find.byKey(const Key('schema-table-books')), findsNothing);
     expect(session.isOpen, isFalse);
     expect(session.dirty, isFalse);
+    await _finish(tester, session);
+  });
+
+  testWidgets('a text column shows its length beside the symbol',
+      (tester) async {
+    tester.view.physicalSize = const Size(420, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    await session.run(
+      'CREATE TABLE cities (name NVARCHAR(160), code INTEGER)',
+    );
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await _frames(tester);
+    expect(find.text('Schema'), findsNothing);
+    expect(find.textContaining('NVARCHAR'), findsNothing);
+    expect(find.text('160'), findsOneWidget);
+    expect(find.byIcon(Icons.abc), findsOneWidget);
+    expect(find.byIcon(Icons.numbers), findsOneWidget);
+    final length = tester.getTopLeft(find.text('160'));
+    final list = tester.getRect(find.byKey(const Key('schema-list')));
+    expect(length.dx, greaterThan(list.left));
+    expect(length.dx, lessThan(list.right));
     await _finish(tester, session);
   });
 
