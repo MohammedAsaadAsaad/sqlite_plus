@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+Depends on `sqlite_plus` ^0.1.7. `vec0` is unchanged. The README links the other packages on pub.dev and shows a short example of each.
+
 ## 0.1.0
 
 Brute-force `vec0` virtual table for one little-endian float32 column.

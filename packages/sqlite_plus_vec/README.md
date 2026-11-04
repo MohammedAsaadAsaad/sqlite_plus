@@ -4,11 +4,147 @@ Nearest neighbors for one float32 column. The module name is `vec0`. The query r
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.5
-  sqlite_plus_vec: ^0.1.0
+  sqlite_plus: ^0.1.7
+  sqlite_plus_vec: ^0.1.1
 ```
 
-An application that does not import this package does not load `vec0`. [`sqlite_plus`](../sqlite_plus) stores the rows in a shadow table. This package supplies the distance and the virtual table.
+## The packages on pub.dev
+
+Each package is a complete library. Import only what you call. The links below are the package pages.
+
+| Package | Version | Page |
+|---|---|---|
+| sqlite_plus | `^0.1.7` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.0` | <https://pub.dev/packages/sqlite_plus_geo> |
+
+### sqlite_plus
+
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.7
+```
+
+```dart
+import 'package:sqlite_plus/sqlite_plus.dart';
+
+final db = await openInMemory();
+await db.execute(
+  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT)',
+);
+await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
+final rows = await db.query(
+  'SELECT title FROM note WHERE title LIKE ?',
+  ['%Garden%'],
+);
+```
+
+`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
+
+### sqlite_plus_orm
+
+```yaml
+dependencies:
+  sqlite_plus_orm: ^0.1.7
+```
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity()
+class Note {
+  Note({this.id, required this.title, this.revision = 0});
+  final BigInt? id;
+  String title;
+  @DbVersion()
+  int revision;
+}
+```
+
+`saveChanges` writes one transaction and bumps `revision`. A table with no `PRIMARY KEY` still maps. Its key is the SQLite row id:
+
+```dart
+@DbKey(generated: true)
+final BigInt? rowid;
+```
+
+`plan()` adopts that row id and does not rebuild the table.
+
+### sqlite_plus_generator
+
+```yaml
+dev_dependencies:
+  sqlite_plus_generator: ^0.1.7
+```
+
+```sh
+dart run sqlite_plus_generator
+```
+
+From the package root, that command writes a part for every public `@DbEntity` under `lib/`, plus `lib/sqlite_plus_migrations.g.dart`.
+
+### sqlite_plus_arabic
+
+```yaml
+dependencies:
+  sqlite_plus_arabic: ^0.1.1
+```
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+
+SqlitePlusArabic.register(db);
+await db.execute(
+  "CREATE VIRTUAL TABLE passage USING fts5(body, tokenize = 'arabic')",
+);
+```
+
+`حديقة` and `الحديقة` share one token. `الله` stays `الله`. This is not the SQLite ICU Arabic tokenizer. Register before `CREATE`, and again after the image is reopened.
+
+### sqlite_plus_vec
+
+```yaml
+dependencies:
+  sqlite_plus_vec: ^0.1.1
+```
+
+```dart
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+SqlitePlusVec.register(db);
+await db.execute(
+  'CREATE VIRTUAL TABLE point USING vec0(embedding float[2] distance_metric=l2)',
+);
+```
+
+`MATCH` with `k` scans every stored float32 vector. The file is not a sqlite-vec database.
+
+### sqlite_plus_geo
+
+```yaml
+dependencies:
+  sqlite_plus_geo: ^0.1.0
+```
+
+```dart
+import 'package:sqlite_plus_geo/sqlite_plus_geo.dart';
+
+final geo = GeoSession(db);
+await geo.createSpatialTable(
+  'facilities',
+  geometryColumn: 'location',
+  geometryType: GeoGeometryType.point,
+  srid: 4326,
+);
+```
+
+X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
+
+
+An application that does not import this package does not load `vec0`. [`sqlite_plus`](https://pub.dev/packages/sqlite_plus) stores the rows in a shadow table. This package supplies the distance and the virtual table.
 
 The scan compares every vector. It does not build an approximate index. A file written here is a sqlite_plus image with a shadow table named `<table>_vec`. A sqlite-vec database file is a different format.
 
@@ -66,7 +202,7 @@ The bytes live in `items_vec`. `DROP TABLE items` drops that shadow. `BEGIN`, an
 
 ## A mapped table
 
-[`sqlite_plus_orm`](../sqlite_plus_orm) writes the `CREATE` statement and the `nearest` method. It does not import this package. `DbModules.vec0` is `'vec0'`. `DbVectorMetrics.l2` is `'l2'`. `@DbVector(2)` uses `l2` when `metric` is omitted. Another identifier can be written as a string. `vec0` checks it when the table is created.
+[`sqlite_plus_orm`](https://pub.dev/packages/sqlite_plus_orm) writes the `CREATE` statement and the `nearest` method. It does not import this package. `DbModules.vec0` is `'vec0'`. `DbVectorMetrics.l2` is `'l2'`. `@DbVector(2)` uses `l2` when `metric` is omitted. Another identifier can be written as a string. `vec0` checks it when the table is created.
 
 ```dart
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
@@ -109,7 +245,7 @@ A cosine table is the same class with `metric: DbVectorMetrics.cosine`. The crea
 
 ## What the generator writes
 
-[`sqlite_plus_generator`](../sqlite_plus_generator) reads `DbModules.vec0` and `@DbVector(2)`. The part contains `virtualModule: "vec0"`, `Codecs.vector(2)`, `vectorDimensions: 2`, `vectorMetric: "l2"`, and `nearest(List<double> vector, {int k = 10})`. The default `k` in that method is 10. It does not import `sqlite_plus_vec`.
+[`sqlite_plus_generator`](https://pub.dev/packages/sqlite_plus_generator) reads `DbModules.vec0` and `@DbVector(2)`. The part contains `virtualModule: "vec0"`, `Codecs.vector(2)`, `vectorDimensions: 2`, `vectorMetric: "l2"`, and `nearest(List<double> vector, {int k = 10})`. The default `k` in that method is 10. It does not import `sqlite_plus_vec`.
 
 ```dart
 final point = (await PointQuery(points.query)
@@ -139,7 +275,7 @@ dart run bin/main.dart
 
 | You want | Package | You call |
 |---|---|---|
-| The shadow rows and the SQL engine | [`sqlite_plus`](../sqlite_plus) | `openInMemory`, then `MATCH` |
-| `DbModules.vec0`, `@DbVector`, `nearest` | [`sqlite_plus_orm`](../sqlite_plus_orm) | `points.query.nearest` |
-| The class turned into a part | [`sqlite_plus_generator`](../sqlite_plus_generator) | `dart run sqlite_plus_generator` |
+| The shadow rows and the SQL engine | [`sqlite_plus`](https://pub.dev/packages/sqlite_plus) | `openInMemory`, then `MATCH` |
+| `DbModules.vec0`, `@DbVector`, `nearest` | [`sqlite_plus_orm`](https://pub.dev/packages/sqlite_plus_orm) | `points.query.nearest` |
+| The class turned into a part | [`sqlite_plus_generator`](https://pub.dev/packages/sqlite_plus_generator) | `dart run sqlite_plus_generator` |
 | The distance and the `vec0` module | this package | `SqlitePlusVec.register` |

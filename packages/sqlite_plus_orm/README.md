@@ -6,8 +6,144 @@ Dart objects on `sqlite_plus`. You change a field. `saveChanges` writes one tran
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.4
+  sqlite_plus_orm: ^0.1.7
 ```
+
+## The packages on pub.dev
+
+Each package is a complete library. Import only what you call. The links below are the package pages.
+
+| Package | Version | Page |
+|---|---|---|
+| sqlite_plus | `^0.1.7` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.0` | <https://pub.dev/packages/sqlite_plus_geo> |
+
+### sqlite_plus
+
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.7
+```
+
+```dart
+import 'package:sqlite_plus/sqlite_plus.dart';
+
+final db = await openInMemory();
+await db.execute(
+  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT)',
+);
+await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
+final rows = await db.query(
+  'SELECT title FROM note WHERE title LIKE ?',
+  ['%Garden%'],
+);
+```
+
+`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
+
+### sqlite_plus_orm
+
+```yaml
+dependencies:
+  sqlite_plus_orm: ^0.1.7
+```
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity()
+class Note {
+  Note({this.id, required this.title, this.revision = 0});
+  final BigInt? id;
+  String title;
+  @DbVersion()
+  int revision;
+}
+```
+
+`saveChanges` writes one transaction and bumps `revision`. A table with no `PRIMARY KEY` still maps. Its key is the SQLite row id:
+
+```dart
+@DbKey(generated: true)
+final BigInt? rowid;
+```
+
+`plan()` adopts that row id and does not rebuild the table.
+
+### sqlite_plus_generator
+
+```yaml
+dev_dependencies:
+  sqlite_plus_generator: ^0.1.7
+```
+
+```sh
+dart run sqlite_plus_generator
+```
+
+From the package root, that command writes a part for every public `@DbEntity` under `lib/`, plus `lib/sqlite_plus_migrations.g.dart`.
+
+### sqlite_plus_arabic
+
+```yaml
+dependencies:
+  sqlite_plus_arabic: ^0.1.1
+```
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+
+SqlitePlusArabic.register(db);
+await db.execute(
+  "CREATE VIRTUAL TABLE passage USING fts5(body, tokenize = 'arabic')",
+);
+```
+
+`حديقة` and `الحديقة` share one token. `الله` stays `الله`. This is not the SQLite ICU Arabic tokenizer. Register before `CREATE`, and again after the image is reopened.
+
+### sqlite_plus_vec
+
+```yaml
+dependencies:
+  sqlite_plus_vec: ^0.1.1
+```
+
+```dart
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+SqlitePlusVec.register(db);
+await db.execute(
+  'CREATE VIRTUAL TABLE point USING vec0(embedding float[2] distance_metric=l2)',
+);
+```
+
+`MATCH` with `k` scans every stored float32 vector. The file is not a sqlite-vec database.
+
+### sqlite_plus_geo
+
+```yaml
+dependencies:
+  sqlite_plus_geo: ^0.1.0
+```
+
+```dart
+import 'package:sqlite_plus_geo/sqlite_plus_geo.dart';
+
+final geo = GeoSession(db);
+await geo.createSpatialTable(
+  'facilities',
+  geometryColumn: 'location',
+  geometryType: GeoGeometryType.point,
+  srid: 4326,
+);
+```
+
+X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
+
 
 ## Save two books, rename one
 
@@ -319,7 +455,7 @@ final hit = await articles.query.search('run').single();
 
 `hit.body` is `running`. Porter did the stemming. The engine already contains this tokenizer, so no extra package is registered.
 
-Arabic stemming is the string `'arabic'`. [`sqlite_plus_arabic`](../sqlite_plus_arabic) registers that name. The ORM only stores it.
+Arabic stemming is the string `'arabic'`. [`sqlite_plus_arabic`](https://pub.dev/packages/sqlite_plus_arabic) registers that name. The ORM only stores it.
 
 ```dart
 import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
@@ -376,13 +512,13 @@ final nearest =
     await points.query.nearest(const [0.8, 0.2, 0, 0], k: 1).single();
 ```
 
-`nearest.embedding[0]` is greater than `0.5`. The query is `"embedding" MATCH ? AND "k" = ?`, ordered by `distance`. The scan reads both rows. [`sqlite_plus_vec`](../sqlite_plus_vec) owns the distance. This ORM writes the SQL and checks the list length. `nearest(const [1, 0], k: 1)` throws `OrmCodecException`. `k: 0` throws `RangeError`. `k` above 4096 throws `RangeError` as well.
+`nearest.embedding[0]` is greater than `0.5`. The query is `"embedding" MATCH ? AND "k" = ?`, ordered by `distance`. The scan reads both rows. [`sqlite_plus_vec`](https://pub.dev/packages/sqlite_plus_vec) owns the distance. This ORM writes the SQL and checks the list length. `nearest(const [1, 0], k: 1)` throws `OrmCodecException`. `k: 0` throws `RangeError`. `k` above 4096 throws `RangeError` as well.
 
 `module: 'vec9'` is rejected while the model is built. `metric: 'hamming'` is accepted as an identifier and `vec0` rejects it at `CREATE` with `vec0: unknown distance metric`. A column named `distance` or `k` on a `vec0` entity is rejected, because those names are the hidden query columns.
 
 ## The other packages
 
-[`sqlite_plus`](../sqlite_plus) is the engine. The same connection answers SQL directly.
+[`sqlite_plus`](https://pub.dev/packages/sqlite_plus) is the engine. The same connection answers SQL directly.
 
 ```dart
 final rows = await connection.database.query(
@@ -391,7 +527,7 @@ final rows = await connection.database.query(
 );
 ```
 
-[`sqlite_plus_arabic`](../sqlite_plus_arabic) registers `arabic` and documents the stem of `حديقة`, `كتابه`, and `الله`. [`sqlite_plus_vec`](../sqlite_plus_vec) registers `vec0`, encodes float32, and answers `MATCH` with `k`. [`sqlite_plus_generator`](../sqlite_plus_generator) writes `twice()`, `search`, and `nearest` from the class. The generated part does not import the two extension packages. Call `register` on the connection yourself.
+[`sqlite_plus_arabic`](https://pub.dev/packages/sqlite_plus_arabic) registers `arabic` and documents the stem of `حديقة`, `كتابه`, and `الله`. [`sqlite_plus_vec`](https://pub.dev/packages/sqlite_plus_vec) registers `vec0`, encodes float32, and answers `MATCH` with `k`. [`sqlite_plus_generator`](https://pub.dev/packages/sqlite_plus_generator) writes `twice()`, `search`, and `nearest` from the class. The generated part does not import the two extension packages. Call `register` on the connection yourself.
 
 ```sh
 dart run sqlite_plus_generator

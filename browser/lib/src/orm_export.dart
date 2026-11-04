@@ -23,8 +23,11 @@ const ormModelSteps = [
   ),
   OrmModelStep(
     'Add the packages',
-    'Add sqlite_plus_orm to dependencies and sqlite_plus_generator to '
-        'dev_dependencies.',
+    'Add sqlite_plus: ^0.1.7 and sqlite_plus_orm: ^0.1.7 to dependencies, '
+        'and sqlite_plus_generator: ^0.1.7 to dev_dependencies. '
+        'https://pub.dev/packages/sqlite_plus '
+        'https://pub.dev/packages/sqlite_plus_orm '
+        'https://pub.dev/packages/sqlite_plus_generator',
   ),
   OrmModelStep(
     'Generate for the whole project',
@@ -45,6 +48,7 @@ const ormModelSteps = [
 /// Short notes repeated under the steps. They are not classes.
 const ormModelHints = [
   'A single integer primary key is BigInt? with @DbKey(generated: true).',
+  'A table with no PRIMARY KEY uses its SQLite rowid the same way.',
   '@DbColumn(name:) keeps the SQL column name. One @DbReference is one column.',
 ];
 
@@ -53,6 +57,7 @@ const ormModelHints = [
 /// The generator reads this file. `@DbEntity(table:)` keeps the SQL table
 /// name, and `@DbColumn(name:)` keeps a SQL column whose Dart name differs.
 /// A single integer primary key is `BigInt?` so the engine can assign it.
+/// A table with no `PRIMARY KEY` uses the SQLite row id the same way.
 /// One `@DbReference` is one column. A foreign key of several columns stays
 /// in a comment.
 String ormModels(List<SchemaObject> objects) {
@@ -74,9 +79,11 @@ String ormModels(List<SchemaObject> objects) {
         ? '${table.name} is a virtual table. Write its fts5, rtree, or vec0 class by hand.'
         : table.columns.isEmpty
             ? '${table.name} has no columns.'
-            : _keyPositions(table).isEmpty
-                ? '${table.name} has no primary key, so the generator cannot own it.'
-                : null;
+            : _keyPositions(table).isEmpty && _withoutRowid(table.sql)
+                ? '${table.name} is WITHOUT ROWID and has no primary key, so the generator cannot own it.'
+                : _keyPositions(table).isEmpty && _rowidAlias(table) == null
+                    ? '${table.name} uses the names rowid, oid, and _rowid_ as columns, so the generator cannot name its row id.'
+                    : null;
     planned.add(
       _Table(
         source: table,
@@ -235,6 +242,20 @@ bool _withoutRowid(String? sql) {
   return RegExp(r'\bwithout\s+rowid\b', caseSensitive: false).hasMatch(sql);
 }
 
+/// A name that still addresses the SQLite row id.
+///
+/// A declared column hides `rowid`, `oid`, or `_rowid_`. The first free name
+/// is the key the generator can own.
+String? _rowidAlias(SchemaObject table) {
+  final taken = {
+    for (final column in table.columns) column.name.toLowerCase(),
+  };
+  for (final name in const ['rowid', 'oid', '_rowid_']) {
+    if (!taken.contains(name)) return name;
+  }
+  return null;
+}
+
 void _fields(
   _Table table,
   List<_Table> planned,
@@ -243,6 +264,29 @@ void _fields(
 ) {
   final used = <String>{};
   final keys = _keyPositions(table.source);
+  if (keys.isEmpty) {
+    final alias = _rowidAlias(table.source);
+    if (alias != null) {
+      final field = _Field(
+        column: ColumnInfo(
+          name: alias,
+          type: 'INTEGER',
+          notNull: false,
+          primaryKey: true,
+          keyPosition: 1,
+        ),
+        name: _unique(_fieldName(alias), used),
+        dartType: 'BigInt?',
+        nullable: true,
+        generated: true,
+        keyOrder: 0,
+        unique: false,
+        defaultSql: null,
+      );
+      field.note = 'SQLite row id. ${table.source.name} has no PRIMARY KEY.';
+      table.fields.add(field);
+    }
+  }
   final generated = keys.length == 1 &&
       !table.withoutRowid &&
       cellKind(keys.keys.single.type) == CellKind.integer;

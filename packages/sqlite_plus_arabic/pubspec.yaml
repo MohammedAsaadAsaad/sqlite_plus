@@ -1,6 +1,6 @@
 name: sqlite_plus_arabic
 description: Arabic light stemmer for sqlite_plus FTS5 tables, including ORM tokenizer names.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus_arabic
 issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
 topics:
@@ -11,8 +11,8 @@ resolution: workspace
 environment:
   sdk: '>=3.6.0 <4.0.0'
 dependencies:
-  sqlite_plus: ^0.1.5
+  sqlite_plus: ^0.1.7
 dev_dependencies:
   lints: ^5.0.0
-  sqlite_plus_orm: ^0.1.4
+  sqlite_plus_orm: ^0.1.7
   test: ^1.25.0

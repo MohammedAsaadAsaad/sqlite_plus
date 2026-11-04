@@ -1,0 +1,13 @@
+name: sqlite_plus_geo_example
+description: Four spatial database examples for sqlite_plus_geo.
+publish_to: none
+resolution: workspace
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+dependencies:
+  sqlite_plus: ^0.1.7
+  sqlite_plus_geo: ^0.1.0
+  sqlite_plus_orm: ^0.1.7
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
