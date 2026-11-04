@@ -34,11 +34,15 @@ class BrowserPage extends StatefulWidget {
     required this.session,
     required this.recents,
     required this.course,
+    this.launch,
+    this.launchMessage,
   });
 
   final BrowserSession session;
   final RecentStore recents;
   final CourseProgress course;
+  final OpenedFile? launch;
+  final String? launchMessage;
 
   @override
   State<BrowserPage> createState() => _BrowserPageState();
@@ -188,15 +192,26 @@ class _BrowserPageState extends State<BrowserPage> {
                       ],
                     )
                   : _work()
-              : HomePane(
-                  files: widget.recents.files,
-                  onOpen: _busy ? () {} : _openDatabase,
-                  onNew: _busy ? () {} : _newDatabase,
-                  onLearn: _openCourse,
-                  onRecent: _busy ? (_) {} : _openRecent,
-                  onForget: (file) {
-                    widget.recents.forget(file);
-                  },
+              : Column(
+                  children: [
+                    if (_notice != null)
+                      StatusBanner(
+                        notice: _notice!,
+                        onClose: () => setState(() => _notice = null),
+                      ),
+                    Expanded(
+                      child: HomePane(
+                        files: widget.recents.files,
+                        onOpen: _busy ? () {} : _openDatabase,
+                        onNew: _busy ? () {} : _newDatabase,
+                        onLearn: _openCourse,
+                        onRecent: _busy ? (_) {} : _openRecent,
+                        onForget: (file) {
+                          widget.recents.forget(file);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
           bottomNavigationBar: wide || !open
               ? null
@@ -852,8 +867,13 @@ class _BrowserPageState extends State<BrowserPage> {
   }
 
   Future<void> _takeLaunch() async {
-    final opened = await LaunchBridge.takeLaunch();
-    if (opened == null || !mounted || session.isOpen) return;
+    final opened = await LaunchBridge.takeLaunch() ?? widget.launch;
+    if (!mounted || session.isOpen) return;
+    if (opened == null) {
+      final message = widget.launchMessage;
+      if (message != null && message.isNotEmpty) _showMessage(message);
+      return;
+    }
     await _openImage(opened.bytes, opened.name, location: opened.location);
   }
 

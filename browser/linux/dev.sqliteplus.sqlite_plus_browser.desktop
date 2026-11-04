@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=SQLite Browser
+GenericName=Database Browser
+Comment=Open a SQLite database
+Exec=sqlite_plus_browser %f
+Icon=dev.sqliteplus.sqlite_plus_browser
+Terminal=false
+Categories=Development;Database;
+MimeType=application/vnd.sqlite3;application/x-sqlite3;
+StartupWMClass=dev.sqliteplus.sqlite_plus_browser
