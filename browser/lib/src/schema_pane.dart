@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import 'format.dart';
 import 'object_dialogs.dart';
@@ -34,11 +35,90 @@ class SchemaPane extends StatefulWidget {
 
 class _SchemaPaneState extends State<SchemaPane> {
   final _open = <String, bool>{};
+  final _schemaScroll = ScrollController();
+  final _selectedAnchor = GlobalKey();
+  var _revealTries = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _openSelectedPath();
+    _scheduleReveal();
+  }
+
+  @override
+  void didUpdateWidget(SchemaPane oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final next = widget.selected;
+    final previous = oldWidget.selected;
+    if (next?.name != previous?.name || next?.type != previous?.type) {
+      _openSelectedPath();
+      _scheduleReveal();
+    }
+  }
+
+  @override
+  void dispose() {
+    _schemaScroll.dispose();
+    super.dispose();
+  }
 
   bool _isOpen(String key, {required bool fallback}) => _open[key] ?? fallback;
 
   void _toggle(String key, {required bool fallback}) {
     setState(() => _open[key] = !_isOpen(key, fallback: fallback));
+  }
+
+  void _openSelectedPath() {
+    final selected = widget.selected;
+    if (selected == null) return;
+    final folder = switch (selected.type) {
+      'table' => 'folder-tables',
+      'index' => 'folder-indices',
+      'view' => 'folder-views',
+      'trigger' => 'folder-triggers',
+      _ => null,
+    };
+    if (folder != null) _open[folder] = true;
+  }
+
+  void _scheduleReveal() {
+    _revealTries = 0;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelected());
+  }
+
+  void _revealSelected() {
+    if (!mounted || widget.selected == null) return;
+    final target = _selectedAnchor.currentContext;
+    final object = target?.findRenderObject();
+    final scrollable = target == null ? null : Scrollable.maybeOf(target);
+    final position = scrollable?.position;
+    if (target == null ||
+        object == null ||
+        !object.attached ||
+        position == null ||
+        !position.hasContentDimensions) {
+      if (_revealTries++ < 8) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelected());
+      }
+      return;
+    }
+    final viewport = RenderAbstractViewport.maybeOf(object);
+    if (viewport == null) return;
+    final lead = viewport
+        .getOffsetToReveal(object, 0.0, axis: position.axis)
+        .offset
+        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    final trail = viewport
+        .getOffsetToReveal(object, 1.0, axis: position.axis)
+        .offset
+        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    final visible = lead >= trail &&
+        position.pixels >= trail - 1 &&
+        position.pixels <= lead + 1;
+    if (!visible && (lead - position.pixels).abs() > 1) {
+      position.jumpTo(lead);
+    }
   }
 
   @override
@@ -89,68 +169,80 @@ class _SchemaPaneState extends State<SchemaPane> {
                             leading: const SizedBox(width: 18),
                           ),
                           Expanded(
-                            child: ListView(
-                              key: const Key('schema-list'),
-                              children: [
-                                if (widget.objects.isEmpty)
-                                  const Padding(
-                                    padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
-                                    child: Text(
-                                      'No tables yet. Create one, or add the sample rows.',
-                                      style: TextStyle(color: _muted),
+                            child: Scrollbar(
+                              controller: _schemaScroll,
+                              child: SingleChildScrollView(
+                                key: const Key('schema-list'),
+                                controller: _schemaScroll,
+                                primary: false,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (widget.objects.isEmpty)
+                                      const Padding(
+                                        padding:
+                                            EdgeInsets.fromLTRB(12, 12, 12, 4),
+                                        child: Text(
+                                          'No tables yet. Create one, or add the sample rows.',
+                                          style: TextStyle(color: _muted),
+                                        ),
+                                      ),
+                                    _folder(
+                                      label: 'Tables (${tables.length})',
+                                      store: 'folder-tables',
+                                      open: _isOpen('folder-tables',
+                                          fallback: true),
+                                      onAdd: _createTable,
+                                      addKey: const Key('schema-add-table'),
+                                      addTooltip: 'Create table',
+                                      children: [
+                                        for (final table in tables)
+                                          _relation(table),
+                                      ],
                                     ),
-                                  ),
-                                _folder(
-                                  label: 'Tables (${tables.length})',
-                                  store: 'folder-tables',
-                                  open:
-                                      _isOpen('folder-tables', fallback: true),
-                                  onAdd: _createTable,
-                                  addKey: const Key('schema-add-table'),
-                                  addTooltip: 'Create table',
-                                  children: [
-                                    for (final table in tables)
-                                      _relation(table),
+                                    _folder(
+                                      label: 'Indices (${indexes.length})',
+                                      store: 'folder-indices',
+                                      open: _isOpen(
+                                        'folder-indices',
+                                        fallback: indexes.isNotEmpty,
+                                      ),
+                                      onAdd: _createIndex,
+                                      addKey: const Key('schema-add-index'),
+                                      addTooltip: 'Create index',
+                                      children: [
+                                        for (final index in indexes)
+                                          _index(index),
+                                      ],
+                                    ),
+                                    _folder(
+                                      label: 'Views (${views.length})',
+                                      store: 'folder-views',
+                                      open: _isOpen(
+                                        'folder-views',
+                                        fallback: views.isNotEmpty,
+                                      ),
+                                      children: [
+                                        for (final view in views)
+                                          _relation(view),
+                                      ],
+                                    ),
+                                    _folder(
+                                      label: 'Triggers (${triggers.length})',
+                                      store: 'folder-triggers',
+                                      open: _isOpen(
+                                        'folder-triggers',
+                                        fallback: triggers.isNotEmpty,
+                                      ),
+                                      children: [
+                                        for (final trigger in triggers)
+                                          _objectRow(trigger),
+                                      ],
+                                    ),
                                   ],
                                 ),
-                                _folder(
-                                  label: 'Indices (${indexes.length})',
-                                  store: 'folder-indices',
-                                  open: _isOpen(
-                                    'folder-indices',
-                                    fallback: indexes.isNotEmpty,
-                                  ),
-                                  onAdd: _createIndex,
-                                  addKey: const Key('schema-add-index'),
-                                  addTooltip: 'Create index',
-                                  children: [
-                                    for (final index in indexes) _index(index),
-                                  ],
-                                ),
-                                _folder(
-                                  label: 'Views (${views.length})',
-                                  store: 'folder-views',
-                                  open: _isOpen(
-                                    'folder-views',
-                                    fallback: views.isNotEmpty,
-                                  ),
-                                  children: [
-                                    for (final view in views) _relation(view),
-                                  ],
-                                ),
-                                _folder(
-                                  label: 'Triggers (${triggers.length})',
-                                  store: 'folder-triggers',
-                                  open: _isOpen(
-                                    'folder-triggers',
-                                    fallback: triggers.isNotEmpty,
-                                  ),
-                                  children: [
-                                    for (final trigger in triggers)
-                                      _objectRow(trigger),
-                                  ],
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ],
@@ -244,6 +336,7 @@ class _SchemaPaneState extends State<SchemaPane> {
                   tooltip: 'Add column',
                 )
               : null,
+          anchor: active,
           onTap: () {
             widget.onSelect(object);
             if (!open) _toggle(key, fallback: true);
@@ -282,6 +375,8 @@ class _SchemaPaneState extends State<SchemaPane> {
       active: widget.selected?.name == object.name &&
           widget.selected?.type == object.type,
       itemKey: Key('schema-${object.type}-${object.name}'),
+      anchor: widget.selected?.name == object.name &&
+          widget.selected?.type == object.type,
       onTap: () => widget.onSelect(object),
     );
   }
@@ -299,6 +394,8 @@ class _SchemaPaneState extends State<SchemaPane> {
       active: widget.selected?.name == object.name &&
           widget.selected?.type == object.type,
       itemKey: Key('schema-${object.type}-${object.name}'),
+      anchor: widget.selected?.name == object.name &&
+          widget.selected?.type == object.type,
       onTap: () => widget.onSelect(object),
     );
   }
@@ -312,6 +409,7 @@ class _SchemaPaneState extends State<SchemaPane> {
     String schema = '',
     String? mark,
     bool active = false,
+    bool anchor = false,
     Key? itemKey,
     Widget? action,
     VoidCallback? onTap,
@@ -343,8 +441,10 @@ class _SchemaPaneState extends State<SchemaPane> {
       active: active,
       action: action,
     );
-    if (onTap == null) return row;
-    return InkWell(key: itemKey, onTap: onTap, child: row);
+    final tappable =
+        onTap == null ? row : InkWell(key: itemKey, onTap: onTap, child: row);
+    if (!anchor) return tappable;
+    return KeyedSubtree(key: _selectedAnchor, child: tappable);
   }
 
   Widget _cells({

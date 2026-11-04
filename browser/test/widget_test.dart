@@ -10,6 +10,12 @@ import 'package:sqlite_plus_browser/src/recent_files.dart';
 import 'package:sqlite_plus_browser/src/session.dart';
 import 'package:sqlite_plus_browser/src/work_progress.dart';
 
+bool _inSchemaView(WidgetTester tester, Finder finder) {
+  final rect = tester.getRect(finder);
+  final view = tester.getRect(find.byKey(const Key('schema-list')));
+  return rect.bottom > view.top + 1 && rect.top < view.bottom - 1;
+}
+
 Future<void> _frames(WidgetTester tester) async {
   await tester.pump();
   await tester.pump();
@@ -778,6 +784,48 @@ void main() {
     expect(find.byKey(const Key('schema-table-books')), findsNothing);
     expect(session.isOpen, isFalse);
     expect(session.dirty, isFalse);
+    await _finish(tester, session);
+  });
+
+  testWidgets('reopening the schema drawer scrolls to the open table',
+      (tester) async {
+    tester.view.physicalSize = const Size(420, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final session = BrowserSession();
+    await session.openEmpty();
+    for (var i = 0; i < 10; i++) {
+      await session.run('CREATE TABLE t$i (a TEXT, b TEXT, c TEXT, d TEXT)');
+    }
+    await tester.pumpWidget(BrowserApp(session: session));
+    await _frames(tester);
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await _frames(tester);
+    final table = find.byKey(const Key('schema-table-t9'));
+    await tester.scrollUntilVisible(
+      table,
+      400,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('schema-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.tapAt(tester.getTopLeft(table) + const Offset(48, 16));
+    await _frames(tester);
+    expect(find.byKey(const Key('schema-list')), findsNothing);
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await _frames(tester);
+    expect(
+      _inSchemaView(tester, find.byKey(const Key('schema-table-t9'))),
+      isTrue,
+    );
+    expect(
+      _inSchemaView(tester, find.byKey(const Key('schema-table-t0'))),
+      isFalse,
+    );
     await _finish(tester, session);
   });
 
