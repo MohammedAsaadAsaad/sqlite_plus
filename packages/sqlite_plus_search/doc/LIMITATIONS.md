@@ -21,8 +21,10 @@ JavaScript FTS insertion failure was traced to a 37-bit bitwise shift and fixed
 with exact arithmetic; pinned SQLite comparisons guard the VM format.
 
 This verifies Node execution, not a real browser persistence backend or every
-JavaScript numeric boundary. No macOS, Windows, Android or iOS execution was
-performed here. CI configuration is present; no remote CI result is claimed.
+JavaScript numeric boundary. GitHub Actions run 41909170732 on commit `d0b7cbd`
+passed the format 2 search tests on Linux, macOS, and Windows. Format 3 was
+checked with local `dart test` on Linux. Android, iOS, and a real browser
+persistence backend were not run for this change.
 
 ## Storage and indexing
 
@@ -31,9 +33,13 @@ performed here. CI configuration is present; no remote CI result is claimed.
   are unsupported. Dynamic integer/text keys with identical string representations
   are rejected by the mapping uniqueness rule.
 - FTS content is derived index text; original application rows are not copied or
-  rewritten. Initial normalized-content writes are batched and FTS is built once, but source
-  rows, exact matches and eligible IDs still materialize. The hardened 10000-record AOT run completed (26.93 s indexing); the 100000-record
-  attempt still timed out during indexing at 120 s. See benchmark/RESULTS.md; scale acceptance is pending.
+  rewritten. Initial normalized-content writes are batched and FTS is built once.
+  The source query still materializes. Keyword search loads `MATCH` hits, then
+  resolves those ids. Semantic search loads eligible id and source-key pairs and
+  asks `rankVec0` for those rows in pages of 64. It does not keep a Dart list of
+  every decoded embedding. The hardened format 2 AOT run completed 10000 records
+  in 26.93 s of indexing; the 100000-record attempt still timed out during
+  indexing at 120 s. Format 3 was not remeasured. See benchmark/RESULTS.md.
 - With autoUpdate, search replays the transactional trigger log. Without it, explicit
   rebuild is required after edits. Replay only regenerates changed embeddings and uses typed equality for common
   INT/TEXT keys. Mapping/source ID reconciliation still scans, and the engine FTS
@@ -75,5 +81,6 @@ Hardening adds deterministic replay-versus-rebuild testing, blocked/failing-prov
 multi-handle tests, and held-out synthetic queries/documents with a control query.
 The latter tests feature preference transfer, not real-model semantic relevance.
 
-Index format 2 requires explicit rebuild of earlier development indexes. No
-automatic or destructive migration of source records is performed.
+Index format 3 requires an explicit rebuild of format 2 and earlier development
+indexes. No automatic or destructive migration of source records is performed.
+`open` does not rebuild an index that is already stored in the database file.

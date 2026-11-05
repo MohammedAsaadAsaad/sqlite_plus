@@ -122,6 +122,74 @@ void main() {
             (error) => error.message.contains('unknown distance metric'))));
   });
 
+  test('rankVec0 scores eligible rows before k and pages the shadow table',
+      () async {
+    final database = await MutableSqliteDatabase.create();
+    addTearDown(database.close);
+    SqlitePlusVec.register(database);
+    await database.execute(
+        'CREATE VIRTUAL TABLE items USING vec0(embedding float[2] distance_metric=cosine)');
+    await database.execute(
+        'INSERT INTO items(rowid, embedding) VALUES (1, ?), (2, ?), (3, ?)', [
+      encodeVec(const [1, 0]),
+      encodeVec(const [0, 1]),
+      encodeVec(const [0.2, 0.1]),
+    ]);
+    final eligible = await rankVec0(database,
+        table: 'items',
+        query: const [0.9, 0.1],
+        rowIds: [BigInt.two, BigInt.from(3)]);
+    expect(eligible.map((score) => score.rowId), [BigInt.from(3), BigInt.two]);
+    expect(eligible.first.distance < eligible.last.distance, isTrue);
+    expect(
+        await rankVec0(database,
+            table: 'items', query: const [1, 0], rowIds: const []),
+        isEmpty);
+    await expectLater(
+        rankVec0(database,
+            table: 'items', query: const [1, 0], rowIds: [BigInt.from(99)]),
+        throwsA(predicate<SqlException>(
+            (error) => error.message == 'vec0 row is missing')));
+    await database
+        .execute('INSERT INTO items(rowid, embedding) VALUES (9, ?)', [
+      encodeVec(const [0, 0])
+    ]);
+    expect(
+        (await rankVec0(database,
+                table: 'items', query: const [1, 0], rowIds: [BigInt.from(9)]))
+            .single
+            .distance,
+        1);
+    await expectLater(
+        rankVec0(database,
+            table: 'items',
+            query: const [1, 0],
+            rowIds: [BigInt.from(9)],
+            rejectZeroVectors: true),
+        throwsA(predicate<SqlException>(
+            (error) => error.message == 'vec0 zero vector')));
+    for (var id = 10; id <= 74; id++) {
+      await database
+          .execute('INSERT INTO items(rowid, embedding) VALUES (?, ?)', [
+        id,
+        encodeVec(id == 74 ? const [1, 0] : const [0, 1])
+      ]);
+    }
+    final paged = await rankVec0(database, table: 'items', query: const [1, 0]);
+    expect(paged, hasLength(69));
+    expect(paged.first.rowId, BigInt.one);
+    expect(paged[1].rowId, BigInt.from(74));
+    expect(paged.first.distance, 0);
+    final image = database.exportImage();
+    final reopened = await MutableSqliteDatabase.fromImage(image);
+    addTearDown(reopened.close);
+    final again = await rankVec0(reopened,
+        table: 'items', query: const [0, 1], rowIds: [BigInt.two]);
+    expect(again.single.distance, 0);
+    expect(() => rankVec0(database, table: 'items vec', query: const [1, 0]),
+        throwsArgumentError);
+  });
+
   test('ORM nearest saves a float32 vector and returns one neighbor', () async {
     final database = await MutableSqliteDatabase.create();
     addTearDown(database.close);

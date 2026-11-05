@@ -69,8 +69,10 @@ extension on SqlitePlusSearch {
           if (originalId != null) {
             await database
                 .execute('DELETE FROM ${base}_fts WHERE rowid=?', [originalId]);
-            await database.execute(
-                'DELETE FROM ${base}_vectors WHERE id=?', [originalId]);
+            if (meta.modelId != null) {
+              await database.execute(
+                  'DELETE FROM ${base}_vec WHERE rowid=?', [originalId]);
+            }
             await database
                 .execute('DELETE FROM ${base}_keys WHERE id=?', [originalId]);
           }
@@ -116,7 +118,7 @@ extension on SqlitePlusSearch {
         if (meta.modelId != null) {
           final vector = await validatedEmbedding(embeddingProvider!, text);
           await database.execute(
-              'INSERT OR REPLACE INTO ${base}_vectors(id,embedding) VALUES (?,?)',
+              'INSERT OR REPLACE INTO ${base}_vec(rowid,embedding) VALUES (?,?)',
               [id, encodeVec(vector)]);
         }
       }

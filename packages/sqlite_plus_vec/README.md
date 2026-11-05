@@ -5,7 +5,7 @@ Nearest neighbors for one float32 column. The module name is `vec0`. The query r
 ```yaml
 dependencies:
   sqlite_plus: ^0.1.7
-  sqlite_plus_vec: ^0.1.1
+  sqlite_plus_vec: ^0.1.2
 ```
 
 ## The packages on pub.dev
@@ -18,7 +18,7 @@ Each package is a complete library. Import only what you call. The links below a
 | sqlite_plus_orm | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_orm> |
 | sqlite_plus_generator | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_generator> |
 | sqlite_plus_arabic | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_vec | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_vec> |
 | sqlite_plus_geo | `^0.1.0` | <https://pub.dev/packages/sqlite_plus_geo> |
 
 ### sqlite_plus
@@ -198,7 +198,9 @@ The hidden columns are `distance` and `k`. The vector is column 0. `MATCH` witho
 
 Creating the table before `register` fails with `No such module: vec0`. `distance_metric=hamming` fails with `vec0: unknown distance metric`. `float[0]` is rejected. A blob whose length is not `dimensions * 4` can be inserted into the shadow table, and reading it throws `vec0 dimension mismatch`.
 
-The bytes live in `items_vec`. `DROP TABLE items` drops that shadow. `BEGIN`, an insert, and `ROLLBACK` leave `count(*)` at 0. `exportImage` keeps the shadow rows. `fromImage` needs `SqlitePlusVec.register` again before the next query. The virtual-table name in the schema is not enough. The module object lives on the connection.
+The bytes live in `items_vec`. `DROP TABLE items` drops that shadow. `BEGIN`, an insert, and `ROLLBACK` leave `count(*)` at 0. `exportImage` keeps the shadow rows. `fromImage` needs `SqlitePlusVec.register` again before the next `MATCH` query. The virtual-table name in the schema is not enough. The module object lives on the connection.
+
+`rankVec0` reads that shadow without a second copy of the table. Pass `rowIds` and only those rows are scored; an empty list reads nothing. There is no `k` cutoff, so a later filter cannot drop a neighbor that was never scored. The rows come back in pages of 64, ordered by ascending distance and then row id. `rejectZeroVectors: true` throws `vec0 zero vector` when every stored coordinate is zero. The default keeps the cosine rule: that vector has distance 1 from a non-zero query. A missing requested row throws `vec0 row is missing`. Reopening the image and calling `rankVec0` does not require `register`, because the function reads the ordinary shadow table. `MATCH` with `k` is a different query and still selects `k` before any predicate it does not consume.
 
 ## A mapped table
 
@@ -278,4 +280,4 @@ dart run bin/main.dart
 | The shadow rows and the SQL engine | [`sqlite_plus`](https://pub.dev/packages/sqlite_plus) | `openInMemory`, then `MATCH` |
 | `DbModules.vec0`, `@DbVector`, `nearest` | [`sqlite_plus_orm`](https://pub.dev/packages/sqlite_plus_orm) | `points.query.nearest` |
 | The class turned into a part | [`sqlite_plus_generator`](https://pub.dev/packages/sqlite_plus_generator) | `dart run sqlite_plus_generator` |
-| The distance and the `vec0` module | this package | `SqlitePlusVec.register` |
+| The distance, `rankVec0`, and the `vec0` module | this package | `SqlitePlusVec.register`, `rankVec0` |

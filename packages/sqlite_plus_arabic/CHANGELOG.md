@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+`ArabicText.normalize` folds Arabic text without registering an FTS tokenizer. It removes a wider diacritic range than the tokenizer, folds Arabic-Indic digits, and can fold ya and hamza. `stem: true` runs the existing light stemmer on Arabic runs only, so Greek, CJK, and other letters stay in the string. `ArabicTokenizer` and `tokenize = 'arabic'` are unchanged.
+
 ## 0.1.1
 
 Depends on `sqlite_plus` ^0.1.7. The stemmer is unchanged. The README links the other packages on pub.dev and shows a short example of each.

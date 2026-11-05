@@ -1,3 +1,14 @@
+## 0.1.0-dev.2
+
+- Call `ArabicText.normalize` instead of a second Arabic fold.
+- Store embeddings in `vec0` and score eligible row ids with `rankVec0`.
+  `embedding MATCH ? AND k = ?` is not the search query.
+- Keep the index in the caller’s database. `open` does not rebuild it.
+- Format 3 rejects format 2 and earlier development indexes until `indexTable`.
+- Keyword `MATCH` stays on the FTS table. Eligible ids are resolved after it,
+  because joining that virtual table currently returns no rows.
+- Format 2 AOT numbers were not remeasured. No new speed claim.
+
 ## 0.1.0-dev.1
 
 - Add persistent existing-table FTS5/BM25 indexes and configurable lexical analysis.

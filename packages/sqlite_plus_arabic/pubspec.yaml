@@ -1,6 +1,6 @@
 name: sqlite_plus_arabic
-description: Arabic light stemmer for sqlite_plus FTS5 tables, including ORM tokenizer names.
-version: 0.1.1
+description: Arabic light stemmer and text folding for sqlite_plus FTS5 tables.
+version: 0.1.2
 repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus_arabic
 issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
 topics:
