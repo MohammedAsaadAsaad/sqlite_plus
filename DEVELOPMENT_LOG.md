@@ -14,8 +14,19 @@
   loaded 20,000 rows and searched. The Arabic query showed 20 of 493 hits. The
   search card read Time 673.840 ms, image 3.50 MB before and after, RSS 585.75
   MB to 643.35 MB, and peak RSS 751.64 MB, at about 14:25 Asia/Hebron (UTC+2).
-  That is one debug sample, not an AOT benchmark of this branch. Android, iOS,
-  macOS, Windows, and a browser build were not run.
+  That is one debug sample, not an AOT benchmark of this branch.
+- `flutter build apk --release` at 14:33 Asia/Hebron (UTC+2) on 5 November 2026
+  wrote `examples/product_catalog/dist/product-catalog-0.1.0.apk`, 55846083
+  bytes, sha256 `731983621bb449b5b410d12fa87713ba7c890fa0ce2df3aae069f4e2c780e66e`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.1.0`, versionCode `1`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a`, `armeabi-v7a`, and `x86_64`. Both product lists and the IBM Plex
+  Sans Arabic fonts are in the archive. The release build is signed with the
+  Android debug certificate, SHA-256
+  `f0cc4aecf5b1af9dbd2d0cae5d319fe4c00762a67fafdf8b8a5cee8e1d318b60`. The
+  package was not installed on a device or an emulator. iOS, macOS, Windows,
+  and a browser build were not run.
 
 ## Initial scaffold
 

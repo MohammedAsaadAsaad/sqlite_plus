@@ -41,3 +41,13 @@ flutter run -d linux
 
 The app uses the packages in this repository through path dependencies. Search
 stays inside the pure-Dart engine.
+
+## Android package
+
+`dist/product-catalog-0.1.0.apk` is the release package built on 5 November
+2026 at 14:33 Asia/Hebron (UTC+2). It is 55846083 bytes, sha256
+`731983621bb449b5b410d12fa87713ba7c890fa0ce2df3aae069f4e2c780e66e`. The
+application id is `dev.sqliteplus.product_catalog`, versionName `0.1.0`,
+versionCode `1`, minSdk 24. It contains arm64-v8a, armeabi-v7a, and x86_64.
+The release build is signed with the Android debug certificate. It was not
+installed on a device here.
