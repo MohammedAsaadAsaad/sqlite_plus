@@ -1,5 +1,22 @@
 # Development log
 
+## 2026-11-05 — Product catalog example
+
+- `examples/product_catalog` is a Flutter app with the two 10,000-name lists as
+  assets. Load products, Build search index, and Search run only when asked.
+  Each step shows its own time, the database image before and after, and
+  process RSS. The resource sample is outside the operation clock. Keyword
+  search stems Arabic. There is no embedding model.
+- Flutter 3.47.9, Dart 3.13.7, Linux x64, on the packages in this branch:
+  `flutter analyze --fatal-infos` reported no issues and `flutter test` passed
+  7 tests on 5 November 2026.
+- A debug `flutter run -d linux` compiled from the append-engine working tree
+  loaded 20,000 rows and searched. The Arabic query showed 20 of 493 hits. The
+  search card read Time 673.840 ms, image 3.50 MB before and after, RSS 585.75
+  MB to 643.35 MB, and peak RSS 751.64 MB, at about 14:25 Asia/Hebron (UTC+2).
+  That is one debug sample, not an AOT benchmark of this branch. Android, iOS,
+  macOS, Windows, and a browser build were not run.
+
 ## Initial scaffold
 
 - Created Dart monorepo skeleton, memory backend and unit tests.

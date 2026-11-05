@@ -1,0 +1,345 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
+import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus_search/sqlite_plus_search.dart';
+
+/// One product name from a bundled list. [sourceLine] is 1-based in that file.
+class ProductLine {
+  const ProductLine({
+    required this.language,
+    required this.sourceLine,
+    required this.name,
+  });
+
+  final String language;
+  final int sourceLine;
+  final String name;
+}
+
+/// Keyword search scope. The predicate is fixed application SQL.
+enum SearchScope { all, arabic, english }
+
+/// One named product returned for a hit.
+class ProductMatch {
+  const ProductMatch({
+    required this.rank,
+    required this.language,
+    required this.sourceLine,
+    required this.name,
+    required this.score,
+  });
+
+  final int rank;
+  final String language;
+  final int sourceLine;
+  final String name;
+  final double score;
+}
+
+/// Search plus the name lookup that fills the result list.
+class SearchRun {
+  const SearchRun({
+    required this.matches,
+    required this.total,
+    required this.searchElapsed,
+    required this.lookupElapsed,
+  });
+
+  final List<ProductMatch> matches;
+  final int total;
+  final Duration searchElapsed;
+  final Duration lookupElapsed;
+}
+
+/// Process memory and the sqlite_plus image, taken outside the operation clock.
+class ResourceSample {
+  const ResourceSample({
+    required this.rssBytes,
+    required this.peakRssBytes,
+    required this.imageBytes,
+  });
+
+  final int rssBytes;
+  final int peakRssBytes;
+  final int imageBytes;
+}
+
+/// One user-visible step. [elapsed] excludes the resource sample.
+class PhaseReport {
+  const PhaseReport({
+    required this.title,
+    required this.elapsed,
+    required this.sampleElapsed,
+    required this.rssBefore,
+    required this.rssAfter,
+    required this.peakRss,
+    required this.imageBefore,
+    required this.imageAfter,
+    required this.detail,
+  });
+
+  final String title;
+  final Duration elapsed;
+  final Duration sampleElapsed;
+  final int rssBefore;
+  final int rssAfter;
+  final int peakRss;
+  final int imageBefore;
+  final int imageAfter;
+  final String detail;
+}
+
+/// A finished step and the value it produced.
+class Measured<T> {
+  const Measured(this.report, this.value);
+
+  final PhaseReport report;
+  final T value;
+}
+
+typedef ProductLoader = Future<List<ProductLine>> Function({
+  required bool arabic,
+  required bool english,
+});
+
+/// Splits a product file into non-empty lines. Blank lines are not products.
+List<ProductLine> parseProductFile(String text, String language) {
+  final products = <ProductLine>[];
+  final lines = text.split(RegExp(r'\r?\n'));
+  for (var i = 0; i < lines.length; i++) {
+    final name = lines[i].trim();
+    if (name.isEmpty) continue;
+    products.add(
+      ProductLine(language: language, sourceLine: i + 1, name: name),
+    );
+  }
+  return products;
+}
+
+/// Reads the lists selected by the caller. Nothing is read until this runs.
+Future<List<ProductLine>> loadBundledProducts({
+  required bool arabic,
+  required bool english,
+}) async {
+  final products = <ProductLine>[];
+  if (arabic) {
+    products.addAll(
+      parseProductFile(
+        await rootBundle.loadString('assets/products/arabic_products_10k.txt'),
+        'Arabic',
+      ),
+    );
+  }
+  if (english) {
+    products.addAll(
+      parseProductFile(
+        await rootBundle.loadString('assets/products/english_products_10k.txt'),
+        'English',
+      ),
+    );
+  }
+  return products;
+}
+
+ResourceSample sampleResources(MutableSqliteDatabase? database) {
+  return ResourceSample(
+    rssBytes: ProcessInfo.currentRss,
+    peakRssBytes: ProcessInfo.maxRss,
+    imageBytes: database == null ? 0 : database.exportImage().length,
+  );
+}
+
+/// Times [action], then samples RSS and the database image outside that clock.
+Future<Measured<T>> measurePhase<T>({
+  required String title,
+  required MutableSqliteDatabase? Function() database,
+  required Future<T> Function() action,
+  required String Function(T value) detail,
+}) async {
+  final beforeClock = Stopwatch()..start();
+  final before = sampleResources(database());
+  beforeClock.stop();
+  final operation = Stopwatch()..start();
+  final value = await action();
+  operation.stop();
+  final afterClock = Stopwatch()..start();
+  final after = sampleResources(database());
+  afterClock.stop();
+  return Measured(
+    PhaseReport(
+      title: title,
+      elapsed: operation.elapsed,
+      sampleElapsed: beforeClock.elapsed + afterClock.elapsed,
+      rssBefore: before.rssBytes,
+      rssAfter: after.rssBytes,
+      peakRss: after.peakRssBytes,
+      imageBefore: before.imageBytes,
+      imageAfter: after.imageBytes,
+      detail: detail(value),
+    ),
+    value,
+  );
+}
+
+/// In-memory catalog. The caller decides when each step runs.
+class CatalogSession {
+  MutableSqliteDatabase? database;
+  SqlitePlusSearch? search;
+  int productCount = 0;
+  bool indexed = false;
+
+  Future<int> insert(
+    List<ProductLine> products, {
+    void Function(int inserted, int total)? onProgress,
+  }) async {
+    if (database != null) {
+      throw StateError('Products are already loaded');
+    }
+    if (products.isEmpty) {
+      throw ArgumentError('Choose at least one product file');
+    }
+    final db = await openInMemory();
+    database = db;
+    await db.execute(
+      'CREATE TABLE products ('
+      'id INTEGER PRIMARY KEY, '
+      'language TEXT NOT NULL, '
+      'source_line INTEGER NOT NULL, '
+      'name TEXT NOT NULL)',
+    );
+    await db.execute('BEGIN');
+    try {
+      const batchSize = 400;
+      for (var start = 0; start < products.length; start += batchSize) {
+        final end = start + batchSize < products.length
+            ? start + batchSize
+            : products.length;
+        final values = List.filled(end - start, '(?, ?, ?, ?)').join(', ');
+        final parameters = <Object?>[];
+        for (var i = start; i < end; i++) {
+          final line = products[i];
+          parameters
+            ..add(i + 1)
+            ..add(line.language)
+            ..add(line.sourceLine)
+            ..add(line.name);
+        }
+        await db.execute(
+          'INSERT INTO products(id, language, source_line, name) '
+          'VALUES $values',
+          parameters,
+        );
+        onProgress?.call(end, products.length);
+      }
+      await db.execute('COMMIT');
+    } catch (error, stack) {
+      if (db.inTransaction) {
+        try {
+          await db.execute('ROLLBACK');
+        } catch (_) {
+          // The original insert error is the one the caller sees.
+        }
+      }
+      Error.throwWithStackTrace(error, stack);
+    }
+    productCount = products.length;
+    return products.length;
+  }
+
+  /// Keyword index with Arabic stemming. English letters are left as written.
+  Future<void> buildIndex() async {
+    final db = database;
+    if (db == null) {
+      throw StateError('Load products before building the index');
+    }
+    if (search != null) {
+      throw StateError('The search index is already built');
+    }
+    final opened = await SqlitePlusSearch.open(
+      database: db,
+      analyzer: const SearchTextAnalyzer(stemArabic: true),
+    );
+    await opened.indexTable(
+      table: 'products',
+      primaryKey: 'id',
+      textColumns: const ['name'],
+    );
+    search = opened;
+    indexed = true;
+  }
+
+  Future<SearchRun> searchProducts(
+    String query, {
+    SearchScope scope = SearchScope.all,
+    int limit = 20,
+  }) async {
+    final opened = search;
+    final db = database;
+    if (opened == null || db == null || !indexed) {
+      throw StateError('Build the search index before searching');
+    }
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) throw ArgumentError('Enter a search query');
+    final searchClock = Stopwatch()..start();
+    final results = await opened.search(
+      trimmed,
+      table: 'products',
+      limit: limit,
+      filter: _scopeFilter(scope),
+    );
+    searchClock.stop();
+    final lookupClock = Stopwatch()..start();
+    final matches = <ProductMatch>[];
+    for (var i = 0; i < results.hits.length; i++) {
+      final hit = results.hits[i];
+      final rows = await db.query(
+        'SELECT language, source_line, name FROM products WHERE id = ?',
+        [int.parse(hit.documentId)],
+      );
+      final row = rows.rows.single;
+      matches.add(
+        ProductMatch(
+          rank: i + 1,
+          language: row[0] as String,
+          sourceLine: _asInt(row[1]),
+          name: row[2] as String,
+          score: hit.score,
+        ),
+      );
+    }
+    lookupClock.stop();
+    return SearchRun(
+      matches: matches,
+      total: results.total,
+      searchElapsed: searchClock.elapsed,
+      lookupElapsed: lookupClock.elapsed,
+    );
+  }
+
+  Future<void> close() async {
+    final db = database;
+    database = null;
+    search = null;
+    indexed = false;
+    productCount = 0;
+    if (db != null) await db.close();
+  }
+}
+
+SearchFilter? _scopeFilter(SearchScope scope) {
+  switch (scope) {
+    case SearchScope.arabic:
+      return SearchFilter('language = ?', const ['Arabic']);
+    case SearchScope.english:
+      return SearchFilter('language = ?', const ['English']);
+    case SearchScope.all:
+      return null;
+  }
+}
+
+int _asInt(Object? value) {
+  if (value is int) return value;
+  if (value is BigInt) return value.toInt();
+  throw StateError('Expected an integer id, got $value');
+}

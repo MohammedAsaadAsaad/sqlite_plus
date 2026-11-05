@@ -1,0 +1,45 @@
+name: product_catalog
+description: Flutter catalog that loads two 10,000-product lists into sqlite_plus and times each search step.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  sqlite_plus:
+    path: ../../packages/sqlite_plus
+  sqlite_plus_search:
+    path: ../../packages/sqlite_plus_search
+
+dependency_overrides:
+  sqlite_plus:
+    path: ../../packages/sqlite_plus
+  sqlite_plus_arabic:
+    path: ../../packages/sqlite_plus_arabic
+  sqlite_plus_vec:
+    path: ../../packages/sqlite_plus_vec
+  sqlite_plus_search:
+    path: ../../packages/sqlite_plus_search
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/products/arabic_products_10k.txt
+    - assets/products/english_products_10k.txt
+    - assets/fonts/OFL.txt
+  fonts:
+    - family: IBMPlexSansArabic
+      fonts:
+        - asset: assets/fonts/IBMPlexSansArabic-Regular.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSansArabic-Bold.ttf
+          weight: 700
