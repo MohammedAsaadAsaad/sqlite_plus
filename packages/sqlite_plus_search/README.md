@@ -117,4 +117,4 @@ await search.feedback.submit(
 
 Two weights move keyword and vector ranks. They can make ranking worse. The example does not turn learning on. Held-out judgments belong to the application. Synthetic fixtures are not evidence of model quality.
 
-See [architecture](doc/ARCHITECTURE.md), [status](doc/IMPLEMENTATION_PLAN.md), and [limitations](doc/LIMITATIONS.md). Measured Linux timings are in [benchmark/RESULTS.md](benchmark/RESULTS.md). Format 2 numbers were not remeasured. A later format 3 run recorded a faster source update and sync on this corpus. Warm query time stayed in the earlier range. No general speedup is claimed.
+See [architecture](doc/ARCHITECTURE.md), [status](doc/IMPLEMENTATION_PLAN.md), and [limitations](doc/LIMITATIONS.md). Measured Linux timings are in [benchmark/RESULTS.md](benchmark/RESULTS.md). The append run indexed 10,000 synthetic documents in 4.704192 s and synchronized one change in 1.699659 s. Warm keyword time stayed in the earlier range. No general speedup is claimed.

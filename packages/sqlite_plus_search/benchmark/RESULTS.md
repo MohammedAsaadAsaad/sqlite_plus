@@ -1,3 +1,58 @@
+# Append measurements — 2026-11-05
+
+Dart 3.13.7/Linux x64 AOT, memory backend, synthetic 2D fixture, shared managed
+host. One process per size with five warm samples. Cold means the first query
+after indexing, not an OS cache reset. No concurrent test workload was
+deliberately run during these samples. CPU scheduling is not isolated.
+Raw runs: [1000](results/linux_1000_append.json),
+[10000](results/linux_10000_append.json), and
+[100000](results/linux_100000_append.json).
+
+| Metric | 1,000 records | 10,000 records | 100,000 records |
+|---|---:|---:|---:|
+| Initial indexing (s) | 0.300666 | 4.704192 | 75.807267 |
+| Cold keyword (ms) | 47.788 | 441.266 | 5176.545 |
+| Cold vector (ms) | 21.292 | 186.061 | 2378.166 |
+| Cold hybrid (ms) | 47.838 | 493.197 | 5691.671 |
+| Median warm keyword (ms) | 48.229 | 475.981 | 5510.411 |
+| Median warm vector (ms) | 23.061 | 215.387 | 2444.129 |
+| Median warm hybrid (ms) | 49.161 | 498.088 | 5822.828 |
+| Source update alone (ms) | 2.587 | 35.599 | 481.015 |
+| Incremental sync alone (ms) | 191.076 | 1699.659 | 17883.826 |
+| Feedback (ms) | 1.528 | 4.096 | 29.016 |
+| RSS after source (bytes) | 23388160 | 55726080 | 74940416 |
+| RSS after index (bytes) | 56631296 | 155729920 | 267067392 |
+| RSS after queries (bytes) | 79015936 | 94773248 | 449126400 |
+| RSS after sync (bytes) | 60743680 | 93614080 | 586375168 |
+| RSS at end (bytes) | 49815552 | 124542976 | 271568896 |
+| Peak RSS (bytes) | 80805888 | 225472512 | 633675776 |
+| Image after index (bytes) | 192512 | 1216512 | 12226560 |
+| Image at end (bytes) | 192512 | 1118208 | 11067392 |
+
+Same corpus and harness as the sections below. A new unique key whose rowid is
+past the current maximum is appended, and that key is inserted into the unique
+index, without rewriting unrelated tables. An empty table, empty index, view,
+or trigger is appended to the schema leaf when the new schema row fits.
+Indexing creates those empty shadows before it loads keys. With `autoUpdate`,
+triggers keep a census. When that census matches `count(*)`, sync reads only
+the pending keys. The integrity baseline is version 2, an order-independent sum
+of per-row hashes. That sync adjusts the changed key, docsize, and vector rows
+and rehashes the other owned shadows. `verifyIndex` still reads every derived
+row. A version 1 baseline fails until an explicit rebuild. The census table is
+not part of the fingerprint.
+
+On this corpus, 10,000-record indexing fell from 19.658282 s to 4.704192 s.
+Sync fell from 2.117051 s to 1.699659 s. The remaining sync time is the
+derived-row rewrite: the image is smaller after that sync than after indexing,
+so the sync still compacts the database. Warm keyword time stays in the earlier
+format 3 range because every benchmark document matches the query. 100,000
+completed in this run. The earlier stop after 16 minutes is historical and was
+not reused as a measurement. The 1,000,000 run exited 255 after 2914 seconds
+and wrote no result, so it has no timings. RSS is one sample at each named phase, not a stable memory guarantee.
+No real-model, browser, or other-OS timing is claimed.
+
+---
+
 # Row-edit measurements — 2026-11-05
 
 Dart 3.13.7/Linux x64 AOT, memory backend, synthetic 2D fixture, shared managed

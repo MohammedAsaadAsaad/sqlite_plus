@@ -227,8 +227,8 @@ own row. Android and iOS are recorded on their own rows.
 `sqlite_plus_search` implements persistent keyword/local-provider vector/RRF search,
 Arabic/Unicode lexical processing, local feedback, explicit integrity diagnostics
 and trigger-log replay. On Dart 3.13.7/Linux, **61 search tests pass**, including
-pinned-native snapshot/FTS integrity checks. The full engine suite passes **10609
-with 1 skip** with the pinned CLI installed and local socket permission available.
+pinned-native snapshot/FTS integrity checks. The full engine suite passes **10614**
+tests with the pinned CLI installed and local socket permission available.
 
 Format 3, checked on the same Dart SDK and Linux host, keeps that search count at
 61. `sqlite_plus_arabic` 0.1.2 passes 4 tests, including `ArabicText.normalize`.
@@ -244,13 +244,13 @@ Unfiltered ranking and source indexing use stopped rowid windows (`browse`).
 `query` still materializes its input. A format 3 Linux x64 AOT pair is recorded
 for 1000 and 10000 synthetic 2D documents in
 `packages/sqlite_plus_search/benchmark/RESULTS.md`. A later run the same day,
-after row-level image edits, is recorded there too. At 10000 records that later
-run measured source update alone at 27.872 ms and synchronization at 2.117051 s.
-Warm query times stayed in the earlier range. That is one shared-host
-process per size, not a real model. A 100000-record attempt was stopped after
-16 minutes while indexing and was not repeated. 1000000 was not started. The full
-engine suite was not re-run for the rowid-window, FTS leaf-packing, or row-edit
-changes.
+after unique-key append and incremental sync, is recorded there too. At 10000
+records that run measured indexing at 4.704192 s, source update alone at 35.599
+ms, and synchronization at 1.699659 s. The image is 1216512 bytes after indexing
+and 1118208 bytes at the end. Warm keyword time stayed in the earlier range.
+That is one shared-host process per size, not a real model. 100000 completed in
+75.807267 s of indexing. The 1,000,000 run exited 255 after 2914 seconds and wrote no result, so it has no timings. The full engine
+suite was re-run for this edit and passed 10614 tests.
 The FTS5 pin, FTS3/4 pin, search engine, page-write, vec, and search suites
 that were run passed on this Linux host.
 
@@ -261,11 +261,14 @@ storage fault points verify modelled recovery. Held-out synthetic rank-feature
 fixtures pass; no real-model semantic or cross-language quality claim is made.
 
 Development format 3 requires an explicit rebuild of format 2 and earlier search
-indexes. Format 2 AOT 1000/10000 runs remain historical. Format 3 AOT 1000/10000
+indexes. An integrity baseline older than version 2 also requires that rebuild.
+Format 2 AOT 1000/10000 runs remain historical. Format 3 AOT 1000/10000
 runs are recorded separately. Format 2 100000 indexing timed out at 120 s. The
-format 3 attempt at that size was stopped after 16 minutes while indexing.
-1000000 is unrun. A one-row external-content FTS replace edits that row's leaf
-when the new leaf fits. A new unique key still rebuilds the image. Real browser
+earlier format 3 attempt at that size was stopped after 16 minutes while indexing.
+The append run completed 100000. The 1,000,000 run exited 255 after 2914 seconds and wrote no result, so it has no timings. A one-row
+external-content FTS replace edits that row's leaf when the new leaf fits. A new
+unique key past the current maximum is appended. Other unique-key shapes still
+rebuild the image. Real browser
 IO, other OS runs, remote CI for this performance edit, real-device power-loss,
 external-writer ownership and production local model integration remain open. See the package implementation
 plan and benchmark report for exact evidence and limits. No new SQL compatibility

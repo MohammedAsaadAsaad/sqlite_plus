@@ -534,6 +534,83 @@ CREATE TABLE bench (
     await crash(1, [BigInt.from(4)]);
     await crash(2, [BigInt.from(5)]);
   });
+
+  test('new unique keys append without rewriting an unrelated table', () async {
+    final db = await MutableSqliteDatabase.create(pageSize: 512);
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE kept(id INTEGER PRIMARY KEY, body TEXT)');
+    await db.execute("INSERT INTO kept VALUES (1,'stay')");
+    await db.execute(
+        'CREATE TABLE keys(id INTEGER PRIMARY KEY, body TEXT NOT NULL, source_key TEXT NOT NULL UNIQUE)');
+    final keptRoot = DatabaseHeader.decode(db.exportImage());
+    expect(keptRoot.pageSize, 512);
+    await db.execute('BEGIN');
+    for (var start = 0; start < 400; start += 50) {
+      final values = <String>[];
+      final params = <Object?>[];
+      for (var i = start; i < start + 50; i++) {
+        values.add('(?,?,?)');
+        params.addAll([i + 1, 'body $i', 'k$i']);
+      }
+      await db.execute(
+          'INSERT INTO keys(id,body,source_key) VALUES ${values.join(',')}',
+          params);
+    }
+    final page = await db.browse(
+        'SELECT rowid, "id", "body" FROM "kept" ORDER BY rowid LIMIT 10');
+    expect(page.rows, [
+      [BigInt.one, BigInt.one, 'stay']
+    ]);
+    await db.execute('COMMIT');
+    expect((await db.query('SELECT count(*) FROM keys')).rows.single.single,
+        BigInt.from(400));
+    expect(
+        (await db.query(
+                'SELECT source_key FROM keys ORDER BY source_key LIMIT 3'))
+            .rows,
+        [
+          ['k0'],
+          ['k1'],
+          ['k10']
+        ]);
+    expect(
+        (await db.query('SELECT body FROM kept')).rows.single.single, 'stay');
+    expect((await db.query('PRAGMA integrity_check')).rows.single.single, 'ok');
+    await db.execute(
+        "INSERT INTO keys(id,body,source_key) VALUES (401,'more','k401')");
+    expect(
+        (await db.query("SELECT body FROM keys WHERE source_key='k401'"))
+            .rows
+            .single
+            .single,
+        'more');
+    expect((await db.query('PRAGMA integrity_check')).rows.single.single, 'ok');
+    await expectPinned(db.exportImage(),
+        "PRAGMA integrity_check; SELECT count(*) FROM keys; SELECT source_key FROM keys WHERE source_key='k401';");
+  });
+
+  test('a descending unique index keeps order after appended keys', () async {
+    final db = await MutableSqliteDatabase.create(pageSize: 512);
+    addTearDown(db.close);
+    await db.execute(
+        'CREATE TABLE t(id INTEGER PRIMARY KEY, name TEXT, UNIQUE(name DESC))');
+    await db.execute('BEGIN');
+    final values = <String>[];
+    final params = <Object?>[];
+    for (var i = 0; i < 80; i++) {
+      values.add('(?,?)');
+      params.addAll([i + 1, 'n${i.toString().padLeft(3, '0')}']);
+    }
+    await db.execute(
+        'INSERT INTO t(id,name) VALUES ${values.join(',')}', params);
+    await db.execute('COMMIT');
+    final names = await db.query('SELECT name FROM t ORDER BY name DESC');
+    expect(names.rows.first.single, 'n079');
+    expect(names.rows.last.single, 'n000');
+    expect((await db.query('PRAGMA integrity_check')).rows.single.single, 'ok');
+    await expectPinned(
+        db.exportImage(), 'PRAGMA integrity_check; SELECT count(*) FROM t;');
+  });
 }
 
 Future<Uint8List> _emptyImage() async {

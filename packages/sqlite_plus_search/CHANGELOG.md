@@ -6,9 +6,10 @@
 - Source indexing reads stopped rowid windows of 1000. Unfiltered `rankVec0` reads stopped shadow pages of 512.
 - Non-contentless-delete FTS5 leaves pack many documents. The writer probes leaf length instead of re-encoding after every document.
 - A one-row external-content FTS replace edits the leaf that holds that row when the new leaf fits, plus the averages row and that document's docsize row. Other FTS shapes still rebuild the postings.
-- Ordinary writes can publish several changed rowid tables without rebuilding untouched tables. A new unique key still rebuilds the image.
+- Ordinary writes can publish several changed rowid tables without rebuilding untouched tables. A new unique key past the current maximum is appended instead of rebuilding the image. Other unique-key shapes still rebuild it.
+- With `autoUpdate`, a census distinguishes a pending-key replay from a full key scan. The integrity baseline is version 2. An incremental sync adjusts changed rows. `verifyIndex` still reads every derived row, and a version 1 baseline requires an explicit rebuild.
 - `bm25()` with no column weights returns the score already stored for that row.
-- A later Linux x64 AOT run on the same synthetic 2D corpus: 1000 indexed in 1.092900 s and 10000 in 19.658282 s. At 10000, source update alone is 27.872 ms and sync is 2.117051 s. Warm keyword, vector, and hybrid times stayed in the earlier format 3 range. See `benchmark/RESULTS.md`. 100000 was not started again. 1000000, a real model, and other operating systems were not measured.
+- A later Linux x64 AOT run on the same synthetic 2D corpus: 1000 indexed in 0.300666 s, 10000 in 4.704192 s, and 100000 in 75.807267 s. At 10000, source update alone is 35.599 ms and sync is 1.699659 s. Warm keyword time stayed in the earlier format 3 range. The 10000-record image is 1216512 bytes after indexing and 1118208 bytes at the end. See `benchmark/RESULTS.md`. The 1,000,000 run exited 255 after 2914 seconds and wrote no result, so it has no timings. A real model and other operating systems were not measured.
 
 ## 0.1.0-dev.2
 

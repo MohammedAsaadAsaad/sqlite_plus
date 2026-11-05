@@ -239,7 +239,7 @@ final class MutableSqliteDatabase {
   void _materializeMain() {
     final state = _liveMain;
     if (!_dirtyMain || state == null) return;
-    final image = state.serialize(foreignKeys: false, includeDeferred: false);
+    final image = state.durableImage();
     _storeImage('main', image);
     state.rebase(_image);
     _liveMain = state;
@@ -302,7 +302,10 @@ final class MutableSqliteDatabase {
     final state = _liveMain;
     if (logical != null && state != null) {
       state.restoreLogical(logical);
-      state.rebase(_image);
+      // The saved image does not yet contain these rows. Leave the loaded-row
+      // snapshot empty so the next read writes them instead of treating the
+      // stale bytes as current.
+      state.original = _image;
       _liveMainImage = _image;
       _dirtyMain = true;
     } else {
@@ -460,7 +463,9 @@ final class MutableSqliteDatabase {
       [List<Object?> parameters = const []]) async {
     final live = _liveMain;
     if (live != null) {
-      final fast = live.tryFastRead(sql, parameters);
+      final fast = parameters.isEmpty
+          ? live.tryFastCount(sql) ?? live.tryFastRead(sql, parameters)
+          : live.tryFastRead(sql, parameters);
       if (fast != null) return fast;
     }
     final explain = SqlParser(sql);
@@ -521,6 +526,11 @@ final class MutableSqliteDatabase {
   Future<QueryResult> browse(String sql,
           [List<Object?> parameters = const []]) =>
       _exclusive(() async {
+        final live = _liveMain;
+        if (live != null) {
+          final fast = live.tryFastWindow(sql, parameters);
+          if (fast != null) return fast;
+        }
         final explain = SqlParser(sql);
         if (explain.take('EXPLAIN')) {
           if (!(explain.take('QUERY') && explain.take('PLAN'))) {

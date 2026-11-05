@@ -115,8 +115,15 @@ When that FTS statement is an external-content replace of explicit row ids and
 the new leaf fits, the engine edits that leaf, the averages row, and that
 document's docsize row. Other FTS shapes rebuild the postings. Ordinary writes
 publish changed rowid tables without rebuilding untouched tables. A new unique
-key still rebuilds the image. Replay still scans mapping/source IDs to reconcile
-implicit REPLACE deletions and refreshes the integrity fingerprint.
+key whose rowid is past the current maximum is appended, and that key is
+inserted into the unique index. Other unique-key shapes still rebuild the image.
+Empty tables, empty indexes, views, and triggers are appended to the schema leaf
+when the new row fits. Triggers maintain a census. When it matches `count(*)`,
+replay reads only the pending keys. A mismatch still scans mapping and source
+IDs so a REPLACE that deletes an unlogged row is reconciled. The integrity
+baseline is version 2, an order-independent sum of per-row hashes. That replay
+adjusts the changed key, docsize, and vector rows and rehashes the other owned
+shadows. `verifyIndex` still reads every derived row. The census is not hashed.
 `synchronize` exposes replay without query ranking so benchmark timings separate
 source update, replay and query cost. Single-token AND/OR `MATCH` can score
 from postings and docsize. On the all-matching benchmark corpus that path did

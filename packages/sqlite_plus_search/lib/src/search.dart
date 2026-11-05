@@ -107,6 +107,8 @@ final class SqlitePlusSearch {
       await database.execute('INSERT OR IGNORE INTO _sps_state VALUES (1,1)');
       await database.execute(
           'CREATE TABLE IF NOT EXISTS _sps_integrity (collection_id INTEGER PRIMARY KEY, version INTEGER NOT NULL, digest TEXT NOT NULL)');
+      await database.execute(
+          'CREATE TABLE IF NOT EXISTS _sps_integrity_state (collection_id INTEGER PRIMARY KEY, parts TEXT NOT NULL)');
     });
     return search;
   }
@@ -218,6 +220,7 @@ final class SqlitePlusSearch {
             await database.execute('DROP TRIGGER IF EXISTS ${base}_$event');
           }
           await database.execute('DROP TABLE IF EXISTS ${base}_pending');
+          await database.execute('DROP TABLE IF EXISTS ${base}_census');
           await database.execute(
               'CREATE TABLE ${base}_pending (id INTEGER PRIMARY KEY,source_key TEXT NOT NULL)');
           await database.execute('DROP TABLE IF EXISTS ${base}_fts');
@@ -234,6 +237,13 @@ final class SqlitePlusSearch {
           // SQLite's column-name mapping.
           await database.execute(
               'CREATE TABLE ${base}_keys (id INTEGER PRIMARY KEY, body TEXT NOT NULL, source_key TEXT NOT NULL UNIQUE)');
+          // Empty shadows are created before the load. A later CREATE would
+          // serialize every key that had just been inserted.
+          await database.execute(
+              "CREATE VIRTUAL TABLE ${base}_fts USING fts5(body, content='${base}_keys', content_rowid='id')");
+          if (autoUpdate) {
+            await _installTriggers(table, meta, textColumns, 0);
+          }
           // Read the source in pages so the whole table is not held beside the
           // derived rows. External-content FTS is built once after that load.
           final columns = [primaryKey, ...textColumns].map(_quote).join(',');
@@ -281,11 +291,12 @@ final class SqlitePlusSearch {
             after = source.rows.last[0];
             if (source.rows.length < 1000) break;
           }
-          await database.execute(
-              "CREATE VIRTUAL TABLE ${base}_fts USING fts5(body, content='${base}_keys', content_rowid='id')");
+          if (autoUpdate) {
+            await database.execute(
+                'UPDATE ${base}_census SET n=? WHERE id=1', [nextId - 1]);
+          }
           await database.execute(
               "INSERT INTO ${base}_fts(${base}_fts) VALUES ('rebuild')");
-          if (autoUpdate) await _installTriggers(table, meta, textColumns);
           await _recordIntegrity(meta);
         });
       });
@@ -601,7 +612,7 @@ final class SqlitePlusSearch {
             'SELECT version,digest FROM _sps_integrity WHERE collection_id=?',
             [BigInt.parse(meta.id)]);
         if (baseline.rows.length != 1 ||
-            baseline.rows.single[0] != BigInt.one) {
+            baseline.rows.single[0] != BigInt.from(_integrityVersion)) {
           throw StateError(
               'Missing or unsupported integrity baseline; explicitly rebuild');
         }

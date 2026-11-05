@@ -39,22 +39,25 @@ persistence backend were not run for this change.
   table. Semantic search does the same for eligibility and asks `rankVec0` for
   the rows. Unfiltered ranking scans the shadow in stopped pages of 512.
   Filtered ranking passes only the eligible ids. It does not keep a Dart list of
-  every decoded embedding.   The format 3 AOT run on 2026-11-05 completed 1000
-  records in 1.189207 s of indexing and 10000 records in 20.311424 s. A later
-  run the same day, after row-level image edits, completed those sizes in
-  1.092900 s and 19.658282 s. At 10000 records that later run recorded source
-  update alone at 27.872 ms and synchronization at 2.117051 s. Warm query times
-  stayed in the earlier range. A format 3 100000-record attempt was stopped
-  after 16 minutes while indexing and was not repeated. The format 2 attempt at
-  that size had timed out at 120 s. Neither produced index or query numbers.
-  See benchmark/RESULTS.md.
+  every decoded embedding. The 2026-11-05 append run completed 1000 records in
+  0.300666 s of indexing, 10000 in 4.704192 s, and 100000 in 75.807267 s. At
+  10000 records that run recorded source update alone at 35.599 ms and
+  synchronization at 1.699659 s. Warm keyword time stayed in the earlier format
+  3 range. The earlier format 3 stop at 16 minutes, and the format 2 timeout at
+  120 s, did not produce numbers and are not this run. The 1,000,000 run exited
+  255 after 2914 seconds and wrote no result, so it has no timings. See benchmark/RESULTS.md.
 - With autoUpdate, search replays the transactional trigger log. Without it, explicit
   rebuild is required after edits. Replay only regenerates changed embeddings and uses typed equality for common
-  INT/TEXT keys. Mapping/source ID reconciliation still scans. A one-row
-  external-content replace edits that row's leaf when the new leaf fits. The
-  integrity fingerprint is still a full scan of derived rows. Inserting new
-  unique keys still rebuilds the image. Incremental updates are cheaper on the
-  measured 10000-record sync and are not a large-scale indexing path.
+  INT/TEXT keys. When the trigger census matches `count(*)`, only pending keys
+  are read. A census mismatch, including a REPLACE that deletes an unlogged row,
+  still scans mapping and source keys. A one-row external-content replace edits
+  that row's leaf when the new leaf fits. The stored fingerprint is version 2.
+  A matching sync adjusts the changed key, docsize, and vector hashes and
+  rehashes the other owned shadows. `verifyIndex` still reads every derived row.
+  A version 1 baseline fails until an explicit rebuild. A new unique key past
+  the current maximum is appended; other unique-key shapes still rebuild the
+  image. The measured sync still rewrites the derived row and, on this corpus,
+  compacts the image. It is not a large-scale indexing path.
 - Replay reconciles missing source keys, including rows displaced by secondary
   UNIQUE conflicts under REPLACE with recursive triggers off. Source schema changes
   and missing triggers fail explicitly. verifyIndex detects changed trigger SQL,

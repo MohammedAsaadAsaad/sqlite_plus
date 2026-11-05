@@ -20,7 +20,7 @@ and the integrity baseline. Incremental time includes source
 update, replay and a hybrid query. Queries include local learning-context writes.
 The first queries after indexing are called cold; OS caches are not reset.
 Warm query arrays contain five samples, not five independent process runs.
-RSS is process memory; peak RSS is sampled before final image export.
+RSS and peak RSS are sampled after the source load, after indexing, after the warm queries, after synchronization, and at the end. Image size is recorded after indexing and at the end.
 
 Raw measured runs and host details are in results/. These are shared-host Linux
 measurements, not cross-platform guarantees. An earlier per-record indexing
@@ -36,6 +36,8 @@ and 10,000 records; those JSON files are `linux_1000_format3.json` and
 `linux_10000_format3.json`. Format 2 and format 1 results remain historical.
 Measurements are single shared-host processes. A format 3 run of 100,000
 records was stopped after 16 minutes while indexing, with no completed metrics.
-That size was not started again after the row-edit run. 1,000,000 was not
-started. The row-edit JSON files are `linux_1000_row_edits.json` and
+The append run completed 1,000, 10,000, and 100,000. Its JSON files are
+`linux_1000_append.json`, `linux_10000_append.json`, and
+`linux_100000_append.json`. The 1,000,000 run exited 255 after 2914 seconds
+and wrote no result, so it has no timings. The row-edit JSON files are `linux_1000_row_edits.json` and
 `linux_10000_row_edits.json`.

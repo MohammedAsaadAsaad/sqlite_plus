@@ -12,10 +12,12 @@ Core functionality is implemented; production release acceptance remains open.
 - [x] 7. Bounded, versioned collection-local feedback; reset/export/import.
 - [x] 8. Transactional trigger logs and logical incremental replay. A one-row
   external-content FTS replace edits that row's leaf when the new leaf fits.
-  Sync still scans keys and refreshes the integrity fingerprint.
+  When the trigger census matches the source count, sync reads only the pending
+  keys. The integrity baseline is an order-independent per-row sum; that sync
+  adjusts the changed rows instead of hashing every derived row.
 - [ ] 9. Release validation. Tests, native comparisons, and Linux AOT runs at
-  1k and 10k pass. Real-model quality, 100k/1m scale, real browser persistence,
-  and broader OS gates remain.
+  1k, 10k, and 100k pass on the synthetic fixture. Real-model quality, the 1m
+  scale, real browser persistence, and broader OS gates remain.
 - [x] 10. Runnable examples, development docs and CI configuration. No remote
   CI result or publication is claimed.
 
@@ -80,9 +82,16 @@ warm samples. Initial indexing includes integrity metadata.
   The 10000-record image is still 1110016 bytes. Query time did not move out of
   the format 3 range on this all-matching corpus. 100000 was not started again.
   The full engine suite was not re-run for this edit.
-- A one-row external-content FTS replace edits that row's leaf when the new
-  leaf fits. Sync still scans keys and refreshes the integrity fingerprint.
-  Inserting new unique keys still rebuilds the image. That is not a
+- Later the same day, after unique-key append and incremental sync, the same
+  harness recorded 1000 records indexed in 0.300666 s, 10000 in 4.704192 s, and
+  100000 in 75.807267 s. At 10000 records, source update alone is 35.599 ms and
+  synchronization is 1.699659 s. The 10000-record image is 1216512 bytes after
+  indexing and 1118208 bytes at the end. 100000 completed. The 1,000,000 run
+  exited 255 after 2914 seconds and wrote no result, so it has no timings. See benchmark/RESULTS.md.
+- A new unique key past the current maximum is appended without rewriting
+  unrelated tables. When the census matches, sync does not scan every key, and
+  the fingerprint update does not hash every derived row. `verifyIndex` still
+  does. The measured sync time is still the derived-row rewrite. That is not a
   production-scale index build.
 
 Production embeddings/cross-language evaluation, repeated-process performance

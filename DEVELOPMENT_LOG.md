@@ -2575,3 +2575,47 @@ result=pass
   did not change. No new remote CI. Packages were not published. Android, iOS,
   and a browser persistence backend were not run. B5, M9, and item 108 remain
   unchecked. The database browser APK was not rebuilt.
+
+## 2026-11-05 — Search unique-key append and incremental sync
+
+- A new unique key whose rowid is past the current maximum is appended to the
+  table and inserted into the unique index. Unrelated tables stay in the image.
+  An empty table, empty index, view, or trigger is appended to the schema leaf
+  when the new schema row fits. Overflow schema rows, populated indexes, and
+  autoincrement sequences still use the compact rebuild. Indexing creates the
+  empty search shadows before it loads keys, so those creates do not serialize
+  a filled key table.
+- `autoUpdate` keeps a census. When it matches `count(*)`, sync reads only the
+  pending keys. A mismatch still scans mapping and source keys, which covers a
+  REPLACE that deletes an unlogged row. The integrity baseline is version 2, an
+  order-independent sum of per-row hashes. That sync adjusts the changed key,
+  docsize, and vector rows and rehashes the other owned shadows. `verifyIndex`
+  still reads every derived row. A version 1 baseline fails until an explicit
+  rebuild. The census is not part of the fingerprint. Restoring a transaction
+  snapshot no longer treats the pre-change image as if it already held the
+  saved rows.
+- AOT, Dart 3.13.7, Linux x64, memory, synthetic 2D, one process, five warm
+  samples. Times are Asia/Hebron (UTC+2) on 5 November 2026. 1000: index
+  0.300666 s, median warm keyword 48.229 ms, vector 23.061 ms, hybrid 49.161
+  ms, source update 2.587 ms, sync 191.076 ms, image 192512 bytes after index
+  and at the end. 10000: index 4.704192 s, median warm keyword 475.981 ms,
+  vector 215.387 ms, hybrid 498.088 ms, source update 35.599 ms, sync 1.699659
+  s, image 1216512 bytes after index and 1118208 bytes at the end. 100000:
+  index 75.807267 s, median warm keyword 5510.411 ms, vector 2444.129 ms,
+  hybrid 5822.828 ms, source update 481.015 ms, sync 17.883826 s, image
+  12226560 bytes after index and 11067392 bytes at the end. RSS is sampled
+  after the source load, after indexing, after the warm queries, after sync,
+  and at the end; peak RSS is 80805888, 225472512, and 633675776. Raw JSON is
+  `linux_1000_append.json`, `linux_10000_append.json`, and
+  `linux_100000_append.json`. The earlier row-edit and format 3 numbers stay
+  in RESULTS.md. The 1,000,000 run exited 255 after 2914 seconds and wrote no
+  result, so it has no timings. Every benchmark
+  document matches the query, so query time still grows with the collection.
+  The sync image is smaller than the post-index image, so that step still
+  compacts the database.
+- Local checks after `dart format` and `dart analyze --fatal-infos`: search 61
+  tests and the full engine suite, 10614 tests. Vec tests were not re-run; vec
+  code did not change. No new remote CI. Packages were not published. Android,
+  iOS, and a browser persistence backend were not run. B5, M9, and item 108
+  remain unchecked. Search release validation stays unchecked. The database
+  browser APK was not rebuilt.
