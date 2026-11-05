@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'catalog_format.dart';
 import 'catalog_work.dart';
 import 'catalog_worker.dart';
 
@@ -71,7 +70,14 @@ class CatalogController extends ChangeNotifier {
   ResourceSample? latest;
   List<ProductMatch> matches = const [];
   int matchTotal = 0;
+  int page = 1;
+  Duration? searchElapsed;
   final List<PhaseReport> reports = [];
+
+  int get pageCount => catalogPageCount(matches.length);
+
+  List<ProductMatch> get visibleMatches =>
+      matches.isEmpty ? const [] : catalogPage(matches, page);
 
   bool get canLoad => !busy && (arabic || english);
   bool get canIndex => !busy && loaded;
@@ -157,8 +163,7 @@ class CatalogController extends ChangeNotifier {
     loaded = false;
     indexed = false;
     productCount = 0;
-    matches = const [];
-    matchTotal = 0;
+    _clearSearch();
     final before = await _takeSample();
     final insertClock = Stopwatch()..start();
     var done = 0;
@@ -253,9 +258,6 @@ class CatalogController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final shown = trimmed.length <= 40
-        ? trimmed
-        : '${trimmed.substring(0, 40)}…';
     await _run('Searching…', () async {
       final clock = Stopwatch()..start();
       final response = await _worker.call({
@@ -264,12 +266,6 @@ class CatalogController extends ChangeNotifier {
         'scope': scope.name,
       });
       clock.stop();
-      final image = latest?.imageBytes ?? 0;
-      final sample = ResourceSample(
-        rssBytes: response['rss'] as int,
-        peakRssBytes: response['peak'] as int,
-        imageBytes: image,
-      );
       final rawMatches = response['matches'] as List;
       final found = [
         for (final raw in rawMatches)
@@ -281,26 +277,26 @@ class CatalogController extends ChangeNotifier {
             score: (raw['score'] as num).toDouble(),
           ),
       ];
-      final total = response['total'] as int;
-      final searchUs = response['searchUs'] as int;
-      final lookupUs = response['lookupUs'] as int;
-      _add(
-        _report(
-          title: 'Search "$shown"',
-          elapsed: clock.elapsed,
-          before: sample,
-          after: sample,
-          sampleElapsed: Duration.zero,
-          detail:
-              '${found.length} shown of $total hits · '
-              'search ${formatElapsed(Duration(microseconds: searchUs))} · '
-              'name lookup ${formatElapsed(Duration(microseconds: lookupUs))}',
-        ),
-      );
       matches = found;
-      matchTotal = total;
-      status = total == 0 ? 'No matches' : '$total matches';
+      matchTotal = response['total'] as int;
+      page = 1;
+      searchElapsed = clock.elapsed;
+      status = 'Ready';
     });
+  }
+
+  /// Moves within the hits already returned. This does not search again.
+  void showPage(int next) {
+    if (busy || next < 1 || next > pageCount || next == page) return;
+    page = next;
+    notifyListeners();
+  }
+
+  void _clearSearch() {
+    matches = const [];
+    matchTotal = 0;
+    page = 1;
+    searchElapsed = null;
   }
 
   Future<void> sample() async {
@@ -455,8 +451,7 @@ class CatalogController extends ChangeNotifier {
         loaded = false;
         indexed = false;
         productCount = 0;
-        matches = const [];
-        matchTotal = 0;
+        _clearSearch();
       }
       this.error = error.toString();
       status = 'Failed';

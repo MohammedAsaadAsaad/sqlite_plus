@@ -154,6 +154,8 @@ Future<void> _handle(_SessionHolder holder, Object? message) async {
         final run = await holder.session.searchProducts(
           request['query'] as String,
           scope: SearchScope.values.byName(request['scope'] as String),
+          limit: request['limit'] as int? ?? catalogResultLimit,
+          offset: request['offset'] as int? ?? 0,
         );
         reply.send({
           'ok': true,

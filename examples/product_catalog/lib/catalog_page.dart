@@ -210,8 +210,7 @@ class _CatalogPageState extends State<CatalogPage> {
                         style: TextStyle(color: theme.colorScheme.error),
                       ),
                     ],
-                    if (controller.matches.isNotEmpty ||
-                        controller.status == 'No matches') ...[
+                    if (controller.searchElapsed != null) ...[
                       const SizedBox(height: 18),
                       _Results(controller: controller),
                     ],
@@ -269,18 +268,47 @@ class _Results extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final elapsed = controller.searchElapsed;
+    final pages = controller.pageCount;
     return Column(
       key: const Key('result-list'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          controller.matchTotal == 0
-              ? 'No matches'
-              : '${controller.matches.length} shown of ${controller.matchTotal}',
+          formatSearchSummary(
+            controller.matchTotal,
+            elapsed!,
+            listed: controller.matches.length,
+          ),
+          key: const Key('search-time'),
           style: theme.textTheme.titleMedium,
         ),
+        if (pages > 1) ...[
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              IconButton(
+                key: const Key('page-previous'),
+                tooltip: 'Previous page',
+                onPressed: controller.busy || controller.page == 1
+                    ? null
+                    : () => controller.showPage(controller.page - 1),
+                icon: const Icon(Icons.chevron_left),
+              ),
+              Text('${controller.page} / $pages', key: const Key('page-label')),
+              IconButton(
+                key: const Key('page-next'),
+                tooltip: 'Next page',
+                onPressed: controller.busy || controller.page == pages
+                    ? null
+                    : () => controller.showPage(controller.page + 1),
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 8),
-        for (final match in controller.matches)
+        for (final match in controller.visibleMatches)
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Text('${match.rank}', style: theme.textTheme.titleMedium),

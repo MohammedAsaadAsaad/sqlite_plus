@@ -16,6 +16,49 @@ void main() {
     expect(formatElapsed(const Duration(microseconds: 4704192)), '4.704 s');
     expect(formatBytes(0), '0 B');
     expect(formatBytes(1216512), '1.16 MB');
+    expect(
+      formatSearchSummary(0, const Duration(microseconds: 1500)),
+      'No matches · 1.500 ms',
+    );
+    expect(
+      formatSearchSummary(1, const Duration(microseconds: 40)),
+      '1 match · 40 µs',
+    );
+    expect(
+      formatSearchSummary(493, const Duration(milliseconds: 405)),
+      '493 matches · 405.000 ms',
+    );
+    expect(
+      formatSearchSummary(12000, const Duration(seconds: 1), listed: 10000),
+      '10,000 of 12,000 matches · 1.000 s',
+    );
+  });
+
+  test('result pages are 20 hits and reject a page outside the list', () {
+    final hits = [
+      for (var i = 1; i <= 45; i++)
+        ProductMatch(
+          rank: i,
+          language: 'English',
+          sourceLine: i,
+          name: 'milk $i',
+          score: 1,
+        ),
+    ];
+    expect(catalogPageCount(0), 0);
+    expect(catalogPageCount(20), 1);
+    expect(catalogPageCount(21), 2);
+    expect(catalogPageCount(45), 3);
+    expect(catalogPage(hits, 1).map((hit) => hit.rank), [
+      for (var i = 1; i <= 20; i++) i,
+    ]);
+    expect(catalogPage(hits, 3).map((hit) => hit.rank), [
+      for (var i = 41; i <= 45; i++) i,
+    ]);
+    expect(() => catalogPageCount(-1), throwsArgumentError);
+    expect(() => catalogPage(hits, 0), throwsArgumentError);
+    expect(() => catalogPage(hits, 4), throwsArgumentError);
+    expect(() => catalogPage(<ProductMatch>[], 1), throwsArgumentError);
   });
 
   test(
@@ -250,6 +293,66 @@ void main() {
     await tester.pump();
     await _tap(tester, const Key('search-button'));
     await _waitForText(tester, 'لبن قديم');
+    expect(find.byKey(const Key('search-time')), findsOneWidget);
+    expect(find.textContaining('RSS'), findsNothing);
+    expect(find.byKey(const Key('page-next')), findsNothing);
+  });
+
+  testWidgets('search shows its time and moves through result pages', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final directory = Directory.systemTemp.createTempSync('catalog-pages');
+    addTearDown(() => directory.deleteSync(recursive: true));
+
+    Future<List<ProductLine>> products({
+      required bool arabic,
+      required bool english,
+    }) async {
+      return [
+        for (var i = 1; i <= 25; i++)
+          ProductLine(language: 'English', sourceLine: i, name: 'milk $i'),
+      ];
+    }
+
+    await tester.pumpWidget(
+      CatalogApp(
+        products: products,
+        storeFile: () async => File('${directory.path}/catalog.sqlite'),
+      ),
+    );
+    await _waitForText(tester, 'Ready');
+    await tester.enterText(find.byKey(const Key('search-field')), 'milk');
+    await tester.pump();
+    await _tap(tester, const Key('search-button'));
+    await _waitForText(tester, '1 / 2');
+    expect(find.byType(ListTile), findsNWidgets(catalogPageSize));
+    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.textContaining('RSS'), findsNothing);
+    expect(find.textContaining('Image'), findsNothing);
+    final timing = tester
+        .widget<Text>(find.byKey(const Key('search-time')))
+        .data;
+    expect(timing, contains('matches ·'));
+
+    await _tap(tester, const Key('page-next'));
+    await tester.pump();
+    expect(find.text('2 / 2'), findsOneWidget);
+    expect(find.byType(ListTile), findsNWidgets(5));
+    expect(
+      tester.widget<Text>(find.byKey(const Key('search-time'))).data,
+      timing,
+    );
+    expect(find.text('Searching…'), findsNothing);
+
+    await _tap(tester, const Key('page-previous'));
+    await tester.pump();
+    expect(find.text('1 / 2'), findsOneWidget);
+    expect(find.byType(ListTile), findsNWidgets(catalogPageSize));
   });
 }
 

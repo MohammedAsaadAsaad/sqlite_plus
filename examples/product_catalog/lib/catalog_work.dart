@@ -185,6 +185,30 @@ Future<Measured<T>> measurePhase<T>({
 /// How many products are written, then the isolate yields before the next batch.
 const int catalogBatchSize = 1000;
 
+/// Names shown on one result page. The search itself runs once.
+const int catalogPageSize = 20;
+
+/// Most hits one search keeps. Keyword search rejects a larger limit.
+const int catalogResultLimit = 10000;
+
+/// Pages needed to show [matches] at [catalogPageSize].
+int catalogPageCount(int matches) {
+  if (matches < 0) throw ArgumentError('Match count cannot be negative');
+  if (matches == 0) return 0;
+  return (matches + catalogPageSize - 1) ~/ catalogPageSize;
+}
+
+/// One page of [matches]. [page] starts at 1. An empty list has no page.
+List<T> catalogPage<T>(List<T> matches, int page) {
+  final count = catalogPageCount(matches.length);
+  if (page < 1 || page > count) {
+    throw ArgumentError('Page $page is outside 1..$count');
+  }
+  final start = (page - 1) * catalogPageSize;
+  final end = start + catalogPageSize;
+  return matches.sublist(start, end > matches.length ? matches.length : end);
+}
+
 /// Names in [text], without keeping a list of every line.
 int countProductNames(String text) {
   var count = 0;
@@ -373,7 +397,8 @@ class CatalogSession {
   Future<SearchRun> searchProducts(
     String query, {
     SearchScope scope = SearchScope.all,
-    int limit = 20,
+    int limit = catalogResultLimit,
+    int offset = 0,
   }) async {
     final opened = search;
     final db = database;
@@ -387,6 +412,7 @@ class CatalogSession {
       trimmed,
       table: 'products',
       limit: limit,
+      offset: offset,
       filter: _scopeFilter(scope),
     );
     searchClock.stop();
@@ -411,7 +437,7 @@ class CatalogSession {
         }
         matches.add(
           ProductMatch(
-            rank: i + 1,
+            rank: offset + i + 1,
             language: row[1] as String,
             sourceLine: _asInt(row[2]),
             name: row[3] as String,

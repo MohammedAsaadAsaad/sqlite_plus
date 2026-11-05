@@ -1,5 +1,26 @@
 # Development log
 
+## 2026-11-05 — Search shows its time and pages the hits
+
+- A search records one duration: the time until the hits come back. The result
+  line is the hit count and that time. RSS, image size, and the activity list
+  are not part of search. Twenty hits are on a page. Previous and next change
+  the page without running search again.
+- `examples/product_catalog`: `flutter analyze --fatal-infos` reported no
+  issues and `flutter test` passed 11 tests. The new tests cover a 20-hit
+  page, the short last page, a rejected page number, and a widget that moves
+  from page 1 to page 2 and back while the recorded time stays the same.
+- `flutter build apk --release --target-platform android-arm64` at 16:04
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19751513
+  bytes, sha256 `ff6280e9f6e072cc37b01ef9df79384c344a5301019a9ed97463709a4c42c705`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.5.0`, versionCode `5`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+  The saved index does not need to be rebuilt.
+
 ## 2026-11-05 — Catalog search returns instead of scanning every hit
 
 - Keyword search no longer probes the source table once per hit. It loads the
