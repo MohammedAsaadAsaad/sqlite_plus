@@ -205,6 +205,42 @@ void main() {
     expect(englishHits.matches.first.language, 'English');
   });
 
+  test(
+    'a result page loads 20 names and the next page searches again',
+    () async {
+      final session = CatalogSession();
+      addTearDown(session.close);
+      await session.insert([
+        for (var i = 1; i <= 25; i++)
+          ProductLine(language: 'English', sourceLine: i, name: 'milk $i'),
+      ]);
+      await session.buildIndex();
+
+      final first = await session.searchProducts('milk');
+      expect(first.matches, hasLength(20));
+      expect(first.total, 25);
+      expect(first.matches.first.rank, 1);
+      expect(first.searchElapsed, greaterThanOrEqualTo(Duration.zero));
+
+      final second = await session.searchProducts('milk', offset: 20);
+      expect(second.matches, hasLength(5));
+      expect(second.total, 25);
+      expect(second.matches.first.rank, 21);
+      expect(
+        second.matches.map((hit) => hit.name).toSet().intersection({
+          for (final hit in first.matches) hit.name,
+        }),
+        isEmpty,
+      );
+      expect(second.searchElapsed, greaterThanOrEqualTo(Duration.zero));
+
+      final past = await session.searchProducts('milk', offset: 40);
+      expect(past.matches, isEmpty);
+      expect(past.total, 25);
+      expect(session.searchProducts('milk', limit: 0), throwsArgumentError);
+    },
+  );
+
   test('a saved image opens ready to search', () async {
     final original = CatalogSession();
     await original.insert(const [
@@ -337,22 +373,23 @@ void main() {
     final timing = tester
         .widget<Text>(find.byKey(const Key('search-time')))
         .data;
-    expect(timing, contains('matches ·'));
+    expect(timing, contains('20 of 25 matches ·'));
 
     await _tap(tester, const Key('page-next'));
-    await tester.pump();
-    expect(find.text('2 / 2'), findsOneWidget);
+    await _waitForText(tester, '2 / 2');
     expect(find.byType(ListTile), findsNWidgets(5));
-    expect(
-      tester.widget<Text>(find.byKey(const Key('search-time'))).data,
-      timing,
-    );
-    expect(find.text('Searching…'), findsNothing);
+    final nextTiming = tester
+        .widget<Text>(find.byKey(const Key('search-time')))
+        .data;
+    expect(nextTiming, contains('5 of 25 matches ·'));
 
     await _tap(tester, const Key('page-previous'));
-    await tester.pump();
-    expect(find.text('1 / 2'), findsOneWidget);
+    await _waitForText(tester, '1 / 2');
     expect(find.byType(ListTile), findsNWidgets(catalogPageSize));
+    expect(
+      tester.widget<Text>(find.byKey(const Key('search-time'))).data,
+      contains('20 of 25 matches ·'),
+    );
   });
 }
 

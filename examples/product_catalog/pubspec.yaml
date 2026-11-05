@@ -1,7 +1,7 @@
 name: product_catalog
 description: Flutter catalog that loads two 10,000-product lists into sqlite_plus and times each search step.
 publish_to: none
-version: 0.5.0+5
+version: 0.5.1+6
 
 environment:
   sdk: ^3.13.7

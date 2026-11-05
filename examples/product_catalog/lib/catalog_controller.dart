@@ -72,12 +72,14 @@ class CatalogController extends ChangeNotifier {
   int matchTotal = 0;
   int page = 1;
   Duration? searchElapsed;
+  String? _query;
+  SearchScope? _searchedScope;
   final List<PhaseReport> reports = [];
 
-  int get pageCount => catalogPageCount(matches.length);
+  int get pageCount => catalogPageCount(matchTotal);
 
-  List<ProductMatch> get visibleMatches =>
-      matches.isEmpty ? const [] : catalogPage(matches, page);
+  /// The names loaded for [page]. Other hits stay as a count.
+  List<ProductMatch> get visibleMatches => matches;
 
   bool get canLoad => !busy && (arabic || english);
   bool get canIndex => !busy && loaded;
@@ -258,16 +260,34 @@ class CatalogController extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    _query = trimmed;
+    _searchedScope = scope;
+    await _loadPage(1);
+  }
+
+  /// Another page is another search: it loads that slice and records its time.
+  Future<void> showPage(int next) async {
+    if (!canSearch || _query == null || _searchedScope == null) return;
+    if (next < 1 || next > pageCount || next == page) return;
+    await _loadPage(next);
+  }
+
+  Future<void> _loadPage(int next) async {
+    final query = _query;
+    final searched = _searchedScope;
+    if (query == null || searched == null) return;
     await _run('Searching…', () async {
       final clock = Stopwatch()..start();
       final response = await _worker.call({
         'op': 'search',
-        'query': trimmed,
-        'scope': scope.name,
+        'query': query,
+        'scope': searched.name,
+        'limit': catalogPageSize,
+        'offset': (next - 1) * catalogPageSize,
       });
       clock.stop();
       final rawMatches = response['matches'] as List;
-      final found = [
+      matches = [
         for (final raw in rawMatches)
           ProductMatch(
             rank: (raw as Map)['rank'] as int,
@@ -277,19 +297,11 @@ class CatalogController extends ChangeNotifier {
             score: (raw['score'] as num).toDouble(),
           ),
       ];
-      matches = found;
       matchTotal = response['total'] as int;
-      page = 1;
+      page = next;
       searchElapsed = clock.elapsed;
       status = 'Ready';
     });
-  }
-
-  /// Moves within the hits already returned. This does not search again.
-  void showPage(int next) {
-    if (busy || next < 1 || next > pageCount || next == page) return;
-    page = next;
-    notifyListeners();
   }
 
   void _clearSearch() {
@@ -297,6 +309,8 @@ class CatalogController extends ChangeNotifier {
     matchTotal = 0;
     page = 1;
     searchElapsed = null;
+    _query = null;
+    _searchedScope = null;
   }
 
   Future<void> sample() async {

@@ -17,9 +17,10 @@ launches open that file and go straight to search.
 
 Type a query and press **Search**, or press an example (`biscuit` or
 `بسكويت`). The language control limits hits with a fixed `language = ?`
-predicate. The result line is the hit count and the time that search took.
-Twenty hits are shown at a time. Previous and next move through those hits
-without searching again.
+predicate. The result line is how many names this page loaded, out of the full hit
+count, and the time that page took. Twenty names are loaded at a time.
+Previous and next run that search again for the other slice and replace the
+time.
 
 The menu at the top holds the setup commands. They are not on the main screen.
 
@@ -59,12 +60,12 @@ stays inside the pure-Dart engine.
 ## Android package
 
 `dist/product-catalog-arm64-v8a.apk` is the release package built on 5 November
-2026 at 16:04 Asia/Hebron (UTC+2) with
+2026 at 16:19 Asia/Hebron (UTC+2) with
 `flutter build apk --release --target-platform android-arm64`. It is 19751513
 bytes, sha256
-`ff6280e9f6e072cc37b01ef9df79384c344a5301019a9ed97463709a4c42c705`. The
-application id is `dev.sqliteplus.product_catalog`, versionName `0.5.0`,
-versionCode `5`, minSdk 24. Native code is `arm64-v8a` only. The release build
+`309313debceaab98d519ebc419b578996e5a8810592d68710b84d8196ddcab6e`. The
+application id is `dev.sqliteplus.product_catalog`, versionName `0.5.1`,
+versionCode `6`, minSdk 24. Native code is `arm64-v8a` only. The release build
 is signed with the Android debug certificate. It was not installed on a device
-here. Version code 5 replaces the earlier packages. Search keeps the index
+here. Version code 6 replaces the earlier packages. Search keeps the index
 saved by an earlier version.

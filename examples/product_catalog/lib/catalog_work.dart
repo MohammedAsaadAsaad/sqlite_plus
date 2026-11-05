@@ -185,7 +185,7 @@ Future<Measured<T>> measurePhase<T>({
 /// How many products are written, then the isolate yields before the next batch.
 const int catalogBatchSize = 1000;
 
-/// Names shown on one result page. The search itself runs once.
+/// Names loaded for one result page. Later pages ask for the next slice.
 const int catalogPageSize = 20;
 
 /// Most hits one search keeps. Keyword search rejects a larger limit.
@@ -397,7 +397,7 @@ class CatalogSession {
   Future<SearchRun> searchProducts(
     String query, {
     SearchScope scope = SearchScope.all,
-    int limit = catalogResultLimit,
+    int limit = catalogPageSize,
     int offset = 0,
   }) async {
     final opened = search;
@@ -407,6 +407,7 @@ class CatalogSession {
     }
     final trimmed = query.trim();
     if (trimmed.isEmpty) throw ArgumentError('Enter a search query');
+    if (limit < 1 || offset < 0) throw ArgumentError('Invalid result page');
     final searchClock = Stopwatch()..start();
     final results = await opened.search(
       trimmed,

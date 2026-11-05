@@ -1,5 +1,26 @@
 # Development log
 
+## 2026-11-05 — Each result page is its own search
+
+- A page loads 20 names. The line is how many this page loaded out of the
+  full hit count, and the time of that search. Previous and next run the
+  search for the other slice and replace the time.
+- `examples/product_catalog`: `flutter analyze --fatal-infos` reported no
+  issues and `flutter test` passed 12 tests. One test searches 25 names and
+  checks that the first call returns 20 of 25, the next offset returns the
+  other 5, and an offset past the end returns none. The widget test moves
+  from page 1 to page 2 and back, and each page shows its own count.
+- `flutter build apk --release --target-platform android-arm64` at 16:19
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19751513
+  bytes, sha256 `309313debceaab98d519ebc419b578996e5a8810592d68710b84d8196ddcab6e`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.5.1`, versionCode `6`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+  The saved index does not need to be rebuilt.
+
 ## 2026-11-05 — Search shows its time and pages the hits
 
 - A search records one duration: the time until the hits come back. The result
