@@ -1,5 +1,159 @@
 # Development log
 
+## 2026-11-05 — Each result page is its own search
+
+- A page loads 20 names. The line is how many this page loaded out of the
+  full hit count, and the time of that search. Previous and next run the
+  search for the other slice and replace the time.
+- `examples/product_catalog`: `flutter analyze --fatal-infos` reported no
+  issues and `flutter test` passed 12 tests. One test searches 25 names and
+  checks that the first call returns 20 of 25, the next offset returns the
+  other 5, and an offset past the end returns none. The widget test moves
+  from page 1 to page 2 and back, and each page shows its own count.
+- `flutter build apk --release --target-platform android-arm64` at 16:19
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19751513
+  bytes, sha256 `309313debceaab98d519ebc419b578996e5a8810592d68710b84d8196ddcab6e`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.5.1`, versionCode `6`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+  The saved index does not need to be rebuilt.
+
+## 2026-11-05 — Search shows its time and pages the hits
+
+- A search records one duration: the time until the hits come back. The result
+  line is the hit count and that time. RSS, image size, and the activity list
+  are not part of search. Twenty hits are on a page. Previous and next change
+  the page without running search again.
+- `examples/product_catalog`: `flutter analyze --fatal-infos` reported no
+  issues and `flutter test` passed 11 tests. The new tests cover a 20-hit
+  page, the short last page, a rejected page number, and a widget that moves
+  from page 1 to page 2 and back while the recorded time stays the same.
+- `flutter build apk --release --target-platform android-arm64` at 16:04
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19751513
+  bytes, sha256 `ff6280e9f6e072cc37b01ef9df79384c344a5301019a9ed97463709a4c42c705`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.5.0`, versionCode `5`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+  The saved index does not need to be rebuilt.
+
+## 2026-11-05 — Catalog search returns instead of scanning every hit
+
+- Keyword search no longer probes the source table once per hit. It loads the
+  matched key rows with one `IN` list and checks those primary keys in one
+  query. On the live image, a rowid `IN` list is a hash probe per id. A
+  single `AND (column = ?)` filter is applied to those rows. Any other
+  predicate still uses the ordinary planner.
+- One FTS `MATCH` of a single full term can rank from the posting lists. The
+  older path remains when that shape does not apply.
+- The catalog looks up the shown names with one `IN` query and does not copy
+  the database image before painting the hits.
+- Linux x64, Dart 3.13.7, JIT, not AOT and not a phone. 20,000 products,
+  10,000 Arabic and 10,000 English, `SearchTextAnalyzer(stemArabic: true)`,
+  query `بسكويت`. `indexTable` took 36558 ms. `exportImage` took 1 ms and
+  wrote 4993024 bytes. Search after that save, limit 20, took 405 ms and
+  returned 493 hits. The next search took 359 ms. The same query with
+  `language = ?` bound to `Arabic` took 295 ms and returned 493 hits.
+  Reopening that image and searching took 296 ms, then 276 ms, both with 493
+  hits. Before this mapping change, the same query on 1,000 Arabic names took
+  8869 ms and then 8437 ms for 54 hits.
+- `packages/sqlite_plus`: `dart analyze --fatal-infos` reported no issues and
+  `dart test` passed 10611 tests. `packages/sqlite_plus_search`: `dart analyze
+  --fatal-infos` reported no issues and `dart test` passed 62 tests.
+  `examples/product_catalog`: `flutter analyze --fatal-infos` reported no
+  issues and `flutter test` passed 9 tests.
+- `flutter build apk --release --target-platform android-arm64` at 15:54
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19751453
+  bytes, sha256 `025e23c18423a325be038d9cd3838caa8c1663755426fdaeaceac24ba3650780`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.4.0`, versionCode `4`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+  The saved index from version code 3 does not need to be rebuilt.
+
+## 2026-11-05 — Catalog is saved once; setup stays in the menu
+
+- The first launch loads both product lists, builds the keyword index, and
+  writes `product_catalog.sqlite` in the app's private files directory.
+  Later launches open that image and start on search. The file is replaced
+  only when Load products or Rebuild index is chosen from the top menu.
+  Activity and the resource sample are in that menu too.
+- `flutter analyze --fatal-infos` reported no issues and `flutter test` passed
+  9 tests. One test saves an image, opens it, and searches without building
+  the index again. The widget test prepares once, searches, then opens the
+  same file in a second launch without reading the product list again.
+- `flutter build apk --release --target-platform android-arm64` at 15:06
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19751453
+  bytes, sha256 `42fa6bddec67f5b7114ca02577af92045d8c602739a82ea3425a7830067e9a88`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.3.0`, versionCode `3`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+
+## 2026-11-05 — Catalog isolate, batches, and a simpler screen
+
+- The catalog screen is a short phone layout: one status line, three figures,
+  Arabic and English together, Load and Index side by side, then search.
+  While a step runs, a progress bar shows how many products are done.
+- Load, index, search, and the resource sample run on a background isolate.
+  The interface isolate reads the asset text and sends at most 1,000 names
+  per message. Each batch is committed before the next one starts. Indexing
+  reads the source table 1,000 rows at a time, ordered by `rowid`, and sends
+  progress back. A `WITHOUT ROWID` source is still loaded, then written in
+  the same page size.
+- Flutter 3.47.9, Dart 3.13.7, Linux x64: `flutter analyze --fatal-infos`
+  reported no issues and `flutter test` passed 8 tests. `dart analyze
+  --fatal-infos` and `dart test` in `packages/sqlite_plus_search` reported no
+  issues and passed 62 tests, including a 1,001-row progress check.
+- `flutter build apk --release --target-platform android-arm64` at 14:56
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19620241
+  bytes, sha256 `f03d26f3b6096cad307000e1fa3968a39f263b77f9ef2122271140b469c64abb`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.2.0`, versionCode `2`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+  iOS, macOS, Windows, and a browser build were not run.
+
+## 2026-11-05 — Product catalog example
+
+- `examples/product_catalog` is a Flutter app with the two 10,000-name lists as
+  assets. Load products, Build search index, and Search run only when asked.
+  Each step shows its own time, the database image before and after, and
+  process RSS. The resource sample is outside the operation clock. Keyword
+  search stems Arabic. There is no embedding model.
+- Flutter 3.47.9, Dart 3.13.7, Linux x64, on the packages in this branch:
+  `flutter analyze --fatal-infos` reported no issues and `flutter test` passed
+  7 tests on 5 November 2026.
+- A debug `flutter run -d linux` compiled from the append-engine working tree
+  loaded 20,000 rows and searched. The Arabic query showed 20 of 493 hits. The
+  search card read Time 673.840 ms, image 3.50 MB before and after, RSS 585.75
+  MB to 643.35 MB, and peak RSS 751.64 MB, at about 14:25 Asia/Hebron (UTC+2).
+  That is one debug sample, not an AOT benchmark of this branch.
+- `flutter build apk --release --target-platform android-arm64` at 14:36
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19423641
+  bytes, sha256 `4c70b2d03af38bd42a76b2173de40654724bfda6542a3158123acd7b4ceaf382`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.1.0`, versionCode `1`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. Both product lists and the IBM Plex Sans Arabic fonts are
+  in the archive. The release build is signed with the Android debug
+  certificate, SHA-256
+  `f0cc4aecf5b1af9dbd2d0cae5d319fe4c00762a67fafdf8b8a5cee8e1d318b60`. The
+  package was not installed on a device or an emulator. iOS, macOS, Windows,
+  and a browser build were not run.
+
 ## Initial scaffold
 
 - Created Dart monorepo skeleton, memory backend and unit tests.

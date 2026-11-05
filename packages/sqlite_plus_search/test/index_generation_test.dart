@@ -82,4 +82,33 @@ void main() {
     expect(
         (await db.query('SELECT body FROM docs')).rows.single.single, 'milk');
   });
+
+  test('indexing reads the source 1,000 rows at a time', () async {
+    final db = await openInMemory();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE docs(id INTEGER PRIMARY KEY, body TEXT)');
+    final values = <String>[];
+    final parameters = <Object?>[];
+    for (var id = 1; id <= 1001; id++) {
+      values.add('(?,?)');
+      parameters.addAll([id, id == 1 || id == 1001 ? 'unique-milk' : 'tea']);
+    }
+    await db.execute(
+        'INSERT INTO docs(id, body) VALUES ${values.join(',')}', parameters);
+    final search = await SqlitePlusSearch.open(database: db);
+    final seen = <int>[];
+    await search.indexTable(
+        table: 'docs',
+        primaryKey: 'id',
+        textColumns: ['body'],
+        onProgress: (done, total) {
+          expect(total, 1001);
+          seen.add(done);
+        });
+    expect(seen, containsAll([0, 1000, 1001]));
+    expect(seen.last, 1001);
+    final hits = await search.search('unique-milk', table: 'docs');
+    expect(hits.total, 2);
+    expect(hits.hits.map((hit) => hit.documentId).toSet(), {'1', '1001'});
+  });
 }

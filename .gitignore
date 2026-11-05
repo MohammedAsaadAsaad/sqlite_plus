@@ -12,6 +12,7 @@ coverage/
 # Android release packages are built locally.
 *.apk
 !browser/dist/sqlite-plus-browser-arm64-v8a.apk
+!examples/product_catalog/dist/product-catalog-arm64-v8a.apk
 
 # Local probes. These directories stay off GitHub.
 /local/

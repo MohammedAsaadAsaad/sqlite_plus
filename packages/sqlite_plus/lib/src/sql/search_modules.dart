@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import '../btree/btree_reader.dart';
@@ -133,9 +134,18 @@ final class _Fts5Cursor extends VirtualTableCursor {
     _live();
     final spec = Fts5Spec.parse(table, arguments);
     final snapshot = SearchSnapshot.current;
-    final documents = _documents(spec, snapshot);
     final scan = module.scans[asciiLower(table)];
     final pending = _pendingQuery(scan?.$1, scan?.$2 ?? const [], spec);
+    if (pending != null) {
+      final ranked = _fastRank(spec, snapshot, pending.$1, pending.$2);
+      if (ranked != null) {
+        ftsSession().tables[asciiLower(spec.table)] = ranked.$1;
+        _rows = ranked.$2;
+        _index = 0;
+        return;
+      }
+    }
+    final documents = _documents(spec, snapshot);
     final state = FtsTableState(spec, documents);
     if (pending != null) {
       final query = parseFtsQuery(pending.$1, spec.tokenizer, spec.visibleNames,
@@ -154,14 +164,15 @@ final class _Fts5Cursor extends VirtualTableCursor {
     ftsSession().tables[asciiLower(spec.table)] = state;
     _rows = [
       for (final document in documents.values)
-        (
-          document.rowId,
-          [
-            for (var i = 0; i < spec.columns.length; i++) document.texts[i],
-            null,
-            state.scores[document.rowId],
-          ]
-        )
+        if (pending == null || state.scores.containsKey(document.rowId))
+          (
+            document.rowId,
+            [
+              for (var i = 0; i < spec.columns.length; i++) document.texts[i],
+              null,
+              state.scores[document.rowId],
+            ]
+          )
     ];
     _index = 0;
   }
@@ -257,6 +268,265 @@ String? _constant(Expr expression, List<Object?> parameters) {
     return left + right;
   }
   return null;
+}
+
+/// Scores an AND/OR of single full terms from postings and docsize.
+///
+/// Returns null when the query or index shape needs the full token rebuild.
+(FtsTableState, List<(BigInt, List<Object?>)>)? _fastRank(
+    Fts5Spec spec, SearchSnapshot snapshot, String match, int? column) {
+  if (spec.detail != 'full' ||
+      spec.prefix.isNotEmpty ||
+      spec.contentlessDelete ||
+      !spec.columnSize) {
+    return null;
+  }
+  late final FtsQuery query;
+  try {
+    query = parseFtsQuery(match, spec.tokenizer, spec.visibleNames,
+        detail: spec.detail);
+  } on SqlException {
+    return null;
+  }
+  final phrases = query.phrases;
+  if (phrases.isEmpty || !_positiveFts(query.expression)) return null;
+  for (var i = 0; i < phrases.length; i++) {
+    final phrase = phrases[i];
+    if (phrase.id != i ||
+        phrase.prefix ||
+        phrase.column != null ||
+        phrase.tokens.length != 1) {
+      return null;
+    }
+  }
+  final docsize = snapshot.table('${spec.table}_docsize');
+  final data = snapshot.table('${spec.table}_data');
+  final index = snapshot.table('${spec.table}_idx');
+  if (docsize == null || data == null || index == null) return null;
+  final lengths = <BigInt, int>{};
+  for (final row in docsize.rows) {
+    final blob = docsize.value(row, 'sz');
+    if (blob is! Uint8List) return null;
+    var sum = 0;
+    var offset = 0;
+    try {
+      while (offset < blob.length) {
+        final into = <int>[];
+        offset = readVarint(blob, offset, into);
+        sum += into.single;
+      }
+    } on SqlException {
+      return null;
+    }
+    lengths[row.rowId] = sum;
+  }
+  if (!spec.contentless && !spec.external) {
+    final content = snapshot.table('${spec.table}_content');
+    if (content != null) {
+      for (final row in content.rows) {
+        lengths.putIfAbsent(row.rowId, () => 0);
+      }
+    }
+  } else if (spec.external && spec.contentTable != null) {
+    final external = snapshot.table(spec.contentTable!);
+    if (external != null) {
+      for (final row in external.rows) {
+        final id = _externalId(external, row, spec.contentRowid);
+        if (id != null) lengths.putIfAbsent(id, () => 0);
+      }
+    }
+  }
+  final wanted = <String, List<FtsLeaf>>{};
+  for (final phrase in phrases) {
+    (wanted[phrase.tokens.single] ??= []).add(phrase);
+  }
+  final postings = <int, Map<BigInt, List<FtsInst>>>{
+    for (final phrase in phrases) phrase.id: {}
+  };
+  final blocks = <int, Uint8List>{};
+  for (final row in data.rows) {
+    final block = data.value(row, 'block');
+    if (block is Uint8List && row.rowId > BigInt.from(100)) {
+      blocks[row.rowId.toInt()] = block;
+    }
+  }
+  final pages = <int, List<int>>{};
+  for (final row in index.rows) {
+    if (row.values.length < 3) continue;
+    final segid = _int(row.values[0]);
+    final page = _int(row.values[2]) >> 1;
+    pages.putIfAbsent(segid, () => []).add(page);
+  }
+  final segids = pages.keys.toList()..sort();
+  for (final segid in segids) {
+    final ordered = pages[segid]!..sort();
+    for (final page in ordered) {
+      final block = blocks[fts5LeafRowid(segid, page)];
+      if (block == null || block.length < 4) continue;
+      List<FtsPosting> terms;
+      try {
+        terms = decodeLeaf(block, detail: spec.detail);
+      } on SqlException {
+        return null;
+      }
+      for (final term in terms) {
+        if (term.term.isEmpty || term.term[0] != 0x30) continue;
+        final phrasesForTerm =
+            wanted[String.fromCharCodes(term.term.sublist(1))];
+        if (phrasesForTerm == null) continue;
+        for (final posting in term.rows) {
+          if (posting.delete) return null;
+          if (!lengths.containsKey(posting.rowId)) return null;
+          for (final phrase in phrasesForTerm) {
+            final hits =
+                postings[phrase.id]!.putIfAbsent(posting.rowId, () => []);
+            for (final entry in posting.positions.entries) {
+              if (column != null && entry.key != column) continue;
+              if (entry.key < 0 || entry.key >= spec.columns.length) {
+                return null;
+              }
+              if (spec.columns[entry.key].unindexed) continue;
+              for (final position in entry.value) {
+                hits.add(FtsInst(phrase.id, entry.key, position, 1));
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  for (final hits in postings.values) {
+    hits.removeWhere((_, list) => list.isEmpty);
+    for (final list in hits.values) {
+      list.sort((a, b) {
+        final columnOrder = a.column.compareTo(b.column);
+        return columnOrder != 0 ? columnOrder : a.offset.compareTo(b.offset);
+      });
+    }
+  }
+  final rows = lengths.length;
+  var tokens = 0;
+  for (final length in lengths.values) {
+    tokens += length;
+  }
+  final average = rows == 0 ? 0.0 : tokens / rows;
+  final idf = [
+    for (final phrase in phrases)
+      () {
+        final hit = postings[phrase.id]!.length;
+        if (rows == 0) return 1e-6;
+        final value = math.log((rows - hit + 0.5) / (hit + 0.5));
+        return value <= 0 ? 1e-6 : value;
+      }()
+  ];
+  final bm25 = FtsBm25(phrases, idf, average);
+  final texts = _rankTexts(spec, snapshot);
+  final matched = <BigInt>[];
+  for (final id in lengths.keys) {
+    if (_fastMatches(query.expression, id, postings)) matched.add(id);
+  }
+  matched.sort();
+  final unindexed = [for (final item in spec.columns) item.unindexed];
+  final carrier = unindexed.indexWhere((value) => !value);
+  final documents = <BigInt, FtsDocument>{};
+  final state = FtsTableState(spec, documents);
+  state.query = query;
+  state.column = column;
+  state.bm25 = bm25;
+  final cursor = <(BigInt, List<Object?>)>[];
+  for (final id in matched) {
+    final text = texts[id];
+    if (text == null) return null;
+    for (var i = 0; i < spec.columns.length; i++) {
+      if (!spec.columns[i].unindexed && text[i] == null) return null;
+    }
+    final instances = <FtsInst>[
+      for (final phrase in phrases) ...?postings[phrase.id]![id]
+    ];
+    final length = lengths[id] ?? 0;
+    final scored = FtsDocument(
+        id,
+        const [],
+        [
+          for (var i = 0; i < spec.columns.length; i++)
+            i == carrier
+                ? List<FtsToken>.filled(length, const FtsToken('', 0, 0))
+                : const <FtsToken>[]
+        ],
+        unindexed);
+    final indexed = <List<FtsToken>>[
+      for (var i = 0; i < spec.columns.length; i++) <FtsToken>[]
+    ];
+    for (final inst in instances) {
+      if (inst.column < 0 || inst.column >= indexed.length) continue;
+      final columnTokens = indexed[inst.column];
+      while (columnTokens.length <= inst.offset) {
+        columnTokens.add(const FtsToken('', 0, 0));
+      }
+      final term = phrases[inst.phrase].tokens.single;
+      columnTokens[inst.offset] = FtsToken(term, inst.offset, inst.offset + 1);
+    }
+    final document = FtsDocument(id, text, indexed, unindexed);
+    documents[id] = document;
+    state.instances[id] = instances;
+    state.scores[id] = bm25.score(scored, instances, const []);
+    cursor.add((
+      id,
+      [
+        for (var i = 0; i < spec.columns.length; i++) text[i],
+        null,
+        state.scores[id],
+      ]
+    ));
+  }
+  return (state, cursor);
+}
+
+bool _positiveFts(FtsExpr expr) =>
+    expr is FtsLeaf ||
+    expr is FtsAnd && _positiveFts(expr.left) && _positiveFts(expr.right) ||
+    expr is FtsOr && _positiveFts(expr.left) && _positiveFts(expr.right);
+
+bool _fastMatches(
+    FtsExpr expr, BigInt id, Map<int, Map<BigInt, List<FtsInst>>> postings) {
+  if (expr is FtsLeaf) return postings[expr.id]?[id]?.isNotEmpty ?? false;
+  if (expr is FtsAnd) {
+    return _fastMatches(expr.left, id, postings) &&
+        _fastMatches(expr.right, id, postings);
+  }
+  if (expr is FtsOr) {
+    return _fastMatches(expr.left, id, postings) ||
+        _fastMatches(expr.right, id, postings);
+  }
+  return false;
+}
+
+Map<BigInt, List<String?>> _rankTexts(Fts5Spec spec, SearchSnapshot snapshot) {
+  final texts = <BigInt, List<String?>>{};
+  if (!spec.contentless && !spec.external) {
+    final content = snapshot.table('${spec.table}_content');
+    if (content != null) {
+      for (final row in content.rows) {
+        texts[row.rowId] = [
+          for (var i = 0; i < spec.columns.length; i++)
+            _text(content.value(row, 'c$i'))
+        ];
+      }
+    }
+  } else if (spec.external && spec.contentTable != null) {
+    final external = snapshot.table(spec.contentTable!);
+    if (external != null) {
+      for (final row in external.rows) {
+        final id = _externalId(external, row, spec.contentRowid);
+        if (id == null) continue;
+        texts[id] = [
+          for (var i = 0; i < spec.columns.length; i++)
+            _text(_externalColumn(external, row, i))
+        ];
+      }
+    }
+  }
+  return texts;
 }
 
 Map<BigInt, FtsDocument> readFts5Documents(
