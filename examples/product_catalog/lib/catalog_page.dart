@@ -44,62 +44,178 @@ class _CatalogPageState extends State<CatalogPage> {
       listenable: _controller,
       builder: (context, _) {
         final controller = _controller;
+        final theme = Theme.of(context);
         return Scaffold(
           body: SafeArea(
             child: Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 920),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Product catalog',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Two bundled lists, 10,000 names each. '
-                        'Nothing is loaded, indexed, or searched until you ask.',
-                        style: Theme.of(context).textTheme.bodyLarge,
-                      ),
-                      const SizedBox(height: 20),
-                      _Summary(controller: controller),
-                      const SizedBox(height: 16),
-                      _Actions(
-                        controller: controller,
-                        query: _query,
-                        onExample: _runExample,
-                      ),
-                      if (controller.error != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          controller.error!,
-                          key: const Key('error'),
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                  children: [
+                    Text('Catalog', style: theme.textTheme.headlineSmall),
+                    const SizedBox(height: 4),
+                    Text(
+                      controller.status,
+                      key: const Key('status-line'),
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                    const SizedBox(height: 14),
+                    if (controller.busy)
+                      KeyedSubtree(
+                        key: const Key('busy'),
+                        child: controller.progressTotal > 0
+                            ? _Progress(controller: controller)
+                            : const SizedBox(height: 4),
+                      )
+                    else
+                      _Metrics(controller: controller),
+                    const SizedBox(height: 14),
+                    SegmentedButton<String>(
+                      multiSelectionEnabled: true,
+                      emptySelectionAllowed: true,
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(value: 'Arabic', label: Text('Arabic')),
+                        ButtonSegment(value: 'English', label: Text('English')),
+                      ],
+                      selected: {
+                        if (controller.arabic) 'Arabic',
+                        if (controller.english) 'English',
+                      },
+                      onSelectionChanged: controller.busy
+                          ? null
+                          : (selected) {
+                              controller.setArabic(selected.contains('Arabic'));
+                              controller.setEnglish(
+                                selected.contains('English'),
+                              );
+                            },
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton(
+                            key: const Key('load-products'),
+                            onPressed: controller.canLoad
+                                ? controller.load
+                                : null,
+                            child: const Text('Load'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton(
+                            key: const Key('build-index'),
+                            onPressed: controller.canIndex
+                                ? controller.buildIndex
+                                : null,
+                            child: const Text('Index'),
                           ),
                         ),
                       ],
-                      if (controller.matches.isNotEmpty ||
-                          controller.status == 'No matches') ...[
-                        const SizedBox(height: 20),
-                        _Results(controller: controller),
+                    ),
+                    const SizedBox(height: 18),
+                    TextField(
+                      key: const Key('search-field'),
+                      controller: _query,
+                      enabled: !controller.busy,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: controller.canSearch
+                          ? controller.runSearch
+                          : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Search',
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        ActionChip(
+                          key: const Key('example-biscuit'),
+                          label: const Text('biscuit'),
+                          onPressed: controller.busy
+                              ? null
+                              : () => _runExample('biscuit'),
+                        ),
+                        ActionChip(
+                          key: const Key('example-arabic'),
+                          label: const Text('بسكويت'),
+                          onPressed: controller.busy
+                              ? null
+                              : () => _runExample('بسكويت'),
+                        ),
+                        SegmentedButton<SearchScope>(
+                          showSelectedIcon: false,
+                          segments: const [
+                            ButtonSegment(
+                              value: SearchScope.all,
+                              label: Text('All'),
+                            ),
+                            ButtonSegment(
+                              value: SearchScope.arabic,
+                              label: Text('Ar'),
+                            ),
+                            ButtonSegment(
+                              value: SearchScope.english,
+                              label: Text('En'),
+                            ),
+                          ],
+                          selected: {controller.scope},
+                          onSelectionChanged: controller.busy
+                              ? null
+                              : (selected) =>
+                                    controller.setScope(selected.single),
+                        ),
+                        FilledButton(
+                          key: const Key('search-button'),
+                          onPressed:
+                              controller.canSearch &&
+                                  _query.text.trim().isNotEmpty
+                              ? () => controller.runSearch(_query.text)
+                              : null,
+                          child: const Text('Search'),
+                        ),
                       ],
-                      const SizedBox(height: 20),
-                      _Reports(reports: controller.reports),
-                      const SizedBox(height: 16),
+                    ),
+                    if (controller.error != null) ...[
+                      const SizedBox(height: 12),
                       Text(
-                        'Each operation time excludes the resource sample. '
-                        'RSS is the process resident set. '
-                        'Image size is the sqlite_plus database image. '
-                        'Figures are one sample on this device.',
-                        style: Theme.of(context).textTheme.bodySmall,
+                        controller.error!,
+                        key: const Key('error'),
+                        style: TextStyle(color: theme.colorScheme.error),
                       ),
                     ],
-                  ),
+                    if (controller.matches.isNotEmpty ||
+                        controller.status == 'No matches') ...[
+                      const SizedBox(height: 18),
+                      _Results(controller: controller),
+                    ],
+                    const SizedBox(height: 18),
+                    _Reports(reports: controller.reports),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        key: const Key('sample-resources'),
+                        onPressed: controller.canSample
+                            ? controller.sample
+                            : null,
+                        child: const Text('Sample resources'),
+                      ),
+                    ),
+                    Text(
+                      'Each step runs on a background isolate, 1,000 products at a time. '
+                      'The time shown excludes the resource sample.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -110,198 +226,79 @@ class _CatalogPageState extends State<CatalogPage> {
   }
 }
 
-class _Summary extends StatelessWidget {
-  const _Summary({required this.controller});
+class _Progress extends StatelessWidget {
+  const _Progress({required this.controller});
+
+  final CatalogController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final total = controller.progressTotal;
+    final done = controller.progressDone;
+    final value = total == 0 ? null : done / total;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(controller.progressLabel, style: theme.textTheme.labelLarge),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            key: const Key('progress-bar'),
+            minHeight: 8,
+            value: value,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text('${formatCount(done)} / ${formatCount(total)}'),
+      ],
+    );
+  }
+}
+
+class _Metrics extends StatelessWidget {
+  const _Metrics({required this.controller});
 
   final CatalogController controller;
 
   @override
   Widget build(BuildContext context) {
     final latest = controller.latest;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(controller.status, key: const Key('status-line')),
-            if (controller.busy)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('Working', key: Key('busy')),
-              ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: [
-                _Stat('Products', '${controller.productCount}'),
-                _Stat('Index', controller.indexed ? 'Ready' : 'Not built'),
-                _Stat(
-                  'Image',
-                  latest == null ? '—' : formatBytes(latest.imageBytes),
-                ),
-                _Stat(
-                  'RSS',
-                  latest == null ? '—' : formatBytes(latest.rssBytes),
-                ),
-                _Stat(
-                  'Peak RSS',
-                  latest == null ? '—' : formatBytes(latest.peakRssBytes),
-                ),
-              ],
-            ),
-          ],
+    return Row(
+      children: [
+        _Metric(label: 'Products', value: formatCount(controller.productCount)),
+        _Metric(
+          label: 'Image',
+          value: latest == null ? '—' : formatBytes(latest.imageBytes),
         ),
-      ),
+        _Metric(
+          label: 'Memory',
+          value: latest == null ? '—' : formatBytes(latest.rssBytes),
+        ),
+      ],
     );
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat(this.label, this.value);
+class _Metric extends StatelessWidget {
+  const _Metric({required this.label, required this.value});
 
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 140,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: 2),
-          Text(value, style: Theme.of(context).textTheme.titleMedium),
-        ],
-      ),
-    );
-  }
-}
-
-class _Actions extends StatelessWidget {
-  const _Actions({
-    required this.controller,
-    required this.query,
-    required this.onExample,
-  });
-
-  final CatalogController controller;
-  final TextEditingController query;
-  final void Function(String query) onExample;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
+    final theme = Theme.of(context);
+    return Expanded(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.only(right: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
-              spacing: 8,
-              children: [
-                FilterChip(
-                  key: const Key('arabic-file'),
-                  label: const Text('Arabic products'),
-                  selected: controller.arabic,
-                  onSelected: controller.busy ? null : controller.setArabic,
-                ),
-                FilterChip(
-                  key: const Key('english-file'),
-                  label: const Text('English products'),
-                  selected: controller.english,
-                  onSelected: controller.busy ? null : controller.setEnglish,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton(
-                  key: const Key('load-products'),
-                  onPressed: controller.canLoad ? controller.load : null,
-                  child: const Text('Load products'),
-                ),
-                FilledButton(
-                  key: const Key('build-index'),
-                  onPressed: controller.canIndex ? controller.buildIndex : null,
-                  child: const Text('Build search index'),
-                ),
-                OutlinedButton(
-                  key: const Key('sample-resources'),
-                  onPressed: controller.canSample ? controller.sample : null,
-                  child: const Text('Sample resources'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              key: const Key('search-field'),
-              controller: query,
-              enabled: !controller.busy,
-              decoration: const InputDecoration(
-                labelText: 'Search',
-                hintText: 'biscuit or بسكويت',
-                border: OutlineInputBorder(),
-              ),
-              onSubmitted: controller.canSearch ? controller.runSearch : null,
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                const Text('Examples'),
-                ActionChip(
-                  key: const Key('example-biscuit'),
-                  label: const Text('biscuit'),
-                  onPressed: controller.busy
-                      ? null
-                      : () => onExample('biscuit'),
-                ),
-                ActionChip(
-                  key: const Key('example-arabic'),
-                  label: const Text('بسكويت'),
-                  onPressed: controller.busy ? null : () => onExample('بسكويت'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                SegmentedButton<SearchScope>(
-                  segments: const [
-                    ButtonSegment(value: SearchScope.all, label: Text('All')),
-                    ButtonSegment(
-                      value: SearchScope.arabic,
-                      label: Text('Arabic'),
-                    ),
-                    ButtonSegment(
-                      value: SearchScope.english,
-                      label: Text('English'),
-                    ),
-                  ],
-                  selected: {controller.scope},
-                  onSelectionChanged: controller.busy
-                      ? null
-                      : (selected) => controller.setScope(selected.single),
-                ),
-                FilledButton(
-                  key: const Key('search-button'),
-                  onPressed:
-                      controller.canSearch && query.text.trim().isNotEmpty
-                      ? () => controller.runSearch(query.text)
-                      : null,
-                  child: const Text('Search'),
-                ),
-              ],
-            ),
+            Text(label, style: theme.textTheme.labelMedium),
+            const SizedBox(height: 2),
+            Text(value, style: theme.textTheme.titleMedium),
           ],
         ),
       ),
@@ -316,6 +313,7 @@ class _Results extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       key: const Key('result-list'),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,18 +322,17 @@ class _Results extends StatelessWidget {
           controller.matchTotal == 0
               ? 'No matches'
               : '${controller.matches.length} shown of ${controller.matchTotal}',
-          style: Theme.of(context).textTheme.titleMedium,
+          style: theme.textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
         for (final match in controller.matches)
-          Card(
-            child: ListTile(
-              leading: Text('${match.rank}'),
-              title: Text(match.name),
-              subtitle: Text(
-                '${match.language} · line ${match.sourceLine} · '
-                'score ${match.score.toStringAsFixed(3)}',
-              ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Text('${match.rank}', style: theme.textTheme.titleMedium),
+            title: Text(match.name),
+            subtitle: Text(
+              '${match.language} · line ${match.sourceLine} · '
+              'score ${match.score.toStringAsFixed(3)}',
             ),
           ),
       ],
@@ -379,33 +376,29 @@ class _ReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(report.title, style: theme.textTheme.titleSmall),
-            if (newest) Text('Latest', style: theme.textTheme.labelMedium),
-            const SizedBox(height: 6),
-            Text(report.detail),
-            const SizedBox(height: 8),
-            Text('Time ${formatElapsed(report.elapsed)}'),
-            Text(
-              'Image ${formatBytes(report.imageBefore)} → '
-              '${formatBytes(report.imageAfter)}',
-            ),
-            Text(
-              'RSS ${formatBytes(report.rssBefore)} → '
-              '${formatBytes(report.rssAfter)}',
-            ),
-            Text('Peak RSS ${formatBytes(report.peakRss)}'),
-            Text(
-              'Resource sample ${formatElapsed(report.sampleElapsed)} '
-              '(outside the operation time)',
-            ),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(report.title, style: theme.textTheme.titleSmall),
+          if (newest) Text('Latest', style: theme.textTheme.labelMedium),
+          Text(report.detail),
+          Text('Time ${formatElapsed(report.elapsed)}'),
+          Text(
+            'Image ${formatBytes(report.imageBefore)} → '
+            '${formatBytes(report.imageAfter)}',
+          ),
+          Text(
+            'RSS ${formatBytes(report.rssBefore)} → '
+            '${formatBytes(report.rssAfter)}',
+          ),
+          Text('Peak RSS ${formatBytes(report.peakRss)}'),
+          Text(
+            'Resource sample ${formatElapsed(report.sampleElapsed)} '
+            '(outside the operation time)',
+          ),
+        ],
       ),
     );
   }

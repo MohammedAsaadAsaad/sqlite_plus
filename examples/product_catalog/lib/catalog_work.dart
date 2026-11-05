@@ -182,6 +182,48 @@ Future<Measured<T>> measurePhase<T>({
   );
 }
 
+/// How many products are written, then the isolate yields before the next batch.
+const int catalogBatchSize = 1000;
+
+/// Names in [text], without keeping a list of every line.
+int countProductNames(String text) {
+  var count = 0;
+  var start = 0;
+  for (var i = 0; i <= text.length; i++) {
+    if (i != text.length && text.codeUnitAt(i) != 10) continue;
+    var end = i;
+    if (end > start && text.codeUnitAt(end - 1) == 13) end--;
+    if (text.substring(start, end).trim().isNotEmpty) count++;
+    start = i + 1;
+  }
+  return count;
+}
+
+/// Yields at most [catalogBatchSize] names at a time.
+Iterable<List<ProductLine>> productBatches(String text, String language) sync* {
+  final batch = <ProductLine>[];
+  var start = 0;
+  var lineNumber = 1;
+  for (var i = 0; i <= text.length; i++) {
+    if (i != text.length && text.codeUnitAt(i) != 10) continue;
+    var end = i;
+    if (end > start && text.codeUnitAt(end - 1) == 13) end--;
+    final name = text.substring(start, end).trim();
+    if (name.isNotEmpty) {
+      batch.add(
+        ProductLine(language: language, sourceLine: lineNumber, name: name),
+      );
+      if (batch.length == catalogBatchSize) {
+        yield List<ProductLine>.of(batch);
+        batch.clear();
+      }
+    }
+    lineNumber++;
+    start = i + 1;
+  }
+  if (batch.isNotEmpty) yield List<ProductLine>.of(batch);
+}
+
 /// In-memory catalog. The caller decides when each step runs.
 class CatalogSession {
   MutableSqliteDatabase? database;
@@ -199,39 +241,41 @@ class CatalogSession {
     if (products.isEmpty) {
       throw ArgumentError('Choose at least one product file');
     }
-    final db = await openInMemory();
-    database = db;
-    await db.execute(
-      'CREATE TABLE products ('
-      'id INTEGER PRIMARY KEY, '
-      'language TEXT NOT NULL, '
-      'source_line INTEGER NOT NULL, '
-      'name TEXT NOT NULL)',
-    );
+    var done = 0;
+    for (var start = 0; start < products.length; start += catalogBatchSize) {
+      final end = start + catalogBatchSize < products.length
+          ? start + catalogBatchSize
+          : products.length;
+      done = await insertChunk(products.sublist(start, end));
+      onProgress?.call(done, products.length);
+      await Future<void>.delayed(Duration.zero);
+    }
+    return done;
+  }
+
+  /// Writes one batch of at most [catalogBatchSize] and commits it.
+  Future<int> insertChunk(List<ProductLine> products) async {
+    if (products.isEmpty || products.length > catalogBatchSize) {
+      throw ArgumentError('A batch holds 1 to $catalogBatchSize products');
+    }
+    final db = await _ensureTable();
+    final idStart = productCount;
     await db.execute('BEGIN');
     try {
-      const batchSize = 400;
-      for (var start = 0; start < products.length; start += batchSize) {
-        final end = start + batchSize < products.length
-            ? start + batchSize
-            : products.length;
-        final values = List.filled(end - start, '(?, ?, ?, ?)').join(', ');
-        final parameters = <Object?>[];
-        for (var i = start; i < end; i++) {
-          final line = products[i];
-          parameters
-            ..add(i + 1)
-            ..add(line.language)
-            ..add(line.sourceLine)
-            ..add(line.name);
-        }
-        await db.execute(
-          'INSERT INTO products(id, language, source_line, name) '
-          'VALUES $values',
-          parameters,
-        );
-        onProgress?.call(end, products.length);
+      final values = List.filled(products.length, '(?, ?, ?, ?)').join(', ');
+      final parameters = <Object?>[];
+      for (var i = 0; i < products.length; i++) {
+        final line = products[i];
+        parameters
+          ..add(idStart + i + 1)
+          ..add(line.language)
+          ..add(line.sourceLine)
+          ..add(line.name);
       }
+      await db.execute(
+        'INSERT INTO products(id, language, source_line, name) VALUES $values',
+        parameters,
+      );
       await db.execute('COMMIT');
     } catch (error, stack) {
       if (db.inTransaction) {
@@ -243,12 +287,29 @@ class CatalogSession {
       }
       Error.throwWithStackTrace(error, stack);
     }
-    productCount = products.length;
-    return products.length;
+    productCount += products.length;
+    return productCount;
+  }
+
+  Future<MutableSqliteDatabase> _ensureTable() async {
+    final existing = database;
+    if (existing != null) return existing;
+    final db = await openInMemory();
+    database = db;
+    await db.execute(
+      'CREATE TABLE products ('
+      'id INTEGER PRIMARY KEY, '
+      'language TEXT NOT NULL, '
+      'source_line INTEGER NOT NULL, '
+      'name TEXT NOT NULL)',
+    );
+    return db;
   }
 
   /// Keyword index with Arabic stemming. English letters are left as written.
-  Future<void> buildIndex() async {
+  Future<void> buildIndex({
+    void Function(int done, int total)? onProgress,
+  }) async {
     final db = database;
     if (db == null) {
       throw StateError('Load products before building the index');
@@ -264,6 +325,7 @@ class CatalogSession {
       table: 'products',
       primaryKey: 'id',
       textColumns: const ['name'],
+      onProgress: onProgress,
     );
     search = opened;
     indexed = true;

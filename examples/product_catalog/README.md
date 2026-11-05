@@ -14,15 +14,20 @@ or build an index.
 
 ## Steps
 
-1. Choose Arabic, English, or both, then press **Load products**. That reads
-   the files and inserts one row per name.
-2. Press **Build search index**. The index is keyword-only. Arabic stemming is
-   on. English letters stay as written. There is no embedding model.
+1. Choose Arabic, English, or both, then press **Load**. That reads the files
+   and inserts names 1,000 at a time. Each batch is its own commit.
+2. Press **Index**. The index is keyword-only. Arabic stemming is on. English
+   letters stay as written. There is no embedding model. The source table is
+   read 1,000 rows at a time.
 3. Type a query and press **Search**, or press an example (`biscuit` or
    `بسكويت`). The language control limits hits with a fixed `language = ?`
    predicate.
 4. **Sample resources** reads process RSS and the database image without
    changing the data.
+
+Load, index, search, and the resource sample run on a background isolate. A
+progress bar shows how many of the products in the current step are done. The
+interface isolate does not build the database.
 
 Every step lists its own time, the image size before and after, RSS before and
 after, and the process peak RSS. The resource sample is timed separately and
@@ -45,11 +50,11 @@ stays inside the pure-Dart engine.
 ## Android package
 
 `dist/product-catalog-arm64-v8a.apk` is the release package built on 5 November
-2026 at 14:36 Asia/Hebron (UTC+2) with
-`flutter build apk --release --target-platform android-arm64`. It is 19423641
+2026 at 14:56 Asia/Hebron (UTC+2) with
+`flutter build apk --release --target-platform android-arm64`. It is 19620241
 bytes, sha256
-`4c70b2d03af38bd42a76b2173de40654724bfda6542a3158123acd7b4ceaf382`. The
-application id is `dev.sqliteplus.product_catalog`, versionName `0.1.0`,
-versionCode `1`, minSdk 24. Native code is `arm64-v8a` only. The release build
+`f03d26f3b6096cad307000e1fa3968a39f263b77f9ef2122271140b469c64abb`. The
+application id is `dev.sqliteplus.product_catalog`, versionName `0.2.0`,
+versionCode `2`, minSdk 24. Native code is `arm64-v8a` only. The release build
 is signed with the Android debug certificate. It was not installed on a device
-here.
+here. Version code 2 replaces the earlier version code 1 package.

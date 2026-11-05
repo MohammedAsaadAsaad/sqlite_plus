@@ -1,5 +1,31 @@
 # Development log
 
+## 2026-11-05 — Catalog isolate, batches, and a simpler screen
+
+- The catalog screen is a short phone layout: one status line, three figures,
+  Arabic and English together, Load and Index side by side, then search.
+  While a step runs, a progress bar shows how many products are done.
+- Load, index, search, and the resource sample run on a background isolate.
+  The interface isolate reads the asset text and sends at most 1,000 names
+  per message. Each batch is committed before the next one starts. Indexing
+  reads the source table 1,000 rows at a time, ordered by `rowid`, and sends
+  progress back. A `WITHOUT ROWID` source is still loaded, then written in
+  the same page size.
+- Flutter 3.47.9, Dart 3.13.7, Linux x64: `flutter analyze --fatal-infos`
+  reported no issues and `flutter test` passed 8 tests. `dart analyze
+  --fatal-infos` and `dart test` in `packages/sqlite_plus_search` reported no
+  issues and passed 62 tests, including a 1,001-row progress check.
+- `flutter build apk --release --target-platform android-arm64` at 14:56
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19620241
+  bytes, sha256 `f03d26f3b6096cad307000e1fa3968a39f263b77f9ef2122271140b469c64abb`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.2.0`, versionCode `2`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+  iOS, macOS, Windows, and a browser build were not run.
+
 ## 2026-11-05 — Product catalog example
 
 - `examples/product_catalog` is a Flutter app with the two 10,000-name lists as

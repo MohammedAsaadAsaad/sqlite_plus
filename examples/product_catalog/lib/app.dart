@@ -23,6 +23,21 @@ class CatalogApp extends StatelessWidget {
         fontFamily: 'IBMPlexSansArabic',
         scaffoldBackgroundColor: ink,
         cardTheme: const CardThemeData(color: Color(0xFF1A2128)),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          filled: true,
+          fillColor: Color(0xFF1A2128),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
         colorScheme: const ColorScheme.dark(
           primary: brass,
           onPrimary: Color(0xFF1A140C),

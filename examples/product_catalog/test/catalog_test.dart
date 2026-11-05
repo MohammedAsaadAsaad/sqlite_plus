@@ -16,6 +16,29 @@ void main() {
     expect(formatBytes(1216512), '1.16 MB');
   });
 
+  test(
+    'names move 1,000 at a time and the next batch continues the ids',
+    () async {
+      final text = List.filled(1001, 'milk').join('\n');
+      expect(countProductNames(text), 1001);
+      final batches = productBatches(text, 'English').toList();
+      expect(batches.map((batch) => batch.length), [1000, 1]);
+
+      final session = CatalogSession();
+      addTearDown(session.close);
+      expect(await session.insertChunk(batches.first), 1000);
+      expect(await session.insertChunk(batches.last), 1001);
+      final rows = await session.database!.query(
+        'SELECT id FROM products WHERE id IN (1, 1000, 1001) ORDER BY id',
+      );
+      expect(rows.rows.map((row) => row[0]).toList(), [
+        BigInt.one,
+        BigInt.from(1000),
+        BigInt.from(1001),
+      ]);
+    },
+  );
+
   test('blank lines are not products and source lines stay 1-based', () {
     final products = parseProductFile('alpha\n\nbeta\n', 'English');
     expect(products.map((line) => line.sourceLine), [1, 3]);
@@ -238,7 +261,10 @@ Future<void> _tap(WidgetTester tester, Key key) async {
 Future<void> _waitForText(WidgetTester tester, String text) async {
   await tester.pump();
   for (var i = 0; i < 200; i++) {
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pump();
     if (find.text(text).evaluate().isNotEmpty &&
         find.byKey(const Key('busy')).evaluate().isEmpty) {
       return;

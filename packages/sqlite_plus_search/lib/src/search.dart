@@ -150,7 +150,8 @@ final class SqlitePlusSearch {
           {required String table,
           required String primaryKey,
           required List<String> textColumns,
-          bool autoUpdate = false}) =>
+          bool autoUpdate = false,
+          void Function(int done, int total)? onProgress}) =>
       _run(() async {
         SqlitePlusVec.register(database);
         _identifier(table);
@@ -234,50 +235,45 @@ final class SqlitePlusSearch {
           // SQLite's column-name mapping.
           await database.execute(
               'CREATE TABLE ${base}_keys (id INTEGER PRIMARY KEY, body TEXT NOT NULL, source_key TEXT NOT NULL UNIQUE)');
-          final source = await database.query('SELECT ${[
-            primaryKey,
-            ...textColumns
-          ].map(_quote).join(',')} FROM ${_quote(table)}');
-          // Load derived normalized content first, then build external-content
-          // FTS once. The engine rebuilds FTS storage after each FTS statement.
-          // This avoids repeatedly decoding/serializing all prior documents.
-          for (var start = 0; start < source.rows.length; start += 1000) {
-            final keys = <Object?>[], vectors = <Object?>[];
-            final values = <String>[];
-            final vectorValues = <String>[];
-            for (var index = start;
-                index < math.min(start + 1000, source.rows.length);
-                index++) {
-              final row = source.rows[index];
-              final key = row.first;
-              if (key is! String && key is! BigInt) {
-                throw ArgumentError('Source keys must be text or integer');
-              }
-              final text = row.skip(1).map((value) {
-                if (value != null && value is! String) {
-                  throw ArgumentError('Indexed values must be text or null');
-                }
-                return value ?? '';
-              }).join(' ');
-              final id = index + 1;
-              values.add('(?,?,?)');
-              keys.addAll([id, key.toString(), analyzer.normalize(text)]);
-              if (embeddingProvider != null) {
-                final vector =
-                    await validatedEmbedding(embeddingProvider!, text);
-                vectorValues.add('(?,?)');
-                vectors.addAll([id, encodeVec(vector)]);
-              }
+          // One thousand source rows at a time. A single query would keep every
+          // name in memory before the first key is written.
+          final columns = [primaryKey, ...textColumns].map(_quote).join(',');
+          final total = _asCount(
+              await database.query('SELECT count(*) FROM ${_quote(table)}'));
+          onProgress?.call(0, total);
+          var scanned = 0;
+          if (schema.toUpperCase().contains('WITHOUT ROWID')) {
+            final source =
+                await database.query('SELECT $columns FROM ${_quote(table)}');
+            for (var start = 0; start < source.rows.length; start += 1000) {
+              final end = math.min(start + 1000, source.rows.length);
+              scanned = await _writeKeyPage(
+                  database,
+                  base,
+                  source.rows.sublist(start, end),
+                  scanned,
+                  analyzer,
+                  embeddingProvider);
+              onProgress?.call(scanned, total);
+              await Future<void>.delayed(Duration.zero);
             }
-            await database.execute(
-                'INSERT INTO ${base}_keys(id,source_key,body) VALUES ${values.join(',')}',
-                keys);
-            if (vectorValues.isNotEmpty) {
-              await database.execute(
-                  'INSERT INTO ${base}_vec(rowid,embedding) VALUES ${vectorValues.join(',')}',
-                  vectors);
+          } else {
+            var lastRowid = BigInt.zero;
+            while (scanned < total) {
+              final window = await database.query(
+                  'SELECT rowid, $columns FROM ${_quote(table)} '
+                  'WHERE rowid > ? ORDER BY rowid LIMIT 1000',
+                  [lastRowid]);
+              if (window.rows.isEmpty) break;
+              lastRowid = _asBigInt(window.rows.last[0]);
+              final body = [for (final row in window.rows) row.sublist(1)];
+              scanned = await _writeKeyPage(
+                  database, base, body, scanned, analyzer, embeddingProvider);
+              onProgress?.call(scanned, total);
+              await Future<void>.delayed(Duration.zero);
             }
           }
+          onProgress?.call(total, total);
           await database.execute(
               "CREATE VIRTUAL TABLE ${base}_fts USING fts5(body, content='${base}_keys', content_rowid='id')");
           await database.execute(
@@ -602,6 +598,63 @@ final class _Metadata {
   final List<String> columns;
   final bool autoUpdate;
   final String id, key, schema, analyzer;
+}
+
+BigInt _asBigInt(Object? value) {
+  if (value is BigInt) return value;
+  if (value is int) return BigInt.from(value);
+  throw StateError('Expected an integer, got $value');
+}
+
+int _asCount(QueryResult result) {
+  final value = result.rows.single[0];
+  if (value is int) return value;
+  if (value is BigInt) return value.toInt();
+  throw StateError('Expected a count, got $value');
+}
+
+Future<int> _writeKeyPage(
+    MutableSqliteDatabase database,
+    String base,
+    List<List<Object?>> rows,
+    int scanned,
+    SearchAnalyzer analyzer,
+    LocalEmbeddingProvider? embeddingProvider) async {
+  if (rows.isEmpty) return scanned;
+  final keys = <Object?>[];
+  final vectors = <Object?>[];
+  final values = <String>[];
+  final vectorValues = <String>[];
+  for (final row in rows) {
+    final key = row.first;
+    if (key is! String && key is! BigInt && key is! int) {
+      throw ArgumentError('Source keys must be text or integer');
+    }
+    final text = row.skip(1).map((value) {
+      if (value != null && value is! String) {
+        throw ArgumentError('Indexed values must be text or null');
+      }
+      return value ?? '';
+    }).join(' ');
+    final id = scanned + 1;
+    scanned += 1;
+    values.add('(?,?,?)');
+    keys.addAll([id, key.toString(), analyzer.normalize(text)]);
+    if (embeddingProvider != null) {
+      final vector = await validatedEmbedding(embeddingProvider, text);
+      vectorValues.add('(?,?)');
+      vectors.addAll([id, encodeVec(vector)]);
+    }
+  }
+  await database.execute(
+      'INSERT INTO ${base}_keys(id,source_key,body) VALUES ${values.join(',')}',
+      keys);
+  if (vectorValues.isNotEmpty) {
+    await database.execute(
+        'INSERT INTO ${base}_vec(rowid,embedding) VALUES ${vectorValues.join(',')}',
+        vectors);
+  }
+  return scanned;
 }
 
 void _identifier(String value) {

@@ -8,6 +8,17 @@ String formatElapsed(Duration elapsed) {
   return '${(microseconds / 1000000).toStringAsFixed(3)} s';
 }
 
+/// Thousands separators for product counts.
+String formatCount(int value) {
+  final digits = value.toString();
+  final out = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) out.write(',');
+    out.write(digits[i]);
+  }
+  return out.toString();
+}
+
 /// Binary units, matching the database image and process RSS.
 String formatBytes(int bytes) {
   if (bytes < 1024) return '$bytes B';
