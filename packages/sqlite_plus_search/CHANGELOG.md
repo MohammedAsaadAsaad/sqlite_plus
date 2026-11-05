@@ -2,7 +2,7 @@
 
 - Requires `sqlite_plus` ^0.1.8. Two or more documents share FTS5 leaves, and a query of whole terms reads those leaves.
 - The README records the 20,000-name catalog. Linux x64 AOT, not a phone: `بسكويت` returned 493 hits and 20 names in 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. One arm64 phone, catalog 0.5.2, at 17:11 Asia/Hebron on 5 November 2026, showed 47.236 ms for page 1 of that query.
-- Keyword search behavior is otherwise the 0.1.0-dev.3 library. The synthetic embedding harness was not remeasured.
+- Keyword search behavior is otherwise the 0.1.0-dev.3 library. A new maximum key can be appended, and the integrity sum is refreshed without hashing every derived row. A term-packed FTS leaf is rebuilt on the next edit. The synthetic append timings are in the repository benchmark results.
 
 ## 0.1.0-dev.3
 
@@ -10,7 +10,14 @@
 - `indexTable` reads an ordinary source table 1,000 rows at a time, ordered by `rowid`, and can report `(done, total)` through `onProgress`. A `WITHOUT ROWID` source is still loaded, then written in the same page size. Search results are unchanged.
 - The clinic-shelf example shows diacritic folding, a bound shelf filter, an insert picked up by `autoUpdate`, Arabic light stemming, and a hybrid rank explanation.
 - `FixtureEmbeddingProvider` in that example is an exact string map. A missing string fails. It is not a language model.
-- Search behavior is otherwise the 0.1.0-dev.2 library.
+- Keyword and semantic resolution load the source keys and the internal map separately. A correlated `EXISTS` is not used.
+- Source indexing reads stopped rowid windows of 1000. Unfiltered `rankVec0` reads stopped shadow pages of 512.
+- Non-contentless-delete FTS5 leaves pack many documents. The writer probes leaf length instead of re-encoding after every document.
+- A one-row external-content FTS replace edits the leaf that holds that row when the new leaf fits, plus the averages row and that document's docsize row. Other FTS shapes still rebuild the postings.
+- Ordinary writes can publish several changed rowid tables without rebuilding untouched tables. A new unique key past the current maximum is appended instead of rebuilding the image. Other unique-key shapes still rebuild it.
+- With `autoUpdate`, a census distinguishes a pending-key replay from a full key scan. The integrity baseline is version 2. An incremental sync adjusts changed rows. `verifyIndex` still reads every derived row, and a version 1 baseline requires an explicit rebuild.
+- `bm25()` with no column weights returns the score already stored for that row.
+- A later Linux x64 AOT run on the same synthetic 2D corpus: 1000 indexed in 0.300666 s, 10000 in 4.704192 s, and 100000 in 75.807267 s. At 10000, source update alone is 35.599 ms and sync is 1.699659 s. Warm keyword time stayed in the earlier format 3 range. The 10000-record image is 1216512 bytes after indexing and 1118208 bytes at the end. See `benchmark/RESULTS.md`. The 1,000,000 run exited 255 after 2914 seconds and wrote no result, so it has no timings. A real model and other operating systems were not measured.
 
 ## 0.1.0-dev.2
 

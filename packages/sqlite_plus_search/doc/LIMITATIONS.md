@@ -34,19 +34,29 @@ persistence backend were not run for this change.
   are rejected by the mapping uniqueness rule.
 - FTS content is derived index text; original application rows are not copied or
   rewritten. Initial normalized-content writes are batched and FTS is built once.
-  The source query still materializes. Keyword search loads `MATCH` hits, then
-  resolves those ids. Semantic search loads eligible id and source-key pairs and
-  asks `rankVec0` for those rows in pages of 64. It does not keep a Dart list of
-  every decoded embedding. The hardened format 2 AOT run completed 10000 records
-  in 26.93 s of indexing; the 100000-record attempt still timed out during
-  indexing at 120 s. That embedding harness was not remeasured for format 3.
+  The source read is a stopped rowid window of 1000 rows. Keyword search loads
+  `MATCH` hits, then resolves those ids with one primary-key probe. Semantic
+  search asks `rankVec0` for the eligible ids. Unfiltered ranking scans the
+  shadow in stopped pages. Filtered ranking passes only the eligible ids. It
+  does not keep a Dart list of every decoded embedding. The 2026-11-05 append
+  run completed 1000 records in 0.300666 s of indexing, 10000 in 4.704192 s,
+  and 100000 in 75.807267 s. At 10000 records that run recorded source update
+  alone at 35.599 ms and synchronization at 1.699659 s. The 1,000,000 run
+  exited 255 after 2914 seconds and wrote no result, so it has no timings.
   The separate catalog keyword sample is in the package README: 20,000 product
   names, Linux x64 AOT, and one arm64 phone at 47.236 ms. See benchmark/RESULTS.md.
 - With autoUpdate, search replays the transactional trigger log. Without it, explicit
   rebuild is required after edits. Replay only regenerates changed embeddings and uses typed equality for common
-  INT/TEXT keys. Mapping/source ID reconciliation still scans, and the engine FTS
-  writer still rebuilds its physical postings during a row replacement. Incremental
-  updates remain costly.
+  INT/TEXT keys. When the trigger census matches `count(*)`, only pending keys
+  are read. A census mismatch, including a REPLACE that deletes an unlogged row,
+  still scans mapping and source keys. A one-row external-content replace edits
+  that row's leaf when the new leaf fits. The stored fingerprint is version 2.
+  A matching sync adjusts the changed key, docsize, and vector hashes and
+  rehashes the other owned shadows. `verifyIndex` still reads every derived row.
+  A version 1 baseline fails until an explicit rebuild. A new unique key past
+  the current maximum is appended; other unique-key shapes still rebuild the
+  image. The measured sync still rewrites the derived row and, on this corpus,
+  compacts the image. It is not a large-scale indexing path.
 - Replay reconciles missing source keys, including rows displaced by secondary
   UNIQUE conflicts under REPLACE with recursive triggers off. Source schema changes
   and missing triggers fail explicitly. verifyIndex detects changed trigger SQL,

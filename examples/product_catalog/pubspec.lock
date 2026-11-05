@@ -174,7 +174,7 @@ packages:
       path: "../../packages/sqlite_plus"
       relative: true
     source: path
-    version: "0.1.7"
+    version: "0.1.8"
   sqlite_plus_arabic:
     dependency: "direct overridden"
     description:
@@ -188,7 +188,7 @@ packages:
       path: "../../packages/sqlite_plus_search"
       relative: true
     source: path
-    version: "0.1.0-dev.3"
+    version: "0.1.0-dev.4"
   sqlite_plus_vec:
     dependency: "direct overridden"
     description:

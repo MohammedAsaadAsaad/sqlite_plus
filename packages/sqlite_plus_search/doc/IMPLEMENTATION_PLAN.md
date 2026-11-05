@@ -10,10 +10,14 @@ Core functionality is implemented; production release acceptance remains open.
 - [x] 5. Exact filtered vector retrieval using sqlite_plus_vec primitives.
 - [x] 6. RRF hybrid ranking, bound filters, explanations and stable ordering.
 - [x] 7. Bounded, versioned collection-local feedback; reset/export/import.
-- [x] 8. Transactional trigger logs and logical incremental replay. Physical FTS
-  persistence still rewrites postings and is an unresolved performance limit.
-- [ ] 9. Release validation. Tests, native comparisons and 1k/10k AOT runs pass;
-  real-model, 100k/1m scale, real browser persistence and broader OS gates remain.
+- [x] 8. Transactional trigger logs and logical incremental replay. A one-row
+  external-content FTS replace edits that row's leaf when the new leaf fits.
+  When the trigger census matches the source count, sync reads only the pending
+  keys. The integrity baseline is an order-independent per-row sum; that sync
+  adjusts the changed rows instead of hashing every derived row.
+- [ ] 9. Release validation. Tests, native comparisons, and Linux AOT runs at
+  1k, 10k, and 100k pass on the synthetic fixture. Real-model quality, the 1m
+  scale, real browser persistence, and broader OS gates remain.
 - [x] 10. Runnable examples, development docs and CI configuration. No remote
   CI result or publication is claimed.
 
@@ -61,15 +65,34 @@ See benchmark/RESULTS.md and committed raw JSON/progress logs/source hashes.
 Memory backend; synthetic 2D provider; one shared-host process per size with five
 warm samples. Initial indexing includes integrity metadata.
 
-- 1000 records: 2.549333 s indexing (historical format-1 run: 7.901779 s).
-- 10000 records: 26.926220 s indexing. Historical implementation timed out during
-  indexing at 180 s. The hardened complete benchmark process finished in 79.35 s.
-- 100000 records: source creation completed; indexing timed out at 120 s.
-  No fabricated indexing/search metrics are reported.
-- 1000000 records: not practical before resolving the smaller scale gate.
-- At 10000 records, source update alone takes 12.795218 s and synchronization
-  20.004185 s. Logical embedding updates are incremental; physical FTS persistence
-  and source-trigger serialization are not production-scale optimized.
+- Format 2, kept as provenance: 1000 records indexed in 2.549333 s (historical
+  format-1 run: 7.901779 s). 10000 records indexed in 26.926220 s. The 100000
+  format 2 attempt created the source and timed out at 120 s during indexing.
+- Format 3, measured 2026-11-05 on the same class of Linux x64 AOT host: 1000
+  records indexed in 1.189207 s; 10000 records indexed in 20.311424 s. At 10000
+  records, source update alone is 3.008387 s and synchronization is 5.319037 s.
+  Median warm keyword/vector/hybrid queries are 455.066 ms, 348.888 ms, and
+  639.255 ms. The database image is 1110016 bytes. A format 3 100000-record
+  attempt was stopped after 16 minutes while indexing. No metrics are reported
+  for it. 1000000 was not started.
+- Later the same day, after row-level image edits, the same harness recorded
+  1000 records indexed in 1.092900 s and 10000 in 19.658282 s. At 10000 records,
+  source update alone is 27.872 ms and synchronization is 2.117051 s. Median
+  warm keyword/vector/hybrid queries are 474.704 ms, 339.157 ms, and 624.415 ms.
+  The 10000-record image is still 1110016 bytes. Query time did not move out of
+  the format 3 range on this all-matching corpus. 100000 was not started again.
+  The full engine suite was not re-run for this edit.
+- Later the same day, after unique-key append and incremental sync, the same
+  harness recorded 1000 records indexed in 0.300666 s, 10000 in 4.704192 s, and
+  100000 in 75.807267 s. At 10000 records, source update alone is 35.599 ms and
+  synchronization is 1.699659 s. The 10000-record image is 1216512 bytes after
+  indexing and 1118208 bytes at the end. 100000 completed. The 1,000,000 run
+  exited 255 after 2914 seconds and wrote no result, so it has no timings. See benchmark/RESULTS.md.
+- A new unique key past the current maximum is appended without rewriting
+  unrelated tables. When the census matches, sync does not scan every key, and
+  the fingerprint update does not hash every derived row. `verifyIndex` still
+  does. The measured sync time is still the derived-row rewrite. That is not a
+  production-scale index build.
 - Catalog keyword search of the two 10,000-name product lists is a separate
   AOT measurement, recorded in the repository development log on 5 November
   2026. It is lexical BM25 on packed FTS leaves, not this embedding benchmark.

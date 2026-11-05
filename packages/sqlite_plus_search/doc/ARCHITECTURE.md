@@ -75,8 +75,10 @@ per database and rejects existing transactions. It uses versioned collection
 metadata plus derived per-collection key, FTS, vec0 and pending-event tables.
 Embeddings are the vec0 shadow rows. Search calls `rankVec0` for eligible internal
 ids and does not keep a second vector table or a second cosine loop. `MATCH` plus
-`k` is not used, because that limit is applied before a filter. Initial index
-writes are batched in groups of 1000; the source query still materializes.
+`k` is not used, because that limit is applied before a filter. Unfiltered
+ranking reads the shadow in stopped rowid pages of 512. Initial index writes are
+batched in groups of 1000. Each source page is a stopped rowid window, so the
+read does not scan the whole source table again for every page.
 Incremental replay coalesces source keys, atomically replaces their derived
 entries and acknowledges only captured event IDs. Embedding failure rolls
 everything back. Explicit rebuild resets ranking weights/context.
@@ -109,9 +111,23 @@ index. Format 2 and earlier development indexes are rejected until `indexTable`.
 
 Incremental replay replaces an existing FTS/vector row once rather than deleting
 and reinserting it, and uses typed primary-key equality for common INT/TEXT keys.
-It still scans mapping/source IDs to reconcile implicit REPLACE deletions and
-refreshes the integrity fingerprint. `synchronize` exposes replay without query
-ranking so benchmark timings separate source update, replay and query cost.
+When that FTS statement is an external-content replace of explicit row ids and
+the new leaf fits, the engine edits that leaf, the averages row, and that
+document's docsize row. Other FTS shapes rebuild the postings. Ordinary writes
+publish changed rowid tables without rebuilding untouched tables. A new unique
+key whose rowid is past the current maximum is appended, and that key is
+inserted into the unique index. Other unique-key shapes still rebuild the image.
+Empty tables, empty indexes, views, and triggers are appended to the schema leaf
+when the new row fits. Triggers maintain a census. When it matches `count(*)`,
+replay reads only the pending keys. A mismatch still scans mapping and source
+IDs so a REPLACE that deletes an unlogged row is reconciled. The integrity
+baseline is version 2, an order-independent sum of per-row hashes. That replay
+adjusts the changed key, docsize, and vector rows and rehashes the other owned
+shadows. `verifyIndex` still reads every derived row. The census is not hashed.
+`synchronize` exposes replay without query ranking so benchmark timings separate
+source update, replay and query cost. Single-token AND/OR `MATCH` can score
+from postings and docsize. On the all-matching benchmark corpus that path did
+not move warm query time out of the earlier format 3 range.
 
 Format 2 and earlier development indexes are rejected until the caller
 explicitly rebuilds with indexTable. Source records are never migrated or

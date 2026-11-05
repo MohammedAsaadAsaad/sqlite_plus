@@ -418,14 +418,20 @@ extension _SearchMutations on ImageMutations {
         parser.current.keyword == 'LIMIT') {
       throw const SqlException('search statement is not implemented');
     }
-    final docs = _loadFts(spec);
     var changes = 0;
     BigInt? last;
+    late final List<_SearchDoc> docs;
     if (insert) {
       final plan = _ftsInsert(parser, spec, parameters);
       parser.finish();
       _parameterCount(parser, parameters);
       if (compileOnly) return MutationImage(original, 0, null);
+      if (plan.command == null) {
+        final patched =
+            await _commitFtsPatch(spec, plan.rows, replace: replace);
+        if (patched != null) return patched;
+      }
+      docs = _loadFts(spec);
       if (plan.command != null) {
         if (plan.command == 'delete-all') {
           changes = docs.length;
@@ -477,6 +483,14 @@ extension _SearchMutations on ImageMutations {
             : 'cannot DELETE from contentless fts5 table: ${spec.table}');
       }
       if (compileOnly) return MutationImage(original, 0, null);
+      if (!update) {
+        final id = _singleRowid(where, parameters);
+        if (id != null) {
+          final patched = await _commitFtsDeletes(spec, [id]);
+          if (patched != null) return patched;
+        }
+      }
+      docs = _loadFts(spec);
       final state = _ftsState(spec, docs);
       ftsSession().tables[asciiLower(spec.table)] = state;
       final kept = <_SearchDoc>[];
@@ -529,7 +543,8 @@ extension _SearchMutations on ImageMutations {
       _changed(insertedRowid: last);
     }
     _storeFts(spec, docs);
-    return MutationImage(serialize(), changes, insert ? last : null);
+    return MutationImage(
+        await _imageAfterRowEdits(), changes, insert ? last : null);
   }
 
   Future<MutationImage> _writeRtree(SqlParser parser,
@@ -699,6 +714,312 @@ extension _SearchMutations on ImageMutations {
     ]);
   }
 
+  bool _canPatchFts(Fts5Spec spec) =>
+      !spec.contentless &&
+      !spec.contentlessDelete &&
+      !spec.locale &&
+      !spec.tokenData &&
+      spec.prefix.isEmpty &&
+      spec.detail == 'full' &&
+      spec.columnSize;
+
+  Future<MutationImage?> _commitFtsPatch(Fts5Spec spec, List<_FtsInput> rows,
+      {required bool replace}) {
+    if (!_canPatchFts(spec) || rows.isEmpty) return Future.value();
+    final edits = <_FtsEdit>[];
+    final seen = <BigInt>{};
+    for (final row in rows) {
+      final id = row.id;
+      if (id == null || id.isNegative || !seen.add(id)) return Future.value();
+      edits.add(_FtsEdit(id, _tokens(spec, row.texts)));
+    }
+    return _editFtsLeaves(spec, edits, replace: replace, inserting: true);
+  }
+
+  Future<MutationImage?> _commitFtsDeletes(Fts5Spec spec, List<BigInt> ids) {
+    if (!_canPatchFts(spec) || ids.isEmpty) return Future.value();
+    return _editFtsLeaves(spec, [for (final id in ids) _FtsEdit(id, null)],
+        replace: true, inserting: false);
+  }
+
+  /// Rewrites only the leaves and docsize rows named by [edits].
+  ///
+  /// A null result means the caller rebuilds every document. The tables are
+  /// left unchanged until every new leaf fits.
+  Future<MutationImage?> _editFtsLeaves(Fts5Spec spec, List<_FtsEdit> edits,
+      {required bool replace, required bool inserting}) async {
+    final data = _tables[asciiLower('${spec.table}_data')];
+    final sizes = _tables[asciiLower('${spec.table}_docsize')];
+    if (data == null || sizes == null) return null;
+    // Term-packed leaves name their first term in the idx row. A one-leaf
+    // edit would leave that name behind the new bytes, so the whole index is
+    // rebuilt and packed again.
+    final index = _tables[asciiLower('${spec.table}_idx')];
+    if (index != null) {
+      for (final row in index.rows) {
+        final term = _row(index, row)['term'];
+        if (term is Uint8List && term.isNotEmpty) return null;
+        if (term is String && term.isNotEmpty) return null;
+      }
+    }
+    TableRow? averages;
+    final leaves = <_FtsLeafDocs>[];
+    for (final row in data.rows) {
+      final block = _row(data, row)['block'];
+      if (row.rowId == BigInt.one) {
+        if (block is! Uint8List) return null;
+        averages = row;
+        continue;
+      }
+      if (row.rowId <= BigInt.from(100)) continue;
+      if (block is! Uint8List) return null;
+      final docs = _leafDocs(spec, block);
+      if (docs == null) return null;
+      leaves.add(_FtsLeafDocs(row, docs));
+    }
+    final sizeRows = {for (final row in sizes.rows) row.rowId: row};
+    if (sizeRows.length != sizes.rows.length) return null;
+    final occupied = <BigInt>{};
+    for (final leaf in leaves) {
+      for (final id in leaf.docs.keys) {
+        if (!occupied.add(id) || !sizeRows.containsKey(id)) return null;
+      }
+    }
+    final totals = List<int>.filled(spec.columns.length, 0);
+    var rowCount = 0;
+    final averageBlock = averages == null
+        ? Uint8List(0)
+        : _row(data, averages)['block'] as Uint8List;
+    if (averageBlock.isEmpty) {
+      if (sizeRows.isNotEmpty) return null;
+    } else {
+      final values = _varintList(averageBlock);
+      if (values == null || values.length != spec.columns.length + 1) {
+        return null;
+      }
+      rowCount = values.first;
+      for (var i = 0; i < spec.columns.length; i++) {
+        totals[i] = values[i + 1];
+      }
+    }
+    if (rowCount != sizeRows.length) return null;
+    for (final row in sizes.rows) {
+      final blob = _row(sizes, row)['sz'];
+      if (blob is! Uint8List) return null;
+      final stored = _varintList(blob);
+      if (stored == null || stored.length != spec.columns.length) return null;
+      List<List<FtsToken>>? tokens;
+      for (final leaf in leaves) {
+        tokens = leaf.docs[row.rowId];
+        if (tokens != null) break;
+      }
+      for (var i = 0; i < spec.columns.length; i++) {
+        final actual =
+            tokens == null || spec.columns[i].unindexed ? 0 : tokens[i].length;
+        if (stored[i] != actual) return null;
+      }
+    }
+    final summed = List<int>.filled(spec.columns.length, 0);
+    for (final leaf in leaves) {
+      for (final tokens in leaf.docs.values) {
+        for (var i = 0; i < spec.columns.length; i++) {
+          if (!spec.columns[i].unindexed) summed[i] += tokens[i].length;
+        }
+      }
+    }
+    for (var i = 0; i < totals.length; i++) {
+      if (totals[i] != summed[i]) return null;
+    }
+    final maps = [
+      for (final leaf in leaves)
+        {
+          for (final entry in leaf.docs.entries)
+            entry.key: [
+              for (final column in entry.value) [...column]
+            ]
+        }
+    ];
+    int? leafOf(BigInt id) {
+      for (var i = 0; i < maps.length; i++) {
+        if (maps[i].containsKey(id)) return i;
+      }
+      return null;
+    }
+
+    final affected = <int>{};
+    final sizeEdits = <BigInt, Uint8List?>{};
+    var changes = 0;
+    BigInt? last;
+    for (final edit in edits) {
+      final index = leafOf(edit.id);
+      final old = index == null ? null : maps[index][edit.id];
+      final known = sizeRows.containsKey(edit.id);
+      final tokens = edit.tokens;
+      if (tokens == null) {
+        if (!known && old == null) continue;
+        if (index != null) {
+          maps[index].remove(edit.id);
+          if (maps[index].isEmpty) return null;
+          affected.add(index);
+        }
+        if (known) {
+          _shiftTotals(spec, totals, old, -1);
+          sizeEdits[edit.id] = null;
+          rowCount--;
+        }
+        changes++;
+        continue;
+      }
+      if (!replace && (known || index != null)) return null;
+      final target = index ?? (maps.isEmpty ? null : maps.length - 1);
+      if (target == null) return null;
+      if (known) _shiftTotals(spec, totals, old, -1);
+      maps[target][edit.id] = tokens;
+      affected.add(target);
+      _shiftTotals(spec, totals, tokens, 1);
+      if (!known) rowCount++;
+      sizeEdits[edit.id] = encodeDocsize([
+        for (var i = 0; i < spec.columns.length; i++)
+          spec.columns[i].unindexed ? 0 : tokens[i].length
+      ]);
+      changes++;
+      if (inserting) last = edit.id;
+    }
+    if (totals.any((value) => value < 0) || rowCount < 0) return null;
+    if (changes == 0) return MutationImage(original, 0, null);
+    final encoded = <int, Uint8List>{};
+    for (final index in affected) {
+      try {
+        encoded[index] = _ftsLeafMany(spec, [
+          for (final entry in maps[index].entries)
+            _SearchDoc(entry.key,
+                List<String?>.filled(spec.columns.length, null), entry.value)
+        ]);
+      } on SqlException {
+        return null;
+      }
+    }
+    if (averages == null) return null;
+    for (var i = 0; i < data.rows.length; i++) {
+      final row = data.rows[i];
+      if (row.rowId == BigInt.one) {
+        data.rows[i] = _physical(
+            data, {'block': encodeAverages(rowCount, totals)}, BigInt.one);
+        continue;
+      }
+      final index = leaves.indexWhere((leaf) => leaf.row.rowId == row.rowId);
+      final block = encoded[index];
+      if (index < 0 || block == null) continue;
+      data.rows[i] = _physical(data, {'block': block}, row.rowId);
+    }
+    final nextSizes = <TableRow>[];
+    for (final row in sizes.rows) {
+      if (!sizeEdits.containsKey(row.rowId)) {
+        nextSizes.add(row);
+        continue;
+      }
+      final blob = sizeEdits.remove(row.rowId);
+      if (blob == null) continue;
+      final values = Map<String, Object?>.of(_row(sizes, row));
+      values['sz'] = blob;
+      nextSizes.add(_physical(sizes, values, row.rowId));
+    }
+    for (final entry in sizeEdits.entries) {
+      if (entry.value == null) continue;
+      nextSizes.add(_physical(sizes, {'sz': entry.value}, entry.key));
+    }
+    sizes.rows
+      ..clear()
+      ..addAll(nextSizes);
+    _beginCounters();
+    for (var i = 0; i < changes; i++) {
+      _changed(insertedRowid: last);
+    }
+    return MutationImage(await _imageAfterRowEdits(), changes, last);
+  }
+
+  void _shiftTotals(
+      Fts5Spec spec, List<int> totals, List<List<FtsToken>>? tokens, int sign) {
+    if (tokens == null) return;
+    for (var i = 0; i < spec.columns.length; i++) {
+      if (!spec.columns[i].unindexed) totals[i] += sign * tokens[i].length;
+    }
+  }
+
+  Map<BigInt, List<List<FtsToken>>>? _leafDocs(Fts5Spec spec, Uint8List block) {
+    List<FtsPosting> terms;
+    try {
+      terms = decodeLeaf(block, detail: spec.detail);
+    } on SqlException {
+      return null;
+    }
+    final docs = <BigInt, List<List<FtsToken>>>{};
+    for (final term in terms) {
+      if (term.term.isEmpty || term.term[0] != 0x30) return null;
+      final text = String.fromCharCodes(term.term.sublist(1));
+      for (final posting in term.rows) {
+        if (posting.delete) return null;
+        final columns = docs.putIfAbsent(posting.rowId,
+            () => [for (var i = 0; i < spec.columns.length; i++) <FtsToken>[]]);
+        for (final entry in posting.positions.entries) {
+          final column = entry.key;
+          if (column < 0 ||
+              column >= spec.columns.length ||
+              spec.columns[column].unindexed) {
+            return null;
+          }
+          final list = columns[column];
+          for (final position in entry.value) {
+            if (position < 0) return null;
+            while (list.length <= position) {
+              list.add(const FtsToken('', -1, -1));
+            }
+            if (list[position].start != -1) return null;
+            list[position] = FtsToken(text, 0, text.length);
+          }
+        }
+      }
+    }
+    for (final columns in docs.values) {
+      for (var i = 0; i < columns.length; i++) {
+        if (spec.columns[i].unindexed) {
+          if (columns[i].isNotEmpty) return null;
+          continue;
+        }
+        if (columns[i].any((token) => token.start < 0)) return null;
+      }
+    }
+    return docs;
+  }
+
+  BigInt? _singleRowid(Expr? where, List<Object?> parameters) {
+    if (where is! BinaryExpr || (where.op != '=' && where.op != '==')) {
+      return null;
+    }
+    final ColumnExpr column;
+    final Expr other;
+    if (where.left is ColumnExpr) {
+      column = where.left as ColumnExpr;
+      other = where.right;
+    } else if (where.right is ColumnExpr) {
+      column = where.right as ColumnExpr;
+      other = where.left;
+    } else {
+      return null;
+    }
+    if (!const {'rowid', 'oid', '_rowid_'}.contains(column.key)) return null;
+    if (other is ParameterExpr) {
+      if (other.index < 0 || other.index >= parameters.length) return null;
+      final value = parameters[other.index];
+      if (value is BigInt) return value.isNegative ? null : value;
+      if (value is int && value >= 0) return BigInt.from(value);
+      return null;
+    }
+    final ordinal = expressionOrdinal(other);
+    if (ordinal == null || ordinal.isNegative) return null;
+    return ordinal;
+  }
+
   void _storeFts(Fts5Spec spec, List<_SearchDoc> docs) {
     final ordered = [...docs]..sort((a, b) => a.id.compareTo(b.id));
     final leaves = <(BigInt, Uint8List)>[];
@@ -712,9 +1033,10 @@ extension _SearchMutations on ImageMutations {
         }
       }
     }
-    // One document keeps the original leaf bytes. More than one document is
-    // packed by term so a query can read the leaves that contain it.
-    if (ordered.length <= 1) {
+    // contentless-delete keeps one segment per row because each origin is that
+    // row. One ordinary document keeps the original leaf bytes. More than one
+    // ordinary document is packed by term.
+    if (spec.contentlessDelete || ordered.length <= 1) {
       for (var i = 0; i < ordered.length; i++) {
         final segid = i + 1;
         final leaf = _ftsLeaf(spec, ordered[i]);
@@ -924,32 +1246,43 @@ extension _SearchMutations on ImageMutations {
         FtsSegmentRef(segid, 1, 1, origin1: segid, origin2: segid, entries: 1));
   }
 
-  Uint8List _ftsLeaf(Fts5Spec spec, _SearchDoc doc) {
-    final terms = <String, Map<int, List<int>>>{};
-    void add(int prefix, String text, int column, int position) {
+  Uint8List _ftsLeaf(Fts5Spec spec, _SearchDoc doc) =>
+      _ftsLeafMany(spec, [doc]);
+
+  Uint8List _ftsLeafMany(Fts5Spec spec, List<_SearchDoc> docs) {
+    final terms = <String, Map<BigInt, Map<int, List<int>>>>{};
+    void add(int prefix, String text, BigInt rowId, int column, int position) {
       if (text.isEmpty) return;
       final key = String.fromCharCodes(fts5Term(prefix, text));
       terms
           .putIfAbsent(key, () => {})
+          .putIfAbsent(rowId, () => {})
           .putIfAbsent(column, () => [])
           .add(position);
     }
 
-    for (var column = 0; column < spec.columns.length; column++) {
-      if (spec.columns[column].unindexed) continue;
-      final tokens = doc.tokens[column];
-      for (var position = 0; position < tokens.length; position++) {
-        final text = tokens[position].text;
-        add(0, text, column, position);
-        for (var i = 0; i < spec.prefix.length; i++) {
-          add(i + 1, ftsPrefixChars(text, spec.prefix[i]), column, position);
+    for (final doc in docs) {
+      for (var column = 0; column < spec.columns.length; column++) {
+        if (spec.columns[column].unindexed) continue;
+        final tokens = doc.tokens[column];
+        for (var position = 0; position < tokens.length; position++) {
+          final text = tokens[position].text;
+          add(0, text, doc.id, column, position);
+          for (var i = 0; i < spec.prefix.length; i++) {
+            add(i + 1, ftsPrefixChars(text, spec.prefix[i]), doc.id, column,
+                position);
+          }
         }
       }
     }
     return encodeLeaf([
       for (final entry in terms.entries)
-        FtsPosting(Uint8List.fromList(entry.key.codeUnits),
-            [FtsRowPosting(doc.id, entry.value)])
+        FtsPosting(
+            Uint8List.fromList(entry.key.codeUnits),
+            [
+              for (final row in entry.value.entries)
+                FtsRowPosting(row.key, row.value)
+            ]..sort((left, right) => left.rowId.compareTo(right.rowId)))
     ], positions: spec.detail != 'none');
   }
 
@@ -1413,6 +1746,20 @@ final class _FtsInput {
   final List<String?> texts;
 }
 
+final class _FtsEdit {
+  _FtsEdit(this.id, this.tokens);
+  final BigInt id;
+
+  /// Null deletes the row. Otherwise these tokens replace it.
+  final List<List<FtsToken>>? tokens;
+}
+
+final class _FtsLeafDocs {
+  _FtsLeafDocs(this.row, this.docs);
+  final TableRow row;
+  final Map<BigInt, List<List<FtsToken>>> docs;
+}
+
 final class _FtsInsert {
   _FtsInsert(this.command, this.rows);
   final String? command;
@@ -1425,6 +1772,21 @@ final class _ShapeRow {
   final Object? shape;
   final List<Object?> extra;
   final List<double> coords;
+}
+
+List<int>? _varintList(Uint8List bytes) {
+  try {
+    final out = <int>[];
+    var offset = 0;
+    while (offset < bytes.length) {
+      final into = <int>[];
+      offset = readVarint(bytes, offset, into);
+      out.add(into.single);
+    }
+    return out;
+  } on SqlException {
+    return null;
+  }
 }
 
 List<FtsToken> _compact(List<FtsToken> tokens) {

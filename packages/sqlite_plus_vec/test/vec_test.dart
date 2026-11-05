@@ -168,7 +168,7 @@ void main() {
             rejectZeroVectors: true),
         throwsA(predicate<SqlException>(
             (error) => error.message == 'vec0 zero vector')));
-    for (var id = 10; id <= 74; id++) {
+    for (var id = 10; id <= 530; id++) {
       await database
           .execute('INSERT INTO items(rowid, embedding) VALUES (?, ?)', [
         id,
@@ -176,7 +176,7 @@ void main() {
       ]);
     }
     final paged = await rankVec0(database, table: 'items', query: const [1, 0]);
-    expect(paged, hasLength(69));
+    expect(paged, hasLength(525));
     expect(paged.first.rowId, BigInt.one);
     expect(paged[1].rowId, BigInt.from(74));
     expect(paged.first.distance, 0);

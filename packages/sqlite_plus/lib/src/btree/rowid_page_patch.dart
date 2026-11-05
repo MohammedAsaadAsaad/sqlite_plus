@@ -63,6 +63,105 @@ abstract final class RowidPagePatch {
     return _splitRight(pages, root, leaf, cell, count);
   }
 
+  /// Appends [rowIds] in ascending order when each is past the tree's maximum.
+  ///
+  /// One page buffer serves the whole batch. A null result leaves [image]
+  /// unchanged and means the caller rebuilds the table.
+  static Uint8List? appendAll(Uint8List image, int root, List<BigInt> rowIds,
+      List<List<Object?>> values) {
+    if (root < 2 ||
+        rowIds.isEmpty ||
+        rowIds.length != values.length ||
+        rowIds.length > 1000000) {
+      return null;
+    }
+    for (var i = 1; i < rowIds.length; i++) {
+      if (rowIds[i] <= rowIds[i - 1]) return null;
+    }
+    final pages = _Pages.tryOpen(image);
+    if (pages == null) return null;
+    for (var i = 0; i < rowIds.length; i++) {
+      if (rowIds[i] < -(BigInt.one << 63) || rowIds[i] >= BigInt.one << 63) {
+        return null;
+      }
+      final cell = pages.tableCell(rowIds[i], values[i]);
+      if (cell == null || !_appendRow(pages, root, cell, rowIds[i])) {
+        return null;
+      }
+    }
+    pages.touch();
+    return pages.assemble();
+  }
+
+  static bool _appendRow(_Pages pages, int root, Uint8List cell, BigInt rowId) {
+    final path = <int>[];
+    var page = root;
+    while (true) {
+      if (path.length > 64 || page < 1 || page > pages.pages.length) {
+        return false;
+      }
+      path.add(page);
+      final kind = pages.type(page);
+      if (kind == 13) break;
+      if (kind != 5) return false;
+      final right = pages.rightChild(page);
+      if (right == null) return false;
+      page = right;
+    }
+    final count = pages.count(page);
+    if (count == null) return false;
+    if (count > 0) {
+      final bounds = pages.cellBounds(page, count - 1);
+      if (bounds == null) return false;
+      final max = _rowid(pages.bytes(page), bounds.start, pages.pageSize);
+      if (max == null || rowId <= max) return false;
+    }
+    if (pages.fits(page, cell.length)) {
+      final cells = pages.leafCells(page);
+      if (cells == null) return false;
+      cells.add(cell);
+      return pages.writeLeaf(page, cells);
+    }
+    if (count < 1) return false;
+    final fresh = pages.allocate();
+    if (fresh == null || !pages.writeLeaf(fresh, [cell])) return false;
+    final bounds = pages.cellBounds(page, count - 1);
+    if (bounds == null) return false;
+    final max = _rowid(pages.bytes(page), bounds.start, pages.pageSize);
+    if (max == null) return false;
+    return _bubbleRow(pages, path, page, max, fresh);
+  }
+
+  /// Installs a right-edge split. [left] stays as it is; [right] holds the
+  /// greater keys. A full parent bubbles the same edge upward.
+  static bool _bubbleRow(
+      _Pages pages, List<int> path, int left, BigInt key, int right) {
+    if (path.isEmpty || path.last != left) return false;
+    if (path.length == 1) return _liftRowRoot(pages, left, key, right);
+    final parent = path[path.length - 2];
+    final separator = pages.interiorCell(left, key);
+    if (separator == null) return false;
+    if (pages.fits(parent, separator.length)) {
+      final cells = pages.interiorCells(parent);
+      if (cells == null) return false;
+      cells.add(separator);
+      return pages.writeInterior(parent, cells, right);
+    }
+    return _bubbleRow(
+        pages, path.sublist(0, path.length - 1), parent, key, right);
+  }
+
+  static bool _liftRowRoot(_Pages pages, int root, BigInt key, int right) {
+    final saved = Uint8List.fromList(pages.bytes(root));
+    final moved = pages.allocate();
+    if (moved == null) return false;
+    pages.pages[moved - 1] = saved;
+    pages._copied.add(moved);
+    final separator = pages.interiorCell(moved, key);
+    if (separator == null) return false;
+    return pages.writeInterior(root, [separator], right);
+  }
+
   /// Replaces the payload of [rowId]. The rowid itself stays in place.
   static Uint8List? replace(
       Uint8List image, int root, BigInt rowId, List<Object?> values) {
@@ -318,6 +417,60 @@ abstract final class RowidPagePatch {
     return pages.assemble();
   }
 
+  /// Adds empty tables, empty indexes, or rootless schema rows.
+  ///
+  /// A null result leaves [image] unchanged. Populated trees, overflow schema
+  /// records, auto-vacuum, and reserved bytes stay on the full rebuild path.
+  static Uint8List? appendSchema(Uint8List image, List<SchemaAppend> objects) {
+    if (objects.isEmpty) return image;
+    final pages = _Pages.tryOpen(image);
+    if (pages == null) return null;
+    final maxId = pages.maximumRowid(1);
+    if (maxId == null) return null;
+    var next = maxId + BigInt.one;
+    for (final object in objects) {
+      var root = 0;
+      if (object.allocatePage) {
+        final number = pages.allocate();
+        if (number == null ||
+            !pages.writeEmpty(number, object.indexLeaf ? 10 : 13)) {
+          return null;
+        }
+        root = number;
+      }
+      final cell = pages.tableCell(next, [
+        object.type,
+        object.name,
+        object.table,
+        BigInt.from(root),
+        object.sql
+      ]);
+      final leaf = pages.rightmost(1);
+      // Splitting the schema tree is a full rebuild. Appending is only safe
+      // while the new row fits on the current rightmost leaf.
+      if (cell == null ||
+          leaf == null ||
+          !pages.fits(leaf, cell.length) ||
+          !_appendRow(pages, 1, cell, next)) {
+        return null;
+      }
+      next += BigInt.one;
+    }
+    pages.touch();
+    final header = pages.cow(1);
+    final fields = ByteData.sublistView(header);
+    fields.setUint32(40, fields.getUint32(40) + 1);
+    return pages.assemble();
+  }
+
+  static List<SchemaRecord>? schemaRecords(Uint8List image) {
+    final pages = _Pages.tryOpen(image);
+    if (pages == null) return null;
+    final records = <SchemaRecord>[];
+    if (!pages.collectSchema(1, records)) return null;
+    return records;
+  }
+
   static bool _isLeaf(_Pages pages, int number) => pages.type(number) == 13;
 
   static List<(int, int)>? _cells(Uint8List page, int number, int pageSize) {
@@ -367,6 +520,28 @@ abstract final class RowidPagePatch {
       return null;
     }
   }
+}
+
+/// One sqlite_schema row to append. [allocatePage] creates an empty root.
+final class SchemaAppend {
+  SchemaAppend(this.type, this.name, this.table, this.sql,
+      {required this.allocatePage, required this.indexLeaf});
+  final String type;
+  final String name;
+  final String table;
+  final String? sql;
+  final bool allocatePage;
+  final bool indexLeaf;
+}
+
+/// A sqlite_schema row already stored in an image.
+final class SchemaRecord {
+  SchemaRecord(this.type, this.name, this.table, this.root, this.sql);
+  final String type;
+  final String name;
+  final String table;
+  final int root;
+  final String? sql;
 }
 
 final class _Found {
@@ -426,6 +601,64 @@ final class _Pages {
     return pages.length;
   }
 
+  bool writeEmpty(int number, int kind) {
+    if (number <= 1 || (kind != 13 && kind != 10)) return false;
+    final page = cow(number);
+    page.fillRange(0, page.length, 0);
+    page[0] = kind;
+    ByteData.sublistView(page).setUint16(5, pageSize == 65536 ? 0 : pageSize);
+    return true;
+  }
+
+  BigInt? maximumRowid(int root) {
+    final leaf = rightmost(root);
+    if (leaf == null) return null;
+    final cells = count(leaf);
+    if (cells == null) return null;
+    if (cells == 0) return BigInt.zero;
+    final bounds = cellBounds(leaf, cells - 1);
+    if (bounds == null) return null;
+    return RowidPagePatch._rowid(bytes(leaf), bounds.start, pageSize);
+  }
+
+  bool collectSchema(int number, List<SchemaRecord> records) {
+    final kind = type(number);
+    if (kind == 5) {
+      final kids = children(number);
+      if (kids == null) return false;
+      for (final child in kids) {
+        if (!collectSchema(child, records)) return false;
+      }
+      return true;
+    }
+    if (kind != 13) return false;
+    final cells = count(number);
+    if (cells == null) return false;
+    final page = bytes(number);
+    for (var i = 0; i < cells; i++) {
+      final bounds = cellBounds(number, i);
+      if (bounds == null) return false;
+      final values = RowidPagePatch._payloadValues(
+          Uint8List.sublistView(page, bounds.start, bounds.end), encoding);
+      if (values == null || values.length < 5) return false;
+      final typeName = values[0];
+      final name = values[1];
+      final table = values[2];
+      final root = values[3];
+      final sql = values[4];
+      if (typeName is! String ||
+          name is! String ||
+          table is! String ||
+          root is! BigInt ||
+          (sql != null && sql is! String)) {
+        return false;
+      }
+      records.add(
+          SchemaRecord(typeName, name, table, root.toInt(), sql as String?));
+    }
+    return true;
+  }
+
   int? type(int number) {
     if (number < 1 || number > pages.length) return null;
     final start = number == 1 ? 100 : 0;
@@ -437,6 +670,14 @@ final class _Pages {
     if (kind != 13 && kind != 5) return null;
     final start = number == 1 ? 100 : 0;
     return ByteData.sublistView(pages[number - 1]).getUint16(start + 3);
+  }
+
+  int? rightChild(int number) {
+    if (type(number) != 5) return null;
+    final start = number == 1 ? 100 : 0;
+    final child = ByteData.sublistView(pages[number - 1]).getUint32(start + 8);
+    if (child < 1 || child > pages.length) return null;
+    return child;
   }
 
   int? rightmost(int root) {
@@ -511,7 +752,8 @@ final class _Pages {
     for (var i = 0; i < total; i++) {
       final bounds = cellBounds(number, i);
       if (bounds == null) return null;
-      cells.add(Uint8List.sublistView(page, bounds.start, bounds.end));
+      // Copy. A later rewrite of this page must not clear the bytes it reads.
+      cells.add(Uint8List.fromList(page.sublist(bounds.start, bounds.end)));
     }
     return cells;
   }
@@ -527,7 +769,7 @@ final class _Pages {
       final offset = data.getUint16(start + 12 + i * 2);
       final length = _interiorLength(page, offset);
       if (length == null) return null;
-      result.add(Uint8List.sublistView(page, offset, offset + length));
+      result.add(Uint8List.fromList(page.sublist(offset, offset + length)));
     }
     return result;
   }

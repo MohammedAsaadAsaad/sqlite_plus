@@ -1,0 +1,61 @@
+{
+  "records": 10000,
+  "sdk": "3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "os": "linux",
+  "processors": 4,
+  "backend": "memory",
+  "provider": "benchmark-fixture-v1",
+  "dimensions": 2,
+  "corpus": "identical milk baby Arabic documents; one tea update",
+  "index_us": 4704192,
+  "cold_keyword_us": 441266,
+  "cold_hybrid_us": 493197,
+  "cold_semantic_us": 186061,
+  "warm_keyword_us": [
+    453813,
+    484322,
+    442329,
+    475981,
+    495726
+  ],
+  "warm_hybrid_us": [
+    491072,
+    465838,
+    535827,
+    508636,
+    498088
+  ],
+  "warm_semantic_us": [
+    229848,
+    210499,
+    200356,
+    215387,
+    219914
+  ],
+  "incremental_update_and_hybrid_us": 2121528,
+  "source_update_us": 35599,
+  "incremental_sync_us": 1699659,
+  "post_update_hybrid_us": 386212,
+  "feedback_us": 4096,
+  "rss_after_source": {
+    "rss_bytes": 55726080,
+    "peak_rss_bytes": 81797120
+  },
+  "rss_after_index": {
+    "rss_bytes": 155729920,
+    "peak_rss_bytes": 155365376
+  },
+  "rss_after_queries": {
+    "rss_bytes": 94773248,
+    "peak_rss_bytes": 225472512
+  },
+  "rss_after_sync": {
+    "rss_bytes": 93614080,
+    "peak_rss_bytes": 225472512
+  },
+  "rss_bytes": 124542976,
+  "peak_rss_bytes": 225472512,
+  "image_bytes_after_index": 1216512,
+  "image_bytes": 1118208,
+  "note": "Single AOT process; cold means first query after indexing, not OS cache reset. Fixture inference only. Learning context writes are included. RSS is sampled after the source load, after indexing, after the warm queries, after synchronization, and at the end. Image size is recorded after indexing and at the end."
+}

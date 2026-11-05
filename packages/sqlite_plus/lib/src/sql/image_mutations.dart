@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import '../btree/btree_reader.dart';
 import '../btree/database_image_builder.dart';
+import '../btree/index_page_patch.dart';
 import '../btree/page_patch.dart';
 import '../btree/rowid_page_patch.dart';
 import '../btree/table_image_writer.dart';
@@ -83,12 +84,16 @@ final class _Table {
   Map<BigInt, TableRow>? rowById;
   Map<int, Map<Object, List<TableRow>>>? valueIndexes;
 
+  /// Rowid order for a repeated window read. Cleared when a row is replaced.
+  List<TableRow>? rowidOrder;
+
   void invalidateResidentKeys() {
     residentRowids = null;
     residentKeyIds = null;
     residentUniques = null;
     rowById = null;
     valueIndexes = null;
+    rowidOrder = null;
   }
 }
 
@@ -1226,7 +1231,7 @@ final class ImageMutations {
     other.add(ImageObject('table', declaration.name, declaration.name, sql,
         virtualTable: true));
     schemaChanged = true;
-    return MutationImage(serialize(), 0, null);
+    return MutationImage(_publishSchema(), 0, null);
   }
 
   void validateForeignKeys() {
@@ -1344,6 +1349,105 @@ final class ImageMutations {
     objects.addAll(other);
     return DatabaseImageBuilder.build(original, objects,
         schemaChanged: schemaChanged);
+  }
+
+  /// Publishes new empty schema objects without rewriting existing trees.
+  ///
+  /// Nested schema statements leave the rows in memory; the outermost statement
+  /// writes them. A populated table or an index over existing rows still uses
+  /// [serialize].
+  Uint8List _publishSchema(
+      {bool foreignKeys = false, bool includeDeferred = false}) {
+    if (_executionDepth > 1) return original;
+    if (_pendingRowEdits()) {
+      // Deferred inserts are not in [original]. Fold them in before copying
+      // that image forward, or a later schema append would drop the rows.
+      final patched = _patchChangedTables();
+      if (patched == null) {
+        return serialize(
+            foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+      }
+      original = patched;
+      for (final entry in _tables.entries) {
+        _loadedRows[entry.key] = List<TableRow>.of(entry.value.rows);
+      }
+    }
+    final appended = _appendEmptySchema();
+    if (appended != null) return appended;
+    return serialize(
+        foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+  }
+
+  bool _pendingRowEdits() {
+    for (final entry in _tables.entries) {
+      final before = _loadedRows[entry.key] ?? const <TableRow>[];
+      if (!_sameRows(before, entry.value.rows)) return true;
+    }
+    return false;
+  }
+
+  Uint8List? _appendEmptySchema() {
+    final stored = RowidPagePatch.schemaRecords(original);
+    if (stored == null) return null;
+    final known = <String, SchemaRecord>{
+      for (final record in stored) record.name.toLowerCase(): record
+    };
+    if (known.length != stored.length) return null;
+    final added = <SchemaAppend>[];
+    bool matches(SchemaRecord record, String type, String name, String table,
+        String? sql) {
+      return record.type == type &&
+          record.name == name &&
+          record.table == table &&
+          record.sql == sql;
+    }
+
+    for (final table in _tables.values) {
+      final name = table.schema.name;
+      final record = known.remove(name.toLowerCase());
+      if (record == null) {
+        if (table.rows.isNotEmpty || table.view || table.schema.virtual) {
+          return null;
+        }
+        added.add(SchemaAppend('table', name, name, table.sql,
+            allocatePage: true, indexLeaf: table.schema.withoutRowid));
+        continue;
+      }
+      if (!matches(record, 'table', name, name, table.sql)) return null;
+    }
+    for (final index in _indexes) {
+      final record = known.remove(index.name.toLowerCase());
+      if (record == null) {
+        final table = _tables[asciiLower(index.table)];
+        if (table == null || table.rows.isNotEmpty) return null;
+        added.add(SchemaAppend('index', index.name, index.table, index.sql,
+            allocatePage: true, indexLeaf: true));
+        continue;
+      }
+      if (!matches(record, 'index', index.name, index.table, index.sql)) {
+        return null;
+      }
+    }
+    for (final object in other) {
+      final record = known.remove(object.name.toLowerCase());
+      if (record == null) {
+        if (object.type != 'table' &&
+            object.type != 'view' &&
+            object.type != 'trigger') {
+          return null;
+        }
+        added.add(SchemaAppend(
+            object.type, object.name, object.tableName, object.sql,
+            allocatePage: false, indexLeaf: false));
+        continue;
+      }
+      if (!matches(
+          record, object.type, object.name, object.tableName, object.sql)) {
+        return null;
+      }
+    }
+    if (known.isNotEmpty) return null;
+    return RowidPagePatch.appendSchema(original, added);
   }
 
   final List<String> _activeTriggers = [];
@@ -2001,7 +2105,7 @@ final class ImageMutations {
         }
         other.add(ImageObject('trigger', trigger.name, table.schema.name, sql));
         schemaChanged = true;
-        return MutationImage(serialize(), 0, null);
+        return MutationImage(_publishSchema(), 0, null);
       }
       if (p.take('VIEW')) {
         if (unique) throw const SqlException('Invalid UNIQUE VIEW');
@@ -2037,7 +2141,7 @@ final class ImageMutations {
         }
         other.add(ImageObject('view', name, name, sql));
         schemaChanged = true;
-        return MutationImage(serialize(), 0, null);
+        return MutationImage(_publishSchema(), 0, null);
       }
       if (p.take('TABLE')) {
         if (unique) throw const SqlException('Unexpected UNIQUE TABLE');
@@ -2106,7 +2210,7 @@ final class ImageMutations {
           _tables[key] = table;
           schemaChanged = true;
           return MutationImage(
-              serialize(
+              _publishSchema(
                   foreignKeys: foreignKeys, includeDeferred: !inTransaction),
               0,
               null);
@@ -2161,7 +2265,7 @@ final class ImageMutations {
       }
       schemaChanged = true;
       return MutationImage(
-          serialize(
+          _publishSchema(
               foreignKeys: foreignKeys && _executionDepth == 1,
               includeDeferred: !inTransaction),
           0,
@@ -3781,6 +3885,7 @@ final class ImageMutations {
             throw const SqlConstraintException('UNIQUE constraint failed');
           }
           table.rows[slot] = next;
+          table.rowidOrder = null;
           changes++;
           _changed();
           return;
@@ -4232,6 +4337,8 @@ final class ImageMutations {
   Uint8List durableImage() {
     final fast = _fastDurableImage();
     if (fast != null) return fast;
+    final patched = _patchChangedTables();
+    if (patched != null) return patched;
     return serialize(foreignKeys: false, includeDeferred: false);
   }
 
@@ -4242,7 +4349,10 @@ final class ImageMutations {
     final incremental = await _tryIncremental(
         foreignKeys: foreignKeys, includeDeferred: includeDeferred);
     if (incremental != null) return incremental;
-    return serialize(
+    // Several ordinary tables can change together, for example a source row
+    // and the trigger row that records it. Rewrite those trees in place.
+    // Virtual tables and triggers stay on the schema page.
+    return _imageAfterRowEdits(
         foreignKeys: foreignKeys, includeDeferred: includeDeferred);
   }
 
@@ -4251,7 +4361,7 @@ final class ImageMutations {
   /// Returns null when the image has to be rebuilt. A hit flushes column
   /// addends so the live rows match the returned bytes.
   Uint8List? _fastDurableImage() {
-    if (schemaChanged) return null;
+    if (schemaChanged || _sequences.isNotEmpty) return null;
     final addend = _patchAddend();
     if (addend != null) {
       _flushColumnAddends();
@@ -4433,9 +4543,304 @@ final class ImageMutations {
     return true;
   }
 
+  /// Writes changed ordinary tables back without rebuilding untouched ones.
+  ///
+  /// Rowid edits use a page patch when the cell still fits, then a one-table
+  /// rewrite. A WITHOUT ROWID table is rewritten only when it is still a
+  /// single index leaf. Anything else keeps the compact whole-image rebuild.
+  Future<Uint8List> _imageAfterRowEdits(
+      {bool foreignKeys = false, bool includeDeferred = false}) async {
+    Uint8List rebuild() =>
+        serialize(foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+    if (schemaChanged) return rebuild();
+    _flushColumnAddends();
+    if ((foreignKeys || includeDeferred) &&
+        _tables.values.any((table) => table.schema.foreignKeys.isNotEmpty)) {
+      _validate(foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+    }
+    final patched = _patchChangedTables();
+    if (patched != null) return patched;
+    // Autoincrement state lives in _sequences and is written by serialize.
+    if (_tables.containsKey('sqlite_sequence')) return rebuild();
+    final rowTables = <_Table>[];
+    final indexTables = <_Table>[];
+    for (final table in _tables.values) {
+      final before =
+          _loadedRows[asciiLower(table.schema.name)] ?? const <TableRow>[];
+      if (_sameRows(before, table.rows)) continue;
+      if (table.view || table.schema.virtual) return rebuild();
+      if (table.schema.withoutRowid) {
+        indexTables.add(table);
+        continue;
+      }
+      final indexes = _indexes
+          .where((index) =>
+              asciiLower(index.table) == asciiLower(table.schema.name))
+          .toList();
+      if (indexes.isNotEmpty &&
+          !_indexKeysSame(table, before, table.rows, indexes)) {
+        return rebuild();
+      }
+      rowTables.add(table);
+    }
+    if (rowTables.isEmpty && indexTables.isEmpty) return original;
+    var image = original;
+    for (final table in rowTables) {
+      final root = _tableRoot(table);
+      final before =
+          _loadedRows[asciiLower(table.schema.name)] ?? const <TableRow>[];
+      if (root == null) return rebuild();
+      final patched = _patchSameRowids(image, root, before, table) ??
+          _patchRowidDelta(image, root, before, table);
+      if (patched != null) {
+        image = patched;
+        continue;
+      }
+      try {
+        image = await TableImageWriter.replace(
+          image,
+          table.schema.name,
+          table.rows,
+          maxImageBytes: image.length + 32 * 1024 * 1024,
+        );
+      } catch (error) {
+        if (error is UnsupportedError ||
+            error is FormatException ||
+            error is SqlException ||
+            error is StateError) {
+          return rebuild();
+        }
+        rethrow;
+      }
+    }
+    for (final table in indexTables) {
+      final root = _tableRoot(table);
+      if (root == null) return rebuild();
+      if (_indexes.any((index) =>
+          asciiLower(index.table) == asciiLower(table.schema.name))) {
+        return rebuild();
+      }
+      final patched = TableImageWriter.replaceIndexLeaf(
+          image, root, _withoutRowidRecords(table));
+      if (patched == null) return rebuild();
+      image = patched;
+    }
+    return image;
+  }
+
+  /// Appends new rowids, and their new index keys, without rewriting other
+  /// tables. Returns null when a changed table needs a compact rebuild.
+  Uint8List? _patchChangedTables() {
+    if (schemaChanged || _tables.containsKey('sqlite_sequence')) return null;
+    _flushColumnAddends();
+    final changed = <_Table>[];
+    for (final table in _tables.values) {
+      final before =
+          _loadedRows[asciiLower(table.schema.name)] ?? const <TableRow>[];
+      if (_sameRows(before, table.rows)) continue;
+      if (table.view || table.schema.virtual) return null;
+      changed.add(table);
+    }
+    if (changed.isEmpty) return original;
+    var image = original;
+    for (final table in changed) {
+      final name = asciiLower(table.schema.name);
+      final before = _loadedRows[name] ?? const <TableRow>[];
+      final root = _tableRoot(table);
+      if (root == null) return null;
+      if (table.schema.withoutRowid) {
+        final secondary =
+            _indexes.where((index) => asciiLower(index.table) == name).toList();
+        if (secondary.isNotEmpty) return null;
+        final patched = TableImageWriter.replaceIndexLeaf(
+            image, root, _withoutRowidRecords(table));
+        if (patched == null) return null;
+        image = patched;
+        continue;
+      }
+      final indexes =
+          _indexes.where((index) => asciiLower(index.table) == name).toList();
+      if (indexes.isNotEmpty &&
+          !_indexKeysSame(table, before, table.rows, indexes)) {
+        final appended =
+            _appendIndexedRows(image, root, table, before, indexes);
+        if (appended == null) return null;
+        image = appended;
+        continue;
+      }
+      final patched = _patchSameRowids(image, root, before, table) ??
+          _patchRowidDelta(image, root, before, table) ??
+          _appendPlainRows(image, root, table, before);
+      if (patched == null) return null;
+      image = patched;
+    }
+    return image;
+  }
+
+  Uint8List? _appendPlainRows(
+      Uint8List image, int root, _Table table, List<TableRow> before) {
+    final added = _addedOnly(before, table.rows);
+    if (added == null) return null;
+    return RowidPagePatch.appendAll(
+        image,
+        root,
+        [for (final row in added) row.rowId],
+        [for (final row in added) _storedValues(table, row)]);
+  }
+
+  Uint8List? _appendIndexedRows(Uint8List image, int root, _Table table,
+      List<TableRow> before, List<_Index> indexes) {
+    if (table.schema.withoutRowid) return null;
+    final added = _addedOnly(before, table.rows);
+    if (added == null) return null;
+    final appended = RowidPagePatch.appendAll(
+        image,
+        root,
+        [for (final row in added) row.rowId],
+        [for (final row in added) _storedValues(table, row)]);
+    if (appended == null) return null;
+    final roots = RowidPagePatch.schemaRoots(appended);
+    if (roots == null) return null;
+    var current = appended;
+    for (final index in indexes) {
+      final indexRoot = roots[asciiLower(index.name)];
+      if (indexRoot == null || indexRoot <= 1) return null;
+      final records = <List<Object?>>[];
+      for (final row in added) {
+        if (!_includes(index, table, row)) continue;
+        records.add([..._indexKey(index, table, row), row.rowId]);
+      }
+      if (records.isEmpty) continue;
+      final patched = IndexPagePatch.insert(
+          current, indexRoot, records, (a, b) => _compare(index, a, b));
+      if (patched == null) return null;
+      current = patched;
+    }
+    return current;
+  }
+
+  /// Rows that were inserted, with every previous row left unchanged.
+  ///
+  /// The new rowids are strictly increasing and greater than the old maximum,
+  /// so they can be appended to the right edge.
+  List<TableRow>? _addedOnly(List<TableRow> before, List<TableRow> after) {
+    final previous = {for (final row in before) row.rowId: row};
+    if (previous.length != before.length) return null;
+    final seen = <BigInt>{};
+    final added = <TableRow>[];
+    for (final row in after) {
+      if (!seen.add(row.rowId)) return null;
+      final old = previous[row.rowId];
+      if (old == null) {
+        added.add(row);
+        continue;
+      }
+      if (!_sameValues(old.values, row.values)) return null;
+    }
+    if (added.isEmpty || added.length + before.length != after.length) {
+      return null;
+    }
+    added.sort((a, b) => a.rowId.compareTo(b.rowId));
+    if (before.isNotEmpty) {
+      var maxId = before.first.rowId;
+      for (final row in before) {
+        if (row.rowId > maxId) maxId = row.rowId;
+      }
+      if (added.first.rowId <= maxId) return null;
+    }
+    for (var i = 1; i < added.length; i++) {
+      if (added[i].rowId <= added[i - 1].rowId) return null;
+    }
+    return added;
+  }
+
+  Uint8List? _patchSameRowids(
+      Uint8List image, int root, List<TableRow> before, _Table table) {
+    if (before.length != table.rows.length) return null;
+    final previous = {for (final row in before) row.rowId: row};
+    if (previous.length != before.length) return null;
+    var current = image;
+    for (final row in table.rows) {
+      final old = previous[row.rowId];
+      if (old == null) return null;
+      if (_sameRows([old], [row])) continue;
+      final patched = RowidPagePatch.replace(
+          current, root, row.rowId, _storedValues(table, row));
+      if (patched == null) return null;
+      current = patched;
+    }
+    return current;
+  }
+
+  /// A few appended or deleted rowids. Larger batches use a one-table rewrite.
+  Uint8List? _patchRowidDelta(
+      Uint8List image, int root, List<TableRow> before, _Table table) {
+    final previous = {for (final row in before) row.rowId: row};
+    final next = {for (final row in table.rows) row.rowId: row};
+    if (previous.length != before.length || next.length != table.rows.length) {
+      return null;
+    }
+    final removed = [
+      for (final id in previous.keys)
+        if (!next.containsKey(id)) id
+    ]..sort();
+    final added = [
+      for (final row in table.rows)
+        if (!previous.containsKey(row.rowId)) row
+    ]..sort((a, b) => a.rowId.compareTo(b.rowId));
+    if (added.isEmpty && removed.isEmpty) return null;
+    if (added.length + removed.length > 8) return null;
+    var current = image;
+    for (final row in table.rows) {
+      final old = previous[row.rowId];
+      if (old == null || _sameRows([old], [row])) continue;
+      final patched = RowidPagePatch.replace(
+          current, root, row.rowId, _storedValues(table, row));
+      if (patched == null) return null;
+      current = patched;
+    }
+    for (final id in removed) {
+      final patched = RowidPagePatch.delete(current, root, id);
+      if (patched == null) return null;
+      current = patched;
+    }
+    for (final row in added) {
+      final patched = RowidPagePatch.append(
+          current, root, row.rowId, _storedValues(table, row));
+      if (patched == null) return null;
+      current = patched;
+    }
+    return current;
+  }
+
+  List<List<Object?>> _withoutRowidRecords(_Table table) {
+    final pk = table.schema.columns.where((c) => c.primaryKey != 0).toList()
+      ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+    final names = pk.map((c) => c.name).toList();
+    final ordered = table.rows.toList()
+      ..sort((a, b) => _compare(
+          _Index(
+              '@pk',
+              table.schema.name,
+              names,
+              table.schema.primaryKeyDescending,
+              table.schema.primaryKeyCollations,
+              true,
+              null),
+          _key(table, a, names),
+          _key(table, b, names)));
+    return [
+      for (final row in ordered)
+        [
+          for (final col in table.schema.storageColumns)
+            _row(table, row)[asciiLower(col.name)]
+        ]
+    ];
+  }
+
   Future<Uint8List?> _tryIncremental(
       {required bool foreignKeys, required bool includeDeferred}) async {
-    if (schemaChanged || other.isNotEmpty) return null;
+    if (schemaChanged || other.isNotEmpty || _sequences.isNotEmpty) return null;
     // Foreign-key mode also asks for a full row scan. Skip it when no table
     // declares a foreign key; the statement already enforced its own rows.
     if ((foreignKeys || includeDeferred) &&
@@ -4573,6 +4978,12 @@ final class ImageMutations {
   static final RegExp _fastReadPattern = RegExp(
       r'^SELECT\s+([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)\s+FROM\s+([A-Za-z_][A-Za-z0-9_]*)\s+WHERE\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\?\s*;?\s*$',
       caseSensitive: false);
+  static final RegExp _fastCountPattern = RegExp(
+      r'^SELECT\s+count\s*\(\s*\*\s*\)\s+FROM\s+((?:"(?:[^"]|"")+"|[A-Za-z_][A-Za-z0-9_]*))\s*;?\s*$',
+      caseSensitive: false);
+  static final RegExp _fastWindowPattern = RegExp(
+      r'^SELECT\s+(.+?)\s+FROM\s+((?:"(?:[^"]|"")+"|[A-Za-z_][A-Za-z0-9_]*))(?:\s+WHERE\s+(rowid)\s*>\s*\?)?\s+ORDER\s+BY\s+rowid(?:\s+ASC)?\s+LIMIT\s+(\d+)\s*;?\s*$',
+      caseSensitive: false);
 
   /// `col IN (?,?,?)` on a rowid, optionally `AND (other = ?)`.
   ///
@@ -4593,6 +5004,7 @@ final class ImageMutations {
           values[entry.key] = _addStored(values[entry.key], entry.value);
         }
         table.rows[index] = TableRow(row.rowId, values);
+        table.rowidOrder = null;
       }
       table.columnAddends = null;
       table.invalidateResidentKeys();
@@ -5035,6 +5447,7 @@ final class ImageMutations {
     final index = table.rows.indexOf(existing);
     if (index < 0) return null;
     table.rows[index] = updated;
+    table.rowidOrder = null;
     table.rowById![rowId] = updated;
     table.valueIndexes?.remove(column);
     wroteRows = true;
@@ -5336,6 +5749,150 @@ final class ImageMutations {
       return null;
     }
     return value;
+  }
+
+  /// `SELECT count(*) FROM table` from the live row list.
+  QueryResult? tryFastCount(String sql) {
+    final match = _fastCountPattern.firstMatch(sql.trim());
+    if (match == null) return null;
+    final name = _plainIdentifier(match.group(1)!);
+    if (name == null) return null;
+    final table = _tables[asciiLower(name)];
+    if (table == null ||
+        table.view ||
+        table.schema.virtual ||
+        table.schema.withoutRowid) {
+      return null;
+    }
+    return QueryResult(const [
+      'count(*)'
+    ], [
+      [BigInt.from(table.rows.length)]
+    ], const [
+      'integer'
+    ], const [
+      'INTEGER'
+    ], const [
+      'BINARY'
+    ]);
+  }
+
+  /// `SELECT cols FROM table [WHERE rowid > ?] ORDER BY rowid LIMIT n`.
+  QueryResult? tryFastWindow(String sql, List<Object?> parameters) {
+    final match = _fastWindowPattern.firstMatch(sql.trim());
+    if (match == null) return null;
+    final where = match.group(3) != null;
+    if (where && parameters.length != 1) return null;
+    if (!where && parameters.isNotEmpty) return null;
+    final tableName = _plainIdentifier(match.group(2)!);
+    if (tableName == null) return null;
+    final table = _tables[asciiLower(tableName)];
+    if (table == null ||
+        table.view ||
+        table.schema.virtual ||
+        table.schema.withoutRowid) {
+      return null;
+    }
+    final limit = int.tryParse(match.group(4)!);
+    if (limit == null || limit < 0) return null;
+    final selected = match.group(1)!.split(',');
+    final columns = <CatalogColumn?>[];
+    final labels = <String>[];
+    for (final piece in selected) {
+      final label = piece.trim();
+      final name = _plainIdentifier(label);
+      if (name == null) return null;
+      labels.add(label);
+      final column = _fastColumn(table, asciiLower(name));
+      if (column == null && !_isRowidName(table, asciiLower(name))) return null;
+      if (column != null &&
+          column.collation != 'BINARY' &&
+          column.collation != 'binary') {
+        return null;
+      }
+      columns.add(column);
+    }
+    BigInt? bound;
+    if (where) {
+      final parameter = sqlValue(parameters.single);
+      if (parameter == null) {
+        return QueryResult(
+            labels,
+            const [],
+            [for (final column in columns) column?.affinity ?? 'integer'],
+            [for (final column in columns) column?.declaredType ?? 'INTEGER'],
+            [for (final column in columns) column?.collation ?? 'BINARY']);
+      }
+      bound = _fastRowid(parameter);
+      if (bound == null) return null;
+    }
+    final ordered = _rowidOrder(table);
+    var start = 0;
+    if (bound != null) {
+      var low = 0, high = ordered.length;
+      while (low < high) {
+        final middle = (low + high) >> 1;
+        if (ordered[middle].rowId <= bound) {
+          low = middle + 1;
+        } else {
+          high = middle;
+        }
+      }
+      start = low;
+    }
+    final end = start + limit < ordered.length ? start + limit : ordered.length;
+    final rows = [
+      for (var i = start; i < end; i++)
+        [
+          for (var column = 0; column < columns.length; column++)
+            columns[column] == null
+                ? ordered[i].rowId
+                : _projected(table, ordered[i],
+                    table.schema.columns.indexOf(columns[column]!))
+        ]
+    ];
+    return QueryResult(
+        labels,
+        rows,
+        [for (final column in columns) column?.affinity ?? 'integer'],
+        [for (final column in columns) column?.declaredType ?? 'INTEGER'],
+        [for (final column in columns) column?.collation ?? 'BINARY']);
+  }
+
+  List<TableRow> _rowidOrder(_Table table) {
+    final cached = table.rowidOrder;
+    if (cached != null &&
+        cached.isNotEmpty &&
+        cached.length <= table.rows.length &&
+        identical(table.rows[cached.length - 1], cached.last)) {
+      var fits = true;
+      var maxId = cached.last.rowId;
+      for (var i = cached.length; i < table.rows.length; i++) {
+        if (table.rows[i].rowId <= maxId) {
+          fits = false;
+          break;
+        }
+        maxId = table.rows[i].rowId;
+      }
+      if (fits) {
+        if (cached.length < table.rows.length) {
+          cached.addAll(table.rows.sublist(cached.length));
+        }
+        return cached;
+      }
+    }
+    final copy = table.rows.toList()
+      ..sort((a, b) => a.rowId.compareTo(b.rowId));
+    return table.rowidOrder = copy;
+  }
+
+  String? _plainIdentifier(String token) {
+    final text = token.trim();
+    if (text.length >= 2 && text.startsWith('"') && text.endsWith('"')) {
+      return text.substring(1, text.length - 1).replaceAll('""', '"');
+    }
+    if (RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(text)) return text;
+    return null;
   }
 
   /// A repeated single-table equality read answered from the live rows.
