@@ -32,5 +32,7 @@ Hardening runs additionally record cold/warm semantic latency and separate sourc
 update, synchronize, and post-update hybrid query timings. `hardened_attempts.json`
 records source SHA-256 values and explicit timeout outcomes. The committed numbers
 are index format 2: 1000 derived rows per batch and one external-content FTS build.
-Format 3 stores vectors in `vec0` and was not remeasured. Old format-1 results
-remain historical; measurements are single shared-host processes.
+Format 3 stores vectors in `vec0` and this harness was not remeasured. The
+catalog keyword sample is a different program, `catalog_lookup.dart`, recorded
+in the repository development log. Old format-1 results remain historical;
+measurements are single shared-host processes.

@@ -728,20 +728,63 @@ final class SqliteDatabase {
     return catalog.table(name);
   }
 
+  /// True when a packed FTS lookup must also read stored column text.
+  bool _ftsQueryReadsText(SelectStatement statement, CatalogTable table) {
+    if (table.virtualModule != 'fts5') return true;
+    final hidden = {
+      asciiLower(table.name),
+      'rank',
+      'rowid',
+      'oid',
+      '_rowid_',
+    };
+    bool walk(Expr expr) {
+      if (expr is FunctionExpr &&
+          (expr.key == 'highlight' || expr.key == 'snippet')) {
+        return true;
+      }
+      if (expr is ColumnExpr) {
+        final name = asciiLower(expr.name.split('.').last);
+        if (!hidden.contains(name)) return true;
+      }
+      return expr.children.any(walk);
+    }
+
+    for (final item in statement.items) {
+      if (item.expression == null || walk(item.expression!)) return true;
+    }
+    for (final order in statement.order) {
+      if (walk(order.expression)) return true;
+    }
+    for (final group in statement.groupBy) {
+      if (walk(group)) return true;
+    }
+    final having = statement.having;
+    return having != null && walk(having);
+  }
+
   Stream<BtreeRecord> _planRecords(CatalogTable table, QueryPlan plan,
       {Expr? where,
       List<Object?> parameters = const [],
       bool allowUnqualified = false,
-      String? alias}) async* {
+      String? alias,
+      bool ftsText = true}) async* {
     if (plan.access == 'virtual-table-scan') {
-      final snapshot = await readSearchShadows(_pager, catalog, table);
+      final directed = await directedFts5Snapshot(
+          _pager, catalog, table, where, parameters,
+          requireText: ftsText);
+      final snapshot =
+          directed ?? await readSearchShadows(_pager, catalog, table);
       yield* Stream<BtreeRecord>.fromIterable(runZoned(
           () => VirtualTableRows.records(table,
               where: where,
               parameters: parameters,
               allowUnqualified: allowUnqualified,
               alias: alias),
-          zoneValues: {searchSnapshotKey: snapshot}));
+          zoneValues: {
+            searchSnapshotKey: snapshot,
+            if (directed != null) ftsDirectedSnapshotKey: true,
+          }));
       return;
     }
     final reader = BtreeReader(_pager);
@@ -1451,7 +1494,8 @@ final class SqliteDatabase {
           where: statement.where,
           parameters: bound,
           allowUnqualified: true,
-          alias: statement.sources.singleOrNull?.alias);
+          alias: statement.sources.singleOrNull?.alias,
+          ftsText: _ftsQueryReadsText(statement, table));
       final stored = table.storageColumns;
       await for (final record in stream) {
         if (record.values.length > stored.length) {

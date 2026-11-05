@@ -6,7 +6,7 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.7
+  sqlite_plus: ^0.1.8
   sqlite_plus_orm: ^0.1.7
   sqlite_plus_arabic: ^0.1.1
   sqlite_plus_vec: ^0.1.1
@@ -16,7 +16,15 @@ dev_dependencies:
   sqlite_plus_generator: ^0.1.7
 ```
 
-`sqlite_plus_arabic`, `sqlite_plus_vec`, and `sqlite_plus_geo` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer, `sqlite_plus_vec` for a vector column, and `sqlite_plus_geo` for geometry. A package is loaded when the application imports it.
+`sqlite_plus_arabic`, `sqlite_plus_vec`, `sqlite_plus_geo`, and `sqlite_plus_search` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer, `sqlite_plus_vec` for a vector column, `sqlite_plus_geo` for geometry, and `sqlite_plus_search` for an offline BM25 index. A package is loaded when the application imports it.
+
+## Keyword search
+
+[`sqlite_plus_search`](packages/sqlite_plus_search) keeps the index in the same database. A page of the product catalog loads 20 names. On one arm64 phone, release build 0.5.2, at 17:11 Asia/Hebron (UTC+2) on 5 November 2026, `بسكويت` read `20 of 493 matches · 47.236 ms`. The catalog holds 10,000 Arabic names and 10,000 English names. That page was 1 of 25, and the score on those titles was 3.965.
+
+![Catalog on one arm64 phone. Twenty of 493 matches in 47.236 ms.](packages/sqlite_plus_search/doc/catalog-phone.jpg)
+
+The same lists on Linux x64, Dart 3.13.7, AOT, and not a phone: `بسكويت` returned 493 hits and 20 names in 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. `biscuit` took 19.717 ms, 25.481 ms, and 25.621 ms. The packed image held 347 leaves. Before packing, that Linux process took 405 ms and then 359 ms, and the previous phone build showed 472.000 ms for page 17. Pinned SQLite 3.53.1 opened the packed image: `integrity_check` returned `ok`, and both queries returned 493 rows. There is no embedding model in that catalog.
 
 The package pages are [sqlite_plus](https://pub.dev/packages/sqlite_plus), [sqlite_plus_orm](https://pub.dev/packages/sqlite_plus_orm), [sqlite_plus_generator](https://pub.dev/packages/sqlite_plus_generator), [sqlite_plus_arabic](https://pub.dev/packages/sqlite_plus_arabic), [sqlite_plus_vec](https://pub.dev/packages/sqlite_plus_vec), [sqlite_plus_geo](https://pub.dev/packages/sqlite_plus_geo), and [sqlite_plus_search](https://pub.dev/packages/sqlite_plus_search).
 
@@ -124,7 +132,7 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | [`sqlite_plus_arabic`](packages/sqlite_plus_arabic) · [pub.dev](https://pub.dev/packages/sqlite_plus_arabic) | FTS5 tokenizer `arabic`. `حديقة` and `الحديقة` share a token |
 | [`sqlite_plus_vec`](packages/sqlite_plus_vec) · [pub.dev](https://pub.dev/packages/sqlite_plus_vec) | `vec0` nearest neighbors. A full scan of float32 vectors |
 | [`sqlite_plus_geo`](packages/sqlite_plus_geo) · [pub.dev](https://pub.dev/packages/sqlite_plus_geo) | Geometry, spatial SQL, and R-tree queries in Pure Dart |
-| [`sqlite_plus_search`](packages/sqlite_plus_search) · [pub.dev](https://pub.dev/packages/sqlite_plus_search) | Offline keyword search, a shelf filter, and a local vector fixture. Not a language model |
+| [`sqlite_plus_search`](packages/sqlite_plus_search) · [pub.dev](https://pub.dev/packages/sqlite_plus_search) | Packed FTS5 keyword search. One phone page of 20,000 names took 47.236 ms. Not a language model |
 | [`browser`](browser) | Flutter browser for a database image on phone and desktop |
 
 | You want | Command |

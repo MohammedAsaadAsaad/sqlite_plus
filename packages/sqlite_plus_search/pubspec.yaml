@@ -1,16 +1,21 @@
 name: sqlite_plus_search
-description: Offline keyword and local-vector search over sqlite_plus tables.
-version: 0.1.0-dev.3
+description: Offline keyword search for sqlite_plus. One phone returned 20 of 493 names in 47.236 ms.
+version: 0.1.0-dev.4
 repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus_search
+issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
 topics:
   - sqlite
   - search
+  - fts
+screenshots:
+  - description: One arm64 phone. Query بسكويت, 20 of 493 names, 47.236 ms.
+    path: doc/catalog-phone.jpg
 resolution: workspace
 environment:
   sdk: '>=3.6.0 <4.0.0'
 dependencies:
   crypto: ^3.0.8
-  sqlite_plus: ^0.1.7
+  sqlite_plus: ^0.1.8
   sqlite_plus_arabic: ^0.1.2
   sqlite_plus_vec: ^0.1.2
 dev_dependencies:

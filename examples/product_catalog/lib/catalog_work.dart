@@ -255,6 +255,9 @@ class CatalogSession {
   int productCount = 0;
   bool indexed = false;
 
+  /// The opened image used one leaf per document and was rewritten in place.
+  bool repacked = false;
+
   Future<int> insert(
     List<ProductLine> products, {
     void Function(int inserted, int total)? onProgress,
@@ -354,6 +357,7 @@ class CatalogSession {
         analyzer: const SearchTextAnalyzer(stemArabic: true),
       );
       indexed = true;
+      repacked = await _compactPackedIndex(db);
     } catch (error, stack) {
       await close();
       Error.throwWithStackTrace(error, stack);
@@ -456,11 +460,46 @@ class CatalogSession {
     );
   }
 
+  /// Older indexes store one leaf per product. Packing them lets a search read
+  /// the matching leaves instead of every product. A packed index is left as it is.
+  Future<bool> _compactPackedIndex(MutableSqliteDatabase db) async {
+    final meta = await db.query(
+      'SELECT id FROM _sps_collections NOT INDEXED WHERE source = ?',
+      ['products'],
+    );
+    if (meta.rows.length != 1) return false;
+    final id = _asInt(meta.rows.single[0]);
+    final fts = '_sps_${id}_fts';
+    final index = '${fts}_idx';
+    final count = await db.query('SELECT count(*) FROM $index');
+    if (_asInt(count.rows.single[0]) <= 1) return false;
+    final sample = await db.query('SELECT term FROM $index LIMIT 1');
+    if (sample.rows.isEmpty) return false;
+    final term = sample.rows.single[0];
+    final packed = term is Uint8List
+        ? term.isNotEmpty
+        : term is String && term.isNotEmpty;
+    if (packed) return false;
+    final lengths = '${fts}_doclen';
+    final existing = await db.query(
+      "SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = ?",
+      [lengths],
+    );
+    if (existing.rows.isEmpty) {
+      await db.execute(
+        'CREATE TABLE $lengths(id INTEGER PRIMARY KEY, packed BLOB)',
+      );
+    }
+    await db.execute("INSERT INTO $fts($fts) VALUES ('rebuild')");
+    return true;
+  }
+
   Future<void> close() async {
     final db = database;
     database = null;
     search = null;
     indexed = false;
+    repacked = false;
     productCount = 0;
     if (db != null) await db.close();
   }

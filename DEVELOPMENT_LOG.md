@@ -1,5 +1,63 @@
 # Development log
 
+## 2026-11-05 — Phone page at 47.236 ms, packages prepared for pub.dev
+
+- One arm64 phone, catalog release 0.5.2, at 17:11 Asia/Hebron (UTC+2) on 5
+  November 2026, showed `20 of 493 matches · 47.236 ms` for `بسكويت` on page
+  1 of 25. The score on those titles was 3.965. The previous phone sample on
+  0.5.1 was 472.000 ms for page 17.
+- `sqlite_plus` is `0.1.8`. `sqlite_plus_search` is `0.1.0-dev.4` and depends
+  on `sqlite_plus` ^0.1.8, `sqlite_plus_arabic` ^0.1.2, and `sqlite_plus_vec`
+  ^0.1.2. The READMEs lead with that phone page and the Linux AOT samples.
+  The packages were not uploaded. `sqlite_plus_arabic` 0.1.2 and
+  `sqlite_plus_vec` 0.1.2 are already in this tree and are not on pub.dev yet.
+  Publish the engine, then those two, then the search pre-release.
+
+## 2026-11-05 — Packed FTS leaves keep a page search under 50 ms on Linux AOT
+
+- The locked baseline is one leaf per product. On this Linux x64 machine, JIT
+  and not a phone, 20,000 products and the query `بسكويت` returned 493 hits
+  in 405 ms after `exportImage`, then 359 ms. The Arabic filter took 295 ms.
+  Reopening took 296 ms and then 276 ms. `indexTable` took 36558 ms and the
+  image was 4993024 bytes. Version 0.5.1+6 on a physical phone showed
+  472.000 ms for page 17 of 25 of that query. Each page is a full search.
+- Two or more documents are packed by term into leaves of at most 4050 bytes.
+  The idx term is the first term on that leaf. A positive AND/OR of whole
+  terms reads the covering leaves and one document-length blob, then ranks
+  the hits. One document keeps the previous leaf bytes. An older catalog
+  image with more than one empty idx term is rebuilt once on open and saved.
+  A one-document image is left alone.
+- The new sample is AOT on the same machine, `dart compile exe` of
+  `packages/sqlite_plus_search/benchmark/catalog_lookup.dart`, not a phone.
+  Indexing 20,000 products took 46879988 µs. The image was 3387392 bytes and
+  held 347 leaves. `بسكويت` returned 493 hits and 20 names in 26967 µs, then
+  20819 µs, and 25663 µs at offset 320. The raw `MATCH` took 18861 µs.
+  `biscuit` took 19717 µs, 25481 µs, and 25621 µs, and its raw `MATCH` took
+  20249 µs. Insert took 819240 µs. Those AOT searches are under 50 ms. A JIT
+  run of the same program had a first `بسكويت` search of 54429 µs, so the
+  under-50 figure is the AOT samples. The phone was not measured again.
+- Pinned SQLite 3.53.1, source id
+  `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`,
+  opened that image. `PRAGMA integrity_check` returned `ok`, the FTS5
+  `integrity-check` command completed, and `MATCH` of `"بسكويت"` and
+  `"biscuit"` each returned 493 rows.
+- `packages/sqlite_plus`: `dart analyze --fatal-infos` reported no issues and
+  `dart test` passed 10613 tests. `packages/sqlite_plus_search`:
+  `dart analyze --fatal-infos` reported no issues and `dart test` passed 62
+  tests, including the pinned external-content check.
+  `examples/product_catalog`: `flutter analyze --fatal-infos` reported no
+  issues and `flutter test` passed 12 tests.
+- `flutter build apk --release --target-platform android-arm64` at 16:58
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19817049
+  bytes, sha256 `66e14efeebfd7e33a93c7f8c6b4cb504213deb1071a48e012958b2de6995f165`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.5.2`, versionCode `7`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+  Opening a saved 20,000-product image from 0.5.1 rebuilds that index once.
+
 ## 2026-11-05 — Each result page is its own search
 
 - A page loads 20 names. The line is how many this page loaded out of the

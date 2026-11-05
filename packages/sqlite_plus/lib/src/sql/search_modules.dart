@@ -64,6 +64,254 @@ Future<ShadowTable?> _shadow(
       rowidAlias: schema.rowidAlias);
 }
 
+/// Loads the leaves a single-term AND/OR query can touch, plus the document
+/// lengths of those hits. Returns null when the index is not packed that way.
+Future<SearchSnapshot?> directedFts5Snapshot(
+    ReadOnlyPager pager,
+    DatabaseCatalog catalog,
+    CatalogTable table,
+    Expr? where,
+    List<Object?> parameters,
+    {bool requireText = true}) async {
+  if (table.virtualModule != 'fts5') return null;
+  final spec = Fts5Spec.parse(table.name, table.virtualArguments);
+  if (spec.detail != 'full' ||
+      spec.prefix.isNotEmpty ||
+      spec.contentlessDelete ||
+      !spec.columnSize) {
+    return null;
+  }
+  final pending = _pendingQuery(where, parameters, spec);
+  if (pending == null) return null;
+  final FtsQuery query;
+  try {
+    query = parseFtsQuery(pending.$1, spec.tokenizer, spec.visibleNames,
+        detail: spec.detail);
+  } on SqlException {
+    return null;
+  }
+  final phrases = query.phrases;
+  if (phrases.isEmpty || !_positiveFts(query.expression)) return null;
+  for (var i = 0; i < phrases.length; i++) {
+    final phrase = phrases[i];
+    if (phrase.id != i ||
+        phrase.prefix ||
+        phrase.column != null ||
+        phrase.tokens.length != 1) {
+      return null;
+    }
+  }
+  final index = await _shadow(pager, catalog, '${spec.table}_idx');
+  if (index == null) return null;
+  final entries = _seekEntries(index);
+  if (entries == null) return null;
+  final leafIds = _coveringLeafIds(entries,
+      [for (final phrase in phrases) fts5Term(0, phrase.tokens.single)]);
+  final dataSchema = _shadowSchema(catalog, '${spec.table}_data');
+  final docSchema = _shadowSchema(catalog, '${spec.table}_docsize');
+  if (dataSchema == null || docSchema == null) return null;
+  final reader = BtreeReader(pager);
+  final dataRows = <ShadowRow>[];
+  final average = await reader.findRowid(dataSchema.rootPage, BigInt.one);
+  if (average == null) return null;
+  dataRows.add(_rowFromRecord(dataSchema, average));
+  final leaves = <Uint8List>[];
+  final dataTable = _shadowTable(dataSchema, dataRows);
+  for (final id in leafIds) {
+    final record = await reader.findRowid(dataSchema.rootPage, BigInt.from(id));
+    if (record == null) return null;
+    final row = _rowFromRecord(dataSchema, record);
+    dataRows.add(row);
+    final block = dataTable.value(row, 'block');
+    if (block is! Uint8List || block.length < 4) return null;
+    leaves.add(block);
+  }
+  final ids = _leafRowIds(query, leaves);
+  if (ids == null) return null;
+  final docRows = await _lengthRows(pager, catalog, spec, docSchema, ids);
+  if (docRows == null) return null;
+  final tables = <String, ShadowTable>{
+    '${spec.table}_idx': index,
+    '${spec.table}_data': _shadowTable(dataSchema, dataRows),
+    '${spec.table}_docsize': _shadowTable(docSchema, docRows),
+  };
+  if (requireText) {
+    final contentName =
+        spec.external ? spec.contentTable : '${spec.table}_content';
+    if (contentName == null) return null;
+    final contentSchema = _shadowSchema(catalog, contentName);
+    if (contentSchema == null ||
+        !_contentAddressIsRowid(contentSchema, spec.contentRowid)) {
+      return null;
+    }
+    final contentRows = await _rowsForIds(pager, catalog, contentSchema, ids);
+    if (contentRows == null) return null;
+    tables[contentName] = _shadowTable(contentSchema, contentRows);
+  }
+  return SearchSnapshot(tables);
+}
+
+CatalogTable? _shadowSchema(DatabaseCatalog catalog, String name) {
+  final entry = catalog.entries
+      .where((item) =>
+          item.type == 'table' && asciiLower(item.name) == asciiLower(name))
+      .firstOrNull;
+  if (entry == null || entry.rootPage == 0 || entry.sql == null) return null;
+  if (VirtualTableDeclaration.isVirtual(entry.sql)) return null;
+  return catalog.table(name);
+}
+
+ShadowTable _shadowTable(CatalogTable schema, List<ShadowRow> rows) =>
+    ShadowTable(schema.columns.map((column) => column.name).toList(), rows,
+        rowidAlias: schema.rowidAlias);
+
+ShadowRow _rowFromRecord(CatalogTable schema, BtreeRecord record) {
+  final values = List<Object?>.filled(schema.columns.length, null);
+  final stored = schema.storageColumns;
+  for (var i = 0; i < stored.length && i < record.values.length; i++) {
+    values[schema.columns.indexOf(stored[i])] = record.values[i];
+  }
+  return ShadowRow(record.rowId ?? BigInt.zero, values);
+}
+
+bool _contentAddressIsRowid(CatalogTable schema, String contentRowid) {
+  final alias = schema.rowidAlias;
+  final names = [
+    'rowid',
+    '_rowid_',
+    'oid',
+    if (alias != null) asciiLower(alias)
+  ];
+  return names.contains(asciiLower(contentRowid));
+}
+
+/// Rowids of every wanted term. Null when a leaf is corrupt or carries a delete.
+Set<BigInt>? _leafRowIds(FtsQuery query, List<Uint8List> leaves) {
+  final wanted = <String, List<int>>{};
+  for (final phrase in query.phrases) {
+    (wanted[phrase.tokens.single] ??= []).add(phrase.id);
+  }
+  final hits = <int, Set<BigInt>>{
+    for (final phrase in query.phrases) phrase.id: <BigInt>{}
+  };
+  for (final block in leaves) {
+    List<FtsPosting> terms;
+    try {
+      terms = decodeLeaf(block, detail: 'full');
+    } on SqlException {
+      return null;
+    }
+    for (final term in terms) {
+      if (term.term.isEmpty || term.term[0] != 0x30) continue;
+      final phrases = wanted[String.fromCharCodes(term.term.sublist(1))];
+      if (phrases == null) continue;
+      for (final posting in term.rows) {
+        if (posting.delete) return null;
+        for (final phrase in phrases) {
+          hits[phrase]!.add(posting.rowId);
+        }
+      }
+    }
+  }
+  return _rowIdCandidates(query.expression, hits);
+}
+
+Set<BigInt> _rowIdCandidates(FtsExpr expr, Map<int, Set<BigInt>> hits) {
+  if (expr is FtsLeaf) return hits[expr.id] ?? {};
+  if (expr is FtsAnd) {
+    final left = _rowIdCandidates(expr.left, hits);
+    final right = _rowIdCandidates(expr.right, hits);
+    return {
+      for (final id in left)
+        if (right.contains(id)) id
+    };
+  }
+  if (expr is FtsOr) {
+    return {
+      ..._rowIdCandidates(expr.left, hits),
+      ..._rowIdCandidates(expr.right, hits)
+    };
+  }
+  return {};
+}
+
+Future<List<ShadowRow>?> _lengthRows(
+    ReadOnlyPager pager,
+    DatabaseCatalog catalog,
+    Fts5Spec spec,
+    CatalogTable docSchema,
+    Set<BigInt> ids) async {
+  if (ids.isEmpty) return const [];
+  final packedTable = await _shadow(pager, catalog, '${spec.table}_doclen');
+  final packedRow = packedTable == null || packedTable.rows.isEmpty
+      ? null
+      : packedTable.rows.first;
+  final packed =
+      packedRow == null ? null : packedTable!.value(packedRow, 'packed');
+  if (packed is Uint8List) {
+    final lengths = _unpackDocLengths(packed);
+    final sz = docSchema.columns
+        .indexWhere((column) => asciiLower(column.name) == 'sz');
+    if (lengths != null && sz >= 0) {
+      final rows = <ShadowRow>[];
+      for (final id in ids) {
+        final length = lengths[id];
+        if (length == null) return null;
+        final values = List<Object?>.filled(docSchema.columns.length, null);
+        values[sz] = encodeDocsize([length]);
+        rows.add(ShadowRow(id, values));
+      }
+      return rows;
+    }
+  }
+  return _rowsForIds(pager, catalog, docSchema, ids);
+}
+
+Map<BigInt, int>? _unpackDocLengths(Uint8List packed) {
+  final lengths = <BigInt, int>{};
+  var offset = 0;
+  try {
+    final countHolder = <int>[];
+    offset = readVarint(packed, offset, countHolder);
+    var rowId = BigInt.zero;
+    for (var i = 0; i < countHolder.single; i++) {
+      final delta = <int>[];
+      offset = readVarint(packed, offset, delta);
+      final size = <int>[];
+      offset = readVarint(packed, offset, size);
+      rowId += BigInt.from(delta.single);
+      lengths[rowId] = size.single;
+    }
+  } on SqlException {
+    return null;
+  }
+  if (offset != packed.length) return null;
+  return lengths;
+}
+
+Future<List<ShadowRow>?> _rowsForIds(ReadOnlyPager pager,
+    DatabaseCatalog catalog, CatalogTable schema, Set<BigInt> ids) async {
+  if (ids.isEmpty) return const [];
+  if (ids.length <= 8) {
+    final reader = BtreeReader(pager);
+    final rows = <ShadowRow>[];
+    for (final id in ids) {
+      final record = await reader.findRowid(schema.rootPage, id);
+      if (record == null) return null;
+      rows.add(_rowFromRecord(schema, record));
+    }
+    return rows;
+  }
+  final loaded = await _shadow(pager, catalog, schema.name);
+  if (loaded == null) return null;
+  final rows = [
+    for (final row in loaded.rows)
+      if (ids.contains(row.rowId)) row
+  ];
+  if (rows.length != ids.length) return null;
+  return rows;
+}
+
 final class Fts5Module extends VirtualTableModule {
   final scans = <String, (Expr?, List<Object?>)>{};
 
@@ -100,6 +348,7 @@ final class Fts5Module extends VirtualTableModule {
       '${table}_idx',
       if (!spec.contentless && !spec.external) '${table}_content',
       if (spec.columnSize) '${table}_docsize',
+      '${table}_doclen',
       '${table}_config',
       if (spec.contentTable != null) spec.contentTable!,
     ];
@@ -143,6 +392,9 @@ final class _Fts5Cursor extends VirtualTableCursor {
         _rows = ranked.$2;
         _index = 0;
         return;
+      }
+      if (ftsDirectedSnapshot) {
+        throw const SqlException('FTS5 term lookup failed');
       }
     }
     final documents = _documents(spec, snapshot);
@@ -350,45 +602,58 @@ String? _constant(Expr expression, List<Object?> parameters) {
       blocks[row.rowId.toInt()] = block;
     }
   }
-  final pages = <int, List<int>>{};
-  for (final row in index.rows) {
-    if (row.values.length < 3) continue;
-    final segid = _int(row.values[0]);
-    final page = _int(row.values[2]) >> 1;
-    pages.putIfAbsent(segid, () => []).add(page);
-  }
-  final segids = pages.keys.toList()..sort();
-  for (final segid in segids) {
-    final ordered = pages[segid]!..sort();
-    for (final page in ordered) {
-      final block = blocks[fts5LeafRowid(segid, page)];
-      if (block == null || block.length < 4) continue;
-      List<FtsPosting> terms;
-      try {
-        terms = decodeLeaf(block, detail: spec.detail);
-      } on SqlException {
-        return null;
+  final seekable = _seekEntries(index);
+  final chosen = <Uint8List>[];
+  if (seekable != null) {
+    final ids = _coveringLeafIds(seekable,
+        [for (final phrase in phrases) fts5Term(0, phrase.tokens.single)]);
+    for (final id in ids) {
+      final block = blocks[id];
+      if (block == null || block.length < 4) return null;
+      chosen.add(block);
+    }
+  } else {
+    final pages = <int, List<int>>{};
+    for (final row in index.rows) {
+      if (row.values.length < 3) continue;
+      final segid = _int(row.values[0]);
+      final page = _int(row.values[2]) >> 1;
+      pages.putIfAbsent(segid, () => []).add(page);
+    }
+    final segids = pages.keys.toList()..sort();
+    for (final segid in segids) {
+      final ordered = pages[segid]!..sort();
+      for (final page in ordered) {
+        final block = blocks[fts5LeafRowid(segid, page)];
+        if (block == null || block.length < 4) continue;
+        chosen.add(block);
       }
-      for (final term in terms) {
-        if (term.term.isEmpty || term.term[0] != 0x30) continue;
-        final phrasesForTerm =
-            wanted[String.fromCharCodes(term.term.sublist(1))];
-        if (phrasesForTerm == null) continue;
-        for (final posting in term.rows) {
-          if (posting.delete) return null;
-          if (!lengths.containsKey(posting.rowId)) return null;
-          for (final phrase in phrasesForTerm) {
-            final hits =
-                postings[phrase.id]!.putIfAbsent(posting.rowId, () => []);
-            for (final entry in posting.positions.entries) {
-              if (column != null && entry.key != column) continue;
-              if (entry.key < 0 || entry.key >= spec.columns.length) {
-                return null;
-              }
-              if (spec.columns[entry.key].unindexed) continue;
-              for (final position in entry.value) {
-                hits.add(FtsInst(phrase.id, entry.key, position, 1));
-              }
+    }
+  }
+  for (final block in chosen) {
+    List<FtsPosting> terms;
+    try {
+      terms = decodeLeaf(block, detail: spec.detail);
+    } on SqlException {
+      return null;
+    }
+    for (final term in terms) {
+      if (term.term.isEmpty || term.term[0] != 0x30) continue;
+      final phrasesForTerm = wanted[String.fromCharCodes(term.term.sublist(1))];
+      if (phrasesForTerm == null) continue;
+      for (final posting in term.rows) {
+        if (posting.delete) return null;
+        for (final phrase in phrasesForTerm) {
+          final hits =
+              postings[phrase.id]!.putIfAbsent(posting.rowId, () => []);
+          for (final entry in posting.positions.entries) {
+            if (column != null && entry.key != column) continue;
+            if (entry.key < 0 || entry.key >= spec.columns.length) {
+              return null;
+            }
+            if (spec.columns[entry.key].unindexed) continue;
+            for (final position in entry.value) {
+              hits.add(FtsInst(phrase.id, entry.key, position, 1));
             }
           }
         }
@@ -404,12 +669,24 @@ String? _constant(Expr expression, List<Object?> parameters) {
       });
     }
   }
-  final rows = lengths.length;
-  var tokens = 0;
-  for (final length in lengths.values) {
-    tokens += length;
+  final averages = _readAverages(data);
+  final int rows;
+  final double average;
+  if (averages != null && averages.$1 >= lengths.length && averages.$1 > 0) {
+    rows = averages.$1;
+    average = averages.$2 / rows;
+  } else {
+    rows = lengths.length;
+    var tokens = 0;
+    for (final length in lengths.values) {
+      tokens += length;
+    }
+    average = rows == 0 ? 0.0 : tokens / rows;
   }
-  final average = rows == 0 ? 0.0 : tokens / rows;
+  if (ftsDirectedSnapshot &&
+      (averages == null || averages.$1 < lengths.length)) {
+    return null;
+  }
   final idf = [
     for (final phrase in phrases)
       () {
@@ -421,11 +698,10 @@ String? _constant(Expr expression, List<Object?> parameters) {
   ];
   final bm25 = FtsBm25(phrases, idf, average);
   final texts = _rankTexts(spec, snapshot);
-  final matched = <BigInt>[];
-  for (final id in lengths.keys) {
-    if (_fastMatches(query.expression, id, postings)) matched.add(id);
+  final matched = _fastCandidates(query.expression, postings).toList()..sort();
+  for (final id in matched) {
+    if (!lengths.containsKey(id)) return null;
   }
-  matched.sort();
   final unindexed = [for (final item in spec.columns) item.unindexed];
   final carrier = unindexed.indexWhere((value) => !value);
   final documents = <BigInt, FtsDocument>{};
@@ -435,10 +711,13 @@ String? _constant(Expr expression, List<Object?> parameters) {
   state.bm25 = bm25;
   final cursor = <(BigInt, List<Object?>)>[];
   for (final id in matched) {
-    final text = texts[id];
-    if (text == null) return null;
-    for (var i = 0; i < spec.columns.length; i++) {
-      if (!spec.columns[i].unindexed && text[i] == null) return null;
+    final stored = texts[id];
+    if (stored == null && !ftsDirectedSnapshot) return null;
+    final text = stored ?? List<String?>.filled(spec.columns.length, null);
+    if (stored != null) {
+      for (var i = 0; i < spec.columns.length; i++) {
+        if (!spec.columns[i].unindexed && text[i] == null) return null;
+      }
     }
     final instances = <FtsInst>[
       for (final phrase in phrases) ...?postings[phrase.id]![id]
@@ -487,18 +766,110 @@ bool _positiveFts(FtsExpr expr) =>
     expr is FtsAnd && _positiveFts(expr.left) && _positiveFts(expr.right) ||
     expr is FtsOr && _positiveFts(expr.left) && _positiveFts(expr.right);
 
-bool _fastMatches(
-    FtsExpr expr, BigInt id, Map<int, Map<BigInt, List<FtsInst>>> postings) {
-  if (expr is FtsLeaf) return postings[expr.id]?[id]?.isNotEmpty ?? false;
+Set<BigInt> _fastCandidates(
+    FtsExpr expr, Map<int, Map<BigInt, List<FtsInst>>> postings) {
+  if (expr is FtsLeaf) return postings[expr.id]?.keys.toSet() ?? {};
   if (expr is FtsAnd) {
-    return _fastMatches(expr.left, id, postings) &&
-        _fastMatches(expr.right, id, postings);
+    final left = _fastCandidates(expr.left, postings);
+    final right = _fastCandidates(expr.right, postings);
+    return {
+      for (final id in left)
+        if (right.contains(id)) id
+    };
   }
   if (expr is FtsOr) {
-    return _fastMatches(expr.left, id, postings) ||
-        _fastMatches(expr.right, id, postings);
+    return {
+      ..._fastCandidates(expr.left, postings),
+      ..._fastCandidates(expr.right, postings)
+    };
   }
-  return false;
+  return {};
+}
+
+final class _FtsIdxEntry {
+  _FtsIdxEntry(this.segid, this.term, this.page);
+  final int segid;
+  final Uint8List term;
+  final int page;
+}
+
+/// Term-ordered leaves. Null when every leaf still has to be read.
+List<_FtsIdxEntry>? _seekEntries(ShadowTable index) {
+  final entries = <_FtsIdxEntry>[];
+  for (final row in index.rows) {
+    if (row.values.length < 3) return null;
+    final term = row.values[1];
+    if (term is! Uint8List || term.isEmpty) return null;
+    final page = _int(row.values[2]) >> 1;
+    if (page < 1) return null;
+    entries.add(_FtsIdxEntry(_int(row.values[0]), term, page));
+  }
+  if (entries.isEmpty) return null;
+  entries.sort((a, b) {
+    final order = _compareTermBytes(a.term, b.term);
+    return order != 0 ? order : a.segid.compareTo(b.segid);
+  });
+  return entries;
+}
+
+int _compareTermBytes(Uint8List a, Uint8List b) {
+  final limit = a.length < b.length ? a.length : b.length;
+  for (var i = 0; i < limit; i++) {
+    if (a[i] != b[i]) return a[i] - b[i];
+  }
+  return a.length - b.length;
+}
+
+Set<int> _coveringLeafIds(List<_FtsIdxEntry> entries, List<Uint8List> terms) {
+  final ids = <int>{};
+  for (final term in terms) {
+    var lo = 0, hi = entries.length - 1, found = -1;
+    while (lo <= hi) {
+      final mid = (lo + hi) >> 1;
+      if (_compareTermBytes(entries[mid].term, term) <= 0) {
+        found = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    if (found < 0) continue;
+    var start = found;
+    while (start > 0 &&
+        _compareTermBytes(entries[start - 1].term, entries[found].term) == 0) {
+      start--;
+    }
+    for (var i = start; i <= found; i++) {
+      ids.add(fts5LeafRowid(entries[i].segid, entries[i].page));
+    }
+  }
+  return ids;
+}
+
+(int, int)? _readAverages(ShadowTable data) {
+  for (final row in data.rows) {
+    if (row.rowId != BigInt.one) continue;
+    final block = data.value(row, 'block');
+    if (block is! Uint8List || block.isEmpty) return null;
+    final values = <int>[];
+    var offset = 0;
+    try {
+      while (offset < block.length) {
+        final into = <int>[];
+        offset = readVarint(block, offset, into);
+        values.add(into.single);
+      }
+    } on SqlException {
+      return null;
+    }
+    if (values.isEmpty) return null;
+    var tokens = 0;
+    for (var i = 1; i < values.length; i++) {
+      tokens += values[i];
+    }
+    return (values.first, tokens);
+  }
+  return null;
 }
 
 Map<BigInt, List<String?>> _rankTexts(Fts5Spec spec, SearchSnapshot snapshot) {

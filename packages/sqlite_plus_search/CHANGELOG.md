@@ -1,3 +1,9 @@
+## 0.1.0-dev.4
+
+- Requires `sqlite_plus` ^0.1.8. Two or more documents share FTS5 leaves, and a query of whole terms reads those leaves.
+- The README records the 20,000-name catalog. Linux x64 AOT, not a phone: `بسكويت` returned 493 hits and 20 names in 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. One arm64 phone, catalog 0.5.2, at 17:11 Asia/Hebron on 5 November 2026, showed 47.236 ms for page 1 of that query.
+- Keyword search behavior is otherwise the 0.1.0-dev.3 library. The synthetic embedding harness was not remeasured.
+
 ## 0.1.0-dev.3
 
 - Keyword search resolves hit ids with one primary-key `IN` list, then checks that those source keys still exist. It no longer runs a correlated `EXISTS` that casts the source key for every hit.

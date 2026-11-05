@@ -39,7 +39,9 @@ persistence backend were not run for this change.
   asks `rankVec0` for those rows in pages of 64. It does not keep a Dart list of
   every decoded embedding. The hardened format 2 AOT run completed 10000 records
   in 26.93 s of indexing; the 100000-record attempt still timed out during
-  indexing at 120 s. Format 3 was not remeasured. See benchmark/RESULTS.md.
+  indexing at 120 s. That embedding harness was not remeasured for format 3.
+  The separate catalog keyword sample is in the package README: 20,000 product
+  names, Linux x64 AOT, and one arm64 phone at 47.236 ms. See benchmark/RESULTS.md.
 - With autoUpdate, search replays the transactional trigger log. Without it, explicit
   rebuild is required after edits. Replay only regenerates changed embeddings and uses typed equality for common
   INT/TEXT keys. Mapping/source ID reconciliation still scans, and the engine FTS
