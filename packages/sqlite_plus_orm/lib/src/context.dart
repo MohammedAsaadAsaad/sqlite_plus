@@ -59,8 +59,59 @@ final class EntityEntry<T> {
 final class DbSet<T> {
   DbSet._(this.context, this.type);
 
+  /// Opens a memory database, creates [type]'s table, and returns that set.
+  ///
+  /// [saveChanges], [migrations], and [close] forward to the context created
+  /// for this set. [close] releases that whole context. [DbContext] remains
+  /// the way to open a connection that already exists or holds several sets.
+  /// A file database uses [openDbFile].
+  static Future<DbSet<E>> openMemory<E>(EntityType<E> type) async =>
+      _open(type, await MutableDatabaseConnection.openMemory());
+
+  /// Opens the database file at [path], creates [type]'s table, and returns
+  /// that set.
+  ///
+  /// A missing database file is written as an empty image, and a missing
+  /// `-journal` is written empty. An existing database file is left in place,
+  /// so a later open keeps its rows. [directoryEntriesDurable] is the caller
+  /// attestation required by `openDatabase`. It is not a power-loss result.
+  /// The default is true because this call creates any missing entries in this
+  /// process before opening them. Passing false writes nothing and throws.
+  /// On the Web this throws [UnsupportedError] because the browser library
+  /// does not open files.
+  ///
+  /// [saveChanges], [migrations], and [close] forward to the context created
+  /// for this set. [close] releases that whole context.
+  static Future<DbSet<E>> openDbFile<E>(EntityType<E> type, String path,
+          {bool directoryEntriesDurable = true}) async =>
+      _open(
+          type,
+          _OrmFileConnection(await orm_file.openOrmFile(path,
+              directoryEntriesDurable: directoryEntriesDurable)));
+
+  static Future<DbSet<E>> _open<E>(
+      EntityType<E> type, OrmConnection connection) async {
+    final context = DbContext(connection, DbModel([type]));
+    try {
+      await context.migrations.ensureCreated();
+    } catch (error, stack) {
+      await context.close();
+      Error.throwWithStackTrace(error, stack);
+    }
+    return context.set(type);
+  }
+
   /// Context that owns this set.
   final DbContext context;
+
+  /// Schema planner for [context].
+  SchemaMigrator get migrations => context.migrations;
+
+  /// Same as [DbContext.saveChanges] on [context].
+  Future<int> saveChanges() => context.saveChanges();
+
+  /// Same as [DbContext.close] on [context].
+  Future<void> close() => context.close();
 
   /// Mapping for [T].
   final EntityType<T> type;

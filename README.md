@@ -18,7 +18,7 @@ dev_dependencies:
 
 `sqlite_plus_arabic`, `sqlite_plus_vec`, and `sqlite_plus_geo` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer, `sqlite_plus_vec` for a vector column, and `sqlite_plus_geo` for geometry. A package is loaded when the application imports it.
 
-The package pages are [sqlite_plus](https://pub.dev/packages/sqlite_plus), [sqlite_plus_orm](https://pub.dev/packages/sqlite_plus_orm), [sqlite_plus_generator](https://pub.dev/packages/sqlite_plus_generator), [sqlite_plus_arabic](https://pub.dev/packages/sqlite_plus_arabic), [sqlite_plus_vec](https://pub.dev/packages/sqlite_plus_vec), and [sqlite_plus_geo](https://pub.dev/packages/sqlite_plus_geo).
+The package pages are [sqlite_plus](https://pub.dev/packages/sqlite_plus), [sqlite_plus_orm](https://pub.dev/packages/sqlite_plus_orm), [sqlite_plus_generator](https://pub.dev/packages/sqlite_plus_generator), [sqlite_plus_arabic](https://pub.dev/packages/sqlite_plus_arabic), [sqlite_plus_vec](https://pub.dev/packages/sqlite_plus_vec), [sqlite_plus_geo](https://pub.dev/packages/sqlite_plus_geo), and [sqlite_plus_search](https://pub.dev/packages/sqlite_plus_search).
 
 ## Query
 
@@ -124,7 +124,7 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | [`sqlite_plus_arabic`](packages/sqlite_plus_arabic) · [pub.dev](https://pub.dev/packages/sqlite_plus_arabic) | FTS5 tokenizer `arabic`. `حديقة` and `الحديقة` share a token |
 | [`sqlite_plus_vec`](packages/sqlite_plus_vec) · [pub.dev](https://pub.dev/packages/sqlite_plus_vec) | `vec0` nearest neighbors. A full scan of float32 vectors |
 | [`sqlite_plus_geo`](packages/sqlite_plus_geo) · [pub.dev](https://pub.dev/packages/sqlite_plus_geo) | Geometry, spatial SQL, and R-tree queries in Pure Dart |
-| [`sqlite_plus_search`](packages/sqlite_plus_search) | Phase 1 development: offline keyword/local-vector/hybrid search, indexing and local feedback; production embedding model pending |
+| [`sqlite_plus_search`](packages/sqlite_plus_search) · [pub.dev](https://pub.dev/packages/sqlite_plus_search) | Offline keyword search, a shelf filter, and a local vector fixture. Not a language model |
 | [`browser`](browser) | Flutter browser for a database image on phone and desktop |
 
 | You want | Command |
@@ -135,6 +135,7 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 | Arabic search | `(cd packages/sqlite_plus_arabic/example && dart run bin/main.dart)` |
 | Nearest vector | `(cd packages/sqlite_plus_vec/example && dart run bin/main.dart)` |
 | Nearby facility | `(cd packages/sqlite_plus_geo/example && dart run bin/main.dart)` |
+| A clinic shelf | `(cd packages/sqlite_plus_search/example && dart run bin/main.dart)` |
 | The database browser | `(cd browser && flutter run)` |
 
 ## Arabic search and a nearest vector

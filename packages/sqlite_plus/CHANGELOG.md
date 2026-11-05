@@ -2,7 +2,7 @@
 
 ## 0.1.7
 
-The README names every package on pub.dev and shows a short example of each. The engine behavior is the 0.1.6 library.
+The README names every package on pub.dev and shows a short example of each. The engine behavior is the 0.1.6 library. `DatabaseClient.inTransaction` still reports whether this client owns the open transaction.
 
 ## 0.1.6
 

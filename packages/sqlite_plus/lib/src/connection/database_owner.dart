@@ -109,6 +109,13 @@ final class DatabaseClient {
   final SendPort _owner;
   final Capability _identity = Capability();
   bool _closed = false;
+  bool _inTransaction = false;
+
+  /// Whether this client owns an open transaction.
+  ///
+  /// The value comes from the last completed request on this client.
+  bool get inTransaction => _inTransaction;
+
   Future<Object?> _request(String operation, List<Object?> arguments,
       {Capability? admin}) async {
     if (_closed) throw StateError('Client closed');
@@ -117,6 +124,10 @@ final class DatabaseClient {
       _owner.send([_identity, operation, arguments, reply.sendPort, admin]);
       final result =
           await reply.first.timeout(const Duration(seconds: 30)) as List;
+      final flag = result[0] == 'error' ? 3 : 2;
+      if (result.length > flag && result[flag] is bool) {
+        _inTransaction = result[flag] as bool;
+      }
       if (result[0] == 'error') {
         if (result[1] == 'sql') throw SqlException(result[2] as String);
         throw StateError(result[2] as String);
@@ -231,8 +242,9 @@ Future<void> _runOwner(List<Object?> args) async {
     await for (final raw in requests) {
       if (raw is! List || raw.length != 5 || raw[3] is! SendPort) continue;
       final reply = raw[3] as SendPort;
+      Capability? identity;
       try {
-        final identity = raw[0] as Capability;
+        identity = raw[0] as Capability;
         final operation = raw[1] as String;
         final values = raw[2] as List;
         if (operation == 'shutdown') {
@@ -241,7 +253,7 @@ Future<void> _runOwner(List<Object?> args) async {
           database = null;
           await guard!.close();
           guard = null;
-          reply.send(['ok', null]);
+          reply.send(['ok', null, false]);
           break;
         }
         if (transactionOwner != null && transactionOwner != identity) {
@@ -252,7 +264,8 @@ Future<void> _runOwner(List<Object?> args) async {
               values[0] as String, List<Object?>.from(values[1] as List));
           reply.send([
             'ok',
-            [result.columns, result.rows]
+            [result.columns, result.rows],
+            identical(transactionOwner, identity)
           ]);
         } else if (operation == 'execute') {
           final result = await active.execute(
@@ -266,7 +279,8 @@ Future<void> _runOwner(List<Object?> args) async {
               result.returning == null
                   ? null
                   : [result.returning!.columns, result.returning!.rows]
-            ]
+            ],
+            identical(transactionOwner, identity)
           ]);
         } else if (operation == 'checkpoint') {
           if (active.inTransaction || walPager == null) {
@@ -274,7 +288,7 @@ Future<void> _runOwner(List<Object?> args) async {
                 'Checkpoint requires WAL mode without an active transaction');
           }
           await walPager.checkpoint();
-          reply.send(['ok', null]);
+          reply.send(['ok', null, identical(transactionOwner, identity)]);
         } else {
           throw ArgumentError('Unknown owner operation');
         }
@@ -283,7 +297,8 @@ Future<void> _runOwner(List<Object?> args) async {
         reply.send([
           'error',
           error is SqlException ? 'sql' : 'state',
-          error is SqlException ? error.message : error.toString()
+          error is SqlException ? error.message : error.toString(),
+          identity != null && identical(transactionOwner, identity)
         ]);
       }
     }

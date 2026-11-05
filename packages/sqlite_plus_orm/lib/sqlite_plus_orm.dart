@@ -7,6 +7,10 @@ import 'dart:typed_data';
 
 import 'package:sqlite_plus/sqlite_plus.dart';
 
+import 'src/orm_file_handle.dart';
+import 'src/orm_file_stub.dart' if (dart.library.io) 'src/orm_file_io.dart'
+    as orm_file;
+
 part 'src/annotations.dart';
 part 'src/names.dart';
 part 'src/codecs.dart';

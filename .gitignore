@@ -4,6 +4,8 @@ build/
 coverage/
 *.g.dart
 !packages/sqlite_plus_generator/example/lib/models.orm.g.dart
+!packages/sqlite_plus_orm/example/lib/reading_log.orm.g.dart
+!packages/sqlite_plus_orm/example/lib/shared_shelf.orm.g.dart
 *.freezed.dart
 .DS_Store
 

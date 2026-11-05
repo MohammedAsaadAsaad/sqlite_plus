@@ -17,3 +17,4 @@ workspace:
   - packages/sqlite_plus_geo
   - packages/sqlite_plus_geo/example
   - packages/sqlite_plus_search
+  - packages/sqlite_plus_search/example

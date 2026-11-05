@@ -41,6 +41,28 @@ abstract class OrmConnection {
   void _release(Object owner) {}
 }
 
+/// ORM connection over one file owner opened by [DbSet.openDbFile].
+final class _OrmFileConnection extends OrmConnection {
+  _OrmFileConnection(this._handle);
+  final OrmFileHandle _handle;
+
+  @override
+  bool get inTransaction => _handle.inTransaction();
+
+  @override
+  Future<QueryResult> query(String sql,
+          [List<Object?> parameters = const []]) =>
+      _handle.query(sql, parameters);
+
+  @override
+  Future<MutationResult> execute(String sql,
+          [List<Object?> parameters = const []]) =>
+      _handle.execute(sql, parameters);
+
+  @override
+  Future<void> close() => _handle.close();
+}
+
 /// ORM connection over a [MutableSqliteDatabase].
 final class MutableDatabaseConnection extends OrmConnection {
   /// Uses [database]. Closes it on [close] only when [closeDatabase] is true.

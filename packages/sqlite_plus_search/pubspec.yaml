@@ -1,8 +1,10 @@
 name: sqlite_plus_search
-description: Offline search building blocks for the pure Dart sqlite_plus ecosystem.
-version: 0.1.0-dev.2
-publish_to: none
+description: Offline keyword and local-vector search over sqlite_plus tables.
+version: 0.1.0-dev.3
 repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus_search
+topics:
+  - sqlite
+  - search
 resolution: workspace
 environment:
   sdk: '>=3.6.0 <4.0.0'

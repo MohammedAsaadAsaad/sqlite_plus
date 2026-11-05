@@ -1,94 +1,120 @@
-# sqlite_plus_search (Phase 1 development)
+# sqlite_plus_search
 
-Pure Dart, offline search over existing sqlite_plus tables. Keyword search with
-Arabic normalization, engine Unicode tokenization and BM25 is implemented.
-Persistent derived indexes support explicit atomic rebuilds and schema/analyzer
-change detection. The complete Phase 1 search engine is still under construction.
+Offline search for rows that already live in a [sqlite_plus](https://pub.dev/packages/sqlite_plus) database. The index sits in that same database. This package does not download a model and does not send text anywhere.
+
+The first example is a clinic shelf. A stored note can contain Arabic diacritics, a query without them still finds it, and a bound `shelf` predicate keeps the other rooms out. A later insert is visible because `autoUpdate` was on. A second scene turns on the light Arabic stemmer. A third scene shows hybrid ranking with an exact string-to-vector map, then shows that a missing string fails.
+
+This is a development release, `0.1.0-dev.3`. It is not a production embedding runtime. The limits are in [doc/LIMITATIONS.md](doc/LIMITATIONS.md).
+
+| Package | Version | Page |
+|---|---|---|
+| sqlite_plus | `^0.1.7` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_arabic | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_vec> |
+
+## Clinic shelf
+
+`حَلِيب` is stored with a diacritic. The query is `حليب`. The pharmacy filter is your SQL, with the value bound. `شاي أخضر` stays out of that result. `mint tea` is inserted after `indexTable` and is found on the next search.
 
 ```dart
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_search/sqlite_plus_search.dart';
 
 final db = await openInMemory();
-await db.execute('CREATE TABLE products(id INTEGER PRIMARY KEY, name TEXT)');
-await db.execute('INSERT INTO products VALUES (?, ?)', [1, 'حَلِيب milk']);
+await db.execute(
+  'CREATE TABLE notes(id INTEGER PRIMARY KEY, shelf TEXT NOT NULL, body TEXT)',
+);
+await db.execute(
+  "INSERT INTO notes VALUES (1, 'pharmacy', 'حَلِيب للأطفال')",
+);
 final search = await SqlitePlusSearch.open(database: db);
 await search.indexTable(
-  table: 'products', primaryKey: 'id', textColumns: ['name'],
+  table: 'notes',
+  primaryKey: 'id',
+  textColumns: ['body'],
+  autoUpdate: true,
 );
-final results = await search.search('حليب', table: 'products');
-print(results.hits.single.documentId); // 1
+final pharmacy = await search.search(
+  'حليب',
+  table: 'notes',
+  filter: SearchFilter('shelf = ?', ['pharmacy']),
+);
+print(pharmacy.hits.single.documentId); // 1
 ```
 
-`SearchFilter('category = ?', ['baby'])` binds filter values against the original
-table. SQL predicates are trusted developer code. Results have a larger-is-better
-score and deterministic ID tie ordering. Offset/limit apply after filtering.
-Ordering is stable only while source/index state stays unchanged. Indexes persist
-in the caller's database image/backend; this package does not save files itself.
-The caller keeps ownership of the database. Do not interleave outside database
-operations while facade operations run, or invoke them in an application transaction.
-Source tables need a single text or integer primary key. Indexed values are text
-or null. `_sps_` tables are reserved derived index/metadata storage.
+`SearchFilter` is trusted SQL. Put user text in the parameter list, not in the string. Do not add `WHERE`, `ORDER BY`, or `LIMIT`. The source table needs one non-null text or integer primary key. Indexed values are text or null. Names starting with `_sps_` are reserved for the derived index.
 
-Pass `autoUpdate: true` to record inserts/updates/deletes with transactional
-triggers. Each search replays pending changes atomically, including embeddings.
-Provider failure preserves the change log for retry. Without autoUpdate, call
-`indexTable` again after source edits to rebuild explicitly.
-Normalization options must match indexing; changes require explicit rebuild.
-`SearchTextAnalyzer` calls `ArabicText.normalize`. `stemArabic: true` stems Arabic runs with the existing light stemmer and leaves Greek, CJK, and other letters in the string. The search FTS table stays `unicode61`.
+Keyword scores are larger-is-better. They are the engine BM25 value with the sign flipped. `limit` and `offset` apply after the filter. Order is stable only while the rows and the index stay still.
 
-Implement `LocalEmbeddingProvider` for an already provisioned local model.
-`validatedEmbedding` rejects invalid vectors using sqlite_plus_vec codecs.
-`FixtureEmbeddingProvider` is an exact lookup for tests, with no language
-understanding. Use `mode: SearchMode.semantic` or `SearchMode.hybrid` with an indexed provider.
-Hybrid uses Reciprocal Rank Fusion; `explain: true` includes component ranks.
-A missing or incompatible provider fails explicitly. No models are
-downloaded and there is no network/telemetry code. Provider implementations must
-honor the local-only contract; Dart cannot sandbox arbitrary application code.
+Run the whole walk, including the stem and the fixture:
 
-See [architecture](doc/ARCHITECTURE.md), [status](doc/IMPLEMENTATION_PLAN.md),
-[limitations](doc/LIMITATIONS.md). Run `dart test` or `dart run example/main.dart`
-from this package. Cross-language semantic model tests and benchmarks are pending.
+```text
+cd packages/sqlite_plus_search/example && dart run bin/main.dart
+```
 
-Enable local learning with `learning: const AdaptiveLearningConfig(enabled: true)`
-on open. Label a returned hit with
-`search.feedback.submit(searchId: results.searchId, documentId: '1', relevance: Relevance.high)`.
-`Relevance.low` supplies negative feedback. Two bounded weights adjust reciprocal
-keyword/vector rank features. Each returned search/document pair accepts one label;
-the latest 1000 hit contexts are retained. Models are scoped to each table, persisted
-in SQLite and reset by explicit rebuild. Use `feedback.reset(table: ...)`,
-`exportModel(table: ...)`, and `importModel(table: ..., model: ...)` for management.
-Imports require matching collection, analyzer, embedding identity and model version.
-`evaluateRanking` provides Recall@k, reciprocal rank and NDCG@k for application
-judgments. Synthetic training-fixture improvements do not establish held-out quality.
+## Arabic stemming
 
-For language-specific analyzers or synonym dictionaries, extend `SearchAnalyzer`
-and supply `normalize` and a stable `signature` including the dictionary revision.
-The default literal MATCH builder is inherited. The same analyzer processes
-indexed documents and queries; change its signature whenever its rules change,
-then rebuild. Custom analyzer/provider code must be deterministic and local.
+The default analyzer folds diacritics and leaves words whole. `stemArabic: true` runs the light stemmer from [sqlite_plus_arabic](https://pub.dev/packages/sqlite_plus_arabic) on Arabic runs only, so `حديقة` finds `الحديقة`. Greek and CJK letters stay in the string. This is not the ICU Arabic tokenizer and not a morphological analyzer.
 
-Current release gates: production embeddings, large-scale performance, broader
-corruption/concurrency coverage and platform verification. Format 3 was checked
-on the Linux VM. The format 2 suite also passed in GitHub Actions on macOS and
-Windows. Real browser persistence was not run. See
-[limitations](doc/LIMITATIONS.md) and
-[actual benchmark results](benchmark/RESULTS.md) before adoption. The benchmark
-file is the format 2 measurement.
+Use the same analyzer for indexing and for queries. If the signature changes, call `indexTable` again.
 
-Call `await search.verifyIndex(table: 'products')` for an explicit read-only
-corruption diagnostic. SHA-256 covers derived records, schema, metadata and
-trigger definitions; pending source edits are allowed. Verification scans the
-index and throws `StateError` on a mismatch. Recover with explicit `indexTable`.
-A checksum is not protection against a malicious database writer who can also
-replace the baseline. Missing baselines on older development indexes require rebuild.
+```dart
+final search = await SqlitePlusSearch.open(
+  database: db,
+  analyzer: const SearchTextAnalyzer(stemArabic: true),
+);
+```
 
-`await search.synchronize(table: 'products')` applies pending changes without
-ranking a query. Development index format 3 stores vectors in a `vec0` table in
-the same database and builds external-content FTS once after loading normalized
-derived content. `open` creates metadata tables only. It does not rebuild an
-index that is already in the file. Format 2 and earlier development indexes are
-rejected until `indexTable`. Application records remain unchanged. Semantic and
-hybrid ranking call `rankVec0` for the eligible source rows, so `k` is not
-applied before the filter. Keyword `MATCH` is read from the FTS table on its
-own; joining that virtual table currently returns no rows in this engine.
+## A vector beside the words
+
+`SearchMode.hybrid` mixes the keyword order with a vector order. You supply the vectors through `LocalEmbeddingProvider`. The provider must be local: no download and no network during `embed`.
+
+`FixtureEmbeddingProvider` is a lookup table for tests and for this example. It returns a vector only when the string is one of its keys. `fresh milk` is a key, so the query works. `coffee` is not, so semantic search throws `StateError` instead of pretending the keyword result is a vector result.
+
+```dart
+final fixture = FixtureEmbeddingProvider(
+  modelId: 'clinic-fixture-v1',
+  dimensions: 2,
+  vectors: {
+    'fresh milk': [1, 0],
+    'green tea': [0, 1],
+    'milk powder': [0.8, 0.2],
+  },
+);
+final search = await SqlitePlusSearch.open(
+  database: db,
+  embeddingProvider: fixture,
+);
+final hits = await search.search(
+  'fresh milk',
+  table: 'drinks',
+  mode: SearchMode.hybrid,
+  explain: true,
+);
+```
+
+`explain: true` adds `keywordRank`, `vectorRank`, `baseScore`, `keywordWeight`, and `vectorWeight`. The fixture does not know that milk and tea are drinks. A real `LocalEmbeddingProvider` replaces that map with an already installed local model. Changing `modelId` or the dimension count requires `indexTable` again.
+
+`embedding MATCH ? AND k = ?` is a different `sqlite_plus_vec` query. Search does not use it. Filtered ranking asks `rankVec0` for the eligible row ids, in pages of 64, so `k` is not applied before the filter.
+
+## What stays in your hands
+
+`open` creates metadata tables. It does not rebuild an index that is already in the file. Format 2 and older development indexes are rejected until you call `indexTable`.
+
+`await search.verifyIndex(table: 'notes')` checks a SHA-256 of the derived rows, schema, metadata, and trigger text. A mismatch throws `StateError`. Rebuild with `indexTable`. A writer who can change both the index and the stored digest is not stopped by this check.
+
+`await search.synchronize(table: 'notes')` applies the pending trigger log without running a query. Do not run other statements on the same database while a search call is in progress, and do not call search inside an application transaction.
+
+`learning: const AdaptiveLearningConfig(enabled: true)` stores a small local weight for one table. Label one returned hit once:
+
+```dart
+await search.feedback.submit(
+  searchId: results.searchId,
+  documentId: '1',
+  relevance: Relevance.high,
+);
+```
+
+Two weights move keyword and vector ranks. They can make ranking worse. The example does not turn learning on. Held-out judgments belong to the application. Synthetic fixtures are not evidence of model quality.
+
+See [architecture](doc/ARCHITECTURE.md), [status](doc/IMPLEMENTATION_PLAN.md), and [limitations](doc/LIMITATIONS.md). Format 2 timings are in [benchmark/RESULTS.md](benchmark/RESULTS.md) in the repository. Those numbers were not remeasured for format 3, and no speedup is claimed.

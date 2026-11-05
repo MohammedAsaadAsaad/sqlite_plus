@@ -47,8 +47,10 @@ void main() {
     final other = DatabaseClient.connect(owner.sendPort);
     addTearDown(other.close);
     await owner.client.execute('BEGIN');
+    expect(owner.client.inTransaction, isTrue);
     await expectLater(owner.client.execute('UPDATE notes SET n=1 WHERE id=1'),
         throwsA(isA<SqlException>()));
+    expect(owner.client.inTransaction, isFalse);
     expect((await other.query('SELECT id FROM notes WHERE id=1')).rows, [
       [BigInt.one]
     ]);
@@ -112,12 +114,14 @@ void main() {
     try {
       final other = DatabaseClient.connect(owner.sendPort);
       await owner.client.execute('BEGIN');
+      expect(owner.client.inTransaction, isTrue);
       await owner.client.execute("UPDATE notes SET value='private' WHERE id=1");
       await expectLater(
           other.query('SELECT value FROM notes WHERE id=1'), throwsStateError);
       await expectLater(other.execute('COMMIT'), throwsStateError);
       await expectLater(owner.client.checkpoint(), throwsStateError);
       await owner.client.execute('COMMIT');
+      expect(owner.client.inTransaction, isFalse);
       expect((await other.query('SELECT value FROM notes WHERE id=1')).rows, [
         ['private']
       ]);

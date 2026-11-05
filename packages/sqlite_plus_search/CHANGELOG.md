@@ -1,3 +1,9 @@
+## 0.1.0-dev.3
+
+- The clinic-shelf example shows diacritic folding, a bound shelf filter, an insert picked up by `autoUpdate`, Arabic light stemming, and a hybrid rank explanation.
+- `FixtureEmbeddingProvider` in that example is an exact string map. A missing string fails. It is not a language model.
+- Search behavior is otherwise the 0.1.0-dev.2 library.
+
 ## 0.1.0-dev.2
 
 - Call `ArabicText.normalize` instead of a second Arabic fold.
