@@ -2542,3 +2542,36 @@ result=pass
   not re-run. This performance edit has no new remote CI. Packages were not
   published. Android, iOS, and a browser persistence backend were not run. B5,
   M9, and item 108 remain unchecked. The database browser APK was not rebuilt.
+
+## 2026-11-05 — Search row edits
+
+- Ordinary commits can publish several changed rowid tables by page patch or a
+  one-table rewrite. Untouched tables stay in the image. A WITHOUT ROWID table
+  is rewritten only while it is still one index leaf. A changed unique key, a
+  schema change, or a failed patch still rebuilds the image.
+- External-content FTS replace of explicit nonnegative row ids edits the leaf
+  that holds each row when the new leaf fits, plus averages and that docsize
+  row. Empty leaves, prefixes, contentless-delete, and a leaf that no longer
+  fits fall back to a full posting rebuild. `DELETE` of one `rowid` uses the
+  same path.
+- Single-token AND/OR `MATCH` can score from postings and docsize. `bm25()`
+  with no column weights returns that stored score. Highlight still
+  re-tokenizes the stored text. The all-matching benchmark did not show a warm
+  query-time change outside the earlier format 3 range.
+- AOT, Dart 3.13.7, Linux x64, memory, synthetic 2D, one process, five warm
+  samples. 1000: index 1.092900 s, median warm keyword 48.142 ms, vector
+  34.815 ms, hybrid 60.049 ms, source update 2.415 ms, sync 227.408 ms, image
+  184320 bytes, RSS 49893376, peak 79724544. 10000: index 19.658282 s, median
+  warm keyword 474.704 ms, vector 339.157 ms, hybrid 624.415 ms, source update
+  27.872 ms, sync 2.117051 s, image 1110016 bytes, RSS 75509760, peak
+  237608960. Raw JSON is `linux_1000_row_edits.json` and
+  `linux_10000_row_edits.json`. The earlier format 3 numbers stay in
+  RESULTS.md. 100000 was not started again; the earlier attempt was stopped
+  after 16 minutes while indexing. 1000000 was not started. RSS is one sample.
+- Local checks after `dart format` and `dart analyze --fatal-infos`: search 61
+  tests, the native FTS integration test, the FTS5 pin, the FTS3/4 pin, the
+  search-engine tests, the rowid-window browse test, and the page-write tests.
+  The full engine suite was not re-run. Vec tests were not re-run; vec code
+  did not change. No new remote CI. Packages were not published. Android, iOS,
+  and a browser persistence backend were not run. B5, M9, and item 108 remain
+  unchecked. The database browser APK was not rebuilt.

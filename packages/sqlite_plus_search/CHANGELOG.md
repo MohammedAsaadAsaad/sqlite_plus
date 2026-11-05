@@ -4,8 +4,11 @@
 - `FixtureEmbeddingProvider` in that example is an exact string map. A missing string fails. It is not a language model.
 - Keyword and semantic resolution load the source keys and the internal map separately. A correlated `EXISTS` is not used.
 - Source indexing reads stopped rowid windows of 1000. Unfiltered `rankVec0` reads stopped shadow pages of 512.
-- Non-contentless-delete FTS5 leaves pack many documents. The writer probes leaf length instead of re-encoding after every document. A one-row sync still rewrites the collection's postings.
-- Format 3 AOT on Linux x64, synthetic 2D, one process: 1000 indexed in 1.189207 s and 10000 in 20.311424 s. See `benchmark/RESULTS.md`. A 100000-record attempt was stopped after 16 minutes while indexing. 1000000, a real model, and other operating systems were not measured for this change.
+- Non-contentless-delete FTS5 leaves pack many documents. The writer probes leaf length instead of re-encoding after every document.
+- A one-row external-content FTS replace edits the leaf that holds that row when the new leaf fits, plus the averages row and that document's docsize row. Other FTS shapes still rebuild the postings.
+- Ordinary writes can publish several changed rowid tables without rebuilding untouched tables. A new unique key still rebuilds the image.
+- `bm25()` with no column weights returns the score already stored for that row.
+- A later Linux x64 AOT run on the same synthetic 2D corpus: 1000 indexed in 1.092900 s and 10000 in 19.658282 s. At 10000, source update alone is 27.872 ms and sync is 2.117051 s. Warm keyword, vector, and hybrid times stayed in the earlier format 3 range. See `benchmark/RESULTS.md`. 100000 was not started again. 1000000, a real model, and other operating systems were not measured.
 
 ## 0.1.0-dev.2
 

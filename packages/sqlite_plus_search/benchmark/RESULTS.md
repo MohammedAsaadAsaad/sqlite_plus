@@ -1,3 +1,43 @@
+# Row-edit measurements — 2026-11-05
+
+Dart 3.13.7/Linux x64 AOT, memory backend, synthetic 2D fixture, shared managed
+host. One process per size with five warm samples. Cold means the first query
+after indexing, not an OS cache reset. No concurrent test workload was
+deliberately run during these samples. CPU scheduling is not isolated.
+Raw runs: [1000](results/linux_1000_row_edits.json) and
+[10000](results/linux_10000_row_edits.json).
+
+| Metric | 1,000 records | 10,000 records |
+|---|---:|---:|
+| Initial indexing (s) | 1.092900 | 19.658282 |
+| Cold keyword (ms) | 46.483 | 470.877 |
+| Cold vector (ms) | 32.327 | 309.975 |
+| Cold hybrid (ms) | 59.923 | 594.552 |
+| Median warm keyword (ms) | 48.142 | 474.704 |
+| Median warm vector (ms) | 34.815 | 339.157 |
+| Median warm hybrid (ms) | 60.049 | 624.415 |
+| Source update alone (ms) | 2.415 | 27.872 |
+| Incremental sync alone (ms) | 227.408 | 2117.051 |
+| Feedback (ms) | 1.472 | 4.257 |
+| Process RSS (bytes) | 49893376 | 75509760 |
+| Peak RSS (bytes) | 79724544 | 237608960 |
+| Image size (bytes) | 184320 | 1110016 |
+
+Same corpus and harness as the format 3 section below. The engine now writes
+changed ordinary tables without rebuilding untouched ones, and a one-row
+external-content FTS replace edits the leaf that holds that row when the new
+leaf fits. On this corpus the measured change is the source update and the
+following sync. Warm keyword, vector, and hybrid times stay in the same range
+as the earlier format 3 run; every benchmark document matches the query, so
+those queries still score the whole collection. Indexing stayed near the
+earlier format 3 time because a new unique key still rebuilds the image.
+100,000 was not started again. The earlier format 3 attempt at that size was
+stopped after 16 minutes while indexing, and that stop still stands. 1,000,000
+was not started. RSS and peak RSS are one sample each. No real-model, browser,
+or other-OS timing is claimed.
+
+---
+
 # Format 3 measurements — 2026-11-05
 
 Dart 3.13.7/Linux x64 AOT, memory backend, synthetic 2D fixture, shared managed

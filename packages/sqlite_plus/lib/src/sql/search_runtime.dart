@@ -113,6 +113,12 @@ Object? ftsAuxiliary(String function, String? tableName,
   final instances = state.instances[rowid] ?? const <FtsInst>[];
   if (function == 'bm25') {
     final weights = [for (final argument in arguments) _weight(argument)];
+    // The cursor already scored this row with empty weights. Re-tokenizing
+    // every hit only repeats that result when the stored text matches.
+    if (weights.isEmpty) {
+      final stored = state.scores[rowid];
+      if (stored != null) return stored;
+    }
     return state.bm25?.score(display, instances, weights) ?? 0.0;
   }
   final column = arguments.isEmpty ? 0 : _int(arguments[0]);

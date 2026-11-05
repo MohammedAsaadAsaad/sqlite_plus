@@ -10,9 +10,10 @@ Core functionality is implemented; production release acceptance remains open.
 - [x] 5. Exact filtered vector retrieval using sqlite_plus_vec primitives.
 - [x] 6. RRF hybrid ranking, bound filters, explanations and stable ordering.
 - [x] 7. Bounded, versioned collection-local feedback; reset/export/import.
-- [x] 8. Transactional trigger logs and logical incremental replay. Physical FTS
-  persistence still rewrites postings and is an unresolved performance limit.
-- [ ] 9. Release validation. Tests, native comparisons, and format 3 AOT runs at
+- [x] 8. Transactional trigger logs and logical incremental replay. A one-row
+  external-content FTS replace edits that row's leaf when the new leaf fits.
+  Sync still scans keys and refreshes the integrity fingerprint.
+- [ ] 9. Release validation. Tests, native comparisons, and Linux AOT runs at
   1k and 10k pass. Real-model quality, 100k/1m scale, real browser persistence,
   and broader OS gates remain.
 - [x] 10. Runnable examples, development docs and CI configuration. No remote
@@ -72,9 +73,17 @@ warm samples. Initial indexing includes integrity metadata.
   639.255 ms. The database image is 1110016 bytes. A format 3 100000-record
   attempt was stopped after 16 minutes while indexing. No metrics are reported
   for it. 1000000 was not started.
-- Logical embedding updates are incremental. Physical FTS persistence still
-  rewrites postings for the collection. That rewrite is not production-scale
-  optimized.
+- Later the same day, after row-level image edits, the same harness recorded
+  1000 records indexed in 1.092900 s and 10000 in 19.658282 s. At 10000 records,
+  source update alone is 27.872 ms and synchronization is 2.117051 s. Median
+  warm keyword/vector/hybrid queries are 474.704 ms, 339.157 ms, and 624.415 ms.
+  The 10000-record image is still 1110016 bytes. Query time did not move out of
+  the format 3 range on this all-matching corpus. 100000 was not started again.
+  The full engine suite was not re-run for this edit.
+- A one-row external-content FTS replace edits that row's leaf when the new
+  leaf fits. Sync still scans keys and refreshes the integrity fingerprint.
+  Inserting new unique keys still rebuilds the image. That is not a
+  production-scale index build.
 
 Production embeddings/cross-language evaluation, repeated-process performance
 statistics, arbitrary external-writer ownership, real-device/torn-byte recovery,

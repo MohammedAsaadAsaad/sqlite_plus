@@ -243,10 +243,14 @@ so keyword `MATCH` is read on its own and only those ids are filtered.
 Unfiltered ranking and source indexing use stopped rowid windows (`browse`).
 `query` still materializes its input. A format 3 Linux x64 AOT pair is recorded
 for 1000 and 10000 synthetic 2D documents in
-`packages/sqlite_plus_search/benchmark/RESULTS.md`. That is one shared-host
+`packages/sqlite_plus_search/benchmark/RESULTS.md`. A later run the same day,
+after row-level image edits, is recorded there too. At 10000 records that later
+run measured source update alone at 27.872 ms and synchronization at 2.117051 s.
+Warm query times stayed in the earlier range. That is one shared-host
 process per size, not a real model. A 100000-record attempt was stopped after
-16 minutes while indexing, and 1000000 was not started. The full
-engine suite was not re-run for the rowid-window and FTS leaf-packing edits.
+16 minutes while indexing and was not repeated. 1000000 was not started. The full
+engine suite was not re-run for the rowid-window, FTS leaf-packing, or row-edit
+changes.
 The FTS5 pin, FTS3/4 pin, search engine, page-write, vec, and search suites
 that were run passed on this Linux host.
 
@@ -260,9 +264,9 @@ Development format 3 requires an explicit rebuild of format 2 and earlier search
 indexes. Format 2 AOT 1000/10000 runs remain historical. Format 3 AOT 1000/10000
 runs are recorded separately. Format 2 100000 indexing timed out at 120 s. The
 format 3 attempt at that size was stopped after 16 minutes while indexing.
-1000000 is unrun. Physical FTS update persistence still
-rewrites the collection postings. Real browser IO, other OS runs, remote CI for
-this performance edit, real-device power-loss, external-writer ownership and
-production local model integration remain open. See the package implementation
+1000000 is unrun. A one-row external-content FTS replace edits that row's leaf
+when the new leaf fits. A new unique key still rebuilds the image. Real browser
+IO, other OS runs, remote CI for this performance edit, real-device power-loss,
+external-writer ownership and production local model integration remain open. See the package implementation
 plan and benchmark report for exact evidence and limits. No new SQL compatibility
 claim is implied.

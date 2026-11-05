@@ -36,4 +36,6 @@ and 10,000 records; those JSON files are `linux_1000_format3.json` and
 `linux_10000_format3.json`. Format 2 and format 1 results remain historical.
 Measurements are single shared-host processes. A format 3 run of 100,000
 records was stopped after 16 minutes while indexing, with no completed metrics.
-1,000,000 was not started.
+That size was not started again after the row-edit run. 1,000,000 was not
+started. The row-edit JSON files are `linux_1000_row_edits.json` and
+`linux_10000_row_edits.json`.

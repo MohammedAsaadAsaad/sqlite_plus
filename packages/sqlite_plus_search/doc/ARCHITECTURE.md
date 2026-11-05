@@ -111,9 +111,16 @@ index. Format 2 and earlier development indexes are rejected until `indexTable`.
 
 Incremental replay replaces an existing FTS/vector row once rather than deleting
 and reinserting it, and uses typed primary-key equality for common INT/TEXT keys.
-It still scans mapping/source IDs to reconcile implicit REPLACE deletions and
-refreshes the integrity fingerprint. `synchronize` exposes replay without query
-ranking so benchmark timings separate source update, replay and query cost.
+When that FTS statement is an external-content replace of explicit row ids and
+the new leaf fits, the engine edits that leaf, the averages row, and that
+document's docsize row. Other FTS shapes rebuild the postings. Ordinary writes
+publish changed rowid tables without rebuilding untouched tables. A new unique
+key still rebuilds the image. Replay still scans mapping/source IDs to reconcile
+implicit REPLACE deletions and refreshes the integrity fingerprint.
+`synchronize` exposes replay without query ranking so benchmark timings separate
+source update, replay and query cost. Single-token AND/OR `MATCH` can score
+from postings and docsize. On the all-matching benchmark corpus that path did
+not move warm query time out of the earlier format 3 range.
 
 Format 2 and earlier development indexes are rejected until the caller
 explicitly rebuilds with indexTable. Source records are never migrated or

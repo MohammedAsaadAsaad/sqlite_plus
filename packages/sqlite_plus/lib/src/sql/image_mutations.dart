@@ -4242,7 +4242,10 @@ final class ImageMutations {
     final incremental = await _tryIncremental(
         foreignKeys: foreignKeys, includeDeferred: includeDeferred);
     if (incremental != null) return incremental;
-    return serialize(
+    // Several ordinary tables can change together, for example a source row
+    // and the trigger row that records it. Rewrite those trees in place.
+    // Virtual tables and triggers stay on the schema page.
+    return _imageAfterRowEdits(
         foreignKeys: foreignKeys, includeDeferred: includeDeferred);
   }
 
@@ -4431,6 +4434,167 @@ final class ImageMutations {
       if (!identical(before[i], after[i])) return false;
     }
     return true;
+  }
+
+  /// Writes changed ordinary tables back without rebuilding untouched ones.
+  ///
+  /// Rowid edits use a page patch when the cell still fits, then a one-table
+  /// rewrite. A WITHOUT ROWID table is rewritten only when it is still a
+  /// single index leaf. Anything else keeps the compact whole-image rebuild.
+  Future<Uint8List> _imageAfterRowEdits(
+      {bool foreignKeys = false, bool includeDeferred = false}) async {
+    Uint8List rebuild() =>
+        serialize(foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+    if (schemaChanged) return rebuild();
+    _flushColumnAddends();
+    if ((foreignKeys || includeDeferred) &&
+        _tables.values.any((table) => table.schema.foreignKeys.isNotEmpty)) {
+      _validate(foreignKeys: foreignKeys, includeDeferred: includeDeferred);
+    }
+    final rowTables = <_Table>[];
+    final indexTables = <_Table>[];
+    for (final table in _tables.values) {
+      final before =
+          _loadedRows[asciiLower(table.schema.name)] ?? const <TableRow>[];
+      if (_sameRows(before, table.rows)) continue;
+      if (table.view || table.schema.virtual) return rebuild();
+      if (table.schema.withoutRowid) {
+        indexTables.add(table);
+        continue;
+      }
+      final indexes = _indexes
+          .where((index) =>
+              asciiLower(index.table) == asciiLower(table.schema.name))
+          .toList();
+      if (indexes.isNotEmpty &&
+          !_indexKeysSame(table, before, table.rows, indexes)) {
+        return rebuild();
+      }
+      rowTables.add(table);
+    }
+    if (rowTables.isEmpty && indexTables.isEmpty) return original;
+    var image = original;
+    for (final table in rowTables) {
+      final root = _tableRoot(table);
+      final before =
+          _loadedRows[asciiLower(table.schema.name)] ?? const <TableRow>[];
+      if (root == null) return rebuild();
+      final patched = _patchSameRowids(image, root, before, table) ??
+          _patchRowidDelta(image, root, before, table);
+      if (patched != null) {
+        image = patched;
+        continue;
+      }
+      try {
+        image = await TableImageWriter.replace(
+          image,
+          table.schema.name,
+          table.rows,
+          maxImageBytes: image.length + 32 * 1024 * 1024,
+        );
+      } catch (error) {
+        if (error is UnsupportedError ||
+            error is FormatException ||
+            error is SqlException ||
+            error is StateError) {
+          return rebuild();
+        }
+        rethrow;
+      }
+    }
+    for (final table in indexTables) {
+      final root = _tableRoot(table);
+      if (root == null) return rebuild();
+      final patched = TableImageWriter.replaceIndexLeaf(
+          image, root, _withoutRowidRecords(table));
+      if (patched == null) return rebuild();
+      image = patched;
+    }
+    return image;
+  }
+
+  Uint8List? _patchSameRowids(
+      Uint8List image, int root, List<TableRow> before, _Table table) {
+    if (before.length != table.rows.length) return null;
+    final previous = {for (final row in before) row.rowId: row};
+    if (previous.length != before.length) return null;
+    var current = image;
+    for (final row in table.rows) {
+      final old = previous[row.rowId];
+      if (old == null) return null;
+      if (_sameRows([old], [row])) continue;
+      final patched = RowidPagePatch.replace(
+          current, root, row.rowId, _storedValues(table, row));
+      if (patched == null) return null;
+      current = patched;
+    }
+    return current;
+  }
+
+  /// A few appended or deleted rowids. Larger batches use a one-table rewrite.
+  Uint8List? _patchRowidDelta(
+      Uint8List image, int root, List<TableRow> before, _Table table) {
+    final previous = {for (final row in before) row.rowId: row};
+    final next = {for (final row in table.rows) row.rowId: row};
+    if (previous.length != before.length || next.length != table.rows.length) {
+      return null;
+    }
+    final removed = [
+      for (final id in previous.keys)
+        if (!next.containsKey(id)) id
+    ]..sort();
+    final added = [
+      for (final row in table.rows)
+        if (!previous.containsKey(row.rowId)) row
+    ]..sort((a, b) => a.rowId.compareTo(b.rowId));
+    if (added.isEmpty && removed.isEmpty) return null;
+    if (added.length + removed.length > 8) return null;
+    var current = image;
+    for (final row in table.rows) {
+      final old = previous[row.rowId];
+      if (old == null || _sameRows([old], [row])) continue;
+      final patched = RowidPagePatch.replace(
+          current, root, row.rowId, _storedValues(table, row));
+      if (patched == null) return null;
+      current = patched;
+    }
+    for (final id in removed) {
+      final patched = RowidPagePatch.delete(current, root, id);
+      if (patched == null) return null;
+      current = patched;
+    }
+    for (final row in added) {
+      final patched = RowidPagePatch.append(
+          current, root, row.rowId, _storedValues(table, row));
+      if (patched == null) return null;
+      current = patched;
+    }
+    return current;
+  }
+
+  List<List<Object?>> _withoutRowidRecords(_Table table) {
+    final pk = table.schema.columns.where((c) => c.primaryKey != 0).toList()
+      ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+    final names = pk.map((c) => c.name).toList();
+    final ordered = table.rows.toList()
+      ..sort((a, b) => _compare(
+          _Index(
+              '@pk',
+              table.schema.name,
+              names,
+              table.schema.primaryKeyDescending,
+              table.schema.primaryKeyCollations,
+              true,
+              null),
+          _key(table, a, names),
+          _key(table, b, names)));
+    return [
+      for (final row in ordered)
+        [
+          for (final col in table.schema.storageColumns)
+            _row(table, row)[asciiLower(col.name)]
+        ]
+    ];
   }
 
   Future<Uint8List?> _tryIncremental(
