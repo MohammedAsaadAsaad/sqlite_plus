@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
 
 /// Pluggable lexical processing shared by index and query paths.
@@ -32,8 +30,9 @@ final class SearchTextAnalyzer extends SearchAnalyzer {
   final bool foldHamza;
   final bool foldYa;
 
-  /// Uses the existing Arabic light stemmer, including its fixed hamza/ya folds.
-  /// When true those fixed folds override the corresponding options above.
+  /// Uses [ArabicText.normalize] with `stem: true`. The stemmer's fixed
+  /// hamza and ya folds then apply to Arabic runs and override the options
+  /// above. Greek, CJK, and other letters stay in the string.
   final bool stemArabic;
 
   /// Versioned representation suitable for persisted index metadata.
@@ -41,31 +40,10 @@ final class SearchTextAnalyzer extends SearchAnalyzer {
   String get signature => 'search-text-v1:$foldHamza:$foldYa:$stemArabic';
 
   @override
-  String normalize(String text) {
-    final output = StringBuffer();
-    for (var rune in text.toLowerCase().runes) {
-      if (rune == 0x640 ||
-          (rune >= 0x64b && rune <= 0x65f) ||
-          rune == 0x670 ||
-          (rune >= 0x6d6 && rune <= 0x6ed)) {
-        continue;
-      }
-      if (const {0x622, 0x623, 0x625, 0x671}.contains(rune)) rune = 0x627;
-      if (foldYa && rune == 0x649) rune = 0x64a;
-      if (foldHamza && rune == 0x624) rune = 0x648;
-      if (foldHamza && rune == 0x626) rune = 0x64a;
-      if (rune >= 0x660 && rune <= 0x669) rune = rune - 0x660 + 48;
-      if (rune >= 0x6f0 && rune <= 0x6f9) rune = rune - 0x6f0 + 48;
-      output.writeCharCode(rune);
-    }
-    final normalized = output.toString();
-    if (!stemArabic) return normalized;
-    final stemmer = ArabicTokenizer(const []);
-    // Apply only to Arabic runs; leave Greek, CJK, English, etc. to unicode61.
-    return normalized.replaceAllMapped(
-        RegExp(r'[\u0621-\u063a\u0641-\u064a\u0671]+'), (match) {
-      final tokens = stemmer.tokenize(match[0]!);
-      return tokens.map((token) => utf8.decode(token.text.codeUnits)).join(' ');
-    });
-  }
+  String normalize(String text) => ArabicText.normalize(
+        text,
+        foldHamza: foldHamza,
+        foldYa: foldYa,
+        stem: stemArabic,
+      );
 }

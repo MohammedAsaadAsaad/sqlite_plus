@@ -46,6 +46,18 @@ void main() {
     expect(
         (await db.query('SELECT count(*) FROM _sps_1_keys')).rows.single.single,
         BigInt.two);
+    expect(
+        (await db.query('SELECT version FROM _sps_collections'))
+            .rows
+            .single
+            .single,
+        BigInt.from(3));
+    final names = (await db.query('SELECT name FROM sqlite_schema'))
+        .rows
+        .map((row) => row.single)
+        .toSet();
+    expect(names, contains('_sps_1_vec'));
+    expect(names.contains('_sps_1_vectors'), isFalse);
     await search.verifyIndex(table: 'docs');
   });
   test(

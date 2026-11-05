@@ -30,6 +30,7 @@ writes now use batches of 100. See the results report for larger-run status.
 
 Hardening runs additionally record cold/warm semantic latency and separate source
 update, synchronize, and post-update hybrid query timings. `hardened_attempts.json`
-records source SHA-256 values and explicit timeout outcomes. Index format 2 loads
-1000 derived rows per batch and builds external-content FTS once. Old format-1
-results remain historical; measurements are single shared-host processes.
+records source SHA-256 values and explicit timeout outcomes. The committed numbers
+are index format 2: 1000 derived rows per batch and one external-content FTS build.
+Format 3 stores vectors in `vec0` and was not remeasured. Old format-1 results
+remain historical; measurements are single shared-host processes.

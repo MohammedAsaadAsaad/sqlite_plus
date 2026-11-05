@@ -35,7 +35,7 @@ triggers. Each search replays pending changes atomically, including embeddings.
 Provider failure preserves the change log for retry. Without autoUpdate, call
 `indexTable` again after source edits to rebuild explicitly.
 Normalization options must match indexing; changes require explicit rebuild.
-`SearchTextAnalyzer(stemArabic: true)` reuses the existing Arabic light stemmer.
+`SearchTextAnalyzer` calls `ArabicText.normalize`. `stemArabic: true` stems Arabic runs with the existing light stemmer and leaves Greek, CJK, and other letters in the string. The search FTS table stays `unicode61`.
 
 Implement `LocalEmbeddingProvider` for an already provisioned local model.
 `validatedEmbedding` rejects invalid vectors using sqlite_plus_vec codecs.
@@ -69,10 +69,12 @@ indexed documents and queries; change its signature whenever its rules change,
 then rebuild. Custom analyzer/provider code must be deterministic and local.
 
 Current release gates: production embeddings, large-scale performance, broader
-corruption/concurrency coverage and platform verification. Shared search assertions
-now pass on the Linux VM and compiled JavaScript/Node; real browser persistence and
-other OS runs remain unverified. See [limitations](doc/LIMITATIONS.md) and
-[actual benchmark results](benchmark/RESULTS.md) before adoption.
+corruption/concurrency coverage and platform verification. Format 3 was checked
+on the Linux VM. The format 2 suite also passed in GitHub Actions on macOS and
+Windows. Real browser persistence was not run. See
+[limitations](doc/LIMITATIONS.md) and
+[actual benchmark results](benchmark/RESULTS.md) before adoption. The benchmark
+file is the format 2 measurement.
 
 Call `await search.verifyIndex(table: 'products')` for an explicit read-only
 corruption diagnostic. SHA-256 covers derived records, schema, metadata and
@@ -82,6 +84,11 @@ A checksum is not protection against a malicious database writer who can also
 replace the baseline. Missing baselines on older development indexes require rebuild.
 
 `await search.synchronize(table: 'products')` applies pending changes without
-ranking a query. Development index format 2 builds external-content FTS once after
-loading normalized derived content. Rebuild earlier development indexes explicitly
-with `indexTable`; application records remain unchanged.
+ranking a query. Development index format 3 stores vectors in a `vec0` table in
+the same database and builds external-content FTS once after loading normalized
+derived content. `open` creates metadata tables only. It does not rebuild an
+index that is already in the file. Format 2 and earlier development indexes are
+rejected until `indexTable`. Application records remain unchanged. Semantic and
+hybrid ranking call `rankVec0` for the eligible source rows, so `k` is not
+applied before the filter. Keyword `MATCH` is read from the FTS table on its
+own; joining that virtual table currently returns no rows in this engine.

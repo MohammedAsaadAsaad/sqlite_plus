@@ -2454,3 +2454,27 @@ result=pass
 - Production embeddings/real-model multilingual quality, broader platforms, real
   browser IO, external-writer ownership and real-device/torn-byte crash gates remain
   open. No automatic model download, native binding or runtime network was added.
+
+## 2026-11-05 — Search reuses arabic and vec
+
+- `ArabicText.normalize` in `sqlite_plus_arabic` 0.1.2 owns the mixed-text fold:
+  wider diacritics, optional ya and hamza, Arabic-Indic digits, and optional
+  light stemming of Arabic runs. `ArabicTokenizer` output is unchanged. Search
+  calls that function. Greek and CJK stay in the string, so search FTS remains
+  `unicode61`.
+- `rankVec0` in `sqlite_plus_vec` 0.1.2 scores requested `vec0` row ids before any
+  neighbor limit and reads the shadow table in pages of 64. An empty id list
+  reads nothing. `embedding MATCH ? AND k = ?` is unchanged and still applies `k`
+  before a later predicate. A `MATCH` scan retains embedding bytes for the
+  returned neighbors rather than a second copy of every stored blob.
+- `sqlite_plus_search` 0.1.0-dev.2 stores embeddings in `vec0`, calls `rankVec0`,
+  and drops the parallel vector table. Index format 3 rejects earlier development
+  indexes until explicit `indexTable`. `open` does not rebuild a stored index.
+  Keyword `MATCH` is not joined to other tables: that join returns no rows in
+  this engine, so only match ids are resolved against the source filter.
+- Local verification on Dart 3.13.7, Linux, after `dart format` and
+  `dart analyze --fatal-infos`: arabic 4 tests, vec 5 tests, search 61 tests.
+  The pinned SQLite external-content check is included in those 61. Format 2 AOT
+  numbers were not remeasured. No speed claim. Packages were not published.
+  Android, iOS, and a browser persistence backend were not run. B5, M9, and item
+  108 remain unchecked. The database browser APK was not rebuilt.

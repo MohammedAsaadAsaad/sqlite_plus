@@ -6,6 +6,21 @@ import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('ArabicText folds digits and optional letters, then stems Arabic runs',
+      () {
+    expect(ArabicText.normalize('إِنَّ آلام أَحْمَد ـ ١٢٣ ۴۵۶'),
+        'ان الام احمد  123 456');
+    expect(ArabicText.normalize('على ؤ ئ'), 'علي ؤ ئ');
+    expect(ArabicText.normalize('على', foldYa: false), 'على');
+    expect(ArabicText.normalize('ؤ ئ', foldHamza: true), 'و ي');
+    expect(ArabicText.normalize(''), '');
+    expect(
+        ArabicText.normalize('الحديقة حديقة الله Milk 中文 Ελληνικά', stem: true),
+        'حديق حديق الله milk 中文 ελληνικά');
+    expect(ArabicTokenizer(const []).tokenize('حديقة').single.text,
+        ArabicTokenizer(const []).tokenize('الحديقة').single.text);
+  });
+
   test('stems articles, suffixes, diacritics, and alef variants', () {
     final tokenizer = ArabicTokenizer(const []);
     expect(_stems(tokenizer, 'حديقة'), _stems(tokenizer, 'الحديقة'));

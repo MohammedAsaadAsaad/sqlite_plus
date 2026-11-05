@@ -42,11 +42,13 @@ void main() {
           await db.execute(
               "UPDATE _sps_1_keys SET source_key='missing' WHERE id=1");
         case 'zero vector':
-          await db.execute('UPDATE _sps_1_vectors SET embedding=? WHERE id=1', [
+          await db
+              .execute('UPDATE _sps_1_vec_vec SET embedding=? WHERE rowid=1', [
             encodeVec([0, 0])
           ]);
         case 'short vector':
-          await db.execute('UPDATE _sps_1_vectors SET embedding=? WHERE id=1',
+          await db.execute(
+              'UPDATE _sps_1_vec_vec SET embedding=? WHERE rowid=1',
               [Uint8List(1)]);
         case 'missing FTS row':
           await db.execute('DELETE FROM _sps_1_fts WHERE rowid=1');

@@ -27,6 +27,12 @@ void main() {
         await SqlitePlusSearch.open(database: db, embeddingProvider: fixture());
     await search
         .indexTable(table: 'docs', primaryKey: 'id', textColumns: ['body']);
+    final names = (await db.query('SELECT name FROM sqlite_schema'))
+        .rows
+        .map((row) => row.single)
+        .toSet();
+    expect(names, contains('_sps_1_vec'));
+    expect(names.contains('_sps_1_vectors'), isFalse);
     final all =
         await search.search('query', table: 'docs', mode: SearchMode.semantic);
     expect(all.hits.map((hit) => hit.documentId), ['1', '2', '3']);

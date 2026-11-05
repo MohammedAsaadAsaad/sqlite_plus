@@ -17,11 +17,11 @@ package matrices plus examples; browser smoke tests are separate.
 - `sqlite_plus_arabic`: `ArabicTokenizer` and `SqlitePlusArabic.register` implement
   a fixed light stemmer. Token text is UTF-8 bytes represented as Dart code units.
   Its scanner recognizes Arabic/ASCII, so it cannot be the general Unicode analyzer.
+  `ArabicText.normalize` is the shared fold and optional stem for mixed text.
 - `sqlite_plus_vec`: `SqlitePlusVec.register`, `encodeVec`, `decodeVec`,
-  `vecDistance`; vec0 is an exact float32 scan, not ANN. MATCH requires k in
-  1..100000. Ordinary predicates apply after k selection: filtering a small global
-  top-k can lose relevant results. Reuse distance primitives over the eligible
-  vector set, or exhaustively page eligible vectors before ranking.
+  `vecDistance`, and `rankVec0`. vec0 is an exact float32 scan, not ANN. MATCH
+  requires k in 1..100000 and applies that limit before a later SQL predicate.
+  `rankVec0` scores only the requested row ids, in pages, with no `k` cutoff.
 - ORM exposes typed search/nearest, schema migrations and connection ownership;
   generator emits these helpers. Neither is needed for a raw-table search API.
   Geo is unrelated and will not become a dependency.
@@ -72,17 +72,19 @@ index/model generation; a future cursor should encode that generation.
 
 The implemented facade accepts MutableSqliteDatabase directly, queues facade calls
 per database and rejects existing transactions. It uses versioned collection
-metadata plus derived per-collection key, FTS, vector and pending-event tables.
-Vectors are ordinary BLOB storage using sqlite_plus_vec encode/decode/distance:
-this deliberately avoids top-k filtering loss and vec0's 100000-neighbor ceiling.
-Initial index writes are batched in groups of 100; source rows and exact search
-candidates still materialize. Incremental replay coalesces source keys, atomically
-replaces their derived entries and acknowledges only captured event IDs. Embedding
-failure rolls everything back. Explicit rebuild resets ranking weights/context.
+metadata plus derived per-collection key, FTS, vec0 and pending-event tables.
+Embeddings are the vec0 shadow rows. Search calls `rankVec0` for eligible internal
+ids and does not keep a second vector table or a second cosine loop. `MATCH` plus
+`k` is not used, because that limit is applied before a filter. Initial index
+writes are batched in groups of 1000; the source query still materializes.
+Incremental replay coalesces source keys, atomically replaces their derived
+entries and acknowledges only captured event IDs. Embedding failure rolls
+everything back. Explicit rebuild resets ranking weights/context.
 
 The analyzer interface supports application-supplied language/synonym processing.
-The built-in normalizer uses Unicode61 through FTS5 and optional ArabicTokenizer
-for Arabic runs. It does not implement morphological or semantic language analysis.
+The built-in normalizer calls `ArabicText.normalize` and then unicode61 through
+FTS5. Optional stemming covers Arabic runs only. It does not implement
+morphological or semantic language analysis.
 
 Feedback persists two clamped logistic-gradient weights over reciprocal ranks.
 Score adjustment is capped by 0.25 times maximum base-score magnitude per feature;
@@ -94,14 +96,16 @@ injection, an owner-isolate adapter, production embeddings and scale optimizatio
 are future gates. Explicit rebuild uses one transaction rather than two concurrently
 published index generations. No claim of these target designs is implied.
 
-## Development index format 2
+## Development index format 3
 
-Format 2 stores normalized content in the owned key table and builds an
-external-content FTS index once after initial batches of 1000 derived rows. This
-avoids repeated FTS rebuild/serialization per batch. The engine's external-content
-loader currently maps columns positionally, so the owned key table deliberately
-puts body immediately after the integer rowid alias; native SQLite also finds the
-correct named body column. Application table column order is unrestricted.
+Format 3 stores normalized content in the owned key table, builds one
+external-content FTS index after batches of 1000 derived rows, and stores each
+embedding as a `vec0` row in the same database. This avoids a parallel vector
+table. The engine's external-content loader currently maps columns positionally,
+so the owned key table deliberately puts body immediately after the integer
+rowid alias; native SQLite also finds the correct named body column. Application
+table column order is unrestricted. Opening a database does not rebuild this
+index. Format 2 and earlier development indexes are rejected until `indexTable`.
 
 Incremental replay replaces an existing FTS/vector row once rather than deleting
 and reinserting it, and uses typed primary-key equality for common INT/TEXT keys.
@@ -109,5 +113,6 @@ It still scans mapping/source IDs to reconcile implicit REPLACE deletions and
 refreshes the integrity fingerprint. `synchronize` exposes replay without query
 ranking so benchmark timings separate source update, replay and query cost.
 
-Development format 1 indexes are rejected clearly until the caller explicitly
-rebuilds with indexTable. Source records are never migrated or rewritten.
+Format 2 and earlier development indexes are rejected until the caller
+explicitly rebuilds with indexTable. Source records are never migrated or
+rewritten.

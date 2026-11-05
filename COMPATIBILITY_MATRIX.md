@@ -230,6 +230,18 @@ and trigger-log replay. On Dart 3.13.7/Linux, **61 search tests pass**, includin
 pinned-native snapshot/FTS integrity checks. The full engine suite passes **10609
 with 1 skip** with the pinned CLI installed and local socket permission available.
 
+Format 3, checked on the same Dart SDK and Linux host, keeps that search count at
+61. `sqlite_plus_arabic` 0.1.2 passes 4 tests, including `ArabicText.normalize`.
+`sqlite_plus_vec` 0.1.2 passes 5 tests, including `rankVec0` over an eligible row
+set and a shadow table larger than one page. Search calls those two functions.
+It does not keep a second vector table or a second cosine loop. `open` does not
+rebuild an index already stored in the database file. Format 2 and earlier
+development indexes still require explicit `indexTable`. The format 2 AOT numbers
+were not remeasured. `embedding MATCH ? AND k = ?` still applies `k` before a
+later SQL predicate; search does not use that query for filtered ranking. Joining
+the FTS virtual table currently returns no rows, so keyword `MATCH` is read on
+its own and only those ids are filtered. No new speed claim is made.
+
 Hardening fixes original-error masking on failed commits, JavaScript FTS block-ID
 truncation, invalid stored vectors and secondary-unique REPLACE displacement.
 Shared VM/Node search assertions pass, including index/model round trips. 80

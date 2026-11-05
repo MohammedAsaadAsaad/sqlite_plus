@@ -94,6 +94,121 @@ double _finite(double value) {
   return value;
 }
 
+/// One exact distance from [rankVec0].
+final class VecScore {
+  const VecScore(this.rowId, this.distance);
+
+  final BigInt rowId;
+
+  /// Same value as [vecDistance] for the stored row and the query.
+  final double distance;
+}
+
+/// Exact distances for rows stored by a `vec0` table.
+///
+/// [rowIds] is applied before any neighbor limit. `null` scores every stored
+/// row. An empty list scores nothing and does not read the table. There is no
+/// `k` cutoff: `embedding MATCH ? AND k = ?` still selects its `k` rows before
+/// a later SQL predicate, and this function does not change that query.
+///
+/// Rows are read from the shadow table in pages of 64. One page of blobs is
+/// decoded, scored, and released before the next page. The result is ordered
+/// by ascending distance, then row id. A missing requested row throws
+/// `vec0 row is missing`. [rejectZeroVectors] throws `vec0 zero vector` when
+/// every stored coordinate is zero; the default keeps the cosine rule that a
+/// zero vector has distance 1 from a non-zero query.
+///
+/// [table] is the virtual table name, such as `items` for shadow `items_vec`.
+/// The module does not need to be registered again to read a shadow that is
+/// already in the database image.
+Future<List<VecScore>> rankVec0(
+  Object database, {
+  required String table,
+  required List<double> query,
+  String metric = 'cosine',
+  Iterable<BigInt>? rowIds,
+  bool rejectZeroVectors = false,
+}) async {
+  if (!RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(table)) {
+    throw ArgumentError('Invalid vec0 table name');
+  }
+  encodeVec(query);
+  final wanted = rowIds?.toSet();
+  if (wanted != null && wanted.isEmpty) return const [];
+  final shadow = '${table}_vec';
+  final info =
+      await _rankQuery(database, 'PRAGMA table_info(${_quote(shadow)})');
+  String? column;
+  for (final row in info.rows) {
+    final type = (row[2] as String).toUpperCase();
+    if (!type.contains('BLOB')) continue;
+    if (column != null) throw const SqlException('vec0 shadow is invalid');
+    column = row[1] as String;
+  }
+  if (column == null) throw const SqlException('vec0 shadow is invalid');
+  final scores = <VecScore>[];
+  void take(QueryResult page) {
+    for (final row in page.rows) {
+      final id = row[0];
+      final bytes = row[1];
+      if (id is! BigInt || bytes is! Uint8List) {
+        throw const SqlException('vec0 dimension mismatch');
+      }
+      final stored = decodeVec(bytes);
+      if (rejectZeroVectors && stored.every((value) => value == 0)) {
+        throw const SqlException('vec0 zero vector');
+      }
+      scores.add(VecScore(id, vecDistance(query, stored, metric)));
+    }
+  }
+
+  if (wanted == null) {
+    Object? lower;
+    while (true) {
+      final page = await _rankQuery(
+          database,
+          'SELECT rowid, ${_quote(column)} FROM ${_quote(shadow)} '
+          '${lower == null ? '' : 'WHERE rowid > ? '}'
+          'ORDER BY rowid LIMIT $_rankPage',
+          lower == null ? const [] : [lower]);
+      if (page.rows.isEmpty) break;
+      take(page);
+      if (page.rows.length < _rankPage) break;
+      lower = page.rows.last[0];
+    }
+  } else {
+    final ids = wanted.toList()..sort();
+    for (var start = 0; start < ids.length; start += _rankPage) {
+      final chunk = ids.sublist(start, math.min(start + _rankPage, ids.length));
+      final placeholders = List.filled(chunk.length, '?').join(',');
+      take(await _rankQuery(
+          database,
+          'SELECT rowid, ${_quote(column)} FROM ${_quote(shadow)} '
+          'WHERE rowid IN ($placeholders)',
+          chunk));
+    }
+    if (scores.length != wanted.length) {
+      throw const SqlException('vec0 row is missing');
+    }
+  }
+  scores.sort((left, right) {
+    final distance = left.distance.compareTo(right.distance);
+    return distance == 0 ? left.rowId.compareTo(right.rowId) : distance;
+  });
+  return scores;
+}
+
+const _rankPage = 64;
+
+Future<QueryResult> _rankQuery(Object database, String sql,
+    [List<Object?> parameters = const []]) {
+  if (database is SqliteDatabase) return database.query(sql, parameters);
+  if (database is MutableSqliteDatabase) return database.query(sql, parameters);
+  throw ArgumentError('Expected a sqlite_plus database');
+}
+
+String _quote(String value) => '"${value.replaceAll('"', '""')}"';
+
 final class Vec0Module extends VirtualTableModule {
   @override
   String get name => 'vec0';
@@ -248,21 +363,20 @@ final class _VecCursor extends VirtualTableCursor {
     _live();
     final spec = _spec(table, arguments);
     final shadow = SearchSnapshot.current.table('${table}_vec');
-    final stored = <(BigInt, Uint8List)>[];
-    if (shadow != null) {
-      for (final row in shadow.rows) {
-        final value = shadow.value(row, spec.column);
-        if (value is! Uint8List || value.length != spec.dimensions * 4) {
-          throw const SqlException('vec0 dimension mismatch');
-        }
-        stored.add((row.rowId, Uint8List.fromList(value)));
+    final rows = shadow?.rows ?? const <ShadowRow>[];
+    Uint8List blob(ShadowRow row) {
+      final value = shadow?.value(row, spec.column);
+      if (value is! Uint8List || value.length != spec.dimensions * 4) {
+        throw const SqlException('vec0 dimension mismatch');
       }
+      return Uint8List.fromList(value);
     }
+
     final queryBytes = _query;
     if (queryBytes == null) {
       if (_sawK) throw const SqlException('vec0: k requires MATCH');
       _rows = [
-        for (final row in stored) (row.$1, row.$2, null, null),
+        for (final row in rows) (row.rowId, blob(row), null, null),
       ];
       _index = 0;
       return;
@@ -272,20 +386,24 @@ final class _VecCursor extends VirtualTableCursor {
       throw const SqlException('vec0: k is out of range');
     }
     final query = _decode(queryBytes, spec.dimensions);
-    final ranked = <(BigInt, Uint8List, double)>[
-      for (final row in stored)
-        (
-          row.$1,
-          row.$2,
-          vecDistance(_decode(row.$2, spec.dimensions), query, spec.metric)
-        )
-    ]..sort((left, right) {
-        final distance = left.$3.compareTo(right.$3);
-        return distance == 0 ? left.$1.compareTo(right.$1) : distance;
-      });
+    final ranked = <(BigInt, double)>[];
+    for (final row in rows) {
+      final value = shadow?.value(row, spec.column);
+      if (value is! Uint8List || value.length != spec.dimensions * 4) {
+        throw const SqlException('vec0 dimension mismatch');
+      }
+      ranked.add((
+        row.rowId,
+        vecDistance(_decode(value, spec.dimensions), query, spec.metric)
+      ));
+    }
+    ranked.sort((left, right) {
+      final distance = left.$2.compareTo(right.$2);
+      return distance == 0 ? left.$1.compareTo(right.$1) : distance;
+    });
     final kept = ranked.take(_k!).toList();
     final hits = <BigInt>{for (final row in kept) row.$1};
-    final owned = <BigInt>{for (final row in stored) row.$1};
+    final owned = <BigInt>{for (final row in ranked) row.$1};
     final column = spec.column;
     final tableName = spec.table;
     VirtualMatchBoard.current?.handlers.add((qualifier, name, pattern, rowid) {
@@ -301,8 +419,13 @@ final class _VecCursor extends VirtualTableCursor {
       }
       return hits.contains(rowid) ? BigInt.one : BigInt.zero;
     });
+    final copies = <BigInt, Uint8List>{};
+    for (final row in rows) {
+      if (hits.contains(row.rowId)) copies[row.rowId] = blob(row);
+    }
     _rows = [
-      for (final row in kept) (row.$1, row.$2, row.$3, BigInt.from(_k!)),
+      for (final row in kept)
+        (row.$1, copies[row.$1]!, row.$2, BigInt.from(_k!)),
     ];
     _index = 0;
   }

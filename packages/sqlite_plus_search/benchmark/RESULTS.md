@@ -1,5 +1,8 @@
 # Hardened format-2 measurements — 2026-11-04
 
+These numbers are format 2. Format 3 was not remeasured, so they are not a claim
+about the `vec0` index.
+
 Dart 3.13.7/Linux x64 AOT, memory backend, synthetic 2D fixture, shared managed
 host. One process per size with five warm samples. No concurrent test workload
 was deliberately run during these samples. CPU scheduling is not isolated.

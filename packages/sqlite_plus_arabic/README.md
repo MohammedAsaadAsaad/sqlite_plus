@@ -5,7 +5,7 @@ A light Arabic stemmer for an FTS5 table in [`sqlite_plus`](https://pub.dev/pack
 ```yaml
 dependencies:
   sqlite_plus: ^0.1.7
-  sqlite_plus_arabic: ^0.1.1
+  sqlite_plus_arabic: ^0.1.2
 ```
 
 ## The packages on pub.dev
@@ -17,7 +17,7 @@ Each package is a complete library. Import only what you call. The links below a
 | sqlite_plus | `^0.1.7` | <https://pub.dev/packages/sqlite_plus> |
 | sqlite_plus_orm | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_orm> |
 | sqlite_plus_generator | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_arabic | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_arabic> |
 | sqlite_plus_vec | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_vec> |
 | sqlite_plus_geo | `^0.1.0` | <https://pub.dev/packages/sqlite_plus_geo> |
 
@@ -168,6 +168,14 @@ One prefix is removed when at least three letters remain, longest first: وال�
 
 `في الحديقة` is two tokens, `في` and `حديق`. A string of commas produces no token. SQLite ICU Arabic is a different tokenizer. This package applies the list above.
 
+## Folding text without an FTS table
+
+`ArabicText.normalize` is the same light stemmer used on Arabic runs, plus folds the FTS tokenizer does not apply. It removes tatweel, the diacritics U+064B–U+065F and U+06D6–U+06ED, and U+0670. Alef variants fold to ا. Arabic-Indic digits `١٢٣` and `۴۵۶` fold to `123` and `456`. `foldYa` maps ى to ي. `foldHamza` maps ؤ to و and ئ to ي. Those two options default to ya folded and hamza kept.
+
+`stem: true` runs `ArabicTokenizer` on Arabic runs only. Greek, CJK, and ASCII stay in the string and are not stemmed. With stemming, the tokenizer's fixed ya and hamza folds apply to those Arabic runs. `الحديقة حديقة الله Milk 中文 Ελληνικά` becomes `حديق حديق الله milk 中文 ελληνικά`.
+
+This does not register a tokenizer and it does not change `tokenize = 'arabic'`. The FTS tokenizer still recognizes only Arabic and ASCII, so a mixed FTS index should keep `unicode61` and fold the text first.
+
 ## SQL
 
 Register before `CREATE`. The registry is the connection's. A second `register` replaces the factory. `SqlitePlusArabic.register` accepts a `SqliteDatabase`, a `MutableSqliteDatabase`, or that connection's `SqlFunctionRegistry`.
@@ -286,4 +294,4 @@ dart run bin/main.dart
 | The index, `MATCH`, `highlight` | [`sqlite_plus`](https://pub.dev/packages/sqlite_plus) | `openInMemory`, then SQL |
 | The string constants and `search` | [`sqlite_plus_orm`](https://pub.dev/packages/sqlite_plus_orm) | `DbModules.fts5`, `notes.query.search` |
 | The class turned into a part | [`sqlite_plus_generator`](https://pub.dev/packages/sqlite_plus_generator) | `dart run sqlite_plus_generator` |
-| The stemmer | this package | `SqlitePlusArabic.register` |
+| The stemmer and `ArabicText.normalize` | this package | `SqlitePlusArabic.register`, `ArabicText.normalize` |
