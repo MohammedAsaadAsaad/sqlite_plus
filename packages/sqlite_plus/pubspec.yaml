@@ -1,6 +1,6 @@
 name: sqlite_plus
-description: Pure Dart SQLite-style database engine with SQL, JSON, FTS5, and R-tree.
-version: 0.1.7
+description: Pure Dart SQLite-style database engine with SQL, JSON, packed FTS5, and R-tree.
+version: 0.1.8
 repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus
 issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
 topics:
@@ -8,6 +8,8 @@ topics:
   - database
   - sql
 screenshots:
+  - description: One arm64 phone. Query بسكويت, 20 of 493 names, 47.236 ms.
+    path: doc/catalog-phone.jpg
   - description: 1000-row Linux memory round. Bar length matches measured time.
     path: doc/bench-time.png
   - description: 1000-row Linux file round. Bar length matches measured time.

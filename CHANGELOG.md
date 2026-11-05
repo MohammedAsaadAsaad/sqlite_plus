@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.8
+
+`sqlite_plus` is version `0.1.8`. FTS5 leaves for two or more documents are packed by term. `sqlite_plus_search` is `0.1.0-dev.4` and depends on that engine, on `sqlite_plus_arabic` `0.1.2`, and on `sqlite_plus_vec` `0.1.2`. The other packages stay on their published versions. The catalog page on one arm64 phone read 47.236 ms. These versions are prepared for pub.dev and were not uploaded from this change.
+
 ## 0.1.7
 
 `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are version `0.1.7`. `sqlite_plus_arabic` and `sqlite_plus_vec` are version `0.1.1`. `sqlite_plus_geo` is version `0.1.0`. Each package depends on these numbers. Each README links the other packages on pub.dev and includes a short example of each.

@@ -22,6 +22,11 @@ count, and the time that page took. Twenty names are loaded at a time.
 Previous and next run that search again for the other slice and replace the
 time.
 
+On one arm64 phone, release 0.5.2, at 17:11 Asia/Hebron (UTC+2) on 5 November
+2026, `بسكويت` read `20 of 493 matches · 47.236 ms` on page 1 of 25. The score
+on those titles was 3.965. The same query on Linux x64, AOT, and not a phone,
+took 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320.
+
 The menu at the top holds the setup commands. They are not on the main screen.
 
 - **Load products** reads both files again, rebuilds the index, and replaces

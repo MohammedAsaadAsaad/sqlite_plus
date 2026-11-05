@@ -1,5 +1,18 @@
 # Development log
 
+## 2026-11-05 — Phone page at 47.236 ms, packages prepared for pub.dev
+
+- One arm64 phone, catalog release 0.5.2, at 17:11 Asia/Hebron (UTC+2) on 5
+  November 2026, showed `20 of 493 matches · 47.236 ms` for `بسكويت` on page
+  1 of 25. The score on those titles was 3.965. The previous phone sample on
+  0.5.1 was 472.000 ms for page 17.
+- `sqlite_plus` is `0.1.8`. `sqlite_plus_search` is `0.1.0-dev.4` and depends
+  on `sqlite_plus` ^0.1.8, `sqlite_plus_arabic` ^0.1.2, and `sqlite_plus_vec`
+  ^0.1.2. The READMEs lead with that phone page and the Linux AOT samples.
+  The packages were not uploaded. `sqlite_plus_arabic` 0.1.2 and
+  `sqlite_plus_vec` 0.1.2 are already in this tree and are not on pub.dev yet.
+  Publish the engine, then those two, then the search pre-release.
+
 ## 2026-11-05 — Packed FTS leaves keep a page search under 50 ms on Linux AOT
 
 - The locked baseline is one leaf per product. On this Linux x64 machine, JIT

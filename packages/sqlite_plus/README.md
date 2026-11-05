@@ -6,8 +6,18 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.7
+  sqlite_plus: ^0.1.8
 ```
+
+## A page of search
+
+Two or more documents share FTS5 leaves. A query of whole terms reads the leaves that contain those terms. One document keeps the older leaf.
+
+The catalog stores 10,000 Arabic names and 10,000 English names and loads 20 at a time. On one arm64 phone, at 17:11 Asia/Hebron (UTC+2) on 5 November 2026, `بسكويت` read `20 of 493 matches · 47.236 ms`.
+
+![Catalog on one arm64 phone. Twenty of 493 matches in 47.236 ms.](doc/catalog-phone.jpg)
+
+On Linux x64, AOT, and not a phone, that page took 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. `biscuit` took 19.717 ms, 25.481 ms, and 25.621 ms. Before packing, the same Linux process took 405 ms and then 359 ms, and the previous phone build showed 472.000 ms. [`sqlite_plus_search`](https://pub.dev/packages/sqlite_plus_search) is the index and the shelf filter on top of this engine.
 
 ## The packages on pub.dev
 
@@ -15,7 +25,7 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.7` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus | `^0.1.8` | <https://pub.dev/packages/sqlite_plus> |
 | sqlite_plus_orm | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_orm> |
 | sqlite_plus_generator | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_generator> |
 | sqlite_plus_arabic | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_arabic> |
@@ -26,7 +36,7 @@ Each package is a complete library. Import only what you call. The links below a
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.7
+  sqlite_plus: ^0.1.8
 ```
 
 ```dart
@@ -360,7 +370,7 @@ An application loads a package when it imports it. Arabic and vec stay out of a 
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.7
+  sqlite_plus: ^0.1.8
   sqlite_plus_orm: ^0.1.7
   sqlite_plus_arabic: ^0.1.1
   sqlite_plus_vec: ^0.1.1
