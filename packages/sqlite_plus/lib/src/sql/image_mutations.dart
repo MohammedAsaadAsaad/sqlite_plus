@@ -4574,6 +4574,14 @@ final class ImageMutations {
       r'^SELECT\s+([A-Za-z_][A-Za-z0-9_]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)\s+FROM\s+([A-Za-z_][A-Za-z0-9_]*)\s+WHERE\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\?\s*;?\s*$',
       caseSensitive: false);
 
+  /// `col IN (?,?,?)` on a rowid, optionally `AND (other = ?)`.
+  ///
+  /// Quoted identifiers are accepted. Anything else, including a non-rowid
+  /// probe or a predicate this pattern does not recognize, falls back.
+  static final RegExp _fastInPattern = RegExp(
+      r'^SELECT\s+((?:"[^"]+"|[A-Za-z_][A-Za-z0-9_]*)(?:\s*,\s*(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_]*))*)\s+FROM\s+("?[A-Za-z_][A-Za-z0-9_]*"?)\s+WHERE\s+("?[A-Za-z_][A-Za-z0-9_]*"?)\s+IN\s*\(\s*(\?(?:\s*,\s*\?)*)\s*\)(?:\s+AND\s+\(\s*("?[A-Za-z_][A-Za-z0-9_]*"?)\s*=\s*\?\s*\))?\s*;?\s*$',
+      caseSensitive: false);
+
   void _flushColumnAddends() {
     for (final table in _tables.values) {
       final addends = table.columnAddends;
@@ -5331,10 +5339,18 @@ final class ImageMutations {
   }
 
   /// A repeated single-table equality read answered from the live rows.
+  ///
+  /// A rowid `IN` list is answered the same way: one hash probe per bound id.
   QueryResult? tryFastRead(String sql, List<Object?> parameters) {
-    if (parameters.length != 1) return null;
-    final match = _fastReadPattern.firstMatch(sql.trim());
-    if (match == null) return null;
+    final trimmed = sql.trim();
+    if (parameters.length == 1) {
+      final match = _fastReadPattern.firstMatch(trimmed);
+      if (match != null) return _fastEquality(match, parameters);
+    }
+    return _fastInRead(trimmed, parameters);
+  }
+
+  QueryResult? _fastEquality(RegExpMatch match, List<Object?> parameters) {
     final table = _tables[asciiLower(match.group(2)!)];
     if (table == null || table.view || table.schema.virtual) return null;
     final selected = match
@@ -5415,6 +5431,127 @@ final class ImageMutations {
         [for (final column in columns) column?.affinity ?? 'integer'],
         [for (final column in columns) column?.declaredType ?? 'INTEGER'],
         [for (final column in columns) column?.collation ?? 'BINARY']);
+  }
+
+  QueryResult? _fastInRead(String sql, List<Object?> parameters) {
+    final match = _fastInPattern.firstMatch(sql);
+    if (match == null) return null;
+    final tableName = _sqlIdent(match.group(2)!);
+    final table = _tables[asciiLower(tableName)];
+    if (table == null ||
+        table.view ||
+        table.schema.virtual ||
+        table.schema.withoutRowid) {
+      return null;
+    }
+    final selectedRaw = match.group(1)!.split(',');
+    final selected = [
+      for (final name in selectedRaw) asciiLower(_sqlIdent(name))
+    ];
+    final probe = asciiLower(_sqlIdent(match.group(3)!));
+    if (!_isRowidName(table, probe)) return null;
+    final columns = <CatalogColumn?>[];
+    for (final name in selected) {
+      final column = _fastColumn(table, name);
+      if (column == null && !_isRowidName(table, name)) return null;
+      if (column != null &&
+          column.collation != 'BINARY' &&
+          column.collation != 'binary') {
+        return null;
+      }
+      columns.add(column);
+    }
+    final placeholders = match.group(4)!.split(',');
+    final extraName = match.group(5);
+    final expected = placeholders.length + (extraName == null ? 0 : 1);
+    if (parameters.length != expected) return null;
+    CatalogColumn? extra;
+    if (extraName != null) {
+      final name = asciiLower(_sqlIdent(extraName));
+      if (_isRowidName(table, name)) {
+        extra = null;
+      } else {
+        extra = _fastColumn(table, name);
+        if (extra == null) return null;
+        if (extra.collation != 'BINARY' && extra.collation != 'binary') {
+          return null;
+        }
+      }
+    }
+    final byId = _rowById(table);
+    final seen = <BigInt>{};
+    final matches = <TableRow>[];
+    for (var i = 0; i < placeholders.length; i++) {
+      final bound = sqlValue(parameters[i]);
+      if (bound == null) continue;
+      if (bound is Uint8List) return null;
+      final rowId = _fastRowid(bound);
+      if (rowId == null || !seen.add(rowId)) continue;
+      final row = byId[rowId];
+      if (row != null) matches.add(row);
+    }
+    if (extraName != null) {
+      final bound = sqlValue(parameters.last);
+      if (bound is Uint8List) return null;
+      final kept = <TableRow>[];
+      for (final row in matches) {
+        final Object? stored;
+        if (extra == null) {
+          stored = row.rowId;
+        } else {
+          stored = _projected(table, row, table.schema.columns.indexOf(extra));
+        }
+        final equal = _fastEqual(stored, bound);
+        if (equal == null) return null;
+        if (equal) kept.add(row);
+      }
+      matches
+        ..clear()
+        ..addAll(kept);
+    }
+    matches.sort((a, b) => a.rowId.compareTo(b.rowId));
+    final labels = [for (final name in selectedRaw) _sqlIdent(name)];
+    final rows = [
+      for (final row in matches)
+        [
+          for (var i = 0; i < columns.length; i++)
+            columns[i] == null
+                ? row.rowId
+                : _projected(
+                    table, row, table.schema.columns.indexOf(columns[i]!))
+        ]
+    ];
+    return QueryResult(
+        labels,
+        rows,
+        [for (final column in columns) column?.affinity ?? 'integer'],
+        [for (final column in columns) column?.declaredType ?? 'INTEGER'],
+        [for (final column in columns) column?.collation ?? 'BINARY']);
+  }
+
+  /// True, false, or null when the comparison is not a plain binary equality.
+  bool? _fastEqual(Object? stored, Object? bound) {
+    if (stored == null || bound == null) return false;
+    if (stored is int) stored = BigInt.from(stored);
+    if (bound is int) bound = BigInt.from(bound);
+    if (stored is Uint8List || bound is Uint8List) return null;
+    if (stored is BigInt && bound is BigInt) return stored == bound;
+    if (stored is String && bound is String) return stored == bound;
+    if (stored is double && bound is double) {
+      if (stored.isNaN || bound.isNaN) return false;
+      return stored == bound;
+    }
+    return null;
+  }
+
+  String _sqlIdent(String raw) {
+    final name = raw.trim();
+    if (name.length >= 2 &&
+        name.codeUnitAt(0) == 0x22 &&
+        name.codeUnitAt(name.length - 1) == 0x22) {
+      return name.substring(1, name.length - 1);
+    }
+    return name;
   }
 
   CatalogColumn? _fastColumn(_Table table, String name) {

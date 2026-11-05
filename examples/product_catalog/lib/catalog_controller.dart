@@ -257,7 +257,6 @@ class CatalogController extends ChangeNotifier {
         ? trimmed
         : '${trimmed.substring(0, 40)}…';
     await _run('Searching…', () async {
-      final before = await _takeSample();
       final clock = Stopwatch()..start();
       final response = await _worker.call({
         'op': 'search',
@@ -265,7 +264,12 @@ class CatalogController extends ChangeNotifier {
         'scope': scope.name,
       });
       clock.stop();
-      final after = _sampleFrom(response['sample'] as Map, Duration.zero);
+      final image = latest?.imageBytes ?? 0;
+      final sample = ResourceSample(
+        rssBytes: response['rss'] as int,
+        peakRssBytes: response['peak'] as int,
+        imageBytes: image,
+      );
       final rawMatches = response['matches'] as List;
       final found = [
         for (final raw in rawMatches)
@@ -284,8 +288,8 @@ class CatalogController extends ChangeNotifier {
         _report(
           title: 'Search "$shown"',
           elapsed: clock.elapsed,
-          before: before.sample,
-          after: after.sample,
+          before: sample,
+          after: sample,
           sampleElapsed: Duration.zero,
           detail:
               '${found.length} shown of $total hits · '

@@ -283,6 +283,38 @@ final class SqlitePlusSearch {
         });
       });
 
+  Future<bool> _integerPrimaryKey(String table, String key) async {
+    final info = await database.query('PRAGMA table_info(${_quote(table)})');
+    for (final row in info.rows) {
+      if (row[1] == key && row[2] is String) {
+        return (row[2] as String).toUpperCase().contains('INT');
+      }
+    }
+    throw StateError('Search mapping is corrupt; rebuild index');
+  }
+
+  /// Source keys that still exist. The probe uses the key column itself so an
+  /// integer primary key stays a point lookup.
+  Future<Set<String>> _liveSourceKeys(String table, String key, bool integerKey,
+      List<String> keys, SearchFilter? filter) async {
+    if (keys.isEmpty) return const {};
+    final parameters = <Object?>[
+      for (final value in keys)
+        if (integerKey)
+          BigInt.tryParse(value) ??
+              (throw StateError('Search mapping is corrupt; rebuild index'))
+        else
+          value,
+      ...?filter?.parameters
+    ];
+    final rows = await database.query(
+        'SELECT ${_quote(key)} FROM ${_quote(table)} WHERE ${_quote(key)} IN '
+        '(${List.filled(keys.length, '?').join(',')})'
+        '${filter == null ? '' : ' AND (${filter.sql})'}',
+        parameters);
+    return {for (final row in rows.rows) row[0].toString()};
+  }
+
   Future<String> _schema(String table) async {
     final result = await database.query(
         'SELECT sql FROM sqlite_schema WHERE type = ? AND name = ?',
@@ -375,49 +407,53 @@ final class SqlitePlusSearch {
             scores[id] = -score.toDouble();
           }
           final ids = scores.keys.toList();
-          for (var start = 0; start < ids.length; start += 64) {
-            final chunk = ids.sublist(start, math.min(start + 64, ids.length));
-            final placeholders = List.filled(chunk.length, '?').join(',');
+          if (ids.isNotEmpty) {
+            final integerKey = await _integerPrimaryKey(table, meta.key);
+            final placeholders = List.filled(ids.length, '?').join(',');
+            // Resolve every hit in one primary-key probe. A per-hit scan of
+            // the source table is what made a few hundred matches stall.
             final mapped = await database.query(
-                'SELECT k.id, k.source_key FROM ${base}_keys k WHERE k.id IN '
-                '($placeholders) AND EXISTS (SELECT 1 FROM ${_quote(table)} src '
-                'WHERE CAST(src.${_quote(meta.key)} AS TEXT) = k.source_key'
-                '${filter == null ? '' : ' AND (${filter.sql})'})',
-                [...chunk, ...?filter?.parameters]);
-            final seen = <BigInt>{};
+                'SELECT id, source_key FROM ${base}_keys WHERE id IN ($placeholders)',
+                ids);
+            if (mapped.rows.length != ids.length) {
+              throw StateError('Search mapping is corrupt; rebuild index');
+            }
+            final byKey = <String, BigInt>{};
             for (final row in mapped.rows) {
               final id = row[0];
               final key = row[1];
               if (id is! BigInt || key is! String || !scores.containsKey(id)) {
                 throw StateError('Search mapping is corrupt; rebuild index');
               }
-              seen.add(id);
-              keyword.add(SearchHit(documentId: key, score: scores[id]!));
+              byKey[key] = id;
             }
-            if (seen.length == chunk.length) continue;
-            final present = await database.query(
-                'SELECT id FROM ${base}_keys WHERE id IN ($placeholders)',
-                chunk);
-            if (present.rows.length != chunk.length) {
-              throw StateError('Search mapping is corrupt; rebuild index');
+            final live = await _liveSourceKeys(
+                table, meta.key, integerKey, byKey.keys.toList(), filter);
+            for (final key in live) {
+              final id = byKey[key];
+              if (id == null) continue;
+              keyword.add(SearchHit(documentId: key, score: scores[id]!));
             }
           }
         }
         if (query.trim().isNotEmpty && mode != SearchMode.keyword) {
           final vector = await validatedEmbedding(embeddingProvider!, query);
-          final mapped = await database.query(
-              'SELECT k.id, k.source_key FROM ${base}_keys k WHERE EXISTS ('
-              'SELECT 1 FROM ${_quote(table)} src WHERE '
-              'CAST(src.${_quote(meta.key)} AS TEXT) = k.source_key'
-              '${filter == null ? '' : ' AND (${filter.sql})'})',
-              filter?.parameters ?? const []);
-          final ids = <BigInt, String>{};
+          final mapped =
+              await database.query('SELECT id, source_key FROM ${base}_keys');
+          final integerKey = await _integerPrimaryKey(table, meta.key);
+          final byKey = <String, BigInt>{};
           for (final row in mapped.rows) {
             if (row[0] is! BigInt || row[1] is! String) {
               throw StateError('Vector mapping is corrupt; rebuild');
             }
-            ids[row[0] as BigInt] = row[1] as String;
+            byKey[row[1] as String] = row[0] as BigInt;
           }
+          final live = await _liveSourceKeys(
+              table, meta.key, integerKey, byKey.keys.toList(), filter);
+          final ids = <BigInt, String>{
+            for (final key in live)
+              if (byKey.containsKey(key)) byKey[key]!: key
+          };
           final counts = await database.query(
               'SELECT (SELECT count(*) FROM ${base}_keys), (SELECT count(*) FROM ${base}_vec_vec)');
           if (counts.rows.single[0] != counts.rows.single[1]) {

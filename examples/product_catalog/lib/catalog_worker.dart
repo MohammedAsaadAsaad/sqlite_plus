@@ -170,7 +170,8 @@ Future<void> _handle(_SessionHolder holder, Object? message) async {
                 'score': match.score,
               },
           ],
-          'sample': _sample(holder.session),
+          'rss': ProcessInfo.currentRss,
+          'peak': ProcessInfo.maxRss,
         });
       case 'sample':
         reply.send({'ok': true, 'sample': _sample(holder.session)});

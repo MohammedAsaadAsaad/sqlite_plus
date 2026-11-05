@@ -1,5 +1,41 @@
 # Development log
 
+## 2026-11-05 — Catalog search returns instead of scanning every hit
+
+- Keyword search no longer probes the source table once per hit. It loads the
+  matched key rows with one `IN` list and checks those primary keys in one
+  query. On the live image, a rowid `IN` list is a hash probe per id. A
+  single `AND (column = ?)` filter is applied to those rows. Any other
+  predicate still uses the ordinary planner.
+- One FTS `MATCH` of a single full term can rank from the posting lists. The
+  older path remains when that shape does not apply.
+- The catalog looks up the shown names with one `IN` query and does not copy
+  the database image before painting the hits.
+- Linux x64, Dart 3.13.7, JIT, not AOT and not a phone. 20,000 products,
+  10,000 Arabic and 10,000 English, `SearchTextAnalyzer(stemArabic: true)`,
+  query `بسكويت`. `indexTable` took 36558 ms. `exportImage` took 1 ms and
+  wrote 4993024 bytes. Search after that save, limit 20, took 405 ms and
+  returned 493 hits. The next search took 359 ms. The same query with
+  `language = ?` bound to `Arabic` took 295 ms and returned 493 hits.
+  Reopening that image and searching took 296 ms, then 276 ms, both with 493
+  hits. Before this mapping change, the same query on 1,000 Arabic names took
+  8869 ms and then 8437 ms for 54 hits.
+- `packages/sqlite_plus`: `dart analyze --fatal-infos` reported no issues and
+  `dart test` passed 10611 tests. `packages/sqlite_plus_search`: `dart analyze
+  --fatal-infos` reported no issues and `dart test` passed 62 tests.
+  `examples/product_catalog`: `flutter analyze --fatal-infos` reported no
+  issues and `flutter test` passed 9 tests.
+- `flutter build apk --release --target-platform android-arm64` at 15:54
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19751453
+  bytes, sha256 `025e23c18423a325be038d9cd3838caa8c1663755426fdaeaceac24ba3650780`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.4.0`, versionCode `4`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+  The saved index from version code 3 does not need to be rebuilt.
+
 ## 2026-11-05 — Catalog is saved once; setup stays in the menu
 
 - The first launch loads both product lists, builds the keyword index, and

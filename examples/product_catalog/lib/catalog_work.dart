@@ -392,22 +392,33 @@ class CatalogSession {
     searchClock.stop();
     final lookupClock = Stopwatch()..start();
     final matches = <ProductMatch>[];
-    for (var i = 0; i < results.hits.length; i++) {
-      final hit = results.hits[i];
+    if (results.hits.isNotEmpty) {
+      final ids = [for (final hit in results.hits) int.parse(hit.documentId)];
+      final placeholders = List.filled(ids.length, '?').join(', ');
       final rows = await db.query(
-        'SELECT language, source_line, name FROM products WHERE id = ?',
-        [int.parse(hit.documentId)],
+        'SELECT id, language, source_line, name FROM products '
+        'WHERE id IN ($placeholders)',
+        ids,
       );
-      final row = rows.rows.single;
-      matches.add(
-        ProductMatch(
-          rank: i + 1,
-          language: row[0] as String,
-          sourceLine: _asInt(row[1]),
-          name: row[2] as String,
-          score: hit.score,
-        ),
-      );
+      final byId = <int, List<Object?>>{
+        for (final row in rows.rows) _asInt(row[0]): row,
+      };
+      for (var i = 0; i < results.hits.length; i++) {
+        final hit = results.hits[i];
+        final row = byId[int.parse(hit.documentId)];
+        if (row == null) {
+          throw StateError('Search hit is missing from products');
+        }
+        matches.add(
+          ProductMatch(
+            rank: i + 1,
+            language: row[1] as String,
+            sourceLine: _asInt(row[2]),
+            name: row[3] as String,
+            score: hit.score,
+          ),
+        );
+      }
     }
     lookupClock.stop();
     return SearchRun(

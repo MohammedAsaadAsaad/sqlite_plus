@@ -55,11 +55,12 @@ stays inside the pure-Dart engine.
 ## Android package
 
 `dist/product-catalog-arm64-v8a.apk` is the release package built on 5 November
-2026 at 15:06 Asia/Hebron (UTC+2) with
+2026 at 15:54 Asia/Hebron (UTC+2) with
 `flutter build apk --release --target-platform android-arm64`. It is 19751453
 bytes, sha256
-`42fa6bddec67f5b7114ca02577af92045d8c602739a82ea3425a7830067e9a88`. The
-application id is `dev.sqliteplus.product_catalog`, versionName `0.3.0`,
-versionCode `3`, minSdk 24. Native code is `arm64-v8a` only. The release build
+`025e23c18423a325be038d9cd3838caa8c1663755426fdaeaceac24ba3650780`. The
+application id is `dev.sqliteplus.product_catalog`, versionName `0.4.0`,
+versionCode `4`, minSdk 24. Native code is `arm64-v8a` only. The release build
 is signed with the Android debug certificate. It was not installed on a device
-here. Version code 3 replaces the earlier packages.
+here. Version code 4 replaces the earlier packages. Search keeps the index
+saved by version code 3.
