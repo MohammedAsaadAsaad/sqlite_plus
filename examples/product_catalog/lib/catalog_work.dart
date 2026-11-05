@@ -306,21 +306,60 @@ class CatalogSession {
     return db;
   }
 
+  /// Reopens a database image saved by [exportImage].
+  Future<void> openImage(Uint8List bytes) async {
+    if (database != null) {
+      throw StateError('Products are already loaded');
+    }
+    final db = await MutableSqliteDatabase.fromImage(bytes);
+    database = db;
+    try {
+      final count = await db.query('SELECT count(*) FROM products');
+      productCount = _asInt(count.rows.single[0]);
+      final meta = await db.query(
+        "SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = '_sps_collections'",
+      );
+      if (meta.rows.isEmpty) return;
+      final indexedRows = await db.query(
+        'SELECT count(*) FROM _sps_collections NOT INDEXED WHERE source = ?',
+        ['products'],
+      );
+      if (_asInt(indexedRows.rows.single[0]) != 1) return;
+      search = await SqlitePlusSearch.open(
+        database: db,
+        analyzer: const SearchTextAnalyzer(stemArabic: true),
+      );
+      indexed = true;
+    } catch (error, stack) {
+      await close();
+      Error.throwWithStackTrace(error, stack);
+    }
+  }
+
+  Uint8List exportImage() {
+    final db = database;
+    if (db == null) throw StateError('No database to save');
+    return db.exportImage();
+  }
+
   /// Keyword index with Arabic stemming. English letters are left as written.
   Future<void> buildIndex({
+    bool rebuild = false,
     void Function(int done, int total)? onProgress,
   }) async {
     final db = database;
     if (db == null) {
       throw StateError('Load products before building the index');
     }
-    if (search != null) {
+    if (indexed && !rebuild) {
       throw StateError('The search index is already built');
     }
-    final opened = await SqlitePlusSearch.open(
-      database: db,
-      analyzer: const SearchTextAnalyzer(stemArabic: true),
-    );
+    final opened =
+        search ??
+        await SqlitePlusSearch.open(
+          database: db,
+          analyzer: const SearchTextAnalyzer(stemArabic: true),
+        );
     await opened.indexTable(
       table: 'products',
       primaryKey: 'id',

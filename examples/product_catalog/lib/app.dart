@@ -1,13 +1,26 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'catalog_page.dart';
 import 'catalog_work.dart';
 
 class CatalogApp extends StatelessWidget {
-  const CatalogApp({super.key, this.products});
+  const CatalogApp({
+    super.key,
+    this.products,
+    this.storeFile,
+    this.prepareOnStart = true,
+  });
 
   /// Replaces the bundled files in tests. The running app reads both assets.
   final ProductLoader? products;
+
+  /// Replaces the documents-directory file in tests.
+  final Future<File> Function()? storeFile;
+
+  /// When true, a saved catalog is opened and a missing one is built once.
+  final bool prepareOnStart;
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +59,11 @@ class CatalogApp extends StatelessWidget {
           error: Color(0xFFFFB4AB),
         ),
       ),
-      home: CatalogPage(products: products),
+      home: CatalogPage(
+        products: products,
+        storeFile: storeFile,
+        prepareOnStart: prepareOnStart,
+      ),
     );
   }
 }

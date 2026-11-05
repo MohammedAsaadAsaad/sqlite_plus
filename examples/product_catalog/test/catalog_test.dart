@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -160,94 +162,94 @@ void main() {
     expect(englishHits.matches.first.language, 'English');
   });
 
-  testWidgets('the screen waits for the user, then shows each step', (
+  test('a saved image opens ready to search', () async {
+    final original = CatalogSession();
+    await original.insert(const [
+      ProductLine(language: 'Arabic', sourceLine: 1, name: 'لبن قديم'),
+    ]);
+    await original.buildIndex();
+    final bytes = original.exportImage();
+    await original.close();
+
+    final restored = CatalogSession();
+    addTearDown(restored.close);
+    await restored.openImage(bytes);
+    expect(restored.indexed, isTrue);
+    expect(restored.productCount, 1);
+    final hits = await restored.searchProducts('لبن');
+    expect(hits.matches.single.name, 'لبن قديم');
+  });
+
+  testWidgets('the catalog is prepared once and search stays on screen', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1200, 2200);
+    tester.view.physicalSize = const Size(800, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    var round = 0;
+    final directory = Directory.systemTemp.createTempSync('catalog-screen');
+    addTearDown(() => directory.deleteSync(recursive: true));
+    final store = File('${directory.path}/catalog.sqlite');
+    var loads = 0;
+
+    Future<List<ProductLine>> products({
+      required bool arabic,
+      required bool english,
+    }) async {
+      loads += 1;
+      return const [
+        ProductLine(language: 'Arabic', sourceLine: 1, name: 'لبن قديم'),
+      ];
+    }
+
+    Future<File> storeFile() async => store;
+
     await tester.pumpWidget(
       CatalogApp(
-        products: ({required bool arabic, required bool english}) async {
-          round += 1;
-          if (round == 1) {
-            return const [
-              ProductLine(language: 'Arabic', sourceLine: 1, name: 'لبن قديم'),
-            ];
-          }
-          return const [
-            ProductLine(language: 'Arabic', sourceLine: 4, name: 'أرز جديد'),
-          ];
-        },
+        key: const Key('launch-1'),
+        products: products,
+        storeFile: storeFile,
       ),
     );
+    expect(find.byKey(const Key('load-products')), findsNothing);
+    expect(find.byKey(const Key('build-index')), findsNothing);
+    expect(find.byKey(const Key('search-field')), findsOneWidget);
 
-    expect(find.text('Nothing has run yet'), findsOneWidget);
-    expect(find.byKey(const Key('example-arabic')), findsOneWidget);
-    expect(find.byKey(const Key('example-biscuit')), findsOneWidget);
-    expect(find.text('No operations yet.'), findsOneWidget);
-    expect(
-      tester
-          .widget<FilledButton>(find.byKey(const Key('build-index')))
-          .onPressed,
-      isNull,
-    );
-    expect(
-      tester
-          .widget<FilledButton>(find.byKey(const Key('search-button')))
-          .onPressed,
-      isNull,
-    );
+    await _waitForText(tester, 'Ready');
+    expect(loads, 1);
+    expect(store.existsSync(), isTrue);
+    expect(find.text('Load products'), findsNothing);
+    expect(find.text('Build index'), findsNothing);
 
-    await _tap(tester, const Key('load-products'));
-    await _waitForText(tester, '2 recorded');
-    expect(find.text('Insert products'), findsOneWidget);
-    expect(find.text('Read product files'), findsOneWidget);
-    expect(find.textContaining('1 rows in products'), findsOneWidget);
-    expect(
-      find.text('Products are in the database. The search index is not built.'),
-      findsOneWidget,
-    );
-
-    await _tap(tester, const Key('build-index'));
-    await _waitForText(tester, '3 recorded');
-    expect(find.text('Build search index'), findsWidgets);
-    expect(find.text('Search index is ready'), findsOneWidget);
-
-    await tester.ensureVisible(find.byKey(const Key('search-field')));
     await tester.enterText(find.byKey(const Key('search-field')), 'لبن');
     await tester.pump();
     await _tap(tester, const Key('search-button'));
-    await _waitForText(tester, '4 recorded');
-    expect(find.text('لبن قديم'), findsOneWidget);
+    await _waitForText(tester, 'لبن قديم');
 
-    await _tap(tester, const Key('load-products'));
-    await _waitForText(tester, '6 recorded');
-    expect(find.text('لبن قديم'), findsNothing);
-    expect(
-      tester
-          .widget<FilledButton>(find.byKey(const Key('search-button')))
-          .onPressed,
-      isNull,
+    await tester.tap(find.byKey(const Key('catalog-menu')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Load products'), findsOneWidget);
+    expect(find.text('Rebuild index'), findsOneWidget);
+    expect(find.text('Sample resources'), findsOneWidget);
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.pumpWidget(
+      CatalogApp(
+        key: const Key('launch-2'),
+        products: products,
+        storeFile: storeFile,
+      ),
     );
-
-    await _tap(tester, const Key('build-index'));
-    await _waitForText(tester, '7 recorded');
-    await tester.ensureVisible(find.byKey(const Key('search-field')));
-    await tester.enterText(find.byKey(const Key('search-field')), 'أرز');
+    await _waitForText(tester, 'Ready');
+    expect(loads, 1);
+    await tester.enterText(find.byKey(const Key('search-field')), 'لبن');
     await tester.pump();
     await _tap(tester, const Key('search-button'));
-    await _waitForText(tester, '8 recorded');
-    expect(find.text('أرز جديد'), findsOneWidget);
-    expect(find.text('لبن قديم'), findsNothing);
-
-    await _tap(tester, const Key('sample-resources'));
-    await _waitForText(tester, '9 recorded');
-    expect(find.text('Resource sample'), findsOneWidget);
-    expect(find.textContaining('Peak RSS'), findsWidgets);
+    await _waitForText(tester, 'لبن قديم');
   });
 }
 
@@ -270,5 +272,11 @@ Future<void> _waitForText(WidgetTester tester, String text) async {
       return;
     }
   }
-  fail('Timed out waiting for "$text"');
+  final visible = find
+      .byType(Text)
+      .evaluate()
+      .map((element) => (element.widget as Text).data)
+      .whereType<String>()
+      .join(' | ');
+  fail('Timed out waiting for "$text". Visible: $visible');
 }

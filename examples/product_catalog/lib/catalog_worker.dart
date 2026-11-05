@@ -103,8 +103,43 @@ Future<void> _handle(_SessionHolder holder, Object? message) async {
           'rss': ProcessInfo.currentRss,
           'peak': ProcessInfo.maxRss,
         });
+      case 'open':
+        final path = request['path'] as String;
+        final file = File(path);
+        if (!file.existsSync() || file.lengthSync() == 0) {
+          reply.send({'ok': true, 'found': false});
+          break;
+        }
+        try {
+          final bytes = await file.readAsBytes();
+          await holder.session.close();
+          holder.session = CatalogSession();
+          await holder.session.openImage(bytes);
+          reply.send({
+            'ok': true,
+            'found': true,
+            'indexed': holder.session.indexed,
+            'count': holder.session.productCount,
+            'sample': _sample(holder.session),
+          });
+        } catch (error) {
+          await holder.session.close();
+          holder.session = CatalogSession();
+          reply.send({'ok': true, 'found': false, 'error': error.toString()});
+        }
+      case 'save':
+        final path = request['path'] as String;
+        final bytes = holder.session.exportImage();
+        final file = File(path);
+        await file.parent.create(recursive: true);
+        final temporary = File('$path.saving');
+        await temporary.writeAsBytes(bytes, flush: true);
+        if (file.existsSync()) await file.delete();
+        await temporary.rename(file.path);
+        reply.send({'ok': true, 'image': bytes.length});
       case 'index':
         await holder.session.buildIndex(
+          rebuild: request['rebuild'] == true,
           onProgress: (done, total) {
             events.send({
               'progress': true,

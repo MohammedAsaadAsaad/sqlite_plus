@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'catalog_controller.dart';
@@ -5,9 +7,18 @@ import 'catalog_format.dart';
 import 'catalog_work.dart';
 
 class CatalogPage extends StatefulWidget {
-  const CatalogPage({super.key, this.products});
+  const CatalogPage({
+    super.key,
+    this.products,
+    this.storeFile,
+    this.prepareOnStart = true,
+  });
 
   final ProductLoader? products;
+  final Future<File> Function()? storeFile;
+
+  /// Opens a saved catalog, or builds one when no file exists yet.
+  final bool prepareOnStart;
 
   @override
   State<CatalogPage> createState() => _CatalogPageState();
@@ -16,12 +27,19 @@ class CatalogPage extends StatefulWidget {
 class _CatalogPageState extends State<CatalogPage> {
   late final CatalogController _controller;
   final _query = TextEditingController();
+  bool _showActivity = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = CatalogController(products: widget.products);
+    _controller = CatalogController(
+      products: widget.products,
+      storeFile: widget.storeFile,
+    );
     _query.addListener(() => setState(() {}));
+    if (widget.prepareOnStart) {
+      _controller.prepare();
+    }
   }
 
   void _runExample(String query) {
@@ -46,6 +64,54 @@ class _CatalogPageState extends State<CatalogPage> {
         final controller = _controller;
         final theme = Theme.of(context);
         return Scaffold(
+          appBar: AppBar(
+            title: const Text('Catalog'),
+            actions: [
+              PopupMenuButton<String>(
+                key: const Key('catalog-menu'),
+                tooltip: 'Commands',
+                onSelected: (value) {
+                  switch (value) {
+                    case 'load':
+                      controller.load();
+                    case 'index':
+                      controller.buildIndex();
+                    case 'sample':
+                      controller.sample();
+                    case 'activity':
+                      setState(() => _showActivity = !_showActivity);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    key: const Key('load-products'),
+                    value: 'load',
+                    enabled: controller.canLoad,
+                    child: const Text('Load products'),
+                  ),
+                  PopupMenuItem(
+                    key: const Key('build-index'),
+                    value: 'index',
+                    enabled: controller.canIndex,
+                    child: Text(
+                      controller.indexed ? 'Rebuild index' : 'Build index',
+                    ),
+                  ),
+                  PopupMenuItem(
+                    key: const Key('sample-resources'),
+                    value: 'sample',
+                    enabled: controller.canSample,
+                    child: const Text('Sample resources'),
+                  ),
+                  PopupMenuItem(
+                    key: const Key('show-activity'),
+                    value: 'activity',
+                    child: Text(_showActivity ? 'Hide activity' : 'Activity'),
+                  ),
+                ],
+              ),
+            ],
+          ),
           body: SafeArea(
             child: Align(
               alignment: Alignment.topCenter,
@@ -54,69 +120,20 @@ class _CatalogPageState extends State<CatalogPage> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                   children: [
-                    Text('Catalog', style: theme.textTheme.headlineSmall),
-                    const SizedBox(height: 4),
                     Text(
                       controller.status,
                       key: const Key('status-line'),
                       style: theme.textTheme.bodyLarge,
                     ),
-                    const SizedBox(height: 14),
-                    if (controller.busy)
+                    if (controller.busy) ...[
+                      const SizedBox(height: 14),
                       KeyedSubtree(
                         key: const Key('busy'),
                         child: controller.progressTotal > 0
                             ? _Progress(controller: controller)
                             : const SizedBox(height: 4),
-                      )
-                    else
-                      _Metrics(controller: controller),
-                    const SizedBox(height: 14),
-                    SegmentedButton<String>(
-                      multiSelectionEnabled: true,
-                      emptySelectionAllowed: true,
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(value: 'Arabic', label: Text('Arabic')),
-                        ButtonSegment(value: 'English', label: Text('English')),
-                      ],
-                      selected: {
-                        if (controller.arabic) 'Arabic',
-                        if (controller.english) 'English',
-                      },
-                      onSelectionChanged: controller.busy
-                          ? null
-                          : (selected) {
-                              controller.setArabic(selected.contains('Arabic'));
-                              controller.setEnglish(
-                                selected.contains('English'),
-                              );
-                            },
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton(
-                            key: const Key('load-products'),
-                            onPressed: controller.canLoad
-                                ? controller.load
-                                : null,
-                            child: const Text('Load'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: FilledButton(
-                            key: const Key('build-index'),
-                            onPressed: controller.canIndex
-                                ? controller.buildIndex
-                                : null,
-                            child: const Text('Index'),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                     const SizedBox(height: 18),
                     TextField(
                       key: const Key('search-field'),
@@ -198,23 +215,10 @@ class _CatalogPageState extends State<CatalogPage> {
                       const SizedBox(height: 18),
                       _Results(controller: controller),
                     ],
-                    const SizedBox(height: 18),
-                    _Reports(reports: controller.reports),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        key: const Key('sample-resources'),
-                        onPressed: controller.canSample
-                            ? controller.sample
-                            : null,
-                        child: const Text('Sample resources'),
-                      ),
-                    ),
-                    Text(
-                      'Each step runs on a background isolate, 1,000 products at a time. '
-                      'The time shown excludes the resource sample.',
-                      style: theme.textTheme.bodySmall,
-                    ),
+                    if (_showActivity) ...[
+                      const SizedBox(height: 18),
+                      _Reports(reports: controller.reports),
+                    ],
                   ],
                 ),
               ),
@@ -253,55 +257,6 @@ class _Progress extends StatelessWidget {
         const SizedBox(height: 6),
         Text('${formatCount(done)} / ${formatCount(total)}'),
       ],
-    );
-  }
-}
-
-class _Metrics extends StatelessWidget {
-  const _Metrics({required this.controller});
-
-  final CatalogController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final latest = controller.latest;
-    return Row(
-      children: [
-        _Metric(label: 'Products', value: formatCount(controller.productCount)),
-        _Metric(
-          label: 'Image',
-          value: latest == null ? '—' : formatBytes(latest.imageBytes),
-        ),
-        _Metric(
-          label: 'Memory',
-          value: latest == null ? '—' : formatBytes(latest.rssBytes),
-        ),
-      ],
-    );
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: theme.textTheme.labelMedium),
-            const SizedBox(height: 2),
-            Text(value, style: theme.textTheme.titleMedium),
-          ],
-        ),
-      ),
     );
   }
 }

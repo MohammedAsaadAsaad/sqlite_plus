@@ -1,5 +1,26 @@
 # Development log
 
+## 2026-11-05 — Catalog is saved once; setup stays in the menu
+
+- The first launch loads both product lists, builds the keyword index, and
+  writes `product_catalog.sqlite` in the app's private files directory.
+  Later launches open that image and start on search. The file is replaced
+  only when Load products or Rebuild index is chosen from the top menu.
+  Activity and the resource sample are in that menu too.
+- `flutter analyze --fatal-infos` reported no issues and `flutter test` passed
+  9 tests. One test saves an image, opens it, and searches without building
+  the index again. The widget test prepares once, searches, then opens the
+  same file in a second launch without reading the product list again.
+- `flutter build apk --release --target-platform android-arm64` at 15:06
+  Asia/Hebron (UTC+2) on 5 November 2026 wrote
+  `examples/product_catalog/dist/product-catalog-arm64-v8a.apk`, 19751453
+  bytes, sha256 `42fa6bddec67f5b7114ca02577af92045d8c602739a82ea3425a7830067e9a88`.
+  `aapt dump badging` reports package `dev.sqliteplus.product_catalog`,
+  versionName `0.3.0`, versionCode `3`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `Product catalog`, and native-code
+  `arm64-v8a` only. The release build is signed with the Android debug
+  certificate. The package was not installed on a device or an emulator.
+
 ## 2026-11-05 — Catalog isolate, batches, and a simpler screen
 
 - The catalog screen is a short phone layout: one status line, three figures,
