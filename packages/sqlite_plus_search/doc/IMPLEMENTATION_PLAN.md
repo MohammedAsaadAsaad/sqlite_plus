@@ -12,8 +12,9 @@ Core functionality is implemented; production release acceptance remains open.
 - [x] 7. Bounded, versioned collection-local feedback; reset/export/import.
 - [x] 8. Transactional trigger logs and logical incremental replay. Physical FTS
   persistence still rewrites postings and is an unresolved performance limit.
-- [ ] 9. Release validation. Tests, native comparisons and 1k/10k AOT runs pass;
-  real-model, 100k/1m scale, real browser persistence and broader OS gates remain.
+- [ ] 9. Release validation. Tests, native comparisons, and format 3 AOT runs at
+  1k and 10k pass. Real-model quality, 100k/1m scale, real browser persistence,
+  and broader OS gates remain.
 - [x] 10. Runnable examples, development docs and CI configuration. No remote
   CI result or publication is claimed.
 
@@ -61,15 +62,19 @@ See benchmark/RESULTS.md and committed raw JSON/progress logs/source hashes.
 Memory backend; synthetic 2D provider; one shared-host process per size with five
 warm samples. Initial indexing includes integrity metadata.
 
-- 1000 records: 2.549333 s indexing (historical format-1 run: 7.901779 s).
-- 10000 records: 26.926220 s indexing. Historical implementation timed out during
-  indexing at 180 s. The hardened complete benchmark process finished in 79.35 s.
-- 100000 records: source creation completed; indexing timed out at 120 s.
-  No fabricated indexing/search metrics are reported.
-- 1000000 records: not practical before resolving the smaller scale gate.
-- At 10000 records, source update alone takes 12.795218 s and synchronization
-  20.004185 s. Logical embedding updates are incremental; physical FTS persistence
-  and source-trigger serialization are not production-scale optimized.
+- Format 2, kept as provenance: 1000 records indexed in 2.549333 s (historical
+  format-1 run: 7.901779 s). 10000 records indexed in 26.926220 s. The 100000
+  format 2 attempt created the source and timed out at 120 s during indexing.
+- Format 3, measured 2026-11-05 on the same class of Linux x64 AOT host: 1000
+  records indexed in 1.189207 s; 10000 records indexed in 20.311424 s. At 10000
+  records, source update alone is 3.008387 s and synchronization is 5.319037 s.
+  Median warm keyword/vector/hybrid queries are 455.066 ms, 348.888 ms, and
+  639.255 ms. The database image is 1110016 bytes. A format 3 100000-record
+  attempt was stopped after 16 minutes while indexing. No metrics are reported
+  for it. 1000000 was not started.
+- Logical embedding updates are incremental. Physical FTS persistence still
+  rewrites postings for the collection. That rewrite is not production-scale
+  optimized.
 
 Production embeddings/cross-language evaluation, repeated-process performance
 statistics, arbitrary external-writer ownership, real-device/torn-byte recovery,

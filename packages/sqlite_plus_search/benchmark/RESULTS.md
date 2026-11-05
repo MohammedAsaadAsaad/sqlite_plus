@@ -1,7 +1,45 @@
+# Format 3 measurements — 2026-11-05
+
+Dart 3.13.7/Linux x64 AOT, memory backend, synthetic 2D fixture, shared managed
+host. One process per size with five warm samples. Cold means the first query
+after indexing, not an OS cache reset. No concurrent test workload was
+deliberately run during these samples. CPU scheduling is not isolated.
+Raw runs: [1000](results/linux_1000_format3.json) and
+[10000](results/linux_10000_format3.json).
+
+| Metric | 1,000 records | 10,000 records |
+|---|---:|---:|
+| Initial indexing (s) | 1.189207 | 20.311424 |
+| Cold keyword (ms) | 48.878 | 484.488 |
+| Cold vector (ms) | 32.624 | 314.710 |
+| Cold hybrid (ms) | 58.915 | 592.748 |
+| Median warm keyword (ms) | 49.681 | 455.066 |
+| Median warm vector (ms) | 36.054 | 348.888 |
+| Median warm hybrid (ms) | 62.974 | 639.255 |
+| Source update alone (ms) | 359.419 | 3008.387 |
+| Incremental sync alone (ms) | 616.455 | 5319.037 |
+| Feedback (ms) | 1.486 | 3.585 |
+| Process RSS (bytes) | 51392512 | 77606912 |
+| Peak RSS (bytes) | 79622144 | 226885632 |
+| Image size (bytes) | 184320 | 1110016 |
+
+These are format 3. Embeddings are `vec0` rows. Unfiltered ranking reads the
+shadow in stopped rowid pages of 512. Keyword ids are resolved with a source-key
+set and a key-table scan, not a correlated `EXISTS`. Non-contentless-delete FTS5
+rows share leaves. A one-row sync still rewrites the FTS postings; the rewrite
+encodes each leaf by probing its length instead of re-encoding after every
+document. A 100,000-record attempt on the same host finished source creation
+and was still indexing after 16 minutes, so it was stopped. No index or query
+numbers are reported for that size. 1,000,000 was not started. Process RSS is
+one sample and is not a stable memory guarantee. No real-model, browser, or
+other-OS timing is claimed.
+
+---
+
 # Hardened format-2 measurements — 2026-11-04
 
-These numbers are format 2. Format 3 was not remeasured, so they are not a claim
-about the `vec0` index.
+These numbers are format 2. They are kept as provenance for the index that
+stored vectors outside `vec0`. They are not format 3 timings.
 
 Dart 3.13.7/Linux x64 AOT, memory backend, synthetic 2D fixture, shared managed
 host. One process per size with five warm samples. No concurrent test workload

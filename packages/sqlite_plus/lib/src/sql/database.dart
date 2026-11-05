@@ -1261,7 +1261,7 @@ final class SqliteDatabase {
     if (parameters.length != statement.parameterCount) {
       throw const SqlException('Incorrect parameter count');
     }
-    if (!_singleTablePage(statement)) return null;
+    if (!_singleTablePage(statement, allowRowidLowerBound: true)) return null;
     final bound = parameters.map(sqlValue).toList();
     final limit = _sqlCount(statement.limit, bound);
     final offset =
@@ -1278,9 +1278,17 @@ final class SqliteDatabase {
             asciiLower(entry.name) == asciiLower(table.name))
         .firstOrNull;
     if (entry == null) return null;
+    final lower = statement.where == null
+        ? null
+        : _rowidLowerBound(statement.where!, table, bound);
+    if (statement.where != null && lower == null) return null;
     final plan = _plan(statement, table, bound);
+    final ranged = lower != null;
     if (plan.rootPage == null ||
-        (plan.access != 'table-scan' && plan.access != 'index-tree-scan')) {
+        (ranged
+            ? plan.access != 'rowid-range'
+            : plan.access != 'table-scan' &&
+                plan.access != 'index-tree-scan')) {
       return null;
     }
     if (statement.order.isNotEmpty) {
@@ -1293,12 +1301,9 @@ final class SqliteDatabase {
     final need = offset + limit;
     final reader = BtreeReader(_pager, maxPayloadBytes: 1000000000);
     final input = <RowValues>[];
-    final stream = plan.access == 'index-tree-scan'
-        ? reader.scanIndex(plan.rootPage!)
-        : reader.scanTable(plan.rootPage!);
     final stored = table.storageColumns;
     final columns = table.columns;
-    await for (final record in stream) {
+    void addRecord(BtreeRecord record) {
       if (record.values.length > stored.length) {
         throw const FormatException('More stored columns than catalog columns');
       }
@@ -1329,18 +1334,91 @@ final class SqliteDatabase {
       }
       table.evaluateGenerated(row, _pager.header.textEncoding, lazy: true);
       input.add(row);
+    }
+
+    final resume = lower;
+    late final Stream<BtreeRecord> stream;
+    if (resume == null) {
+      stream = plan.access == 'index-tree-scan'
+          ? reader.scanIndex(plan.rootPage!)
+          : reader.scanTable(plan.rootPage!);
+    } else {
+      final boundRowid = resume.$1;
+      final inclusive = resume.$2;
+      stream = reader.seekTable(plan.rootPage!, (rowid) {
+        final comparison = rowid.compareTo(boundRowid);
+        if (inclusive ? comparison < 0 : comparison <= 0) return -1;
+        return 0;
+      });
+    }
+    await for (final record in stream) {
+      addRecord(record);
       if (input.length >= need) break;
     }
     return _evaluate(statement, bound, table, input).materialize();
   }
 
-  bool _singleTablePage(SelectStatement statement) {
+  /// `rowid > constant` or `rowid >= constant`, including a rowid alias.
+  (BigInt, bool)? _rowidLowerBound(
+      Expr where, CatalogTable table, List<Object?> bound) {
+    if (where is! BinaryExpr) return null;
+    var op = where.op;
+    Expr? columnExpr;
+    Expr? constant;
+    if (where.left is ColumnExpr) {
+      columnExpr = where.left;
+      constant = where.right;
+    } else if (where.right is ColumnExpr) {
+      columnExpr = where.right;
+      constant = where.left;
+      op = const {'<': '>', '<=': '>=', '>': '<', '>=': '<='}[op] ?? op;
+    }
+    if (columnExpr is! ColumnExpr ||
+        constant == null ||
+        (op != '>' && op != '>=')) {
+      return null;
+    }
+    final column = columnExpr;
+    if (column.qualifier != null) return null;
+    final alias = table.rowidAlias;
+    final actual =
+        table.columns.where((entry) => asciiLower(entry.name) == column.key);
+    if (!(alias != null && column.key == asciiLower(alias)) &&
+        (!['rowid', '_rowid_', 'oid'].contains(column.key) ||
+            actual.isNotEmpty)) {
+      return null;
+    }
+    try {
+      constant.validate({});
+    } on SqlException {
+      return null;
+    }
+    if (!_planningConstant(constant)) return null;
+    var value = applyAffinity(
+        constant
+            .evaluate(EvalContext({}, {}, bound, _pager.header.textEncoding)),
+        'numeric');
+    if (value is double &&
+        value.isFinite &&
+        value == value.truncateToDouble()) {
+      value = BigInt.from(value);
+    }
+    if (value is! BigInt ||
+        value < -(BigInt.one << 63) ||
+        value >= BigInt.one << 63) {
+      return null;
+    }
+    return (value, op == '>=');
+  }
+
+  bool _singleTablePage(SelectStatement statement,
+      {bool allowRowidLowerBound = false}) {
     final source = statement.sources.singleOrNull;
     return statement.table != null &&
         source != null &&
         source.query == null &&
         source.group.isEmpty &&
-        statement.where == null &&
+        (statement.where == null || allowRowidLowerBound) &&
         !statement.distinct &&
         statement.groupBy.isEmpty &&
         statement.having == null &&

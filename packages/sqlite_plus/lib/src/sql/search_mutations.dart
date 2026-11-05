@@ -702,22 +702,75 @@ extension _SearchMutations on ImageMutations {
     final index = <(BigInt, Map<String, Object?>)>[];
     final segments = <FtsSegmentRef>[];
     final totals = List<int>.filled(spec.columns.length, 0);
-    for (var i = 0; i < ordered.length; i++) {
-      final doc = ordered[i];
+    for (final doc in ordered) {
       for (var column = 0; column < spec.columns.length; column++) {
         if (!spec.columns[column].unindexed) {
           totals[column] += doc.tokens[column].length;
         }
       }
-      final segid = i + 1;
-      final leaf = _ftsLeaf(spec, doc);
-      leaves.add((BigInt.from(fts5LeafRowid(segid, 1)), leaf));
-      index.add((
-        BigInt.from(segid),
-        {'segid': BigInt.from(segid), 'term': Uint8List(0), 'pgno': BigInt.two}
-      ));
-      segments.add(FtsSegmentRef(segid, 1, 1,
-          origin1: segid, origin2: segid, entries: 1));
+    }
+    // contentless-delete keeps one segment per row because each origin is that
+    // row. Other tables pack many rows into one leaf, up to the page limit.
+    if (spec.contentlessDelete) {
+      for (var i = 0; i < ordered.length; i++) {
+        final segid = i + 1;
+        leaves.add(
+            (BigInt.from(fts5LeafRowid(segid, 1)), _ftsLeaf(spec, ordered[i])));
+        index.add((
+          BigInt.from(segid),
+          {
+            'segid': BigInt.from(segid),
+            'term': Uint8List(0),
+            'pgno': BigInt.two
+          }
+        ));
+        segments.add(FtsSegmentRef(segid, 1, 1,
+            origin1: segid, origin2: segid, entries: 1));
+      }
+    } else {
+      // Each leaf is the longest prefix that fits. Probing by doubling finds
+      // that prefix without re-encoding after every document.
+      var cursor = 0;
+      var segid = 1;
+      while (cursor < ordered.length) {
+        var count = 1;
+        var accepted = 0;
+        Uint8List? leaf;
+        while (cursor + count <= ordered.length) {
+          try {
+            leaf = _ftsLeafMany(spec, ordered.sublist(cursor, cursor + count));
+            accepted = count;
+            if (cursor + count == ordered.length) break;
+            count *= 2;
+          } on SqlException {
+            if (accepted == 0) rethrow;
+            break;
+          }
+        }
+        var hi =
+            cursor + count <= ordered.length ? count : ordered.length - cursor;
+        while (accepted + 1 < hi) {
+          final mid = (accepted + hi) ~/ 2;
+          try {
+            leaf = _ftsLeafMany(spec, ordered.sublist(cursor, cursor + mid));
+            accepted = mid;
+          } on SqlException {
+            hi = mid;
+          }
+        }
+        leaves.add((BigInt.from(fts5LeafRowid(segid, 1)), leaf!));
+        index.add((
+          BigInt.from(segid),
+          {
+            'segid': BigInt.from(segid),
+            'term': Uint8List(0),
+            'pgno': BigInt.two
+          }
+        ));
+        segments.add(FtsSegmentRef(segid, 1, 1, entries: accepted));
+        segid++;
+        cursor += accepted;
+      }
     }
     final data = <(BigInt, Map<String, Object?>)>[
       (BigInt.one, {'block': encodeAverages(ordered.length, totals)}),
@@ -757,32 +810,43 @@ extension _SearchMutations on ImageMutations {
     }
   }
 
-  Uint8List _ftsLeaf(Fts5Spec spec, _SearchDoc doc) {
-    final terms = <String, Map<int, List<int>>>{};
-    void add(int prefix, String text, int column, int position) {
+  Uint8List _ftsLeaf(Fts5Spec spec, _SearchDoc doc) =>
+      _ftsLeafMany(spec, [doc]);
+
+  Uint8List _ftsLeafMany(Fts5Spec spec, List<_SearchDoc> docs) {
+    final terms = <String, Map<BigInt, Map<int, List<int>>>>{};
+    void add(int prefix, String text, BigInt rowId, int column, int position) {
       if (text.isEmpty) return;
       final key = String.fromCharCodes(fts5Term(prefix, text));
       terms
           .putIfAbsent(key, () => {})
+          .putIfAbsent(rowId, () => {})
           .putIfAbsent(column, () => [])
           .add(position);
     }
 
-    for (var column = 0; column < spec.columns.length; column++) {
-      if (spec.columns[column].unindexed) continue;
-      final tokens = doc.tokens[column];
-      for (var position = 0; position < tokens.length; position++) {
-        final text = tokens[position].text;
-        add(0, text, column, position);
-        for (var i = 0; i < spec.prefix.length; i++) {
-          add(i + 1, ftsPrefixChars(text, spec.prefix[i]), column, position);
+    for (final doc in docs) {
+      for (var column = 0; column < spec.columns.length; column++) {
+        if (spec.columns[column].unindexed) continue;
+        final tokens = doc.tokens[column];
+        for (var position = 0; position < tokens.length; position++) {
+          final text = tokens[position].text;
+          add(0, text, doc.id, column, position);
+          for (var i = 0; i < spec.prefix.length; i++) {
+            add(i + 1, ftsPrefixChars(text, spec.prefix[i]), doc.id, column,
+                position);
+          }
         }
       }
     }
     return encodeLeaf([
       for (final entry in terms.entries)
-        FtsPosting(Uint8List.fromList(entry.key.codeUnits),
-            [FtsRowPosting(doc.id, entry.value)])
+        FtsPosting(
+            Uint8List.fromList(entry.key.codeUnits),
+            [
+              for (final row in entry.value.entries)
+                FtsRowPosting(row.key, row.value)
+            ]..sort((left, right) => left.rowId.compareTo(right.rowId)))
     ], positions: spec.detail != 'none');
   }
 

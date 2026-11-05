@@ -2510,3 +2510,35 @@ result=pass
   numbers were not remeasured. No speed claim. Packages were not published.
   Android, iOS, and a browser persistence backend were not run. B5, M9, and item
   108 remain unchecked. The database browser APK was not rebuilt.
+
+## 2026-11-05 — Search query and index cost
+
+- Keyword and semantic search no longer use a correlated `EXISTS` against the
+  source table. An intermediate build that did was slower than format 2 on
+  queries and was not kept. The recorded run loads source keys and the internal
+  id map with two scans.
+- `browse` stops a single-table window when the predicate is a rowid lower bound
+  (`>`, `>=`, or the rowid alias) and `ORDER BY` follows the table. `query` is
+  unchanged and still reads its input. Unfiltered `rankVec0` uses those stopped
+  pages of 512. Source indexing uses the same window at 1000 rows.
+- Non-contentless-delete FTS5 leaves pack many documents. The writer finds the
+  longest prefix that fits by doubling, instead of re-encoding after every
+  document. Contentless-delete stays one segment per row. A one-row sync still
+  rewrites every posting. Native FTS5 and FTS3/4 pin tests that were run still
+  pass.
+- Format 3 AOT, Dart 3.13.7, Linux x64, memory, synthetic 2D, one process,
+  five warm samples. 1000: index 1.189207 s, median warm keyword 49.681 ms,
+  vector 36.054 ms, hybrid 62.974 ms, source update 359.419 ms, sync 616.455 ms,
+  image 184320 bytes, RSS 51392512, peak 79622144. 10000: index 20.311424 s,
+  median warm keyword 455.066 ms, vector 348.888 ms, hybrid 639.255 ms, source
+  update 3008.387 ms, sync 5319.037 ms, image 1110016 bytes, RSS 77606912, peak
+  226885632. Raw JSON is `linux_1000_format3.json` and
+  `linux_10000_format3.json`. Format 2 numbers stay in RESULTS.md. A 100000-record
+  attempt was stopped after 16 minutes while indexing; no metrics are reported.
+  1000000 was not started. RSS is one sample.
+- Local checks after `dart format` and `dart analyze --fatal-infos`: search 61
+  tests, vec 5 tests, the FTS5 pin, the FTS3/4 pin, the search-engine tests, the
+  rowid-window browse test, and the page-write tests. The full engine suite was
+  not re-run. This performance edit has no new remote CI. Packages were not
+  published. Android, iOS, and a browser persistence backend were not run. B5,
+  M9, and item 108 remain unchecked. The database browser APK was not rebuilt.

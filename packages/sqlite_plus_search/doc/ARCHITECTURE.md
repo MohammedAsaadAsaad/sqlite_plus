@@ -75,8 +75,10 @@ per database and rejects existing transactions. It uses versioned collection
 metadata plus derived per-collection key, FTS, vec0 and pending-event tables.
 Embeddings are the vec0 shadow rows. Search calls `rankVec0` for eligible internal
 ids and does not keep a second vector table or a second cosine loop. `MATCH` plus
-`k` is not used, because that limit is applied before a filter. Initial index
-writes are batched in groups of 1000; the source query still materializes.
+`k` is not used, because that limit is applied before a filter. Unfiltered
+ranking reads the shadow in stopped rowid pages of 512. Initial index writes are
+batched in groups of 1000. Each source page is a stopped rowid window, so the
+read does not scan the whole source table again for every page.
 Incremental replay coalesces source keys, atomically replaces their derived
 entries and acknowledges only captured event IDs. Embedding failure rolls
 everything back. Explicit rebuild resets ranking weights/context.

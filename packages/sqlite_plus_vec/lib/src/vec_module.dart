@@ -111,9 +111,10 @@ final class VecScore {
 /// `k` cutoff: `embedding MATCH ? AND k = ?` still selects its `k` rows before
 /// a later SQL predicate, and this function does not change that query.
 ///
-/// Rows are read from the shadow table in pages of 64. One page of blobs is
-/// decoded, scored, and released before the next page. The result is ordered
-/// by ascending distance, then row id. A missing requested row throws
+/// Rows are read from the shadow table in pages of 512. Each page is a stopped
+/// rowid scan, so the next page does not reread earlier rows. One page of
+/// blobs is decoded, scored, and released before the next page. The result is
+/// ordered by ascending distance, then row id. A missing requested row throws
 /// `vec0 row is missing`. [rejectZeroVectors] throws `vec0 zero vector` when
 /// every stored coordinate is zero; the default keeps the cosine rule that a
 /// zero vector has distance 1 from a non-zero query.
@@ -165,7 +166,7 @@ Future<List<VecScore>> rankVec0(
   if (wanted == null) {
     Object? lower;
     while (true) {
-      final page = await _rankQuery(
+      final page = await _rankBrowse(
           database,
           'SELECT rowid, ${_quote(column)} FROM ${_quote(shadow)} '
           '${lower == null ? '' : 'WHERE rowid > ? '}'
@@ -198,12 +199,21 @@ Future<List<VecScore>> rankVec0(
   return scores;
 }
 
-const _rankPage = 64;
+const _rankPage = 512;
 
 Future<QueryResult> _rankQuery(Object database, String sql,
     [List<Object?> parameters = const []]) {
   if (database is SqliteDatabase) return database.query(sql, parameters);
   if (database is MutableSqliteDatabase) return database.query(sql, parameters);
+  throw ArgumentError('Expected a sqlite_plus database');
+}
+
+Future<QueryResult> _rankBrowse(Object database, String sql,
+    [List<Object?> parameters = const []]) {
+  if (database is SqliteDatabase) return database.browse(sql, parameters);
+  if (database is MutableSqliteDatabase) {
+    return database.browse(sql, parameters);
+  }
   throw ArgumentError('Expected a sqlite_plus database');
 }
 

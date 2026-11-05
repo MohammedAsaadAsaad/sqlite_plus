@@ -1,0 +1,44 @@
+{
+  "records": 1000,
+  "sdk": "3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "os": "linux",
+  "processors": 4,
+  "backend": "memory",
+  "provider": "benchmark-fixture-v1",
+  "dimensions": 2,
+  "corpus": "identical milk baby Arabic documents; one tea update",
+  "index_us": 1189207,
+  "cold_keyword_us": 48878,
+  "cold_hybrid_us": 58915,
+  "cold_semantic_us": 32624,
+  "warm_keyword_us": [
+    47125,
+    49742,
+    49681,
+    48912,
+    51853
+  ],
+  "warm_hybrid_us": [
+    62974,
+    61923,
+    63834,
+    62827,
+    64086
+  ],
+  "warm_semantic_us": [
+    36054,
+    34345,
+    38545,
+    36764,
+    35995
+  ],
+  "incremental_update_and_hybrid_us": 1025402,
+  "source_update_us": 359419,
+  "incremental_sync_us": 616455,
+  "post_update_hybrid_us": 49523,
+  "feedback_us": 1486,
+  "rss_bytes": 51392512,
+  "peak_rss_bytes": 79622144,
+  "image_bytes": 184320,
+  "note": "Single AOT process; cold means first query after indexing, not OS cache reset. Fixture inference only. Learning context writes are included."
+}

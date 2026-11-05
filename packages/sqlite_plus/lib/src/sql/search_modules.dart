@@ -154,14 +154,15 @@ final class _Fts5Cursor extends VirtualTableCursor {
     ftsSession().tables[asciiLower(spec.table)] = state;
     _rows = [
       for (final document in documents.values)
-        (
-          document.rowId,
-          [
-            for (var i = 0; i < spec.columns.length; i++) document.texts[i],
-            null,
-            state.scores[document.rowId],
-          ]
-        )
+        if (pending == null || state.scores.containsKey(document.rowId))
+          (
+            document.rowId,
+            [
+              for (var i = 0; i < spec.columns.length; i++) document.texts[i],
+              null,
+              state.scores[document.rowId],
+            ]
+          )
     ];
     _index = 0;
   }

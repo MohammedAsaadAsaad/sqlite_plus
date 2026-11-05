@@ -34,12 +34,16 @@ persistence backend were not run for this change.
   are rejected by the mapping uniqueness rule.
 - FTS content is derived index text; original application rows are not copied or
   rewritten. Initial normalized-content writes are batched and FTS is built once.
-  The source query still materializes. Keyword search loads `MATCH` hits, then
-  resolves those ids. Semantic search loads eligible id and source-key pairs and
-  asks `rankVec0` for those rows in pages of 64. It does not keep a Dart list of
-  every decoded embedding. The hardened format 2 AOT run completed 10000 records
-  in 26.93 s of indexing; the 100000-record attempt still timed out during
-  indexing at 120 s. Format 3 was not remeasured. See benchmark/RESULTS.md.
+  The source read is a stopped rowid window of 1000 rows. Keyword search loads
+  `MATCH` hits, then resolves those ids against a source-key set and the key
+  table. Semantic search does the same for eligibility and asks `rankVec0` for
+  the rows. Unfiltered ranking scans the shadow in stopped pages of 512.
+  Filtered ranking passes only the eligible ids. It does not keep a Dart list of
+  every decoded embedding. The format 3 AOT run on 2026-11-05 completed 1000
+  records in 1.189207 s of indexing and 10000 records in 20.311424 s. A format 3
+  100000-record attempt was stopped after 16 minutes while indexing. The format 2
+  attempt at that size had timed out at 120 s. Neither produced index or query
+  numbers. See benchmark/RESULTS.md.
 - With autoUpdate, search replays the transactional trigger log. Without it, explicit
   rebuild is required after edits. Replay only regenerates changed embeddings and uses typed equality for common
   INT/TEXT keys. Mapping/source ID reconciliation still scans, and the engine FTS

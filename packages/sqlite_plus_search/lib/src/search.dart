@@ -234,32 +234,33 @@ final class SqlitePlusSearch {
           // SQLite's column-name mapping.
           await database.execute(
               'CREATE TABLE ${base}_keys (id INTEGER PRIMARY KEY, body TEXT NOT NULL, source_key TEXT NOT NULL UNIQUE)');
-          final source = await database.query('SELECT ${[
-            primaryKey,
-            ...textColumns
-          ].map(_quote).join(',')} FROM ${_quote(table)}');
-          // Load derived normalized content first, then build external-content
-          // FTS once. The engine rebuilds FTS storage after each FTS statement.
-          // This avoids repeatedly decoding/serializing all prior documents.
-          for (var start = 0; start < source.rows.length; start += 1000) {
+          // Read the source in pages so the whole table is not held beside the
+          // derived rows. External-content FTS is built once after that load.
+          final columns = [primaryKey, ...textColumns].map(_quote).join(',');
+          var nextId = 1;
+          Object? after;
+          while (true) {
+            final source = await database.browse(
+                'SELECT rowid, $columns FROM ${_quote(table)}'
+                '${after == null ? '' : ' WHERE rowid > ?'}'
+                ' ORDER BY rowid LIMIT 1000',
+                after == null ? const [] : [after]);
+            if (source.rows.isEmpty) break;
             final keys = <Object?>[], vectors = <Object?>[];
             final values = <String>[];
             final vectorValues = <String>[];
-            for (var index = start;
-                index < math.min(start + 1000, source.rows.length);
-                index++) {
-              final row = source.rows[index];
-              final key = row.first;
+            for (final row in source.rows) {
+              final key = row[1];
               if (key is! String && key is! BigInt) {
                 throw ArgumentError('Source keys must be text or integer');
               }
-              final text = row.skip(1).map((value) {
+              final text = row.skip(2).map((value) {
                 if (value != null && value is! String) {
                   throw ArgumentError('Indexed values must be text or null');
                 }
                 return value ?? '';
               }).join(' ');
-              final id = index + 1;
+              final id = nextId++;
               values.add('(?,?,?)');
               keys.addAll([id, key.toString(), analyzer.normalize(text)]);
               if (embeddingProvider != null) {
@@ -277,6 +278,8 @@ final class SqlitePlusSearch {
                   'INSERT INTO ${base}_vec(rowid,embedding) VALUES ${vectorValues.join(',')}',
                   vectors);
             }
+            after = source.rows.last[0];
+            if (source.rows.length < 1000) break;
           }
           await database.execute(
               "CREATE VIRTUAL TABLE ${base}_fts USING fts5(body, content='${base}_keys', content_rowid='id')");
@@ -363,6 +366,34 @@ final class SqlitePlusSearch {
         }
         final keyword = <SearchHit>[];
         final semantic = <SearchHit>[];
+        // A correlated EXISTS against the source table scans once per key.
+        // Load the source keys and the internal map separately instead.
+        Set<String>? allowedKeys;
+        Future<Set<String>> allowed() async {
+          if (allowedKeys != null) return allowedKeys!;
+          final rows = await database.query(
+              'SELECT ${_quote(meta.key)} FROM ${_quote(table)}'
+              '${filter == null ? '' : ' WHERE (${filter.sql})'}',
+              filter?.parameters ?? const []);
+          return allowedKeys =
+              rows.rows.map((row) => row[0].toString()).toSet();
+        }
+
+        Map<BigInt, String>? keyMap;
+        Future<Map<BigInt, String>> keys() async {
+          if (keyMap != null) return keyMap!;
+          final rows =
+              await database.query('SELECT id, source_key FROM ${base}_keys');
+          final ids = <BigInt, String>{};
+          for (final row in rows.rows) {
+            if (row[0] is! BigInt || row[1] is! String) {
+              throw StateError('Search mapping is corrupt; rebuild index');
+            }
+            ids[row[0] as BigInt] = row[1] as String;
+          }
+          return keyMap = ids;
+        }
+
         if (query.trim().isNotEmpty && mode != SearchMode.semantic) {
           // MATCH stays on the FTS table alone. Joining that virtual table
           // currently returns no rows, so eligible ids are resolved afterwards.
@@ -378,63 +409,70 @@ final class SqlitePlusSearch {
             }
             scores[id] = -score.toDouble();
           }
+          final live = await allowed();
           final ids = scores.keys.toList();
-          for (var start = 0; start < ids.length; start += 64) {
-            final chunk = ids.sublist(start, math.min(start + 64, ids.length));
-            final placeholders = List.filled(chunk.length, '?').join(',');
-            final mapped = await database.query(
-                'SELECT k.id, k.source_key FROM ${base}_keys k WHERE k.id IN '
-                '($placeholders) AND EXISTS (SELECT 1 FROM ${_quote(table)} src '
-                'WHERE CAST(src.${_quote(meta.key)} AS TEXT) = k.source_key'
-                '${filter == null ? '' : ' AND (${filter.sql})'})',
-                [...chunk, ...?filter?.parameters]);
-            final seen = <BigInt>{};
-            for (final row in mapped.rows) {
-              final id = row[0];
-              final key = row[1];
-              if (id is! BigInt || key is! String || !scores.containsKey(id)) {
+          if (ids.length > 256) {
+            final mapped = await keys();
+            for (final id in ids) {
+              final key = mapped[id];
+              if (key == null) {
                 throw StateError('Search mapping is corrupt; rebuild index');
               }
-              seen.add(id);
-              keyword.add(SearchHit(documentId: key, score: scores[id]!));
+              if (live.contains(key)) {
+                keyword.add(SearchHit(documentId: key, score: scores[id]!));
+              }
             }
-            if (seen.length == chunk.length) continue;
-            final present = await database.query(
-                'SELECT id FROM ${base}_keys WHERE id IN ($placeholders)',
-                chunk);
-            if (present.rows.length != chunk.length) {
-              throw StateError('Search mapping is corrupt; rebuild index');
+          } else {
+            for (var start = 0; start < ids.length; start += 256) {
+              final chunk =
+                  ids.sublist(start, math.min(start + 256, ids.length));
+              final placeholders = List.filled(chunk.length, '?').join(',');
+              final mapped = await database.query(
+                  'SELECT id, source_key FROM ${base}_keys WHERE id IN ($placeholders)',
+                  chunk);
+              final seen = <BigInt>{};
+              for (final row in mapped.rows) {
+                final id = row[0];
+                final key = row[1];
+                if (id is! BigInt || key is! String) {
+                  throw StateError('Search mapping is corrupt; rebuild index');
+                }
+                seen.add(id);
+                if (live.contains(key)) {
+                  keyword.add(SearchHit(documentId: key, score: scores[id]!));
+                }
+              }
+              if (seen.length != chunk.length) {
+                throw StateError('Search mapping is corrupt; rebuild index');
+              }
             }
           }
         }
         if (query.trim().isNotEmpty && mode != SearchMode.keyword) {
           final vector = await validatedEmbedding(embeddingProvider!, query);
-          final mapped = await database.query(
-              'SELECT k.id, k.source_key FROM ${base}_keys k WHERE EXISTS ('
-              'SELECT 1 FROM ${_quote(table)} src WHERE '
-              'CAST(src.${_quote(meta.key)} AS TEXT) = k.source_key'
-              '${filter == null ? '' : ' AND (${filter.sql})'})',
-              filter?.parameters ?? const []);
-          final ids = <BigInt, String>{};
-          for (final row in mapped.rows) {
-            if (row[0] is! BigInt || row[1] is! String) {
-              throw StateError('Vector mapping is corrupt; rebuild');
+          final mapped = await keys();
+          final live = await allowed();
+          final eligible = [
+            for (final entry in mapped.entries)
+              if (live.contains(entry.value)) entry.key
+          ];
+          if (filter != null) {
+            final counts = await database.query(
+                'SELECT (SELECT count(*) FROM ${base}_keys), (SELECT count(*) FROM ${base}_vec_vec)');
+            if (counts.rows.single[0] != counts.rows.single[1]) {
+              throw StateError('Vector index is incomplete; rebuild');
             }
-            ids[row[0] as BigInt] = row[1] as String;
-          }
-          final counts = await database.query(
-              'SELECT (SELECT count(*) FROM ${base}_keys), (SELECT count(*) FROM ${base}_vec_vec)');
-          if (counts.rows.single[0] != counts.rows.single[1]) {
-            throw StateError('Vector index is incomplete; rebuild');
           }
           final List<VecScore> scores;
           try {
+            // No filter scans the shadow in rowid order. A filter passes only
+            // the eligible ids, so ineligible embeddings are not decoded.
             scores = await rankVec0(
               database,
               table: '${base}_vec',
               query: vector,
               metric: 'cosine',
-              rowIds: ids.keys,
+              rowIds: filter == null ? null : eligible,
               rejectZeroVectors: true,
             );
           } on SqlException catch (error) {
@@ -443,11 +481,17 @@ final class SqlitePlusSearch {
             }
             throw StateError('Corrupt stored embedding; rebuild index');
           }
+          if (filter == null && scores.length != mapped.length) {
+            throw StateError(scores.length < mapped.length
+                ? 'Vector index is incomplete; rebuild'
+                : 'Vector mapping is corrupt; rebuild');
+          }
           for (final score in scores) {
-            final id = ids[score.rowId];
+            final id = mapped[score.rowId];
             if (id == null) {
               throw StateError('Vector mapping is corrupt; rebuild');
             }
+            if (!live.contains(id)) continue;
             semantic.add(SearchHit(
                 documentId: id, score: (1 - score.distance).clamp(-1.0, 1.0)));
           }

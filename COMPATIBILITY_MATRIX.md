@@ -236,11 +236,19 @@ Format 3, checked on the same Dart SDK and Linux host, keeps that search count a
 set and a shadow table larger than one page. Search calls those two functions.
 It does not keep a second vector table or a second cosine loop. `open` does not
 rebuild an index already stored in the database file. Format 2 and earlier
-development indexes still require explicit `indexTable`. The format 2 AOT numbers
-were not remeasured. `embedding MATCH ? AND k = ?` still applies `k` before a
-later SQL predicate; search does not use that query for filtered ranking. Joining
-the FTS virtual table currently returns no rows, so keyword `MATCH` is read on
-its own and only those ids are filtered. No new speed claim is made.
+development indexes still require explicit `indexTable`. `embedding MATCH ? AND k = ?`
+still applies `k` before a later SQL predicate; search does not use that query
+for filtered ranking. Joining the FTS virtual table currently returns no rows,
+so keyword `MATCH` is read on its own and only those ids are filtered.
+Unfiltered ranking and source indexing use stopped rowid windows (`browse`).
+`query` still materializes its input. A format 3 Linux x64 AOT pair is recorded
+for 1000 and 10000 synthetic 2D documents in
+`packages/sqlite_plus_search/benchmark/RESULTS.md`. That is one shared-host
+process per size, not a real model. A 100000-record attempt was stopped after
+16 minutes while indexing, and 1000000 was not started. The full
+engine suite was not re-run for the rowid-window and FTS leaf-packing edits.
+The FTS5 pin, FTS3/4 pin, search engine, page-write, vec, and search suites
+that were run passed on this Linux host.
 
 Hardening fixes original-error masking on failed commits, JavaScript FTS block-ID
 truncation, invalid stored vectors and secondary-unique REPLACE displacement.
@@ -248,9 +256,13 @@ Shared VM/Node search assertions pass, including index/model round trips. 80
 storage fault points verify modelled recovery. Held-out synthetic rank-feature
 fixtures pass; no real-model semantic or cross-language quality claim is made.
 
-Development format 2 requires an explicit rebuild of earlier search indexes.
-The AOT 1000/10000 runs complete; 100000 indexing times out and 1000000 is unrun.
-Physical FTS update persistence remains expensive. Real browser IO, other OS runs,
-remote CI, real-device power-loss, external-writer ownership and production local
-model integration remain open. See the package implementation plan and benchmark
-report for exact evidence and limits. No new SQL compatibility claim is implied.
+Development format 3 requires an explicit rebuild of format 2 and earlier search
+indexes. Format 2 AOT 1000/10000 runs remain historical. Format 3 AOT 1000/10000
+runs are recorded separately. Format 2 100000 indexing timed out at 120 s. The
+format 3 attempt at that size was stopped after 16 minutes while indexing.
+1000000 is unrun. Physical FTS update persistence still
+rewrites the collection postings. Real browser IO, other OS runs, remote CI for
+this performance edit, real-device power-loss, external-writer ownership and
+production local model integration remain open. See the package implementation
+plan and benchmark report for exact evidence and limits. No new SQL compatibility
+claim is implied.
