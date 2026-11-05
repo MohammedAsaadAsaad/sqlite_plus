@@ -60,6 +60,35 @@ void main() {
     expect(window, lessThan(full));
   });
 
+  test('a rowid lower bound stops after the requested window', () async {
+    final bytes = await image();
+    final fullDb = await SqliteDatabase.openReadOnly(ByteImageStorage(bytes));
+    addTearDown(fullDb.close);
+    final beforeFull = fullDb.pagesRead;
+    final full = await fullDb.query('SELECT id FROM t');
+    final fullReads = fullDb.pagesRead - beforeFull;
+    expect(full.rows, hasLength(80));
+
+    final db = await SqliteDatabase.openReadOnly(ByteImageStorage(bytes));
+    addTearDown(db.close);
+    final before = db.pagesRead;
+    final window = await db.browse(
+        'SELECT id FROM t WHERE rowid > ? ORDER BY rowid LIMIT 5', [10]);
+    final windowReads = db.pagesRead - before;
+    expect(window.rows.map((row) => row.single).toList(),
+        [for (var id = 11; id <= 15; id++) BigInt.from(id)]);
+    expect(windowReads, lessThan(fullReads));
+
+    final inclusive = await db
+        .browse('SELECT id FROM t WHERE id >= ? ORDER BY id LIMIT 1', [15]);
+    expect(inclusive.rows.single.single, BigInt.from(15));
+    final descended = await db.query(
+        'SELECT id FROM t WHERE rowid > ? ORDER BY rowid DESC LIMIT 3', [75]);
+    final descendedBrowse = await db.browse(
+        'SELECT id FROM t WHERE rowid > ? ORDER BY rowid DESC LIMIT 3', [75]);
+    expect(descendedBrowse.rows, descended.rows);
+  });
+
   test('a paged window matches the pinned CLI', () async {
     final tool = await pinnedCli();
     if (tool == null) {
@@ -87,6 +116,27 @@ void main() {
             'SELECT id, v FROM t ORDER BY rowid LIMIT 2 OFFSET 3;'));
     expect(await window('SELECT id, v FROM t LIMIT ? OFFSET ?', [2, 3]),
         await pinnedRows(tool, path, 'SELECT id, v FROM t LIMIT 2 OFFSET 3;'));
+    expect(
+        await window(
+            'SELECT id FROM t WHERE rowid > ? ORDER BY rowid LIMIT 5', [10]),
+        await pinnedRows(tool, path,
+            'SELECT id FROM t WHERE rowid > 10 ORDER BY rowid LIMIT 5;'));
+    expect(
+        await window(
+            'SELECT id FROM t WHERE rowid >= ? ORDER BY rowid LIMIT 2 OFFSET 3',
+            [10]),
+        await pinnedRows(tool, path,
+            'SELECT id FROM t WHERE rowid >= 10 ORDER BY rowid LIMIT 2 OFFSET 3;'));
+    expect(
+        await window('SELECT id FROM t WHERE id > ? ORDER BY id LIMIT 5', [70]),
+        await pinnedRows(
+            tool, path, 'SELECT id FROM t WHERE id > 70 ORDER BY id LIMIT 5;'));
+    expect(
+        await window(
+            'SELECT id FROM t WHERE rowid > ? ORDER BY rowid DESC LIMIT 3',
+            [10]),
+        await pinnedRows(tool, path,
+            'SELECT id FROM t WHERE rowid > 10 ORDER BY rowid DESC LIMIT 3;'));
     expect(await window('SELECT id, v FROM t LIMIT 2 OFFSET 100'), isEmpty);
     expect(await window('SELECT id, v FROM t LIMIT 0'), isEmpty);
     final before = db.pagesRead;

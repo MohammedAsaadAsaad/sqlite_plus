@@ -295,4 +295,88 @@ abstract final class TableImageWriter {
       await pager.close();
     }
   }
+
+  /// Overwrites one index leaf root when every record fits on that page.
+  ///
+  /// A null result leaves [image] unchanged. Interior trees, overflow cells,
+  /// auto-vacuum, and reserved bytes stay on the full rebuild path.
+  static Uint8List? replaceIndexLeaf(
+      Uint8List image, int root, List<List<Object?>> records) {
+    if (image.isEmpty || root <= 1) return null;
+    final header = DatabaseHeader.decode(image);
+    final size = header.pageSize;
+    if (header.reservedBytes != 0 ||
+        header.largestRootPage != 0 ||
+        size < 512 ||
+        image.length < root * size ||
+        image.length % size != 0) {
+      return null;
+    }
+    final page = Uint8List.sublistView(image, (root - 1) * size, root * size);
+    if (page[0] != 10 || _indexLeafOverflows(page, size)) return null;
+    final usable = header.usableSize;
+    final cells = <Uint8List>[];
+    for (final record in records) {
+      final payload =
+          RecordEncoder.encode(record, encoding: header.textEncoding);
+      final maxLocal = ((usable - 12) * 64 ~/ 255) - 23;
+      if (payload.length > maxLocal) return null;
+      final prefix = RecordEncoder.varint(BigInt.from(payload.length));
+      final cell = Uint8List(prefix.length + payload.length);
+      cell.setRange(0, prefix.length, prefix);
+      cell.setRange(prefix.length, cell.length, payload);
+      cells.add(cell);
+    }
+    if (cells.fold<int>(8, (sum, cell) => sum + cell.length + 2) > usable) {
+      return null;
+    }
+    final leaf = Uint8List(size);
+    final data = ByteData.sublistView(leaf);
+    leaf[0] = 10;
+    data.setUint16(3, cells.length);
+    var end = usable;
+    for (var i = 0; i < cells.length; i++) {
+      end -= cells[i].length;
+      if (end < 8 + 2 * cells.length) return null;
+      leaf.setRange(end, end + cells[i].length, cells[i]);
+      data.setUint16(8 + i * 2, end);
+    }
+    data.setUint16(5, end == 65536 ? 0 : end);
+    final out = Uint8List.fromList(image);
+    out.setRange((root - 1) * size, root * size, leaf);
+    final fields = ByteData.sublistView(out);
+    final counter = (header.changeCounter + 1) % 0x100000000;
+    fields.setUint32(24, counter);
+    fields.setUint32(92, counter);
+    return out;
+  }
+
+  static bool _indexLeafOverflows(Uint8List page, int size) {
+    final data = ByteData.sublistView(page);
+    final count = data.getUint16(3);
+    if (count == 0) return false;
+    if (8 + count * 2 > size) return true;
+    final starts = <int>[
+      for (var i = 0; i < count; i++) data.getUint16(8 + i * 2)
+    ]..sort();
+    for (var i = 0; i < starts.length; i++) {
+      final start = starts[i];
+      final end = i + 1 < starts.length ? starts[i + 1] : size;
+      if (start < 8 || end < start || end > size) return true;
+      var offset = start;
+      var value = 0;
+      for (var shift = 0; shift < 9; shift++) {
+        if (offset >= end) return true;
+        final unit = page[offset++];
+        if (shift == 8) {
+          value = (value << 8) | unit;
+          break;
+        }
+        value = (value << 7) | (unit & 0x7f);
+        if ((unit & 0x80) == 0) break;
+      }
+      if (offset + value != end) return true;
+    }
+    return false;
+  }
 }

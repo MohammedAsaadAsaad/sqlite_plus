@@ -120,7 +120,7 @@ final hits = await search.search(
 
 `explain: true` adds `keywordRank`, `vectorRank`, `baseScore`, `keywordWeight`, and `vectorWeight`. The fixture does not know that milk and tea are drinks. A real `LocalEmbeddingProvider` replaces that map with an already installed local model. Changing `modelId` or the dimension count requires `indexTable` again.
 
-`embedding MATCH ? AND k = ?` is a different `sqlite_plus_vec` query. Search does not use it. Filtered ranking asks `rankVec0` for the eligible row ids, in pages of 64, so `k` is not applied before the filter.
+`embedding MATCH ? AND k = ?` is a different `sqlite_plus_vec` query. Search does not use it. Filtered ranking asks `rankVec0` for the eligible row ids, in pages of 512, so `k` is not applied before the filter. An unfiltered ranking scans the shadow in those same stopped pages.
 
 ## What stays in your hands
 
@@ -142,4 +142,4 @@ await search.feedback.submit(
 
 Two weights move keyword and vector ranks. They can make ranking worse. The example does not turn learning on. Held-out judgments belong to the application. Synthetic fixtures are not evidence of model quality.
 
-See [architecture](doc/ARCHITECTURE.md), [status](doc/IMPLEMENTATION_PLAN.md), and [limitations](doc/LIMITATIONS.md). The catalog numbers above are keyword search. The synthetic embedding harness in the repository is still the format 2 run. It was not remeasured, and it is not a language model.
+See [architecture](doc/ARCHITECTURE.md), [status](doc/IMPLEMENTATION_PLAN.md), and [limitations](doc/LIMITATIONS.md). The catalog numbers above are keyword search on packed leaves. The synthetic embedding harness recorded a later append run: 10,000 documents indexed in 4.704192 s and one change synchronized in 1.699659 s. Those files are in the repository benchmark results. That harness is not a language model.

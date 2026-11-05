@@ -1,5 +1,28 @@
 # Development log
 
+## 2026-11-05 — Unique-key append lands on the packed search
+
+- The open branch that appends a new maximum key and refreshes the integrity
+  sum is merged onto the packed-leaf engine. A term-packed leaf is rebuilt
+  and packed again on the next edit, so the idx term stays with the leaf.
+  An index whose idx terms are empty still edits the leaf in place.
+- The JavaScript integrity sum no longer uses a 32-bit shift. A borrow is
+  carried with division. `tool/platform_smoke.dart` passed on the Dart VM and
+  on Node after `dart compile js`.
+- Linux x64, Dart 3.13.7, AOT, not a phone. `dart compile exe` of
+  `packages/sqlite_plus_search/benchmark/catalog_lookup.dart` indexed 20,000
+  products in 12589506 µs. The image was 3391488 bytes and held 347 leaves.
+  `بسكويت` returned 493 hits and 20 names in 27971 µs, then 28013 µs, and
+  25379 µs at offset 320. Raw `MATCH` took 15033 µs. `biscuit` took 20282 µs,
+  26254 µs, and 20635 µs. Raw `MATCH` took 16533 µs. The phone sample remains
+  47.236 ms and was not measured again.
+- `packages/sqlite_plus` `dart test` passed 10617 tests.
+  `packages/sqlite_plus_search` `dart test` passed 62 tests.
+  `packages/sqlite_plus_vec` `dart test` passed 5 tests.
+  `examples/product_catalog` `flutter test` passed 12 tests.
+  `dart analyze --fatal-infos` reported no issues for the engine and the
+  search package.
+
 ## 2026-11-05 — Phone page at 47.236 ms, packages prepared for pub.dev
 
 - One arm64 phone, catalog release 0.5.2, at 17:11 Asia/Hebron (UTC+2) on 5
@@ -2722,3 +2745,112 @@ result=pass
   numbers were not remeasured. No speed claim. Packages were not published.
   Android, iOS, and a browser persistence backend were not run. B5, M9, and item
   108 remain unchecked. The database browser APK was not rebuilt.
+
+## 2026-11-05 — Search query and index cost
+
+- Keyword and semantic search no longer use a correlated `EXISTS` against the
+  source table. An intermediate build that did was slower than format 2 on
+  queries and was not kept. The recorded run loads source keys and the internal
+  id map with two scans.
+- `browse` stops a single-table window when the predicate is a rowid lower bound
+  (`>`, `>=`, or the rowid alias) and `ORDER BY` follows the table. `query` is
+  unchanged and still reads its input. Unfiltered `rankVec0` uses those stopped
+  pages of 512. Source indexing uses the same window at 1000 rows.
+- Non-contentless-delete FTS5 leaves pack many documents. The writer finds the
+  longest prefix that fits by doubling, instead of re-encoding after every
+  document. Contentless-delete stays one segment per row. A one-row sync still
+  rewrites every posting. Native FTS5 and FTS3/4 pin tests that were run still
+  pass.
+- Format 3 AOT, Dart 3.13.7, Linux x64, memory, synthetic 2D, one process,
+  five warm samples. 1000: index 1.189207 s, median warm keyword 49.681 ms,
+  vector 36.054 ms, hybrid 62.974 ms, source update 359.419 ms, sync 616.455 ms,
+  image 184320 bytes, RSS 51392512, peak 79622144. 10000: index 20.311424 s,
+  median warm keyword 455.066 ms, vector 348.888 ms, hybrid 639.255 ms, source
+  update 3008.387 ms, sync 5319.037 ms, image 1110016 bytes, RSS 77606912, peak
+  226885632. Raw JSON is `linux_1000_format3.json` and
+  `linux_10000_format3.json`. Format 2 numbers stay in RESULTS.md. A 100000-record
+  attempt was stopped after 16 minutes while indexing; no metrics are reported.
+  1000000 was not started. RSS is one sample.
+- Local checks after `dart format` and `dart analyze --fatal-infos`: search 61
+  tests, vec 5 tests, the FTS5 pin, the FTS3/4 pin, the search-engine tests, the
+  rowid-window browse test, and the page-write tests. The full engine suite was
+  not re-run. This performance edit has no new remote CI. Packages were not
+  published. Android, iOS, and a browser persistence backend were not run. B5,
+  M9, and item 108 remain unchecked. The database browser APK was not rebuilt.
+
+## 2026-11-05 — Search row edits
+
+- Ordinary commits can publish several changed rowid tables by page patch or a
+  one-table rewrite. Untouched tables stay in the image. A WITHOUT ROWID table
+  is rewritten only while it is still one index leaf. A changed unique key, a
+  schema change, or a failed patch still rebuilds the image.
+- External-content FTS replace of explicit nonnegative row ids edits the leaf
+  that holds each row when the new leaf fits, plus averages and that docsize
+  row. Empty leaves, prefixes, contentless-delete, and a leaf that no longer
+  fits fall back to a full posting rebuild. `DELETE` of one `rowid` uses the
+  same path.
+- Single-token AND/OR `MATCH` can score from postings and docsize. `bm25()`
+  with no column weights returns that stored score. Highlight still
+  re-tokenizes the stored text. The all-matching benchmark did not show a warm
+  query-time change outside the earlier format 3 range.
+- AOT, Dart 3.13.7, Linux x64, memory, synthetic 2D, one process, five warm
+  samples. 1000: index 1.092900 s, median warm keyword 48.142 ms, vector
+  34.815 ms, hybrid 60.049 ms, source update 2.415 ms, sync 227.408 ms, image
+  184320 bytes, RSS 49893376, peak 79724544. 10000: index 19.658282 s, median
+  warm keyword 474.704 ms, vector 339.157 ms, hybrid 624.415 ms, source update
+  27.872 ms, sync 2.117051 s, image 1110016 bytes, RSS 75509760, peak
+  237608960. Raw JSON is `linux_1000_row_edits.json` and
+  `linux_10000_row_edits.json`. The earlier format 3 numbers stay in
+  RESULTS.md. 100000 was not started again; the earlier attempt was stopped
+  after 16 minutes while indexing. 1000000 was not started. RSS is one sample.
+- Local checks after `dart format` and `dart analyze --fatal-infos`: search 61
+  tests, the native FTS integration test, the FTS5 pin, the FTS3/4 pin, the
+  search-engine tests, the rowid-window browse test, and the page-write tests.
+  The full engine suite was not re-run. Vec tests were not re-run; vec code
+  did not change. No new remote CI. Packages were not published. Android, iOS,
+  and a browser persistence backend were not run. B5, M9, and item 108 remain
+  unchecked. The database browser APK was not rebuilt.
+
+## 2026-11-05 — Search unique-key append and incremental sync
+
+- A new unique key whose rowid is past the current maximum is appended to the
+  table and inserted into the unique index. Unrelated tables stay in the image.
+  An empty table, empty index, view, or trigger is appended to the schema leaf
+  when the new schema row fits. Overflow schema rows, populated indexes, and
+  autoincrement sequences still use the compact rebuild. Indexing creates the
+  empty search shadows before it loads keys, so those creates do not serialize
+  a filled key table.
+- `autoUpdate` keeps a census. When it matches `count(*)`, sync reads only the
+  pending keys. A mismatch still scans mapping and source keys, which covers a
+  REPLACE that deletes an unlogged row. The integrity baseline is version 2, an
+  order-independent sum of per-row hashes. That sync adjusts the changed key,
+  docsize, and vector rows and rehashes the other owned shadows. `verifyIndex`
+  still reads every derived row. A version 1 baseline fails until an explicit
+  rebuild. The census is not part of the fingerprint. Restoring a transaction
+  snapshot no longer treats the pre-change image as if it already held the
+  saved rows.
+- AOT, Dart 3.13.7, Linux x64, memory, synthetic 2D, one process, five warm
+  samples. Times are Asia/Hebron (UTC+2) on 5 November 2026. 1000: index
+  0.300666 s, median warm keyword 48.229 ms, vector 23.061 ms, hybrid 49.161
+  ms, source update 2.587 ms, sync 191.076 ms, image 192512 bytes after index
+  and at the end. 10000: index 4.704192 s, median warm keyword 475.981 ms,
+  vector 215.387 ms, hybrid 498.088 ms, source update 35.599 ms, sync 1.699659
+  s, image 1216512 bytes after index and 1118208 bytes at the end. 100000:
+  index 75.807267 s, median warm keyword 5510.411 ms, vector 2444.129 ms,
+  hybrid 5822.828 ms, source update 481.015 ms, sync 17.883826 s, image
+  12226560 bytes after index and 11067392 bytes at the end. RSS is sampled
+  after the source load, after indexing, after the warm queries, after sync,
+  and at the end; peak RSS is 80805888, 225472512, and 633675776. Raw JSON is
+  `linux_1000_append.json`, `linux_10000_append.json`, and
+  `linux_100000_append.json`. The earlier row-edit and format 3 numbers stay
+  in RESULTS.md. The 1,000,000 run exited 255 after 2914 seconds and wrote no
+  result, so it has no timings. Every benchmark
+  document matches the query, so query time still grows with the collection.
+  The sync image is smaller than the post-index image, so that step still
+  compacts the database.
+- Local checks after `dart format` and `dart analyze --fatal-infos`: search 61
+  tests and the full engine suite, 10614 tests. Vec tests were not re-run; vec
+  code did not change. No new remote CI. Packages were not published. Android,
+  iOS, and a browser persistence backend were not run. B5, M9, and item 108
+  remain unchecked. Search release validation stays unchecked. The database
+  browser APK was not rebuilt.

@@ -6,6 +6,35 @@ import 'package:sqlite_plus/src/sql/fts5_format.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('many short FTS5 rows share a leaf and still match one term', () async {
+    final database = await MutableSqliteDatabase.create();
+    addTearDown(database.close);
+    await database.execute('CREATE VIRTUAL TABLE docs USING fts5(body)');
+    await database.execute('BEGIN');
+    for (var start = 0; start < 80; start += 40) {
+      final values = <String>[];
+      final parameters = <Object?>[];
+      for (var i = start; i < start + 40; i++) {
+        values.add('(?)');
+        parameters.add(i == 7 ? 'unique needle' : 'milk');
+      }
+      await database.execute(
+          'INSERT INTO docs(body) VALUES ${values.join(',')}', parameters);
+    }
+    await database.execute('COMMIT');
+    final leaves =
+        await database.query('SELECT count(*) FROM docs_data WHERE id > 100');
+    expect((leaves.rows.single.single as BigInt) < BigInt.from(80), isTrue);
+    final found = await database
+        .query("SELECT rowid FROM docs WHERE docs MATCH 'needle'");
+    expect(found.rows, [
+      [BigInt.from(8)]
+    ]);
+    final common = await database
+        .query("SELECT count(*) FROM docs WHERE docs MATCH 'milk'");
+    expect(common.rows.single.single, BigInt.from(79));
+  });
+
   test('FTS5 block IDs retain bit 37 and agree with exact integer arithmetic',
       () {
     for (final segment in [1, 2, 100, 65535]) {

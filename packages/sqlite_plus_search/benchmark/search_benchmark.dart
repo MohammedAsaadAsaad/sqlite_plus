@@ -38,6 +38,11 @@ Future<void> main(List<String> args) async {
     }
     await db.execute('COMMIT');
     stderr.writeln('source_ready records=$count');
+    Map<String, int> memory() => {
+          'rss_bytes': ProcessInfo.currentRss,
+          'peak_rss_bytes': ProcessInfo.maxRss,
+        };
+    final afterSource = memory();
     Future<int> measure(Future<void> Function() run) async {
       final watch = Stopwatch()..start();
       await run();
@@ -51,6 +56,8 @@ Future<void> main(List<String> args) async {
         textColumns: ['body'],
         autoUpdate: true));
     stderr.writeln('index_ready records=$count');
+    final afterIndex = memory();
+    final imageAfterIndex = db.exportImage().length;
     final coldKeyword = await measure(() async {
       await search.search('milk', table: 'docs');
     });
@@ -72,12 +79,14 @@ Future<void> main(List<String> args) async {
         await search.search('milk', table: 'docs', mode: SearchMode.hybrid);
       }));
     }
+    final afterQueries = memory();
     final updateAndQuery = Stopwatch()..start();
     final sourceUpdate = await measure(() async {
       await db.execute("UPDATE docs SET body='tea' WHERE id=1");
     });
     final incrementalSync =
         await measure(() => search.synchronize(table: 'docs'));
+    final afterSync = memory();
     final postUpdateQuery = await measure(() async {
       await search.search('tea', table: 'docs', mode: SearchMode.hybrid);
     });
@@ -113,11 +122,16 @@ Future<void> main(List<String> args) async {
       'incremental_sync_us': incrementalSync,
       'post_update_hybrid_us': postUpdateQuery,
       'feedback_us': feedback,
+      'rss_after_source': afterSource,
+      'rss_after_index': afterIndex,
+      'rss_after_queries': afterQueries,
+      'rss_after_sync': afterSync,
       'rss_bytes': ProcessInfo.currentRss,
       'peak_rss_bytes': ProcessInfo.maxRss,
+      'image_bytes_after_index': imageAfterIndex,
       'image_bytes': db.exportImage().length,
       'note':
-          'Single AOT process; cold means first query after indexing, not OS cache reset. Fixture inference only. Learning context writes are included.'
+          'Single AOT process; cold means first query after indexing, not OS cache reset. Fixture inference only. Learning context writes are included. RSS is sampled after the source load, after indexing, after the warm queries, after synchronization, and at the end. Image size is recorded after indexing and at the end.'
     }));
   } finally {
     await db.close();

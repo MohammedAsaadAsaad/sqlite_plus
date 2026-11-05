@@ -107,6 +107,8 @@ final class SqlitePlusSearch {
       await database.execute('INSERT OR IGNORE INTO _sps_state VALUES (1,1)');
       await database.execute(
           'CREATE TABLE IF NOT EXISTS _sps_integrity (collection_id INTEGER PRIMARY KEY, version INTEGER NOT NULL, digest TEXT NOT NULL)');
+      await database.execute(
+          'CREATE TABLE IF NOT EXISTS _sps_integrity_state (collection_id INTEGER PRIMARY KEY, parts TEXT NOT NULL)');
     });
     return search;
   }
@@ -219,6 +221,7 @@ final class SqlitePlusSearch {
             await database.execute('DROP TRIGGER IF EXISTS ${base}_$event');
           }
           await database.execute('DROP TABLE IF EXISTS ${base}_pending');
+          await database.execute('DROP TABLE IF EXISTS ${base}_census');
           await database.execute(
               'CREATE TABLE ${base}_pending (id INTEGER PRIMARY KEY,source_key TEXT NOT NULL)');
           await database.execute('DROP TABLE IF EXISTS ${base}_fts');
@@ -235,6 +238,13 @@ final class SqlitePlusSearch {
           // SQLite's column-name mapping.
           await database.execute(
               'CREATE TABLE ${base}_keys (id INTEGER PRIMARY KEY, body TEXT NOT NULL, source_key TEXT NOT NULL UNIQUE)');
+          // Empty FTS shadows exist before the keys. Creating the virtual
+          // table afterwards would rewrite every key that was just inserted.
+          await database.execute(
+              "CREATE VIRTUAL TABLE ${base}_fts USING fts5(body, content='${base}_keys', content_rowid='id')");
+          if (autoUpdate) {
+            await _installTriggers(table, meta, textColumns, 0);
+          }
           // One thousand source rows at a time. A single query would keep every
           // name in memory before the first key is written.
           final columns = [primaryKey, ...textColumns].map(_quote).join(',');
@@ -273,12 +283,13 @@ final class SqlitePlusSearch {
               await Future<void>.delayed(Duration.zero);
             }
           }
+          if (autoUpdate) {
+            await database
+                .execute('UPDATE ${base}_census SET n=? WHERE id=1', [scanned]);
+          }
           onProgress?.call(total, total);
           await database.execute(
-              "CREATE VIRTUAL TABLE ${base}_fts USING fts5(body, content='${base}_keys', content_rowid='id')");
-          await database.execute(
               "INSERT INTO ${base}_fts(${base}_fts) VALUES ('rebuild')");
-          if (autoUpdate) await _installTriggers(table, meta, textColumns);
           await _recordIntegrity(meta);
         });
       });
@@ -391,6 +402,34 @@ final class SqlitePlusSearch {
         }
         final keyword = <SearchHit>[];
         final semantic = <SearchHit>[];
+        // A correlated EXISTS against the source table scans once per key.
+        // Load the source keys and the internal map separately instead.
+        Set<String>? allowedKeys;
+        Future<Set<String>> allowed() async {
+          if (allowedKeys != null) return allowedKeys!;
+          final rows = await database.query(
+              'SELECT ${_quote(meta.key)} FROM ${_quote(table)}'
+              '${filter == null ? '' : ' WHERE (${filter.sql})'}',
+              filter?.parameters ?? const []);
+          return allowedKeys =
+              rows.rows.map((row) => row[0].toString()).toSet();
+        }
+
+        Map<BigInt, String>? keyMap;
+        Future<Map<BigInt, String>> keys() async {
+          if (keyMap != null) return keyMap!;
+          final rows =
+              await database.query('SELECT id, source_key FROM ${base}_keys');
+          final ids = <BigInt, String>{};
+          for (final row in rows.rows) {
+            if (row[0] is! BigInt || row[1] is! String) {
+              throw StateError('Search mapping is corrupt; rebuild index');
+            }
+            ids[row[0] as BigInt] = row[1] as String;
+          }
+          return keyMap = ids;
+        }
+
         if (query.trim().isNotEmpty && mode != SearchMode.semantic) {
           // MATCH stays on the FTS table alone. Joining that virtual table
           // currently returns no rows, so eligible ids are resolved afterwards.
@@ -427,9 +466,9 @@ final class SqlitePlusSearch {
               }
               byKey[key] = id;
             }
-            final live = await _liveSourceKeys(
+            final liveKeys = await _liveSourceKeys(
                 table, meta.key, integerKey, byKey.keys.toList(), filter);
-            for (final key in live) {
+            for (final key in liveKeys) {
               final id = byKey[key];
               if (id == null) continue;
               keyword.add(SearchHit(documentId: key, score: scores[id]!));
@@ -438,35 +477,29 @@ final class SqlitePlusSearch {
         }
         if (query.trim().isNotEmpty && mode != SearchMode.keyword) {
           final vector = await validatedEmbedding(embeddingProvider!, query);
-          final mapped =
-              await database.query('SELECT id, source_key FROM ${base}_keys');
-          final integerKey = await _integerPrimaryKey(table, meta.key);
-          final byKey = <String, BigInt>{};
-          for (final row in mapped.rows) {
-            if (row[0] is! BigInt || row[1] is! String) {
-              throw StateError('Vector mapping is corrupt; rebuild');
+          final mapped = await keys();
+          final live = await allowed();
+          final eligible = [
+            for (final entry in mapped.entries)
+              if (live.contains(entry.value)) entry.key
+          ];
+          if (filter != null) {
+            final counts = await database.query(
+                'SELECT (SELECT count(*) FROM ${base}_keys), (SELECT count(*) FROM ${base}_vec_vec)');
+            if (counts.rows.single[0] != counts.rows.single[1]) {
+              throw StateError('Vector index is incomplete; rebuild');
             }
-            byKey[row[1] as String] = row[0] as BigInt;
-          }
-          final live = await _liveSourceKeys(
-              table, meta.key, integerKey, byKey.keys.toList(), filter);
-          final ids = <BigInt, String>{
-            for (final key in live)
-              if (byKey.containsKey(key)) byKey[key]!: key
-          };
-          final counts = await database.query(
-              'SELECT (SELECT count(*) FROM ${base}_keys), (SELECT count(*) FROM ${base}_vec_vec)');
-          if (counts.rows.single[0] != counts.rows.single[1]) {
-            throw StateError('Vector index is incomplete; rebuild');
           }
           final List<VecScore> scores;
           try {
+            // No filter scans the shadow in rowid order. A filter passes only
+            // the eligible ids, so ineligible embeddings are not decoded.
             scores = await rankVec0(
               database,
               table: '${base}_vec',
               query: vector,
               metric: 'cosine',
-              rowIds: ids.keys,
+              rowIds: filter == null ? null : eligible,
               rejectZeroVectors: true,
             );
           } on SqlException catch (error) {
@@ -475,11 +508,17 @@ final class SqlitePlusSearch {
             }
             throw StateError('Corrupt stored embedding; rebuild index');
           }
+          if (filter == null && scores.length != mapped.length) {
+            throw StateError(scores.length < mapped.length
+                ? 'Vector index is incomplete; rebuild'
+                : 'Vector mapping is corrupt; rebuild');
+          }
           for (final score in scores) {
-            final id = ids[score.rowId];
+            final id = mapped[score.rowId];
             if (id == null) {
               throw StateError('Vector mapping is corrupt; rebuild');
             }
+            if (!live.contains(id)) continue;
             semantic.add(SearchHit(
                 documentId: id, score: (1 - score.distance).clamp(-1.0, 1.0)));
           }
@@ -589,7 +628,7 @@ final class SqlitePlusSearch {
             'SELECT version,digest FROM _sps_integrity WHERE collection_id=?',
             [BigInt.parse(meta.id)]);
         if (baseline.rows.length != 1 ||
-            baseline.rows.single[0] != BigInt.one) {
+            baseline.rows.single[0] != BigInt.from(_integrityVersion)) {
           throw StateError(
               'Missing or unsupported integrity baseline; explicitly rebuild');
         }
