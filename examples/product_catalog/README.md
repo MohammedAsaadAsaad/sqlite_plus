@@ -60,12 +60,13 @@ stays inside the pure-Dart engine.
 ## Android package
 
 `dist/product-catalog-arm64-v8a.apk` is the release package built on 5 November
-2026 at 16:19 Asia/Hebron (UTC+2) with
-`flutter build apk --release --target-platform android-arm64`. It is 19751513
+2026 at 16:58 Asia/Hebron (UTC+2) with
+`flutter build apk --release --target-platform android-arm64`. It is 19817049
 bytes, sha256
-`309313debceaab98d519ebc419b578996e5a8810592d68710b84d8196ddcab6e`. The
-application id is `dev.sqliteplus.product_catalog`, versionName `0.5.1`,
-versionCode `6`, minSdk 24. Native code is `arm64-v8a` only. The release build
+`66e14efeebfd7e33a93c7f8c6b4cb504213deb1071a48e012958b2de6995f165`. The
+application id is `dev.sqliteplus.product_catalog`, versionName `0.5.2`,
+versionCode `7`, minSdk 24. Native code is `arm64-v8a` only. The release build
 is signed with the Android debug certificate. It was not installed on a device
-here. Version code 6 replaces the earlier packages. Search keeps the index
-saved by an earlier version.
+here. Version code 7 replaces the earlier packages. Opening a saved catalog
+from 0.5.1 rebuilds a multi-product index once, then saves that packed index.
+A later search of that file uses the packed leaves.

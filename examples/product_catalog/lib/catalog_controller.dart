@@ -95,6 +95,7 @@ class CatalogController extends ChangeNotifier {
       final opened = await _worker.call({'op': 'open', 'path': file.path});
       if (opened['found'] == true) {
         _rememberOpened(opened);
+        if (opened['compacted'] == true) await _save(file);
       }
       if (!loaded) await _loadProducts();
       if (!indexed) {

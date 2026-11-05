@@ -170,6 +170,10 @@ extension _RelationalQueries on SqliteDatabase {
           }
           final rows = <RowValues>[];
           final reader = BtreeReader(_pager);
+          final directed = table.virtual
+              ? await directedFts5Snapshot(
+                  _pager, catalog, table, s.where, parameters)
+              : null;
           final records = table.virtual
               ? Stream<BtreeRecord>.fromIterable(runZoned(
                   () => VirtualTableRows.records(table,
@@ -181,8 +185,9 @@ extension _RelationalQueries on SqliteDatabase {
                           1,
                       alias: source.alias),
                   zoneValues: {
-                      searchSnapshotKey:
-                          await readSearchShadows(_pager, catalog, table)
+                      searchSnapshotKey: directed ??
+                          await readSearchShadows(_pager, catalog, table),
+                      if (directed != null) ftsDirectedSnapshotKey: true,
                     }))
               : table.withoutRowid
                   ? reader.scanIndex(table.rootPage)

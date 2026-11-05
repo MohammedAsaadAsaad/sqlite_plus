@@ -70,6 +70,9 @@ warm samples. Initial indexing includes integrity metadata.
 - At 10000 records, source update alone takes 12.795218 s and synchronization
   20.004185 s. Logical embedding updates are incremental; physical FTS persistence
   and source-trigger serialization are not production-scale optimized.
+- Catalog keyword search of the two 10,000-name product lists is a separate
+  AOT measurement, recorded in the repository development log on 5 November
+  2026. It is lexical BM25 on packed FTS leaves, not this embedding benchmark.
 
 Production embeddings/cross-language evaluation, repeated-process performance
 statistics, arbitrary external-writer ownership, real-device/torn-byte recovery,

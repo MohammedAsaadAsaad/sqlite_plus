@@ -33,6 +33,11 @@ final class ShadowRow {
 
 final Object searchSnapshotKey = Object();
 
+/// Set when the FTS snapshot already omitted every leaf the query cannot use.
+final Object ftsDirectedSnapshotKey = Object();
+
+bool get ftsDirectedSnapshot => Zone.current[ftsDirectedSnapshotKey] == true;
+
 final class SearchSnapshot {
   SearchSnapshot(Map<String, ShadowTable> tables)
       : tables = {
@@ -97,6 +102,10 @@ Object? ftsAuxiliary(String function, String? tableName,
     if (function == 'bm25') return null;
     throw SqlException(
         'unable to use function $function in the requested context');
+  }
+  if (function == 'bm25' && arguments.isEmpty) {
+    final cached = state.scores[rowid];
+    if (cached != null) return cached;
   }
   final document = state.documents[rowid];
   if (document == null) return null;

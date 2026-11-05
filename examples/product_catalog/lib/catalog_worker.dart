@@ -120,6 +120,7 @@ Future<void> _handle(_SessionHolder holder, Object? message) async {
             'found': true,
             'indexed': holder.session.indexed,
             'count': holder.session.productCount,
+            'compacted': holder.session.repacked,
             'sample': _sample(holder.session),
           });
         } catch (error) {

@@ -659,6 +659,9 @@ extension _SearchMutations on ImageMutations {
       await execute(
           'CREATE TABLE ${_q('${table}_docsize')}(id INTEGER PRIMARY KEY, sz BLOB$origin)',
           const []);
+      await execute(
+          'CREATE TABLE ${_q('${table}_doclen')}(id INTEGER PRIMARY KEY, packed BLOB)',
+          const []);
     }
     await execute(
         'CREATE TABLE ${_q('${table}_config')}(k PRIMARY KEY, v) WITHOUT ROWID',
@@ -702,22 +705,33 @@ extension _SearchMutations on ImageMutations {
     final index = <(BigInt, Map<String, Object?>)>[];
     final segments = <FtsSegmentRef>[];
     final totals = List<int>.filled(spec.columns.length, 0);
-    for (var i = 0; i < ordered.length; i++) {
-      final doc = ordered[i];
+    for (final doc in ordered) {
       for (var column = 0; column < spec.columns.length; column++) {
         if (!spec.columns[column].unindexed) {
           totals[column] += doc.tokens[column].length;
         }
       }
-      final segid = i + 1;
-      final leaf = _ftsLeaf(spec, doc);
-      leaves.add((BigInt.from(fts5LeafRowid(segid, 1)), leaf));
-      index.add((
-        BigInt.from(segid),
-        {'segid': BigInt.from(segid), 'term': Uint8List(0), 'pgno': BigInt.two}
-      ));
-      segments.add(FtsSegmentRef(segid, 1, 1,
-          origin1: segid, origin2: segid, entries: 1));
+    }
+    // One document keeps the original leaf bytes. More than one document is
+    // packed by term so a query can read the leaves that contain it.
+    if (ordered.length <= 1) {
+      for (var i = 0; i < ordered.length; i++) {
+        final segid = i + 1;
+        final leaf = _ftsLeaf(spec, ordered[i]);
+        leaves.add((BigInt.from(fts5LeafRowid(segid, 1)), leaf));
+        index.add((
+          BigInt.from(segid),
+          {
+            'segid': BigInt.from(segid),
+            'term': Uint8List(0),
+            'pgno': BigInt.two
+          }
+        ));
+        segments.add(FtsSegmentRef(segid, 1, 1,
+            origin1: segid, origin2: segid, entries: 1));
+      }
+    } else {
+      _packFtsSegments(spec, ordered, leaves, index, segments);
     }
     final data = <(BigInt, Map<String, Object?>)>[
       (BigInt.one, {'block': encodeAverages(ordered.length, totals)}),
@@ -755,6 +769,159 @@ extension _SearchMutations on ImageMutations {
           )
       ]);
     }
+    if (_tables.containsKey(asciiLower('${spec.table}_doclen'))) {
+      _replace('${spec.table}_doclen', [
+        (BigInt.one, {'packed': _packDocLengths(spec, ordered)})
+      ]);
+    }
+  }
+
+  Uint8List _packDocLengths(Fts5Spec spec, List<_SearchDoc> ordered) {
+    final out = BytesBuilder(copy: false);
+    writeVarint(out, ordered.length);
+    var previous = BigInt.zero;
+    for (final doc in ordered) {
+      final delta = doc.id - previous;
+      if (delta <= BigInt.zero) {
+        throw const SqlException('FTS5 document ids must increase');
+      }
+      previous = doc.id;
+      writeVarint(out, delta.toInt());
+      var length = 0;
+      for (var column = 0; column < spec.columns.length; column++) {
+        if (!spec.columns[column].unindexed) {
+          length += doc.tokens[column].length;
+        }
+      }
+      writeVarint(out, length);
+    }
+    return out.takeBytes();
+  }
+
+  void _packFtsSegments(
+      Fts5Spec spec,
+      List<_SearchDoc> docs,
+      List<(BigInt, Uint8List)> leaves,
+      List<(BigInt, Map<String, Object?>)> index,
+      List<FtsSegmentRef> segments) {
+    final positions = spec.detail != 'none';
+    final grouped = <String, Map<BigInt, Map<int, List<int>>>>{};
+    void add(BigInt id, int prefix, String text, int column, int position) {
+      if (text.isEmpty) return;
+      final key = String.fromCharCodes(fts5Term(prefix, text));
+      grouped
+          .putIfAbsent(key, () => {})
+          .putIfAbsent(id, () => {})
+          .putIfAbsent(column, () => [])
+          .add(position);
+    }
+
+    for (final doc in docs) {
+      for (var column = 0; column < spec.columns.length; column++) {
+        if (spec.columns[column].unindexed) continue;
+        final tokens = doc.tokens[column];
+        for (var position = 0; position < tokens.length; position++) {
+          final text = tokens[position].text;
+          add(doc.id, 0, text, column, position);
+          for (var i = 0; i < spec.prefix.length; i++) {
+            add(doc.id, i + 1, ftsPrefixChars(text, spec.prefix[i]), column,
+                position);
+          }
+        }
+      }
+    }
+    final keys = grouped.keys.toList()
+      ..sort((a, b) => _compareTermBytes(
+          Uint8List.fromList(a.codeUnits), Uint8List.fromList(b.codeUnits)));
+    final postings = <FtsPosting>[
+      for (final key in keys)
+        FtsPosting(Uint8List.fromList(key.codeUnits), [
+          for (final entry
+              in (grouped[key]!.entries.toList()
+                ..sort((a, b) => a.key.compareTo(b.key))))
+            FtsRowPosting(entry.key, entry.value)
+        ])
+    ];
+    final pieces = <FtsPosting>[
+      for (final posting in postings) ..._fitPosting(posting, positions)
+    ];
+    var page = <FtsPosting>[];
+    var estimate = 4;
+    void flush() {
+      if (page.isEmpty) return;
+      _writePackedLeaf(spec, page, positions, leaves, index, segments);
+      page = [];
+      estimate = 4;
+    }
+
+    for (final posting in pieces) {
+      final cost = posting.term.length + 16 + posting.rows.length * 12;
+      if (page.isNotEmpty && estimate + cost > 3200) flush();
+      page.add(posting);
+      estimate += cost;
+    }
+    flush();
+  }
+
+  List<FtsPosting> _fitPosting(FtsPosting posting, bool positions) {
+    if (_leafFits([posting], positions)) return [posting];
+    if (posting.rows.length == 1) {
+      throw const SqlException(
+          'FTS5 segment leaf exceeds one page; split the document');
+    }
+    final mid = posting.rows.length ~/ 2;
+    return [
+      ..._fitPosting(
+          FtsPosting(posting.term, posting.rows.sublist(0, mid)), positions),
+      ..._fitPosting(
+          FtsPosting(posting.term, posting.rows.sublist(mid)), positions)
+    ];
+  }
+
+  bool _leafFits(List<FtsPosting> terms, bool positions) {
+    try {
+      return encodeLeaf(terms, positions: positions).length <= fts5LeafLimit;
+    } on SqlException catch (error) {
+      if (!error.message.contains('exceeds one page')) rethrow;
+      return false;
+    }
+  }
+
+  void _writePackedLeaf(
+      Fts5Spec spec,
+      List<FtsPosting> terms,
+      bool positions,
+      List<(BigInt, Uint8List)> leaves,
+      List<(BigInt, Map<String, Object?>)> index,
+      List<FtsSegmentRef> segments) {
+    if (!_leafFits(terms, positions)) {
+      if (terms.length == 1) {
+        throw const SqlException(
+            'FTS5 segment leaf exceeds one page; split the document');
+      }
+      final mid = terms.length ~/ 2;
+      _writePackedLeaf(
+          spec, terms.sublist(0, mid), positions, leaves, index, segments);
+      _writePackedLeaf(
+          spec, terms.sublist(mid), positions, leaves, index, segments);
+      return;
+    }
+    final leaf = encodeLeaf(terms, positions: positions);
+    var first = terms.first.term;
+    for (final term in terms.skip(1)) {
+      if (_compareTermBytes(term.term, first) < 0) first = term.term;
+    }
+    if (first.isEmpty) {
+      throw const SqlException('FTS5 segment leaf exceeds one page');
+    }
+    final segid = segments.length + 1;
+    leaves.add((BigInt.from(fts5LeafRowid(segid, 1)), leaf));
+    index.add((
+      BigInt.from(segid),
+      {'segid': BigInt.from(segid), 'term': first, 'pgno': BigInt.two}
+    ));
+    segments.add(
+        FtsSegmentRef(segid, 1, 1, origin1: segid, origin2: segid, entries: 1));
   }
 
   Uint8List _ftsLeaf(Fts5Spec spec, _SearchDoc doc) {
