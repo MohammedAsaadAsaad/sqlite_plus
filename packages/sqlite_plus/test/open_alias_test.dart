@@ -131,7 +131,7 @@ void main() {
     await opened.execute('INSERT INTO note(title, body) VALUES (?, ?), (?, ?)',
         ['Kept Garden', 'a garden kept in the margin', 'Other Atlas', 'south']);
     expect(
-        (await opened.query(
+        (await opened.client.query(
                 'SELECT title FROM note WHERE title LIKE ? ORDER BY title',
                 ['%Garden%']))
             .rows,
@@ -143,7 +143,7 @@ void main() {
     expect(File('$path-journal').existsSync(), isTrue);
     final again = await openDatabase(path);
     addTearDown(again.close);
-    expect((await again.query('SELECT title FROM note')).rows, [
+    expect((await again.client.query('SELECT title FROM note')).rows, [
       ['Kept Garden'],
       ['Other Atlas']
     ]);
@@ -160,7 +160,7 @@ void main() {
     await opened.close();
     final again = await openDatabase(path);
     addTearDown(again.close);
-    expect((await again.query('SELECT title FROM note')).rows, [
+    expect((await again.client.query('SELECT title FROM note')).rows, [
       ['Kept Garden']
     ]);
   });
@@ -176,7 +176,8 @@ void main() {
     addTearDown(opened.close);
     expect(File(path).readAsBytesSync(), before);
     expect(File('$path-journal').existsSync(), isTrue);
-    expect((await opened.query('SELECT id FROM notes WHERE id=1')).rows, [
+    expect(
+        (await opened.client.query('SELECT id FROM notes WHERE id=1')).rows, [
       [BigInt.one]
     ]);
   });

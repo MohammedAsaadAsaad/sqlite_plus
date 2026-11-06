@@ -3,12 +3,27 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import '../app/app_commands.dart';
 import '../pager/rollback_journal_pager.dart';
 import '../pager/wal_pager.dart';
 import '../sql/database.dart';
 import '../sql/mutable_database.dart';
 import '../sql/tokenizer.dart';
 import '../storage/durable_file_storage_backend.dart';
+
+/// Called once, before the version check.
+typedef OnDatabaseConfigure = Future<void> Function(DatabaseOwner database);
+
+/// Called when the stored version is 0.
+typedef OnDatabaseCreate = Future<void> Function(
+    DatabaseOwner database, int version);
+
+/// Called when the stored version and the requested version differ.
+typedef OnDatabaseVersionChange = Future<void> Function(
+    DatabaseOwner database, int oldVersion, int newVersion);
+
+/// Called after the version check on every open.
+typedef OnDatabaseOpen = Future<void> Function(DatabaseOwner database);
 
 /// Opens a database file on its own isolate.
 ///
@@ -18,13 +33,64 @@ import '../storage/durable_file_storage_backend.dart';
 /// false writes nothing and throws. That flag is the caller attestation that
 /// the directory entries are durable. It is not a power-loss result. [wal]
 /// still requires the `-wal` sidecar and does not create it.
-Future<DatabaseOwner> openDatabase(String path,
-    {bool directoryEntriesDurable = true, bool wal = false}) async {
+///
+/// [version] runs [onCreate] when the stored version is 0, [onUpgrade] when
+/// it is older, and [onDowngrade] when it is newer. The schema change and the
+/// new version commit together. Integers in rows and insert ids are [BigInt].
+Future<DatabaseOwner> openDatabase(
+  String path, {
+  bool directoryEntriesDurable = true,
+  bool wal = false,
+  int? version,
+  OnDatabaseConfigure? onConfigure,
+  OnDatabaseCreate? onCreate,
+  OnDatabaseVersionChange? onUpgrade,
+  OnDatabaseVersionChange? onDowngrade,
+  OnDatabaseOpen? onOpen,
+}) async {
+  if (version != null && version < 1) {
+    throw ArgumentError.value(version, 'version', 'version starts at 1');
+  }
+  if (version != null && onCreate == null) {
+    throw ArgumentError('onCreate is required when version is set');
+  }
   if (!directoryEntriesDurable) {
     throw UnsupportedError('Durably provision database and sidecar first');
   }
   if (!wal) await _provisionRollback(path);
-  return DatabaseOwner.open(path, directoryEntriesDurable: true, wal: wal);
+  final owner =
+      await DatabaseOwner.open(path, directoryEntriesDurable: true, wal: wal);
+  try {
+    if (onConfigure != null) await onConfigure(owner);
+    if (version != null) {
+      await owner.transaction((txn) async {
+        final current = await owner._app.readUserVersion();
+        if (current == 0) {
+          await onCreate!(owner, version);
+        } else if (current < version) {
+          if (onUpgrade == null) {
+            throw StateError(
+                'Database version $current is older than $version');
+          }
+          await onUpgrade(owner, current, version);
+        } else if (current > version) {
+          if (onDowngrade == null) {
+            throw StateError(
+                'Database version $current is newer than $version');
+          }
+          await onDowngrade(owner, current, version);
+        }
+        if (current != version) {
+          await txn.execute('PRAGMA user_version = $version');
+        }
+      });
+    }
+    if (onOpen != null) await onOpen(owner);
+    return owner;
+  } catch (_) {
+    await owner.close();
+    rethrow;
+  }
 }
 
 /// Writes an empty database image and an empty `-journal` when either is
@@ -62,6 +128,17 @@ final class DatabaseOwner {
   final Capability _admin;
   final DatabaseClient client;
   bool _closed = false;
+
+  /// Whether [close] has not run.
+  bool get isOpen => !_closed;
+  AppCommands? _commands;
+
+  AppCommands get _app => _commands ??= AppCommands(
+        query: (sql, parameters) => client.query(sql, parameters),
+        execute: (sql, parameters) => client.execute(sql, parameters),
+        inTransaction: () => client.inTransaction,
+        isOpen: () => !_closed,
+      );
 
   static Future<DatabaseOwner> open(String path,
       {required bool directoryEntriesDurable, bool wal = false}) async {
@@ -109,15 +186,82 @@ final class DatabaseOwner {
     }
   }
 
-  /// Runs a statement that returns rows. This is [DatabaseClient.query].
-  Future<QueryResult> query(String sql,
-          [List<Object?> parameters = const []]) =>
-      client.query(sql, parameters);
-
   /// Runs a statement that changes rows. This is [DatabaseClient.execute].
   Future<MutationResult> execute(String sql,
           [List<Object?> parameters = const []]) =>
       client.execute(sql, parameters);
+
+  /// Runs one statement and returns the rows as maps.
+  ///
+  /// Integer cells are [BigInt]. This is the SQL form of [query].
+  Future<List<Map<String, Object?>>> rawQuery(String sql,
+          [List<Object?>? arguments]) =>
+      _app.rawQuery(sql, arguments);
+
+  /// Runs one insert and returns its row id.
+  Future<BigInt> rawInsert(String sql, [List<Object?>? arguments]) =>
+      _app.rawInsert(sql, arguments);
+
+  /// Runs one update and returns the changed-row count.
+  Future<int> rawUpdate(String sql, [List<Object?>? arguments]) =>
+      _app.rawUpdate(sql, arguments);
+
+  /// Runs one delete and returns the changed-row count.
+  Future<int> rawDelete(String sql, [List<Object?>? arguments]) =>
+      _app.rawDelete(sql, arguments);
+
+  /// Inserts [values] and returns the new row id.
+  Future<BigInt> insert(String table, Map<String, Object?> values,
+          {String? nullColumnHack, ConflictAlgorithm? conflictAlgorithm}) =>
+      _app.insert(table, values,
+          nullColumnHack: nullColumnHack, conflictAlgorithm: conflictAlgorithm);
+
+  /// Reads [table]. [where] is SQL, and its values belong in [whereArgs].
+  ///
+  /// Integer cells are [BigInt].
+  Future<List<Map<String, Object?>>> query(
+    String table, {
+    bool? distinct,
+    List<String>? columns,
+    String? where,
+    List<Object?>? whereArgs,
+    String? groupBy,
+    String? having,
+    String? orderBy,
+    int? limit,
+    int? offset,
+  }) =>
+      _app.query(table,
+          distinct: distinct,
+          columns: columns,
+          where: where,
+          whereArgs: whereArgs,
+          groupBy: groupBy,
+          having: having,
+          orderBy: orderBy,
+          limit: limit,
+          offset: offset);
+
+  /// Updates the rows selected by [where] and returns the changed-row count.
+  Future<int> update(String table, Map<String, Object?> values,
+          {String? where,
+          List<Object?>? whereArgs,
+          ConflictAlgorithm? conflictAlgorithm}) =>
+      _app.update(table, values,
+          where: where,
+          whereArgs: whereArgs,
+          conflictAlgorithm: conflictAlgorithm);
+
+  /// Deletes the rows selected by [where] and returns the changed-row count.
+  Future<int> delete(String table, {String? where, List<Object?>? whereArgs}) =>
+      _app.delete(table, where: where, whereArgs: whereArgs);
+
+  /// Runs [action] in a transaction. A nested call uses a savepoint.
+  Future<T> transaction<T>(Future<T> Function(Transaction txn) action) =>
+      _app.transaction(action);
+
+  /// Collects statements and runs them in [Batch.commit].
+  Batch batch() => _app.batch();
 
   Future<void> close() async {
     if (_closed) return;

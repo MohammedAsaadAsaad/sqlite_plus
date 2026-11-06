@@ -1,5 +1,24 @@
 # Development log
 
+## 2026-11-06 — Familiar table calls on openDatabase
+
+- `openDatabase` in `sqlite_plus_io.dart` takes `version`, `onCreate`,
+  `onUpgrade`, `onDowngrade`, `onConfigure`, and `onOpen`. The schema change
+  and the new `user_version` commit in one transaction. A failed `onCreate`
+  leaves the stored version at 0.
+- `DatabaseOwner` now has `insert`, `query`, `update`, `delete`, `rawQuery`,
+  `rawInsert`, `rawUpdate`, `rawDelete`, `transaction`, and `batch`. `query`
+  reads a table into maps. `rawQuery` runs SQL. Integers in those maps and
+  insert ids are `BigInt`. An `int` argument is stored as an integer. A
+  `List<int>` argument is stored as a blob. `client.query` still returns a
+  `QueryResult`. There is no separate library.
+- `packages/sqlite_plus/test/app_database_test.dart` covers a file round trip,
+  a rolled-back transaction, a nested savepoint, a batch, conflict algorithms,
+  an empty insert, a limited page, a quoted table name, version migration, a
+  refused directory, and a closed connection. On Linux x64, Dart 3.13.7,
+  `dart analyze --fatal-infos` reported no issues and `dart test` passed
+  10631 tests.
+
 ## 2026-11-06 — openDatabase creates a missing file
 
 - `openDatabase` writes an empty database image when the file is missing, and
