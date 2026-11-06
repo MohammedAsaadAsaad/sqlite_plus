@@ -1,5 +1,39 @@
 # Development log
 
+## 2026-11-06 — Familiar table calls on openDatabase
+
+- `openDatabase` in `sqlite_plus_io.dart` takes `version`, `onCreate`,
+  `onUpgrade`, `onDowngrade`, `onConfigure`, and `onOpen`. The schema change
+  and the new `user_version` commit in one transaction. A failed `onCreate`
+  leaves the stored version at 0.
+- `DatabaseOwner` now has `insert`, `query`, `update`, `delete`, `rawQuery`,
+  `rawInsert`, `rawUpdate`, `rawDelete`, `transaction`, and `batch`. `query`
+  reads a table into maps. `rawQuery` runs SQL. Integers in those maps and
+  insert ids are `BigInt`. An `int` argument is stored as an integer. A
+  `List<int>` argument is stored as a blob. `client.query` still returns a
+  `QueryResult`. There is no separate library.
+- `packages/sqlite_plus/test/app_database_test.dart` covers a file round trip,
+  a rolled-back transaction, a nested savepoint, a batch, conflict algorithms,
+  an empty insert, a limited page, a quoted table name, version migration, a
+  refused directory, and a closed connection. On Linux x64, Dart 3.13.7,
+  `dart analyze --fatal-infos` reported no issues and `dart test` passed
+  10631 tests.
+
+## 2026-11-06 — openDatabase creates a missing file
+
+- `openDatabase` writes an empty database image when the file is missing, and
+  an empty `-journal` when that sidecar is missing. An existing database file
+  is not replaced, including a zero-length file. `directoryEntriesDurable`
+  defaults to true. Passing false writes nothing and throws
+  `UnsupportedError`. `wal: true` does not create a database or a `-wal`
+  file. `DatabaseOwner.query` and `execute` forward to the client.
+- `packages/sqlite_plus/test/open_alias_test.dart` covers a new file, a
+  missing parent directory, an existing fixture, a missing journal, an empty
+  file, a refused attestation, and a missing WAL path. On Linux x64, Dart
+  3.13.7, `dart analyze --fatal-infos` reported no issues and `dart test`
+  passed 10623 tests. This is not a power-loss result.
+  `directoryEntriesDurable` remains a caller attestation.
+
 ## 2026-11-06 — Course answers show orange, then green or red
 
 - A selected training answer is orange, with an orange letter and a dot, before

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.11
+
+`openDatabase` accepts `version`, `onCreate`, `onUpgrade`, and `onDowngrade`. The same connection has `insert`, `query`, `update`, `delete`, `transaction`, and `batch`. `query` reads a table and returns maps. `rawQuery` runs SQL. Integers in those maps, and insert ids, are `BigInt`. An `int` argument is stored as an integer. Linux x64, Dart 3.13.7: `dart analyze --fatal-infos` reported no issues and `dart test` passed 10631 tests.
+
+## 0.1.10
+
+`openDatabase('shelf.db')` creates a missing database file and a missing `-journal`. An existing database file is not replaced. `directoryEntriesDurable` defaults to true. Passing false writes nothing and throws. `wal: true` does not create a `-wal` file. `query` and `execute` on the owner call the same methods on its client. Linux x64, Dart 3.13.7: `dart analyze --fatal-infos` reported no issues and `dart test` passed 10623 tests.
+
 ## 0.1.9
 
 The README opens on a file the application keeps. Each later sample is one engine feature. The catalog page and the other packages are at the end. Measured pages name the system and the result. The engine behavior is the 0.1.8 release.
