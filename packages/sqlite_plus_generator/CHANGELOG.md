@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.9
+
+Depends on `sqlite_plus_orm` ^0.1.9. The README opens on the classes this tool writes. The generator behavior is the 0.1.8 release.
+
+## 0.1.8
+
+Depends on `sqlite_plus_orm` ^0.1.8. The generator behavior is the 0.1.7 release.
+
 ## 0.1.7
 
 Depends on `sqlite_plus_orm` ^0.1.7.

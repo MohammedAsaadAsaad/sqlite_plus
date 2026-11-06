@@ -22,8 +22,7 @@ count, and the time that page took. Twenty names are loaded at a time.
 Previous and next run that search again for the other slice and replace the
 time.
 
-On one arm64 phone, release 0.5.2, at 17:11 Asia/Hebron (UTC+2) on 5 November
-2026, `بسكويت` read `20 of 493 matches · 47.236 ms` on page 1 of 25. The score
+On one arm64 phone, release 0.5.2, `بسكويت` read `20 of 493 matches · 47.236 ms` on page 1 of 25. The score
 on those titles was 3.965. The same query on Linux x64, AOT, and not a phone,
 took 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320.
 
@@ -64,9 +63,8 @@ stays inside the pure-Dart engine.
 
 ## Android package
 
-`dist/product-catalog-arm64-v8a.apk` is the release package built on 5 November
-2026 at 16:58 Asia/Hebron (UTC+2) with
-`flutter build apk --release --target-platform android-arm64`. It is 19817049
+`dist/product-catalog-arm64-v8a.apk` is the release package built with
+`flutter build apk --release --target-platform android-arm64` on Linux. It is 19817049
 bytes, sha256
 `66e14efeebfd7e33a93c7f8c6b4cb504213deb1071a48e012958b2de6995f165`. The
 application id is `dev.sqliteplus.product_catalog`, versionName `0.5.2`,

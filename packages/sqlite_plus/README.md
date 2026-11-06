@@ -6,163 +6,22 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.8
+  sqlite_plus: ^0.1.9
 ```
-
-## A page of search
-
-Two or more documents share FTS5 leaves. A query of whole terms reads the leaves that contain those terms. One document keeps the older leaf.
-
-The catalog stores 10,000 Arabic names and 10,000 English names and loads 20 at a time. On one arm64 phone, at 17:11 Asia/Hebron (UTC+2) on 5 November 2026, `بسكويت` read `20 of 493 matches · 47.236 ms`.
-
-![Catalog on one arm64 phone. Twenty of 493 matches in 47.236 ms.](doc/catalog-phone.jpg)
-
-On Linux x64, AOT, and not a phone, that page took 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. `biscuit` took 19.717 ms, 25.481 ms, and 25.621 ms. Before packing, the same Linux process took 405 ms and then 359 ms, and the previous phone build showed 472.000 ms. [`sqlite_plus_search`](https://pub.dev/packages/sqlite_plus_search) is the index and the shelf filter on top of this engine.
-
-## The packages on pub.dev
-
-Each package is a complete library. Import only what you call. The links below are the package pages.
-
-| Package | Version | Page |
-|---|---|---|
-| sqlite_plus | `^0.1.8` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.0` | <https://pub.dev/packages/sqlite_plus_geo> |
-
-### sqlite_plus
-
-```yaml
-dependencies:
-  sqlite_plus: ^0.1.8
-```
-
-```dart
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final db = await openInMemory();
-await db.execute(
-  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT)',
-);
-await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
-final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ?',
-  ['%Garden%'],
-);
-```
-
-`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
-
-### sqlite_plus_orm
-
-```yaml
-dependencies:
-  sqlite_plus_orm: ^0.1.7
-```
-
-```dart
-import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
-
-@DbEntity()
-class Note {
-  Note({this.id, required this.title, this.revision = 0});
-  final BigInt? id;
-  String title;
-  @DbVersion()
-  int revision;
-}
-```
-
-`saveChanges` writes one transaction and bumps `revision`. A table with no `PRIMARY KEY` still maps. Its key is the SQLite row id:
-
-```dart
-@DbKey(generated: true)
-final BigInt? rowid;
-```
-
-`plan()` adopts that row id and does not rebuild the table.
-
-### sqlite_plus_generator
-
-```yaml
-dev_dependencies:
-  sqlite_plus_generator: ^0.1.7
-```
-
-```sh
-dart run sqlite_plus_generator
-```
-
-From the package root, that command writes a part for every public `@DbEntity` under `lib/`, plus `lib/sqlite_plus_migrations.g.dart`.
-
-### sqlite_plus_arabic
-
-```yaml
-dependencies:
-  sqlite_plus_arabic: ^0.1.1
-```
-
-```dart
-import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
-
-SqlitePlusArabic.register(db);
-await db.execute(
-  "CREATE VIRTUAL TABLE passage USING fts5(body, tokenize = 'arabic')",
-);
-```
-
-`حديقة` and `الحديقة` share one token. `الله` stays `الله`. This is not the SQLite ICU Arabic tokenizer. Register before `CREATE`, and again after the image is reopened.
-
-### sqlite_plus_vec
-
-```yaml
-dependencies:
-  sqlite_plus_vec: ^0.1.1
-```
-
-```dart
-import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
-
-SqlitePlusVec.register(db);
-await db.execute(
-  'CREATE VIRTUAL TABLE point USING vec0(embedding float[2] distance_metric=l2)',
-);
-```
-
-`MATCH` with `k` scans every stored float32 vector. The file is not a sqlite-vec database.
-
-### sqlite_plus_geo
-
-```yaml
-dependencies:
-  sqlite_plus_geo: ^0.1.0
-```
-
-```dart
-import 'package:sqlite_plus_geo/sqlite_plus_geo.dart';
-
-final geo = GeoSession(db);
-await geo.createSpatialTable(
-  'facilities',
-  geometryColumn: 'location',
-  geometryType: GeoGeometryType.point,
-  srid: 4326,
-);
-```
-
-X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
-
 
 ## A table, a row, a query
 
 ```dart
+import 'dart:io';
+
 import 'package:sqlite_plus/sqlite_plus.dart';
 
-final db = await openInMemory();
+final file = File('shelf.db');
+final db = file.existsSync()
+    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
+    : await MutableSqliteDatabase.create();
 await db.execute(
-  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
 );
 await db.execute(
   'INSERT INTO note(title, body) VALUES (?, ?), (?, ?)',
@@ -176,7 +35,9 @@ final rows = await db.query(
 
 `rows` is `Kept Garden`. Integers come back as `BigInt`. Parameters are `?`, `:name`, `@name`, and `$name`.
 
-## JSON, search, and a place
+![The row is written to shelf.db, the handle closes, and the next open reads the same title.](doc/shelf-file.png)
+
+## A JSON card
 
 ```dart
 await db.execute(
@@ -190,7 +51,13 @@ final pages = await db.query(
   'SELECT json_extract(card, ?) FROM book WHERE json_extract(card, ?) = ?',
   [r'$.pages', r'$.title', 'Kept Garden'],
 );
+```
 
+`pages` is `320`. `db` is the `shelf.db` connection from the first example.
+
+## A word in the page
+
+```dart
 await db.execute('CREATE VIRTUAL TABLE book_text USING fts5(title, body)');
 await db.execute(
   'INSERT INTO book_text(title, body) VALUES (?, ?)',
@@ -200,7 +67,13 @@ final hit = await db.query(
   "SELECT highlight(book_text, 1, '[', ']') FROM book_text WHERE book_text MATCH ?",
   ['kept'],
 );
+```
 
+`hit` is `a garden [kept] in the margin`. This is the engine's own FTS5 table.
+
+## A box on the shelf
+
+```dart
 await db.execute(
   'CREATE VIRTUAL TABLE shelf USING rtree(id, minX, maxX, minY, maxY)',
 );
@@ -210,7 +83,7 @@ final place = await db.query(
 );
 ```
 
-`pages` is `320`. `hit` is `a garden [kept] in the margin`. `place` is shelf `1`.
+`place` is shelf `1`.
 
 ## A function, a rollback, a reopen
 
@@ -264,6 +137,21 @@ final title = await opened.database.query('SELECT title FROM note');
 
 `file` is a SQLCipher 4 database: AES-256-CBC, HMAC-SHA512, and PBKDF2-HMAC-SHA512 for 256000 iterations. The salt is the first 16 bytes. Each page keeps an 80-byte reserve. `opened.database.exportImage()` is the decrypted SQLite image. `saveSqlCipher` writes the encrypted file in one pass. A file opens when the passphrase and the iteration count match the writer. Pass the same `iterations` value on both sides when it is not 256000. The codec is pure Dart, through `pointycastle`. An ordinary `openInMemory` or `openDatabase` does not call it.
 
+## SQL
+
+| You write | You get |
+|---|---|
+| Joins | `INNER` `LEFT` `RIGHT` `FULL` `CROSS`, `ON`, `USING` |
+| Shape | Subqueries, `EXISTS`, `IN`, `UNION`, `INTERSECT`, `EXCEPT`, CTEs, `GROUP BY`, `HAVING` |
+| Windows | `ROW_NUMBER` `RANK` `DENSE_RANK` `LAG` `LEAD` `FIRST_VALUE` `LAST_VALUE` `NTH_VALUE` |
+| Writes | `INSERT` `UPDATE` `DELETE`, `ON CONFLICT`, `RETURNING`, `BEGIN` `COMMIT` `ROLLBACK`, savepoints |
+| Schema | Tables, indexes, views, triggers, `ALTER TABLE`, `CHECK`, `STRICT`, foreign keys, generated columns |
+| JSON | `json` `jsonb` `json_pretty` `json_extract` `json_object` `json_set` `json_patch`, `->` `->>` |
+| Search | FTS5 and contentless FTS4 `MATCH`, `highlight` `snippet` `bm25`, R-tree, geopoly |
+| Your code | `registerScalar`, `registerAggregate`, `createCollation`, `tokenizers.register` |
+
+`registerScalar` stays on that connection. `deterministic: true` allows it inside a schema expression. `registerAggregate` builds a fresh aggregate per group. `createCollation` sits beside `BINARY`, `NOCASE`, and `RTRIM`. `tokenizers.register` adds an FTS tokenizer name. The built-in names `unicode61`, `porter`, `trigram`, `ascii`, and `simple` stay fixed.
+
 ## Speed
 
 1,000 rows on Linux, release build. The same SQL on both engines, and every checksum matched. Each bar is that row's measured time.
@@ -300,20 +188,160 @@ On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 
 The file size is taken before close, so it still includes the redo.
 
-## SQL
+## A page of search
 
-| You write | You get |
-|---|---|
-| Joins | `INNER` `LEFT` `RIGHT` `FULL` `CROSS`, `ON`, `USING` |
-| Shape | Subqueries, `EXISTS`, `IN`, `UNION`, `INTERSECT`, `EXCEPT`, CTEs, `GROUP BY`, `HAVING` |
-| Windows | `ROW_NUMBER` `RANK` `DENSE_RANK` `LAG` `LEAD` `FIRST_VALUE` `LAST_VALUE` `NTH_VALUE` |
-| Writes | `INSERT` `UPDATE` `DELETE`, `ON CONFLICT`, `RETURNING`, `BEGIN` `COMMIT` `ROLLBACK`, savepoints |
-| Schema | Tables, indexes, views, triggers, `ALTER TABLE`, `CHECK`, `STRICT`, foreign keys, generated columns |
-| JSON | `json` `jsonb` `json_pretty` `json_extract` `json_object` `json_set` `json_patch`, `->` `->>` |
-| Search | FTS5 and contentless FTS4 `MATCH`, `highlight` `snippet` `bm25`, R-tree, geopoly |
-| Your code | `registerScalar`, `registerAggregate`, `createCollation`, `tokenizers.register` |
+Two or more documents share FTS5 leaves. A query of whole terms reads the leaves that contain those terms. One document keeps the older leaf.
 
-`registerScalar` stays on that connection. `deterministic: true` allows it inside a schema expression. `registerAggregate` builds a fresh aggregate per group. `createCollation` sits beside `BINARY`, `NOCASE`, and `RTRIM`. `tokenizers.register` adds an FTS tokenizer name. The built-in names `unicode61`, `porter`, `trigram`, `ascii`, and `simple` stay fixed.
+The catalog stores 10,000 Arabic names and 10,000 English names and loads 20 at a time. On one arm64 phone, catalog release 0.5.2, `بسكويت` read `20 of 493 matches · 47.236 ms`.
+
+![Page time for the Arabic query before and after packed leaves.](doc/search-compare.png)
+
+![Catalog on one arm64 phone. Twenty of 493 matches in 47.236 ms.](doc/catalog-phone.jpg)
+
+On Linux x64, AOT, that page took 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. `biscuit` took 19.717 ms, 25.481 ms, and 25.621 ms. Before packing, the same Linux process took 405 ms and then 359 ms, and the previous phone build showed 472.000 ms. [`sqlite_plus_search`](https://pub.dev/packages/sqlite_plus_search) is the index and the shelf filter on top of this engine.
+
+## The packages on pub.dev
+
+Each package is a complete library. Import only what you call. The links below are the package pages.
+
+| Package | Version | Page |
+|---|---|---|
+| sqlite_plus | `^0.1.9` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_geo> |
+
+### sqlite_plus
+
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.9
+```
+
+```dart
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus.dart';
+
+final file = File('shelf.db');
+final db = file.existsSync()
+    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
+    : await MutableSqliteDatabase.create();
+await db.execute(
+  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
+);
+await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
+await file.writeAsBytes(db.exportImage(), flush: true);
+final rows = await db.query(
+  'SELECT title FROM note WHERE title LIKE ?',
+  ['%Garden%'],
+);
+```
+
+`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
+
+![The row is written to shelf.db, the handle closes, and the next open reads the same title.](doc/shelf-file.png)
+
+### sqlite_plus_orm
+
+```yaml
+dependencies:
+  sqlite_plus_orm: ^0.1.9
+```
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity()
+class Note {
+  Note({this.id, required this.title, this.revision = 0});
+  final BigInt? id;
+  String title;
+  @DbVersion()
+  int revision;
+}
+```
+
+`saveChanges` writes one transaction and bumps `revision`. A table with no `PRIMARY KEY` still maps. Its key is the SQLite row id:
+
+```dart
+@DbKey(generated: true)
+final BigInt? rowid;
+```
+
+`plan()` adopts that row id and does not rebuild the table.
+
+### sqlite_plus_generator
+
+```yaml
+dev_dependencies:
+  sqlite_plus_generator: ^0.1.9
+```
+
+```sh
+dart run sqlite_plus_generator
+```
+
+From the package root, that command writes a part for every public `@DbEntity` under `lib/`, plus `lib/sqlite_plus_migrations.g.dart`.
+
+### sqlite_plus_arabic
+
+```yaml
+dependencies:
+  sqlite_plus_arabic: ^0.1.3
+```
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+
+SqlitePlusArabic.register(db);
+await db.execute(
+  "CREATE VIRTUAL TABLE passage USING fts5(body, tokenize = 'arabic')",
+);
+```
+
+`حديقة` and `الحديقة` share one token. `الله` stays `الله`. This is not the SQLite ICU Arabic tokenizer. Register before `CREATE`, and again after the image is reopened.
+
+### sqlite_plus_vec
+
+```yaml
+dependencies:
+  sqlite_plus_vec: ^0.1.3
+```
+
+```dart
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+SqlitePlusVec.register(db);
+await db.execute(
+  'CREATE VIRTUAL TABLE point USING vec0(embedding float[2] distance_metric=l2)',
+);
+```
+
+`MATCH` with `k` scans every stored float32 vector. The file is not a sqlite-vec database.
+
+### sqlite_plus_geo
+
+```yaml
+dependencies:
+  sqlite_plus_geo: ^0.1.2
+```
+
+```dart
+import 'package:sqlite_plus_geo/sqlite_plus_geo.dart';
+
+final geo = GeoSession(db);
+await geo.createSpatialTable(
+  'facilities',
+  geometryColumn: 'location',
+  geometryType: GeoGeometryType.point,
+  srid: 4326,
+);
+```
+
+X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
 
 ## Arabic search and vectors
 
@@ -370,13 +398,13 @@ An application loads a package when it imports it. Arabic and vec stay out of a 
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.8
-  sqlite_plus_orm: ^0.1.7
-  sqlite_plus_arabic: ^0.1.1
-  sqlite_plus_vec: ^0.1.1
+  sqlite_plus: ^0.1.9
+  sqlite_plus_orm: ^0.1.9
+  sqlite_plus_arabic: ^0.1.3
+  sqlite_plus_vec: ^0.1.3
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.7
+  sqlite_plus_generator: ^0.1.9
 ```
 
 ### A reading card

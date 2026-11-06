@@ -2,149 +2,13 @@
 
 A light Arabic stemmer for an FTS5 table in [`sqlite_plus`](https://pub.dev/packages/sqlite_plus). The name is the string `arabic`. Register it on the connection, then create the table with `tokenize = 'arabic'`.
 
-```yaml
-dependencies:
-  sqlite_plus: ^0.1.7
-  sqlite_plus_arabic: ^0.1.2
-```
-
-## The packages on pub.dev
-
-Each package is a complete library. Import only what you call. The links below are the package pages.
-
-| Package | Version | Page |
-|---|---|---|
-| sqlite_plus | `^0.1.7` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.0` | <https://pub.dev/packages/sqlite_plus_geo> |
-
-### sqlite_plus
+![حديقة and الحديقة share the token حديق.](doc/stem.png)
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.7
+  sqlite_plus: ^0.1.9
+  sqlite_plus_arabic: ^0.1.3
 ```
-
-```dart
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final db = await openInMemory();
-await db.execute(
-  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT)',
-);
-await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
-final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ?',
-  ['%Garden%'],
-);
-```
-
-`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
-
-### sqlite_plus_orm
-
-```yaml
-dependencies:
-  sqlite_plus_orm: ^0.1.7
-```
-
-```dart
-import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
-
-@DbEntity()
-class Note {
-  Note({this.id, required this.title, this.revision = 0});
-  final BigInt? id;
-  String title;
-  @DbVersion()
-  int revision;
-}
-```
-
-`saveChanges` writes one transaction and bumps `revision`. A table with no `PRIMARY KEY` still maps. Its key is the SQLite row id:
-
-```dart
-@DbKey(generated: true)
-final BigInt? rowid;
-```
-
-`plan()` adopts that row id and does not rebuild the table.
-
-### sqlite_plus_generator
-
-```yaml
-dev_dependencies:
-  sqlite_plus_generator: ^0.1.7
-```
-
-```sh
-dart run sqlite_plus_generator
-```
-
-From the package root, that command writes a part for every public `@DbEntity` under `lib/`, plus `lib/sqlite_plus_migrations.g.dart`.
-
-### sqlite_plus_arabic
-
-```yaml
-dependencies:
-  sqlite_plus_arabic: ^0.1.1
-```
-
-```dart
-import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
-
-SqlitePlusArabic.register(db);
-await db.execute(
-  "CREATE VIRTUAL TABLE passage USING fts5(body, tokenize = 'arabic')",
-);
-```
-
-`حديقة` and `الحديقة` share one token. `الله` stays `الله`. This is not the SQLite ICU Arabic tokenizer. Register before `CREATE`, and again after the image is reopened.
-
-### sqlite_plus_vec
-
-```yaml
-dependencies:
-  sqlite_plus_vec: ^0.1.1
-```
-
-```dart
-import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
-
-SqlitePlusVec.register(db);
-await db.execute(
-  'CREATE VIRTUAL TABLE point USING vec0(embedding float[2] distance_metric=l2)',
-);
-```
-
-`MATCH` with `k` scans every stored float32 vector. The file is not a sqlite-vec database.
-
-### sqlite_plus_geo
-
-```yaml
-dependencies:
-  sqlite_plus_geo: ^0.1.0
-```
-
-```dart
-import 'package:sqlite_plus_geo/sqlite_plus_geo.dart';
-
-final geo = GeoSession(db);
-await geo.createSpatialTable(
-  'facilities',
-  geometryColumn: 'location',
-  geometryType: GeoGeometryType.point,
-  srid: 4326,
-);
-```
-
-X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
-
-
-An application that does not import this package does not load the stemmer. The engine keeps `unicode61`, `porter`, `trigram`, `ascii`, and `simple`. Those names stay fixed.
 
 ## What one word becomes
 
@@ -181,10 +45,15 @@ This does not register a tokenizer and it does not change `tokenize = 'arabic'`.
 Register before `CREATE`. The registry is the connection's. A second `register` replaces the factory. `SqlitePlusArabic.register` accepts a `SqliteDatabase`, a `MutableSqliteDatabase`, or that connection's `SqlFunctionRegistry`.
 
 ```dart
+import 'dart:io';
+
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
 
-final db = await openInMemory();
+final file = File('garden.db');
+final db = file.existsSync()
+    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
+    : await MutableSqliteDatabase.create();
 SqlitePlusArabic.register(db);
 await db.execute(
   "CREATE VIRTUAL TABLE docs USING fts5(body, tokenize = 'arabic')",
@@ -199,6 +68,7 @@ final found = await db.query(
 final missed = await db.query(
   "SELECT body FROM docs WHERE docs MATCH 'كتاب'",
 );
+await file.writeAsBytes(db.exportImage(), flush: true);
 ```
 
 `found` is one row, `في الحديقة`. `MATCH 'الحديقة'` and `MATCH 'حديق'` return that same row, because all three strings share `حديق`. `missed` is empty: `سيارة` does not share a token with `حديقة`.
@@ -230,7 +100,15 @@ class Note {
 The key column is `rowid`. Every other mapped column is text. A tokenizer on `DbModules.rtree` or on an ordinary table is rejected, because only FTS5 has a `tokenize` clause.
 
 ```dart
-final connection = await MutableDatabaseConnection.openMemory();
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus.dart';
+
+final file = File('garden.db');
+final database = file.existsSync()
+    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
+    : await MutableSqliteDatabase.create();
+final connection = MutableDatabaseConnection(database, closeDatabase: true);
 SqlitePlusArabic.register(connection.database);
 final context = DbContext(connection, generatedModel);
 await context.migrations.ensureCreated();
@@ -239,6 +117,7 @@ final notes = context.set(NoteMapping.instance);
 notes.add(Note(body: 'في الحديقة'));
 notes.add(Note(body: 'كتاب بعيد'));
 await context.saveChanges(); // 2
+await file.writeAsBytes(database.exportImage(), flush: true);
 
 final found = await notes.query.search('الحديقة').single();
 final missed = await notes.query.search('سيارة').toList();
@@ -291,7 +170,153 @@ dart run bin/main.dart
 
 | You want | Package | You call |
 |---|---|---|
-| The index, `MATCH`, `highlight` | [`sqlite_plus`](https://pub.dev/packages/sqlite_plus) | `openInMemory`, then SQL |
+| The index, `MATCH`, `highlight` | [`sqlite_plus`](https://pub.dev/packages/sqlite_plus) | `garden.db`, then SQL |
 | The string constants and `search` | [`sqlite_plus_orm`](https://pub.dev/packages/sqlite_plus_orm) | `DbModules.fts5`, `notes.query.search` |
 | The class turned into a part | [`sqlite_plus_generator`](https://pub.dev/packages/sqlite_plus_generator) | `dart run sqlite_plus_generator` |
 | The stemmer and `ArabicText.normalize` | this package | `SqlitePlusArabic.register`, `ArabicText.normalize` |
+
+## The packages on pub.dev
+
+Each package is a complete library. Import only what you call. The links below are the package pages.
+
+| Package | Version | Page |
+|---|---|---|
+| sqlite_plus | `^0.1.9` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_geo> |
+
+### sqlite_plus
+
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.9
+```
+
+```dart
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus.dart';
+
+final file = File('shelf.db');
+final db = file.existsSync()
+    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
+    : await MutableSqliteDatabase.create();
+await db.execute(
+  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
+);
+await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
+await file.writeAsBytes(db.exportImage(), flush: true);
+final rows = await db.query(
+  'SELECT title FROM note WHERE title LIKE ?',
+  ['%Garden%'],
+);
+```
+
+`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
+
+![The row is written to shelf.db, the handle closes, and the next open reads the same title.](doc/shelf-file.png)
+
+### sqlite_plus_orm
+
+```yaml
+dependencies:
+  sqlite_plus_orm: ^0.1.9
+```
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity()
+class Note {
+  Note({this.id, required this.title, this.revision = 0});
+  final BigInt? id;
+  String title;
+  @DbVersion()
+  int revision;
+}
+```
+
+`saveChanges` writes one transaction and bumps `revision`. A table with no `PRIMARY KEY` still maps. Its key is the SQLite row id:
+
+```dart
+@DbKey(generated: true)
+final BigInt? rowid;
+```
+
+`plan()` adopts that row id and does not rebuild the table.
+
+### sqlite_plus_generator
+
+```yaml
+dev_dependencies:
+  sqlite_plus_generator: ^0.1.9
+```
+
+```sh
+dart run sqlite_plus_generator
+```
+
+From the package root, that command writes a part for every public `@DbEntity` under `lib/`, plus `lib/sqlite_plus_migrations.g.dart`.
+
+### sqlite_plus_arabic
+
+```yaml
+dependencies:
+  sqlite_plus_arabic: ^0.1.3
+```
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+
+SqlitePlusArabic.register(db);
+await db.execute(
+  "CREATE VIRTUAL TABLE passage USING fts5(body, tokenize = 'arabic')",
+);
+```
+
+`حديقة` and `الحديقة` share one token. `الله` stays `الله`. This is not the SQLite ICU Arabic tokenizer. Register before `CREATE`, and again after the image is reopened.
+
+### sqlite_plus_vec
+
+```yaml
+dependencies:
+  sqlite_plus_vec: ^0.1.3
+```
+
+```dart
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+SqlitePlusVec.register(db);
+await db.execute(
+  'CREATE VIRTUAL TABLE point USING vec0(embedding float[2] distance_metric=l2)',
+);
+```
+
+`MATCH` with `k` scans every stored float32 vector. The file is not a sqlite-vec database.
+
+### sqlite_plus_geo
+
+```yaml
+dependencies:
+  sqlite_plus_geo: ^0.1.2
+```
+
+```dart
+import 'package:sqlite_plus_geo/sqlite_plus_geo.dart';
+
+final geo = GeoSession(db);
+await geo.createSpatialTable(
+  'facilities',
+  geometryColumn: 'location',
+  geometryType: GeoGeometryType.point,
+  srid: 4326,
+);
+```
+
+X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
+
+
+An application that does not import this package does not load the stemmer. The engine keeps `unicode61`, `porter`, `trigram`, `ascii`, and `simple`. Those names stay fixed.

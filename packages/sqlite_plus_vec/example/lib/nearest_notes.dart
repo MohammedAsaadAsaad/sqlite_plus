@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
 
@@ -48,9 +51,13 @@ final _type = EntityType<Point>(
 
 /// Registers vec0, saves two vectors, and reads the nearest neighbor.
 Future<NearestNotes> runNearestNotes() async {
-  final connection = await MutableDatabaseConnection.openMemory();
-  SqlitePlusVec.register(connection.database);
+  final dir = await Directory.systemTemp.createTemp('nearest_notes_');
+  final path = '${dir.path}/points.db';
+  final database = await MutableSqliteDatabase.create();
+  SqlitePlusVec.register(database);
+  final connection = MutableDatabaseConnection(database, closeDatabase: true);
   final context = DbContext(connection, DbModel([_type]));
+  late NearestNotes result;
   try {
     await context.migrations.ensureCreated();
     final points = context.set(_type);
@@ -60,11 +67,27 @@ Future<NearestNotes> runNearestNotes() async {
       throw StateError('insert did not save two points');
     }
     final nearest = await points.query.nearest(const [0.9, 0.1], k: 1).single();
-    return NearestNotes(
+    await File(path).writeAsBytes(database.exportImage(), flush: true);
+    result = NearestNotes(
       first: nearest.embedding[0],
       secondPlanEmpty: (await context.migrations.plan()).isEmpty,
     );
   } finally {
     await context.close();
   }
+  final again =
+      await MutableSqliteDatabase.fromImage(await File(path).readAsBytes());
+  try {
+    SqlitePlusVec.register(again);
+    final rows = await again.query(
+      'SELECT rowid FROM points WHERE embedding MATCH ? AND k = 1',
+      [
+        encodeVec(const [0.9, 0.1])
+      ],
+    );
+    if (rows.rows.length != 1) throw StateError('points.db lost the neighbor');
+  } finally {
+    await again.close();
+  }
+  return result;
 }

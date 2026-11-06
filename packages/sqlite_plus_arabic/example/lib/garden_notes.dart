@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
@@ -50,9 +53,13 @@ final _type = EntityType<Note>(
 
 /// Registers the Arabic tokenizer, saves two notes, and searches one word.
 Future<GardenNotes> runGardenNotes() async {
-  final connection = await MutableDatabaseConnection.openMemory();
-  SqlitePlusArabic.register(connection.database);
+  final dir = await Directory.systemTemp.createTemp('garden_notes_');
+  final path = '${dir.path}/garden.db';
+  final database = await MutableSqliteDatabase.create();
+  SqlitePlusArabic.register(database);
+  final connection = MutableDatabaseConnection(database, closeDatabase: true);
   final context = DbContext(connection, DbModel([_type]));
+  late GardenNotes result;
   try {
     await context.migrations.ensureCreated();
     final notes = context.set(_type);
@@ -63,7 +70,8 @@ Future<GardenNotes> runGardenNotes() async {
     }
     final found = await notes.query.search('الحديقة').single();
     final missed = await notes.query.search('سيارة').toList();
-    return GardenNotes(
+    await File(path).writeAsBytes(database.exportImage(), flush: true);
+    result = GardenNotes(
       found: found.body,
       missed: missed.isEmpty,
       secondPlanEmpty: (await context.migrations.plan()).isEmpty,
@@ -71,4 +79,18 @@ Future<GardenNotes> runGardenNotes() async {
   } finally {
     await context.close();
   }
+  final again =
+      await MutableSqliteDatabase.fromImage(await File(path).readAsBytes());
+  try {
+    SqlitePlusArabic.register(again);
+    final rows = await again.query(
+      "SELECT body FROM notes WHERE notes MATCH 'الحديقة'",
+    );
+    if (rows.rows.single.single != result.found) {
+      throw StateError('garden.db lost the note');
+    }
+  } finally {
+    await again.close();
+  }
+  return result;
 }

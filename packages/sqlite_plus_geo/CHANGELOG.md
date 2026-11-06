@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+Depends on `sqlite_plus` ^0.1.9 and `sqlite_plus_orm` ^0.1.9. The README opens on `places.db`. The library behavior is the 0.1.1 release.
+
+## 0.1.1
+
+Depends on `sqlite_plus` ^0.1.8 and `sqlite_plus_orm` ^0.1.8. The library behavior is the 0.1.0 release.
+
 ## 0.1.0
 
 Depends on `sqlite_plus` ^0.1.7 and `sqlite_plus_orm` ^0.1.7. First publication.

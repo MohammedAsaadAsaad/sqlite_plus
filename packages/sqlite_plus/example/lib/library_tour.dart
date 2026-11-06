@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:sqlite_plus/sqlite_plus.dart';
 
 /// One in-memory library.
@@ -84,7 +86,11 @@ Future<LibraryTour> runLibraryTour() async {
     await db.execute('PRAGMA user_version=7');
     final version = await db.query('PRAGMA user_version');
     final image = db.exportImage();
-    final reopened = await MutableSqliteDatabase.fromImage(image);
+    final dir = await Directory.systemTemp.createTemp('library_tour_');
+    final path = '${dir.path}/shelf.db';
+    await File(path).writeAsBytes(image, flush: true);
+    final reopened =
+        await MutableSqliteDatabase.fromImage(await File(path).readAsBytes());
     try {
       final again = await reopened.query(
           'SELECT json_extract(card, ?) FROM books WHERE id = ?',

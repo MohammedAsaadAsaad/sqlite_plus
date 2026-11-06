@@ -1,12 +1,16 @@
 # Changelog
 
+## 0.1.9
+
+The README opens on a file the application keeps. Each later sample is one engine feature. The catalog page and the other packages are at the end. Measured pages name the system and the result. The engine behavior is the 0.1.8 release.
+
 ## 0.1.8
 
 Packed FTS5 leaves on Dart 3.13.7, Linux x64. 10613 tests passed.
 
 - Two or more documents are stored by term in leaves of at most 4050 bytes. The idx term is the first term on that leaf. A positive AND/OR of whole terms reads the covering leaves and one document-length blob. One document keeps the previous leaf bytes. An older index still searches until it is rebuilt.
 - Linux AOT, 20,000 product names, not a phone: `بسكويت` returned 493 hits and 20 rows in 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. `biscuit` took 19.717 ms, 25.481 ms, and 25.621 ms. The image was 3,387,392 bytes and held 347 leaves.
-- One arm64 phone running the catalog release 0.5.2 showed `20 of 493 matches · 47.236 ms` for `بسكويت` at 17:11 Asia/Hebron on 5 November 2026. The locked baseline on the previous phone build was 472.000 ms.
+- One arm64 phone running the catalog release 0.5.2 showed `20 of 493 matches · 47.236 ms` for `بسكويت`. The locked baseline on the previous phone build was 472.000 ms.
 - Pinned SQLite 3.53.1 opened the packed image. `integrity_check` returned `ok`, and both queries returned 493 rows.
 
 ## 0.1.7

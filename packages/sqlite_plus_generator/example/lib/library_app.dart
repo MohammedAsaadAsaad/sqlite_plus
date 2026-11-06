@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
 import 'models.dart';
@@ -32,8 +35,12 @@ final class LibraryApp {
 }
 
 Future<LibraryApp> runLibraryApp() async {
-  final connection = await MutableDatabaseConnection.openMemory();
+  final dir = await Directory.systemTemp.createTemp('library_app_');
+  final path = '${dir.path}/library.db';
+  final database = await MutableSqliteDatabase.create();
+  final connection = MutableDatabaseConnection(database, closeDatabase: true);
   final context = DbContext(connection, generatedModel);
+  late LibraryApp result;
   try {
     await context.migrations.ensureCreated();
     final customers = context.set(CustomerMapping.instance);
@@ -73,7 +80,8 @@ Future<LibraryApp> runLibraryApp() async {
     final storedPlaces = await places.query.count();
     final buyer =
         await purchase.reference(PurchaseRelationships.customer).load();
-    return LibraryApp(
+    await File(path).writeAsBytes(database.exportImage(), flush: true);
+    result = LibraryApp(
       customer: buyer?.name ?? '',
       totals: [for (final row in rows) row.total],
       matchCount: matchCount,
@@ -87,4 +95,15 @@ Future<LibraryApp> runLibraryApp() async {
   } finally {
     await context.close();
   }
+  final again =
+      await MutableSqliteDatabase.fromImage(await File(path).readAsBytes());
+  try {
+    final names = await again.query('SELECT name FROM "Customer"');
+    if (names.rows.single.single != result.customer) {
+      throw StateError('library.db lost the customer');
+    }
+  } finally {
+    await again.close();
+  }
+  return result;
 }

@@ -17,7 +17,7 @@ A tracked reading log for sqlite_plus_orm. The application names fields. The run
 | `bin/main.dart` | Prints the line below |
 | `test/reading_log_test.dart` | Checks revision `1`, revision `0`, one match, idle `0`, empty plan |
 
-`DbSet.openMemory` opens the database, creates the `books` table, and returns that set. `saveChanges`, `migrations`, and `close` belong to the set. A file uses `DbSet.openDbFile` from the same library. On the Web that call throws `UnsupportedError`. `DbContext` remains available for a connection that already exists.
+`DbSet.openDbFile` opens `books.db`, creates the `books` table, and returns that set. `saveChanges`, `migrations`, and `close` belong to the set. Closing the set leaves the file on disk. The next open reads the same title. On the Web that call throws `UnsupportedError`.
 
 `lib/shared_shelf.dart` is the other three shapes. `runSharedMemory` stores a book and a note in one memory database. `runFileKeepsRow` closes a file and reads the note back. `runSecondFileOpenRejected` is the second open of that file. `runSecondSaveRejected` is a save that starts while another save is running. `runQueuedQueries` starts two queries on one context, and both return.
 

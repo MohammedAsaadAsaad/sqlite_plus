@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
 part 'reading_log.orm.g.dart';
@@ -42,7 +44,10 @@ class Book {
 }
 
 Future<ReadingLog> runReadingLog() async {
-  final books = await DbSet.openMemory(BookMapping.instance);
+  final dir = await Directory.systemTemp.createTemp('reading_log_');
+  final path = '${dir.path}/books.db';
+  final books = await DbSet.openDbFile(BookMapping.instance, path);
+  late ReadingLog result;
   try {
     final book = Book(BigInt.one, 'Kept Garden', _note('north'), 0);
     final other = Book(BigInt.two, 'Other Atlas', _note('south'), 0);
@@ -65,7 +70,7 @@ Future<ReadingLog> runReadingLog() async {
     final south = await books.query
         .selectWhere((row) => row.path(r'$.shelf').equalTo('south'))
         .single();
-    return ReadingLog(
+    result = ReadingLog(
       title: stored.title,
       shelf: 'north',
       revision: stored.revision,
@@ -78,6 +83,18 @@ Future<ReadingLog> runReadingLog() async {
   } finally {
     await books.close();
   }
+  final again = await DbSet.openDbFile(BookMapping.instance, path);
+  try {
+    final stored = await again.query
+        .selectWhere((row) => row.title.equalTo(result.title))
+        .single();
+    if (stored.revision != result.revision) {
+      throw StateError('books.db lost the revision');
+    }
+  } finally {
+    await again.close();
+  }
+  return result;
 }
 
 String _note(String shelf) => '{"shelf":"$shelf"}';

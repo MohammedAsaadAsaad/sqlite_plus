@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.9
+
+Depends on `sqlite_plus` ^0.1.9. The README opens on `books.db`. The library behavior is the 0.1.8 release.
+
+## 0.1.8
+
+Depends on `sqlite_plus` ^0.1.8. The library behavior is the 0.1.7 release.
+
 ## 0.1.7
 
 Depends on `sqlite_plus` ^0.1.7.

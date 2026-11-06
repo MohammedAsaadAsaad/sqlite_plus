@@ -6,200 +6,8 @@ Write the class. This tool writes the columns, the revision, the JSON path, the 
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.7
+  sqlite_plus_generator: ^0.1.9
 ```
-
-## The packages on pub.dev
-
-Each package is a complete library. Import only what you call. The links below are the package pages.
-
-| Package | Version | Page |
-|---|---|---|
-| sqlite_plus | `^0.1.7` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.7` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.1` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.0` | <https://pub.dev/packages/sqlite_plus_geo> |
-
-### sqlite_plus
-
-```yaml
-dependencies:
-  sqlite_plus: ^0.1.7
-```
-
-```dart
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final db = await openInMemory();
-await db.execute(
-  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT)',
-);
-await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
-final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ?',
-  ['%Garden%'],
-);
-```
-
-`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
-
-### sqlite_plus_orm
-
-```yaml
-dependencies:
-  sqlite_plus_orm: ^0.1.7
-```
-
-```dart
-import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
-
-@DbEntity()
-class Note {
-  Note({this.id, required this.title, this.revision = 0});
-  final BigInt? id;
-  String title;
-  @DbVersion()
-  int revision;
-}
-```
-
-`saveChanges` writes one transaction and bumps `revision`. A table with no `PRIMARY KEY` still maps. Its key is the SQLite row id:
-
-```dart
-@DbKey(generated: true)
-final BigInt? rowid;
-```
-
-`plan()` adopts that row id and does not rebuild the table.
-
-### sqlite_plus_generator
-
-```yaml
-dev_dependencies:
-  sqlite_plus_generator: ^0.1.7
-```
-
-```sh
-dart run sqlite_plus_generator
-```
-
-From the package root, that command writes a part for every public `@DbEntity` under `lib/`, plus `lib/sqlite_plus_migrations.g.dart`.
-
-### sqlite_plus_arabic
-
-```yaml
-dependencies:
-  sqlite_plus_arabic: ^0.1.1
-```
-
-```dart
-import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
-
-SqlitePlusArabic.register(db);
-await db.execute(
-  "CREATE VIRTUAL TABLE passage USING fts5(body, tokenize = 'arabic')",
-);
-```
-
-`حديقة` and `الحديقة` share one token. `الله` stays `الله`. This is not the SQLite ICU Arabic tokenizer. Register before `CREATE`, and again after the image is reopened.
-
-### sqlite_plus_vec
-
-```yaml
-dependencies:
-  sqlite_plus_vec: ^0.1.1
-```
-
-```dart
-import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
-
-SqlitePlusVec.register(db);
-await db.execute(
-  'CREATE VIRTUAL TABLE point USING vec0(embedding float[2] distance_metric=l2)',
-);
-```
-
-`MATCH` with `k` scans every stored float32 vector. The file is not a sqlite-vec database.
-
-### sqlite_plus_geo
-
-```yaml
-dependencies:
-  sqlite_plus_geo: ^0.1.0
-```
-
-```dart
-import 'package:sqlite_plus_geo/sqlite_plus_geo.dart';
-
-final geo = GeoSession(db);
-await geo.createSpatialTable(
-  'facilities',
-  geometryColumn: 'location',
-  geometryType: GeoGeometryType.point,
-  srid: 4326,
-);
-```
-
-X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
-
-
-```sh
-dart run sqlite_plus_generator
-```
-
-Run that from the package root. Put one entity in `lib/book.dart`. The annotation is the whole marker. The `part` directive is optional because the command adds it:
-
-```dart
-import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
-
-@DbEntity()
-class Book {
-  Book({this.id, required this.title});
-  final BigInt? id;
-  final String title;
-}
-```
-
-A second file, `lib/note.dart`, uses the same shape for `Note`. The command writes `lib/book.orm.g.dart` and `lib/note.orm.g.dart`, then `lib/sqlite_plus_migrations.g.dart`. That last library's `generatedModel` is every selected entity and foreign key. A class that only has an `id` field is not included.
-
-The command prints each file as it reads it. A part whose source stamp still matches is left unchanged and is not generated again. A missing part is created. A changed class is updated. The run ends with a summary for the package, or for the one library passed to `--input`.
-
-```text
-Found Book in lib/book.dart. Already generated. Leaving lib/book.orm.g.dart unchanged.
-Found Note in lib/note.dart.
-Generating lib/note.orm.g.dart.
-Created lib/note.orm.g.dart.
-
-Summary for the package
-Unchanged: lib/book.orm.g.dart (Book)
-Created: lib/note.orm.g.dart (Note)
-Updated: lib/sqlite_plus_migrations.g.dart (Book, Note)
-```
-
-```dart
-import 'package:your_app/book.dart' hide generatedModel;
-import 'package:your_app/note.dart' hide generatedModel;
-import 'package:your_app/sqlite_plus_migrations.g.dart';
-
-final context = DbContext(connection, generatedModel);
-await context.migrations.ensureCreated();
-final plan = await context.migrations.plan();
-await context.migrations.applySafe(plan);
-```
-
-Each model library also defines `generatedModel` for its own tables. Hide those names and use the package model when one context owns every entity. A `@DbReference` still has to name a `@DbEntity` class in the same library. The package model copies those foreign keys.
-
-`ensureCreated` creates the tables on an empty database. After that, `plan` and `applySafe` add a new nullable column. A rename or a destructive change still needs a reviewed plan.
-
-One library stays available:
-
-```sh
-dart run sqlite_plus_generator --input lib/models.dart
-```
-
-`--check` compares the generated files with the files on disk and does not add a missing `part` directive. `--class Book` limits that one library. `--output` and `--class` need `--input`.
 
 ## The classes
 
@@ -432,10 +240,17 @@ class Neighbor {
 ```
 
 ```dart
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
 import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
 
-final connection = await MutableDatabaseConnection.openMemory();
+final file = File('library.db');
+final database = file.existsSync()
+    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
+    : await MutableSqliteDatabase.create();
+final connection = MutableDatabaseConnection(database, closeDatabase: true);
 SqlitePlusArabic.register(connection.database);
 SqlitePlusVec.register(connection.database);
 final context = DbContext(connection, generatedModel);
@@ -448,6 +263,7 @@ gardens.add(Garden(body: 'سيارة'));
 neighbors.add(Neighbor(embedding: const [1, 0]));
 neighbors.add(Neighbor(embedding: const [0, 1]));
 await context.saveChanges(); // 4
+await file.writeAsBytes(database.exportImage(), flush: true);
 
 final garden =
     (await GardenQuery(gardens.query).search('الحديقة').toList()).single;
@@ -515,17 +331,223 @@ The write is deterministic and formatted. Hand-written files and symbolic links 
 
 ## The other packages
 
-[`sqlite_plus`](https://pub.dev/packages/sqlite_plus) runs the SQL. One memory database:
+[`sqlite_plus`](https://pub.dev/packages/sqlite_plus) runs the SQL and keeps it in a file:
 
 ```dart
+import 'dart:io';
+
 import 'package:sqlite_plus/sqlite_plus.dart';
 
-final db = await openInMemory();
+final file = File('shelf.db');
+final db = file.existsSync()
+    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
+    : await MutableSqliteDatabase.create();
 await db.execute(
-  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT)',
+  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
 );
+await file.writeAsBytes(db.exportImage(), flush: true);
 ```
 
 [`sqlite_plus_orm`](https://pub.dev/packages/sqlite_plus_orm) is what the application calls. `saveChanges` writes the tracked objects, and `row.doubled()` is the method above. `DbModules`, `DbTokenizers`, and `DbVectorMetrics` are the string constants in that package.
 
 [`sqlite_plus_arabic`](https://pub.dev/packages/sqlite_plus_arabic) is registered with `SqlitePlusArabic.register` before a table whose tokenizer is `arabic` is created. `search('الحديقة')` then returns the garden note whose body is `في الحديقة`. [`sqlite_plus_vec`](https://pub.dev/packages/sqlite_plus_vec) is registered with `SqlitePlusVec.register` before a `vec0` table is created. `nearest(const [0.9, 0.1], k: 1)` then returns `[1.0, 0.0]` when the stored rows are `[1, 0]` and `[0, 1]`.
+
+## The packages on pub.dev
+
+Each package is a complete library. Import only what you call. The links below are the package pages.
+
+| Package | Version | Page |
+|---|---|---|
+| sqlite_plus | `^0.1.9` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_geo> |
+
+### sqlite_plus
+
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.9
+```
+
+```dart
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus.dart';
+
+final file = File('shelf.db');
+final db = file.existsSync()
+    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
+    : await MutableSqliteDatabase.create();
+await db.execute(
+  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
+);
+await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
+await file.writeAsBytes(db.exportImage(), flush: true);
+final rows = await db.query(
+  'SELECT title FROM note WHERE title LIKE ?',
+  ['%Garden%'],
+);
+```
+
+`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
+
+![The row is written to shelf.db, the handle closes, and the next open reads the same title.](doc/shelf-file.png)
+
+### sqlite_plus_orm
+
+```yaml
+dependencies:
+  sqlite_plus_orm: ^0.1.9
+```
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity()
+class Note {
+  Note({this.id, required this.title, this.revision = 0});
+  final BigInt? id;
+  String title;
+  @DbVersion()
+  int revision;
+}
+```
+
+`saveChanges` writes one transaction and bumps `revision`. A table with no `PRIMARY KEY` still maps. Its key is the SQLite row id:
+
+```dart
+@DbKey(generated: true)
+final BigInt? rowid;
+```
+
+`plan()` adopts that row id and does not rebuild the table.
+
+### sqlite_plus_generator
+
+```yaml
+dev_dependencies:
+  sqlite_plus_generator: ^0.1.9
+```
+
+```sh
+dart run sqlite_plus_generator
+```
+
+From the package root, that command writes a part for every public `@DbEntity` under `lib/`, plus `lib/sqlite_plus_migrations.g.dart`.
+
+### sqlite_plus_arabic
+
+```yaml
+dependencies:
+  sqlite_plus_arabic: ^0.1.3
+```
+
+```dart
+import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
+
+SqlitePlusArabic.register(db);
+await db.execute(
+  "CREATE VIRTUAL TABLE passage USING fts5(body, tokenize = 'arabic')",
+);
+```
+
+`حديقة` and `الحديقة` share one token. `الله` stays `الله`. This is not the SQLite ICU Arabic tokenizer. Register before `CREATE`, and again after the image is reopened.
+
+### sqlite_plus_vec
+
+```yaml
+dependencies:
+  sqlite_plus_vec: ^0.1.3
+```
+
+```dart
+import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
+
+SqlitePlusVec.register(db);
+await db.execute(
+  'CREATE VIRTUAL TABLE point USING vec0(embedding float[2] distance_metric=l2)',
+);
+```
+
+`MATCH` with `k` scans every stored float32 vector. The file is not a sqlite-vec database.
+
+### sqlite_plus_geo
+
+```yaml
+dependencies:
+  sqlite_plus_geo: ^0.1.2
+```
+
+```dart
+import 'package:sqlite_plus_geo/sqlite_plus_geo.dart';
+
+final geo = GeoSession(db);
+await geo.createSpatialTable(
+  'facilities',
+  geometryColumn: 'location',
+  geometryType: GeoGeometryType.point,
+  srid: 4326,
+);
+```
+
+X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
+
+
+```sh
+dart run sqlite_plus_generator
+```
+
+Run that from the package root. Put one entity in `lib/book.dart`. The annotation is the whole marker. The `part` directive is optional because the command adds it:
+
+```dart
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
+
+@DbEntity()
+class Book {
+  Book({this.id, required this.title});
+  final BigInt? id;
+  final String title;
+}
+```
+
+A second file, `lib/note.dart`, uses the same shape for `Note`. The command writes `lib/book.orm.g.dart` and `lib/note.orm.g.dart`, then `lib/sqlite_plus_migrations.g.dart`. That last library's `generatedModel` is every selected entity and foreign key. A class that only has an `id` field is not included.
+
+The command prints each file as it reads it. A part whose source stamp still matches is left unchanged and is not generated again. A missing part is created. A changed class is updated. The run ends with a summary for the package, or for the one library passed to `--input`.
+
+```text
+Found Book in lib/book.dart. Already generated. Leaving lib/book.orm.g.dart unchanged.
+Found Note in lib/note.dart.
+Generating lib/note.orm.g.dart.
+Created lib/note.orm.g.dart.
+
+Summary for the package
+Unchanged: lib/book.orm.g.dart (Book)
+Created: lib/note.orm.g.dart (Note)
+Updated: lib/sqlite_plus_migrations.g.dart (Book, Note)
+```
+
+```dart
+import 'package:your_app/book.dart' hide generatedModel;
+import 'package:your_app/note.dart' hide generatedModel;
+import 'package:your_app/sqlite_plus_migrations.g.dart';
+
+final context = DbContext(connection, generatedModel);
+await context.migrations.ensureCreated();
+final plan = await context.migrations.plan();
+await context.migrations.applySafe(plan);
+```
+
+Each model library also defines `generatedModel` for its own tables. Hide those names and use the package model when one context owns every entity. A `@DbReference` still has to name a `@DbEntity` class in the same library. The package model copies those foreign keys.
+
+`ensureCreated` creates the tables on an empty database. After that, `plan` and `applySafe` add a new nullable column. A rename or a destructive change still needs a reviewed plan.
+
+One library stays available:
+
+```sh
+dart run sqlite_plus_generator --input lib/models.dart
+```
+
+`--check` compares the generated files with the files on disk and does not add a missing `part` directive. `--class Book` limits that one library. `--output` and `--class` need `--input`.

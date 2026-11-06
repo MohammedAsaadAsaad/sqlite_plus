@@ -6,36 +6,32 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.8
-  sqlite_plus_orm: ^0.1.7
-  sqlite_plus_arabic: ^0.1.1
-  sqlite_plus_vec: ^0.1.1
-  sqlite_plus_geo: ^0.1.0
+  sqlite_plus: ^0.1.9
+  sqlite_plus_orm: ^0.1.9
+  sqlite_plus_arabic: ^0.1.3
+  sqlite_plus_vec: ^0.1.3
+  sqlite_plus_geo: ^0.1.2
+  sqlite_plus_search: ^0.1.0-dev.5
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.7
+  sqlite_plus_generator: ^0.1.9
 ```
 
 `sqlite_plus_arabic`, `sqlite_plus_vec`, `sqlite_plus_geo`, and `sqlite_plus_search` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer, `sqlite_plus_vec` for a vector column, `sqlite_plus_geo` for geometry, and `sqlite_plus_search` for an offline BM25 index. A package is loaded when the application imports it.
 
-## Keyword search
-
-[`sqlite_plus_search`](packages/sqlite_plus_search) keeps the index in the same database. A page of the product catalog loads 20 names. On one arm64 phone, release build 0.5.2, at 17:11 Asia/Hebron (UTC+2) on 5 November 2026, `بسكويت` read `20 of 493 matches · 47.236 ms`. The catalog holds 10,000 Arabic names and 10,000 English names. That page was 1 of 25, and the score on those titles was 3.965.
-
-![Catalog on one arm64 phone. Twenty of 493 matches in 47.236 ms.](packages/sqlite_plus_search/doc/catalog-phone.jpg)
-
-The same lists on Linux x64, Dart 3.13.7, AOT, and not a phone: `بسكويت` returned 493 hits and 20 names in 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. `biscuit` took 19.717 ms, 25.481 ms, and 25.621 ms. The packed image held 347 leaves. Before packing, that Linux process took 405 ms and then 359 ms, and the previous phone build showed 472.000 ms for page 17. Pinned SQLite 3.53.1 opened the packed image: `integrity_check` returned `ok`, and both queries returned 493 rows. There is no embedding model in that catalog.
-
-The package pages are [sqlite_plus](https://pub.dev/packages/sqlite_plus), [sqlite_plus_orm](https://pub.dev/packages/sqlite_plus_orm), [sqlite_plus_generator](https://pub.dev/packages/sqlite_plus_generator), [sqlite_plus_arabic](https://pub.dev/packages/sqlite_plus_arabic), [sqlite_plus_vec](https://pub.dev/packages/sqlite_plus_vec), [sqlite_plus_geo](https://pub.dev/packages/sqlite_plus_geo), and [sqlite_plus_search](https://pub.dev/packages/sqlite_plus_search).
-
 ## Query
 
 ```dart
+import 'dart:io';
+
 import 'package:sqlite_plus/sqlite_plus.dart';
 
-final db = await openInMemory();
+final file = File('shelf.db');
+final db = file.existsSync()
+    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
+    : await MutableSqliteDatabase.create();
 await db.execute(
-  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
 );
 await db.execute(
   'INSERT INTO note(title, body) VALUES (?, ?)',
@@ -45,9 +41,12 @@ final rows = await db.query(
   'SELECT title FROM note WHERE title LIKE ?',
   ['%Garden%'],
 );
+await file.writeAsBytes(db.exportImage(), flush: true);
 ```
 
-The same database does a JSON path, `MATCH` with `highlight`, an R-tree box, a Dart function, and `exportImage()`. A file uses `openDatabase` from `sqlite_plus_io.dart`.
+`rows` is `Kept Garden`. The next launch opens the same `shelf.db`.
+
+## Track a change
 
 ## Track a change
 
@@ -121,6 +120,26 @@ That scans `lib/` for every public `@DbEntity`, writes each `name.orm.g.dart`, a
 On a file, search was 142×, a point lookup 104×, and `VACUUM` 175×.
 
 ![File, 1,000 rows. Bar length is measured time.](packages/sqlite_plus/doc/bench-file.png)
+
+## SQL
+
+Joins through `FULL`, subqueries, `UNION` `INTERSECT` `EXCEPT`, CTEs, windows, `ON CONFLICT`, `RETURNING`, views, triggers, `CHECK`, `STRICT`, foreign keys, JSON, FTS5, R-tree, and geopoly. Integers are `BigInt`. `docs/REFERENCE.md` is the statement list.
+
+`SqlCipherDatabase.create('secret')` writes a SQLCipher 4 image. `encryptedImage()` is the file. `database.exportImage()` is the decrypted SQLite image. The default key schedule is PBKDF2-HMAC-SHA512 for 256000 iterations, AES-256-CBC, and HMAC-SHA512, with an 80-byte reserve. Derivation runs when the database is created or opened. A later export reuses those keys. `saveSqlCipher` replaces the whole file. WAL files, SQLCipher 1–3, rekey, a plaintext header, and auto-vacuum with the reserve stay outside this codec.
+
+Compared with pinned SQLite 3.53.1: constant `EXPLAIN` arithmetic, a constant `WHERE`, one table scan, a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries still have no bytecode. This is not a VDBE. Contentless FTS4 returns the pinned `MATCH` row and stores no content table. File `journal_mode` `wal`, `persist`, and `truncate` follow the pinned header and journal bytes. This is not a multi-frame WAL. `incremental_vacuum` moves a live end page before truncating. ICU collations are absent. `json_pretty` and correlated `json_each` are in the engine. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI. Double quotes stay identifiers unless `doubleQuotedStrings` is set. That mode matches the pinned CLI for the cases in `db_browser_b3_dqs_test.dart`. Unquoted `a.title` beside a column named `a.title` returns the `title` column, matching the pinned CLI.
+
+## Keyword search
+
+[`sqlite_plus_search`](packages/sqlite_plus_search) keeps the index in the same database. A page of the product catalog loads 20 names. On one arm64 phone, release build 0.5.2, `بسكويت` read `20 of 493 matches · 47.236 ms`. The catalog holds 10,000 Arabic names and 10,000 English names. That page was 1 of 25, and the score on those titles was 3.965.
+
+![Page time for the Arabic query before and after packed leaves.](packages/sqlite_plus/doc/search-compare.png)
+
+![Catalog on one arm64 phone. Twenty of 493 matches in 47.236 ms.](packages/sqlite_plus_search/doc/catalog-phone.jpg)
+
+The same lists on Linux x64, Dart 3.13.7, AOT, and not a phone: `بسكويت` returned 493 hits and 20 names in 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. `biscuit` took 19.717 ms, 25.481 ms, and 25.621 ms. The packed image held 347 leaves. Before packing, that Linux process took 405 ms and then 359 ms, and the previous phone build showed 472.000 ms for page 17. Pinned SQLite 3.53.1 opened the packed image: `integrity_check` returned `ok`, and both queries returned 493 rows. There is no embedding model in that catalog.
+
+The package pages are [sqlite_plus](https://pub.dev/packages/sqlite_plus), [sqlite_plus_orm](https://pub.dev/packages/sqlite_plus_orm), [sqlite_plus_generator](https://pub.dev/packages/sqlite_plus_generator), [sqlite_plus_arabic](https://pub.dev/packages/sqlite_plus_arabic), [sqlite_plus_vec](https://pub.dev/packages/sqlite_plus_vec), [sqlite_plus_geo](https://pub.dev/packages/sqlite_plus_geo), and [sqlite_plus_search](https://pub.dev/packages/sqlite_plus_search).
 
 ## Packages
 
@@ -210,14 +229,6 @@ The two examples print:
 ```
 
 The first line is the Arabic note, a miss on `سيارة`, and an empty second migration plan. The second line is the first coordinate of the nearer vector, and an empty second plan.
-
-## SQL
-
-Joins through `FULL`, subqueries, `UNION` `INTERSECT` `EXCEPT`, CTEs, windows, `ON CONFLICT`, `RETURNING`, views, triggers, `CHECK`, `STRICT`, foreign keys, JSON, FTS5, R-tree, and geopoly. Integers are `BigInt`. `docs/REFERENCE.md` is the statement list.
-
-`SqlCipherDatabase.create('secret')` writes a SQLCipher 4 image. `encryptedImage()` is the file. `database.exportImage()` is the decrypted SQLite image. The default key schedule is PBKDF2-HMAC-SHA512 for 256000 iterations, AES-256-CBC, and HMAC-SHA512, with an 80-byte reserve. Derivation runs when the database is created or opened. A later export reuses those keys. `saveSqlCipher` replaces the whole file. WAL files, SQLCipher 1–3, rekey, a plaintext header, and auto-vacuum with the reserve stay outside this codec.
-
-Compared with pinned SQLite 3.53.1: constant `EXPLAIN` arithmetic, a constant `WHERE`, one table scan, a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries still have no bytecode. This is not a VDBE. Contentless FTS4 returns the pinned `MATCH` row and stores no content table. File `journal_mode` `wal`, `persist`, and `truncate` follow the pinned header and journal bytes. This is not a multi-frame WAL. `incremental_vacuum` moves a live end page before truncating. ICU collations are absent. `json_pretty` and correlated `json_each` are in the engine. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI. Double quotes stay identifiers unless `doubleQuotedStrings` is set. That mode matches the pinned CLI for the cases in `db_browser_b3_dqs_test.dart`. Unquoted `a.title` beside a column named `a.title` returns the `title` column, matching the pinned CLI.
 
 ## Develop
 

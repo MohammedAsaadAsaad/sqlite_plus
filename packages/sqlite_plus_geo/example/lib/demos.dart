@@ -1,9 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_geo/sqlite_plus_geo.dart';
 
-/// The four examples share one in-memory database.
+/// The four examples share one database file.
 final class GeoDemos {
   /// [nearestName] is the closest facility. [zoneName] contains the sample
   /// point. [imported] is the GeoJSON row count. [intersectionArea] is the
@@ -50,6 +51,22 @@ Future<GeoDemos> runGeoDemos() async {
     final imported = await _fieldNotes(geo, database);
     final zone = await _zones(geo);
     final analytics = await _analytics(database);
+    final dir = await Directory.systemTemp.createTemp('geo_demos_');
+    final path = '${dir.path}/places.db';
+    await File(path).writeAsBytes(database.exportImage(), flush: true);
+    final again =
+        await MutableSqliteDatabase.fromImage(await File(path).readAsBytes());
+    try {
+      SqlitePlusGeo.register(again);
+      final kept = await again.query(
+        "SELECT name FROM facilities WHERE name = 'Clinic'",
+      );
+      if (kept.rows.single.single != 'Clinic') {
+        throw StateError('places.db lost Clinic');
+      }
+    } finally {
+      await again.close();
+    }
     return GeoDemos(
       nearestName: nearestName,
       zoneName: zone.$1,
@@ -58,7 +75,7 @@ Future<GeoDemos> runGeoDemos() async {
       indexed: zone.$2,
     );
   } finally {
-    // The memory database has no file to close.
+    await database.close();
   }
 }
 

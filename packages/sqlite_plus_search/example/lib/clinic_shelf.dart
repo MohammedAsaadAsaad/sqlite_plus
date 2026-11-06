@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_search/sqlite_plus_search.dart';
 
@@ -62,7 +64,9 @@ ShelfHit _hit(SearchHit hit) => ShelfHit(
 
 /// A clinic keeps short notes. Search reads those rows; it does not copy them.
 Future<ClinicShelf> runClinicShelf() async {
-  final db = await openInMemory();
+  final dir = await Directory.systemTemp.createTemp('clinic_shelf_');
+  final path = '${dir.path}/clinic.db';
+  final db = await MutableSqliteDatabase.create();
   try {
     await db.execute(
       'CREATE TABLE notes('
@@ -94,13 +98,33 @@ Future<ClinicShelf> runClinicShelf() async {
     final tea = await search.search('tea', table: 'notes');
     await search.verifyIndex(table: 'notes');
 
+    final garden = await _garden(db);
+    final hybrid = await _hybrid(db);
+    final rejected = await _rejectsUnknownFixture(db);
+    await File(path).writeAsBytes(db.exportImage(), flush: true);
+    final saved =
+        await MutableSqliteDatabase.fromImage(await File(path).readAsBytes());
+    try {
+      final again = await SqlitePlusSearch.open(database: saved);
+      final kept = await again.search(
+        'حليب',
+        table: 'notes',
+        filter: SearchFilter('shelf = ?', ['pharmacy']),
+      );
+      if (kept.hits.single.documentId != '1') {
+        throw StateError('clinic.db lost the pharmacy note');
+      }
+    } finally {
+      await saved.close();
+    }
+
     return ClinicShelf(
       pharmacyMilk: [for (final hit in pharmacy.hits) hit.documentId],
       everyMilkNote: [for (final hit in everyMilk.hits) hit.documentId],
       teaAddedLater: tea.hits.single.documentId,
-      stemmedGarden: await _garden(db),
-      hybrid: await _hybrid(db),
-      unknownFixtureRejected: await _rejectsUnknownFixture(db),
+      stemmedGarden: garden,
+      hybrid: hybrid,
+      unknownFixtureRejected: rejected,
     );
   } finally {
     await db.close();

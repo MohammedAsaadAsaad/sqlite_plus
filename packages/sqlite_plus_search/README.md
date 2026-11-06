@@ -4,48 +4,26 @@ Offline search for rows that already live in a [sqlite_plus](https://pub.dev/pac
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.8
-  sqlite_plus_search: ^0.1.0-dev.4
+  sqlite_plus: ^0.1.9
+  sqlite_plus_search: ^0.1.0-dev.5
 ```
 
-`0.1.0-dev.4` is the first pub.dev pre-release. The catalog page below is the measured keyword search. Embeddings stay a local fixture you supply. The limits are in [doc/LIMITATIONS.md](doc/LIMITATIONS.md).
-
-## Twenty thousand names
-
-A page loads 20 names out of the full hit count. The time on the line is that search.
-
-The catalog holds 10,000 Arabic product names and 10,000 English product names. On one arm64 phone, release build 0.5.2, at 17:11 Asia/Hebron (UTC+2) on 5 November 2026, `بسكويت` read `20 of 493 matches · 47.236 ms`. That was page 1 of 25. The keyword score on those titles was 3.965.
-
-![Catalog on one arm64 phone. Twenty of 493 matches in 47.236 ms.](doc/catalog-phone.jpg)
-
-The same lists on Linux x64, Dart 3.13.7, AOT, and not a phone:
-
-| Query | Page of 20 | Offset 320 | Raw `MATCH` |
-|---|---:|---:|---:|
-| `بسكويت` | 26.967 ms, then 20.819 ms | 25.663 ms | 18.861 ms |
-| `biscuit` | 19.717 ms, then 25.481 ms | 25.621 ms | 20.249 ms |
-
-Each of those queries returned 493 hits. Indexing took 46.880 s. The image was 3,387,392 bytes and held 347 leaves. Pinned SQLite 3.53.1 opened that image: `integrity_check` returned `ok`, and both queries returned 493 rows.
-
-Before the leaves were packed, that Linux process took 405 ms and then 359 ms. The previous phone build showed 472.000 ms for page 17 of `بسكويت`. Those searches read one leaf per product.
-
-A query of whole terms reads the leaves that contain those terms, plus one document-length blob. One document keeps the older leaf. An index that still has one leaf per product searches as before. Rebuild it to pack the leaves.
-
-| Package | Version | Page |
-|---|---|---|
-| sqlite_plus | `^0.1.8` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_arabic | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_vec> |
+`0.1.0-dev.5` is a pre-release. The clinic shelf below is the example. The catalog measurement is at the end. Embeddings stay a local fixture you supply. The limits are in [doc/LIMITATIONS.md](doc/LIMITATIONS.md).
 
 ## Clinic shelf
 
 `حَلِيب` is stored with a diacritic. The query is `حليب`. The pharmacy filter is your SQL, with the value bound. `شاي أخضر` stays out of that result. `mint tea` is inserted after `indexTable` and is found on the next search.
 
 ```dart
+import 'dart:io';
+
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_search/sqlite_plus_search.dart';
 
-final db = await openInMemory();
+final file = File('clinic.db');
+final db = file.existsSync()
+    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
+    : await MutableSqliteDatabase.create();
 await db.execute(
   'CREATE TABLE notes(id INTEGER PRIMARY KEY, shelf TEXT NOT NULL, body TEXT)',
 );
@@ -65,7 +43,10 @@ final pharmacy = await search.search(
   filter: SearchFilter('shelf = ?', ['pharmacy']),
 );
 print(pharmacy.hits.single.documentId); // 1
+await file.writeAsBytes(db.exportImage(), flush: true);
 ```
+
+![The note is written to clinic.db and read back from that file.](doc/shelf-file.png)
 
 `SearchFilter` is trusted SQL. Put user text in the parameter list, not in the string. Do not add `WHERE`, `ORDER BY`, or `LIMIT`. The source table needs one non-null text or integer primary key. Indexed values are text or null. Names starting with `_sps_` are reserved for the derived index.
 
@@ -143,3 +124,32 @@ await search.feedback.submit(
 Two weights move keyword and vector ranks. They can make ranking worse. The example does not turn learning on. Held-out judgments belong to the application. Synthetic fixtures are not evidence of model quality.
 
 See [architecture](doc/ARCHITECTURE.md), [status](doc/IMPLEMENTATION_PLAN.md), and [limitations](doc/LIMITATIONS.md). The catalog numbers above are keyword search on packed leaves. The synthetic embedding harness recorded a later append run: 10,000 documents indexed in 4.704192 s and one change synchronized in 1.699659 s. Those files are in the repository benchmark results. That harness is not a language model.
+
+## Twenty thousand names
+
+A page loads 20 names out of the full hit count. The time on the line is that search.
+
+The catalog holds 10,000 Arabic product names and 10,000 English product names. On one arm64 phone, release build 0.5.2, `بسكويت` read `20 of 493 matches · 47.236 ms`. That was page 1 of 25. The keyword score on those titles was 3.965.
+
+![Page time for the Arabic query before and after packed leaves.](doc/search-compare.png)
+
+![Catalog on one arm64 phone. Twenty of 493 matches in 47.236 ms.](doc/catalog-phone.jpg)
+
+The same lists on Linux x64, Dart 3.13.7, AOT, and not a phone:
+
+| Query | Page of 20 | Offset 320 | Raw `MATCH` |
+|---|---:|---:|---:|
+| `بسكويت` | 26.967 ms, then 20.819 ms | 25.663 ms | 18.861 ms |
+| `biscuit` | 19.717 ms, then 25.481 ms | 25.621 ms | 20.249 ms |
+
+Each of those queries returned 493 hits. Indexing took 46.880 s. The image was 3,387,392 bytes and held 347 leaves. Pinned SQLite 3.53.1 opened that image: `integrity_check` returned `ok`, and both queries returned 493 rows.
+
+Before the leaves were packed, that Linux process took 405 ms and then 359 ms. The previous phone build showed 472.000 ms for page 17 of `بسكويت`. Those searches read one leaf per product.
+
+A query of whole terms reads the leaves that contain those terms, plus one document-length blob. One document keeps the older leaf. An index that still has one leaf per product searches as before. Rebuild it to pack the leaves.
+
+| Package | Version | Page |
+|---|---|---|
+| sqlite_plus | `^0.1.9` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |

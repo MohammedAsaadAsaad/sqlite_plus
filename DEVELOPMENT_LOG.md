@@ -1,5 +1,27 @@
 # Development log
 
+## 2026-11-06 — Explanations lead with the package
+
+- Each package README opens on its own file example. The catalog page and the
+  other packages are at the end of the engine page. Measured pages name the
+  system and the result.
+- The runnable examples write a file and read it back. On Linux x64, Dart
+  3.13.7, the seven example suites passed.
+- Published numbers: `sqlite_plus` 0.1.9, `sqlite_plus_orm` 0.1.9,
+  `sqlite_plus_generator` 0.1.9, `sqlite_plus_arabic` 0.1.3,
+  `sqlite_plus_vec` 0.1.3, `sqlite_plus_geo` 0.1.2, and
+  `sqlite_plus_search` 0.1.0-dev.5.
+
+## 2026-11-06 — Published the prepared packages
+
+- pub.dev latest is `sqlite_plus` 0.1.8, `sqlite_plus_orm` 0.1.8,
+  `sqlite_plus_generator` 0.1.8, `sqlite_plus_arabic` 0.1.2,
+  `sqlite_plus_vec` 0.1.2, `sqlite_plus_geo` 0.1.1, and
+  `sqlite_plus_search` 0.1.0-dev.4. The ORM, generator, and geo numbers
+  carry the same library behavior as the previous publication and require
+  the new engine or ORM constraint. Search is a pre-release.
+- The two Android APKs are ignored by `*.apk`. The local files remain.
+
 ## 2026-11-05 — Unique-key append lands on the packed search
 
 - The open branch that appends a new maximum key and refreshes the integrity

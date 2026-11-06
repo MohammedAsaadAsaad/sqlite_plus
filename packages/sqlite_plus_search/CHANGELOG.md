@@ -1,7 +1,11 @@
+## 0.1.0-dev.5
+
+Depends on `sqlite_plus` ^0.1.9, `sqlite_plus_arabic` ^0.1.3, and `sqlite_plus_vec` ^0.1.3. The README opens on `clinic.db`. The catalog measurement is at the end. The search behavior is the 0.1.0-dev.4 release.
+
 ## 0.1.0-dev.4
 
 - Requires `sqlite_plus` ^0.1.8. Two or more documents share FTS5 leaves, and a query of whole terms reads those leaves.
-- The README records the 20,000-name catalog. Linux x64 AOT, not a phone: `بسكويت` returned 493 hits and 20 names in 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. One arm64 phone, catalog 0.5.2, at 17:11 Asia/Hebron on 5 November 2026, showed 47.236 ms for page 1 of that query.
+- The README records the 20,000-name catalog. Linux x64 AOT, not a phone: `بسكويت` returned 493 hits and 20 names in 26.967 ms, then 20.819 ms, and 25.663 ms at offset 320. One arm64 phone, catalog 0.5.2, showed 47.236 ms for page 1 of that query.
 - Keyword search behavior is otherwise the 0.1.0-dev.3 library. A new maximum key can be appended, and the integrity sum is refreshed without hashing every derived row. A term-packed FTS leaf is rebuilt on the next edit. The synthetic append timings are in the repository benchmark results.
 
 ## 0.1.0-dev.3

@@ -6,7 +6,7 @@ One in-memory `vec0` table. The mapping lives in `lib/nearest_notes.dart`. It us
 
 `runNearestNotes` does five steps:
 
-1. `MutableDatabaseConnection.openMemory` opens an empty database.
+1. The example writes `points.db` and reads that file back.
 2. `SqlitePlusVec.register(connection.database)` installs `vec0` on that connection.
 3. `ensureCreated` creates the virtual table and its shadow.
 4. Two vectors are saved: `[1, 0]` and `[0, 1]`.

@@ -1,6 +1,12 @@
 # Changelog
 
+## 0.1.3
+
+Depends on `sqlite_plus` ^0.1.9. The README opens on the distance. The library behavior is the 0.1.2 release.
+
 ## 0.1.2
+
+Depends on `sqlite_plus` ^0.1.8.
 
 `rankVec0` scores a `vec0` shadow table one page at a time. Pass the eligible row ids and every one of those rows gets a distance; an empty list reads nothing. `embedding MATCH ? AND k = ?` is unchanged and still applies `k` before a later SQL filter. A `MATCH` scan keeps the embedding bytes of the returned neighbors rather than a second copy of every stored blob.
 

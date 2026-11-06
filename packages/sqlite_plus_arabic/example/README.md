@@ -6,7 +6,7 @@ One in-memory FTS5 table. The mapping lives in `lib/garden_notes.dart`. It uses 
 
 `runGardenNotes` does five steps:
 
-1. `MutableDatabaseConnection.openMemory` opens an empty database.
+1. The example writes `garden.db` and reads that file back.
 2. `SqlitePlusArabic.register(connection.database)` installs the tokenizer on that connection.
 3. `ensureCreated` writes `tokenize = 'arabic'` into the virtual table.
 4. Two notes are saved: `في الحديقة` and `كتاب بعيد`.
