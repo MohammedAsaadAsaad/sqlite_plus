@@ -1,5 +1,21 @@
 # Development log
 
+## 2026-11-06 — Course answers show orange, then green or red
+
+- A selected training answer is orange, with an orange letter and a dot, before
+  it is checked. Check answer turns a right choice green and a wrong choice
+  red, and also marks the right choice green. `browser/` `flutter analyze
+  --fatal-infos` reported no issues and `flutter test` passed 59 tests.
+- `flutter build apk --release --target-platform android-arm64` at 15:43
+  Asia/Hebron (UTC+2) wrote
+  `browser/dist/sqlite-plus-browser-arm64-v8a.apk`, 21381387 bytes, sha256
+  `4c21deb88a1c0329e8d1783b5ec377028b159d7488ec0281d0076f7dca82ba04`.
+  `aapt dump badging` reports versionName `1.0.0`, versionCode `22`,
+  minSdk `24`, targetSdk `36`, compileSdk `36`, application-label
+  `SQLite Browser`, and native-code `arm64-v8a`. The release build is signed
+  with the Android debug certificate. The package was not installed on a
+  device or an emulator.
+
 ## 2026-11-06 — Course chapters in the browser
 
 - Learn SQL no longer opens with the introductory paragraph. Six chapters

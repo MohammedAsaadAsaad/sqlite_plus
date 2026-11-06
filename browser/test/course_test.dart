@@ -8,6 +8,27 @@ import 'package:sqlite_plus_browser/src/course_lessons.dart';
 import 'package:sqlite_plus_browser/src/course_progress.dart';
 import 'package:sqlite_plus_browser/src/session.dart';
 
+const _pickedFill = Color(0xFFFFE4C4);
+const _okFill = Color(0xFFD6EBE4);
+const _errorFill = Color(0xFFF8D6D2);
+
+Color _choiceFill(WidgetTester tester, int index) {
+  final tiles = find.ancestor(
+    of: find.byKey(Key('mcq-choice-$index')),
+    matching: find.byType(AnimatedContainer),
+  );
+  for (final element in tiles.evaluate()) {
+    final widget = element.widget;
+    if (widget is! AnimatedContainer) continue;
+    final decoration = widget.decoration;
+    if (decoration is BoxDecoration &&
+        decoration.borderRadius == BorderRadius.circular(14)) {
+      return decoration.color!;
+    }
+  }
+  throw StateError('choice $index has no colored tile');
+}
+
 Future<void> _frames(WidgetTester tester) async {
   await tester.pump();
   await tester.pump();
@@ -188,9 +209,12 @@ void main() {
         await tester.ensureVisible(find.byKey(Key('mcq-choice-$wrong')));
         await tester.tap(find.byKey(Key('mcq-choice-$wrong')));
         await tester.pump();
+        expect(_choiceFill(tester, wrong), _pickedFill);
         await tester.ensureVisible(find.byKey(const Key('mcq-next')));
         await tester.tap(find.byKey(const Key('mcq-next')));
         await _frames(tester);
+        expect(_choiceFill(tester, wrong), _errorFill);
+        expect(_choiceFill(tester, question.answer), _okFill);
         expect(find.byKey(const Key('course-retry')), findsOneWidget);
         expect(find.text(question.why), findsOneWidget);
         await tester.tap(find.byKey(const Key('course-retry')));

@@ -13,6 +13,10 @@ const _muted = Color(0xFF5C6560);
 const _line = Color(0xFFD9E2DC);
 const _ok = Color(0xFF0E7C66);
 const _error = Color(0xFFC4473A);
+const _picked = Color(0xFFE06A00);
+const _pickedFill = Color(0xFFFFE4C4);
+const _okFill = Color(0xFFD6EBE4);
+const _errorFill = Color(0xFFF8D6D2);
 const _note = Color(0xFF1C4E8A);
 const _paper = Color(0xFFEEF3F0);
 
@@ -925,12 +929,28 @@ class _CoursePageState extends State<CoursePage> {
 
   Widget _choiceTile(SqlQuestion question, int index) {
     final selected = _choice == index;
-    final show = _checked && (selected || index == question.answer);
     final correct = index == question.answer;
-    final color = !show
-        ? (selected ? const Color(0xFFD6EBE4) : Colors.white)
-        : (correct ? const Color(0xFFD6EBE4) : const Color(0xFFF8E4E1));
-    final side = !show ? (selected ? _ok : _line) : (correct ? _ok : _error);
+    final revealed = _checked && (selected || correct);
+    final Color fill;
+    final Color mark;
+    final Color border;
+    if (!_checked && selected) {
+      fill = _pickedFill;
+      mark = _picked;
+      border = _picked;
+    } else if (_checked && correct) {
+      fill = _okFill;
+      mark = _ok;
+      border = _ok;
+    } else if (_checked && selected) {
+      fill = _errorFill;
+      mark = _error;
+      border = _error;
+    } else {
+      fill = Colors.white;
+      mark = const Color(0xFFF4F7F5);
+      border = _line;
+    }
     final letter = String.fromCharCode(65 + index);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -938,9 +958,10 @@ class _CoursePageState extends State<CoursePage> {
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: color,
+          color: fill,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: side, width: selected || show ? 1.5 : 1),
+          border:
+              Border.all(color: border, width: revealed || selected ? 2 : 1),
         ),
         child: Material(
           color: const Color(0x00000000),
@@ -957,13 +978,13 @@ class _CoursePageState extends State<CoursePage> {
                     height: 28,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: selected ? _ok : const Color(0xFFF4F7F5),
+                      color: mark,
                       shape: BoxShape.circle,
                     ),
                     child: Text(
                       letter,
                       style: TextStyle(
-                        color: selected ? Colors.white : _muted,
+                        color: revealed || selected ? Colors.white : _muted,
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                       ),
@@ -976,8 +997,12 @@ class _CoursePageState extends State<CoursePage> {
                       style: const TextStyle(color: _ink, height: 1.3),
                     ),
                   ),
-                  if (show && correct)
-                    const Icon(Icons.check, color: _ok, size: 18),
+                  if (!_checked && selected)
+                    const Icon(Icons.circle, color: _picked, size: 14)
+                  else if (_checked && correct)
+                    const Icon(Icons.check_circle, color: _ok, size: 18)
+                  else if (_checked && selected)
+                    const Icon(Icons.cancel, color: _error, size: 18),
                 ],
               ),
             ),
