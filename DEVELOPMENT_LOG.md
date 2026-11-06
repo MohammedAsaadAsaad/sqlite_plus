@@ -1,5 +1,20 @@
 # Development log
 
+## 2026-11-06 — openDatabase creates a missing file
+
+- `openDatabase` writes an empty database image when the file is missing, and
+  an empty `-journal` when that sidecar is missing. An existing database file
+  is not replaced, including a zero-length file. `directoryEntriesDurable`
+  defaults to true. Passing false writes nothing and throws
+  `UnsupportedError`. `wal: true` does not create a database or a `-wal`
+  file. `DatabaseOwner.query` and `execute` forward to the client.
+- `packages/sqlite_plus/test/open_alias_test.dart` covers a new file, a
+  missing parent directory, an existing fixture, a missing journal, an empty
+  file, a refused attestation, and a missing WAL path. On Linux x64, Dart
+  3.13.7, `dart analyze --fatal-infos` reported no issues and `dart test`
+  passed 10623 tests. This is not a power-loss result.
+  `directoryEntriesDurable` remains a caller attestation.
+
 ## 2026-11-06 — Explanations lead with the package
 
 - Each package README opens on its own file example. The catalog page and the

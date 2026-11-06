@@ -12,14 +12,40 @@ import '../storage/durable_file_storage_backend.dart';
 
 /// Opens a database file on its own isolate.
 ///
-/// This is [DatabaseOwner.open]. [path] is an existing database file. The
-/// caller also provisions the `-journal` sidecar, or the `-wal` sidecar when
-/// [wal] is true. [directoryEntriesDurable] is the caller attestation that
-/// those directory entries are already durable. It is not a power-loss result.
+/// A missing database file is written as an empty image, and a missing
+/// `-journal` is written empty, unless [wal] is true. An existing database
+/// file is not replaced. [directoryEntriesDurable] defaults to true. Passing
+/// false writes nothing and throws. That flag is the caller attestation that
+/// the directory entries are durable. It is not a power-loss result. [wal]
+/// still requires the `-wal` sidecar and does not create it.
 Future<DatabaseOwner> openDatabase(String path,
-        {required bool directoryEntriesDurable, bool wal = false}) =>
-    DatabaseOwner.open(path,
-        directoryEntriesDurable: directoryEntriesDurable, wal: wal);
+    {bool directoryEntriesDurable = true, bool wal = false}) async {
+  if (!directoryEntriesDurable) {
+    throw UnsupportedError('Durably provision database and sidecar first');
+  }
+  if (!wal) await _provisionRollback(path);
+  return DatabaseOwner.open(path, directoryEntriesDurable: true, wal: wal);
+}
+
+/// Writes an empty database image and an empty `-journal` when either is
+/// missing. An existing database file is not replaced or deleted.
+Future<void> _provisionRollback(String path) async {
+  final database = File(path);
+  final journal = File('$path-journal');
+  if (!await database.exists()) {
+    await database.parent.create(recursive: true);
+    final created = await MutableSqliteDatabase.create();
+    try {
+      await database.writeAsBytes(created.exportImage(), flush: true);
+    } finally {
+      await created.close();
+    }
+  }
+  if (!await journal.exists()) {
+    await journal.parent.create(recursive: true);
+    await journal.writeAsBytes(const <int>[], flush: true);
+  }
+}
 
 /// A single connection/handle owner. Share [sendPort] with other isolates and
 /// connect through DatabaseClient; never open additional file handles directly.
@@ -82,6 +108,16 @@ final class DatabaseOwner {
       isolate.kill(priority: Isolate.immediate);
     }
   }
+
+  /// Runs a statement that returns rows. This is [DatabaseClient.query].
+  Future<QueryResult> query(String sql,
+          [List<Object?> parameters = const []]) =>
+      client.query(sql, parameters);
+
+  /// Runs a statement that changes rows. This is [DatabaseClient.execute].
+  Future<MutationResult> execute(String sql,
+          [List<Object?> parameters = const []]) =>
+      client.execute(sql, parameters);
 
   Future<void> close() async {
     if (_closed) return;

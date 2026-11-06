@@ -6,7 +6,7 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
+  sqlite_plus: ^0.1.10
   sqlite_plus_orm: ^0.1.9
   sqlite_plus_arabic: ^0.1.3
   sqlite_plus_vec: ^0.1.3
@@ -22,14 +22,9 @@ dev_dependencies:
 ## Query
 
 ```dart
-import 'dart:io';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final file = File('shelf.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final db = await openDatabase('shelf.db');
 await db.execute(
   'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
 );
@@ -41,10 +36,9 @@ final rows = await db.query(
   'SELECT title FROM note WHERE title LIKE ?',
   ['%Garden%'],
 );
-await file.writeAsBytes(db.exportImage(), flush: true);
 ```
 
-`rows` is `Kept Garden`. The next launch opens the same `shelf.db`.
+`rows` is `Kept Garden`. A missing `shelf.db` is created. The next launch opens the same file.
 
 ## Track a change
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.10
+
+`sqlite_plus` is `0.1.10`. `openDatabase` creates a missing database file and a missing `-journal`. An existing database file is not replaced. This version is not uploaded.
+
 ## 0.1.9
 
 `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are `0.1.9`. `sqlite_plus_arabic` and `sqlite_plus_vec` are `0.1.3`. `sqlite_plus_geo` is `0.1.2`. `sqlite_plus_search` is `0.1.0-dev.5`. Each package README opens on that package. The catalog page is an application at the end. These versions are uploaded to pub.dev.
