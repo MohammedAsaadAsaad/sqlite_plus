@@ -42,7 +42,9 @@ void main() {
     );
     expect(pair.message, 'Write one statement.');
 
-    final change = sqlCourse[3].tasks[0];
+    final change = sqlCourse
+        .expand((lesson) => lesson.tasks)
+        .firstWhere((task) => task.probe != null);
     final read = await gradeSql(change, 'SELECT title, pages FROM books;');
     expect(
       read.message,
@@ -69,25 +71,36 @@ void main() {
   });
 
   test('every example runs and every official statement passes', () async {
-    expect(sqlCourse, hasLength(12));
-    for (var levelIndex = 0; levelIndex < sqlCourse.length; levelIndex++) {
-      final level = sqlCourse[levelIndex];
-      expect(level.questions, hasLength(3));
-      for (var index = 0; index < level.examples.length; index++) {
-        final table = await runExample(level.examples[index]);
+    expect(sqlChapters.length, 6);
+    expect(sqlCourse.length, greaterThan(12));
+    for (final chapter in sqlChapters) {
+      expect(chapter.lessons, isNotEmpty);
+      expect(chapter.review.length, greaterThanOrEqualTo(4));
+      for (final question in chapter.review) {
         expect(
-          table.columns,
-          isNotEmpty,
-          reason: '${level.title} example $index',
-        );
+            question.answer, inInclusiveRange(0, question.choices.length - 1));
       }
-      for (var index = 0; index < level.tasks.length; index++) {
-        final task = level.tasks[index];
+    }
+    for (final lesson in sqlCourse) {
+      expect(lesson.parts.length, greaterThanOrEqualTo(2));
+      expect(lesson.review.length, greaterThanOrEqualTo(3));
+      expect(lesson.tasks, isNotEmpty);
+      for (final part in lesson.parts) {
+        expect(
+          part.question.answer,
+          inInclusiveRange(0, part.question.choices.length - 1),
+        );
+        final table = await runExample(part.example);
+        expect(table.columns, isNotEmpty,
+            reason: '${lesson.title} ${part.title}');
+      }
+      for (var index = 0; index < lesson.tasks.length; index++) {
+        final task = lesson.tasks[index];
         final grade = await gradeSql(task, task.statement);
         expect(
           grade.passed,
           isTrue,
-          reason: '${level.title} task $index: ${grade.message}',
+          reason: '${lesson.title} task $index: ${grade.message}',
         );
         expect(grade.message, 'Passed');
       }
@@ -118,6 +131,13 @@ void main() {
     expect(loaded.isPassed(1), isTrue);
     expect(loaded.isUnlocked(2), isTrue);
     expect(loaded.isUnlocked(3), isFalse);
+
+    file.writeAsStringSync('{"unlocked": 4, "passed": [0, 1]}');
+    final old = CourseProgress.file(file);
+    await old.load();
+    expect(old.isUnlocked(0), isTrue);
+    expect(old.isUnlocked(1), isFalse);
+    expect(old.passed, isEmpty);
 
     file.writeAsStringSync('{');
     final broken = CourseProgress.file(file);
@@ -152,16 +172,46 @@ void main() {
     await tester.tap(find.byKey(const Key('home-learn')));
     await _frames(tester);
 
+    expect(find.textContaining('Twelve levels'), findsNothing);
     expect(
       tester.widget<InkWell>(find.byKey(const Key('course-level-1'))).onTap,
       isNull,
     );
     await tester.tap(find.byKey(const Key('course-level-0')));
     await _frames(tester);
+
+    final lesson = sqlCourse[0];
+    for (var part = 0; part < lesson.parts.length; part++) {
+      final question = lesson.parts[part].question;
+      if (part == 0) {
+        final wrong = question.answer == 0 ? 1 : 0;
+        await tester.ensureVisible(find.byKey(Key('mcq-choice-$wrong')));
+        await tester.tap(find.byKey(Key('mcq-choice-$wrong')));
+        await tester.pump();
+        await tester.ensureVisible(find.byKey(const Key('mcq-next')));
+        await tester.tap(find.byKey(const Key('mcq-next')));
+        await _frames(tester);
+        expect(find.byKey(const Key('course-retry')), findsOneWidget);
+        expect(find.text(question.why), findsOneWidget);
+        await tester.tap(find.byKey(const Key('course-retry')));
+        await _frames(tester);
+      }
+      await tester
+          .ensureVisible(find.byKey(Key('mcq-choice-${question.answer}')));
+      await tester.tap(find.byKey(Key('mcq-choice-${question.answer}')));
+      await tester.pump();
+      await tester.ensureVisible(find.byKey(const Key('mcq-next')));
+      await tester.tap(find.byKey(const Key('mcq-next')));
+      await _frames(tester);
+      if (part < lesson.parts.length - 1) {
+        await tester.tap(find.byKey(const Key('mcq-next')));
+        await _frames(tester);
+      }
+    }
     await tester.tap(find.byKey(const Key('course-to-questions')));
     await _frames(tester);
 
-    final questions = sqlCourse[0].questions;
+    final questions = lesson.review;
     final first = questions.first;
     final wrong = first.answer == 0 ? 1 : 0;
     await tester.ensureVisible(find.byKey(Key('mcq-choice-$wrong')));

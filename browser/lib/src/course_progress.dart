@@ -16,11 +16,25 @@ class CourseProgress extends ChangeNotifier {
 
   var unlocked = 0;
   final Set<int> passed = {};
+  final Set<int> passedChapters = {};
   var _loaded = false;
 
   bool isUnlocked(int index) => index >= 0 && index <= unlocked;
 
   bool isPassed(int index) => passed.contains(index);
+
+  bool isChapterPassed(int chapter) => passedChapters.contains(chapter);
+
+  /// The chapter quiz opens once every lesson in it has passed.
+  bool isChapterOpen(int chapter) {
+    if (chapter < 0 || chapter >= sqlChapters.length) return false;
+    final start = firstLessonOf(chapter);
+    final count = sqlChapters[chapter].lessons.length;
+    for (var index = 0; index < count; index++) {
+      if (!isPassed(start + index)) return false;
+    }
+    return true;
+  }
 
   Future<void> load() async {
     if (_loaded) return;
@@ -44,8 +58,21 @@ class CourseProgress extends ChangeNotifier {
     if (index < 0 || index >= sqlCourse.length) return;
     passed.add(index);
     final next = index + 1;
-    if (next > unlocked) {
-      unlocked = next >= sqlCourse.length ? sqlCourse.length - 1 : next;
+    final sameChapter = next < sqlCourse.length &&
+        chapterOfLesson(next) == chapterOfLesson(index);
+    if (sameChapter && next > unlocked) unlocked = next;
+    await _save();
+    notifyListeners();
+  }
+
+  /// Records the chapter quiz and opens the next chapter.
+  Future<void> markChapterPassed(int chapter) async {
+    if (chapter < 0 || chapter >= sqlChapters.length) return;
+    passedChapters.add(chapter);
+    final next = chapter + 1;
+    if (next < sqlChapters.length) {
+      final first = firstLessonOf(next);
+      if (first > unlocked) unlocked = first;
     }
     await _save();
     notifyListeners();
@@ -53,9 +80,15 @@ class CourseProgress extends ChangeNotifier {
 
   void _apply(Object? decoded) {
     if (decoded is! Map) return;
+    if (decoded['version'] != 2) return;
     final unlockedValue = decoded['unlocked'];
     final passedValue = decoded['passed'];
-    if (unlockedValue is! int || passedValue is! List) return;
+    final chapterValue = decoded['chapters'];
+    if (unlockedValue is! int ||
+        passedValue is! List ||
+        chapterValue is! List) {
+      return;
+    }
     final nextPassed = <int>{};
     for (final item in passedValue) {
       if (item is int && item >= 0 && item < sqlCourse.length) {
@@ -67,10 +100,19 @@ class CourseProgress extends ChangeNotifier {
     if (nextUnlocked > sqlCourse.length - 1) {
       nextUnlocked = sqlCourse.length - 1;
     }
+    final nextChapters = <int>{};
+    for (final item in chapterValue) {
+      if (item is int && item >= 0 && item < sqlChapters.length) {
+        nextChapters.add(item);
+      }
+    }
     unlocked = nextUnlocked;
     passed
       ..clear()
       ..addAll(nextPassed);
+    passedChapters
+      ..clear()
+      ..addAll(nextChapters);
   }
 
   Future<void> _save() async {
@@ -79,8 +121,14 @@ class CourseProgress extends ChangeNotifier {
     final parent = target.parent;
     if (!parent.existsSync()) parent.createSync(recursive: true);
     final names = passed.toList()..sort();
+    final chapters = passedChapters.toList()..sort();
     target.writeAsStringSync(
-      jsonEncode({'unlocked': unlocked, 'passed': names}),
+      jsonEncode({
+        'version': 2,
+        'unlocked': unlocked,
+        'passed': names,
+        'chapters': chapters,
+      }),
     );
   }
 }

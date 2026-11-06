@@ -211,7 +211,7 @@ packages:
       path: "../packages/sqlite_plus"
       relative: true
     source: path
-    version: "0.1.7"
+    version: "0.1.9"
   stack_trace:
     dependency: transitive
     description:

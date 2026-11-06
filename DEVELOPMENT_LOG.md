@@ -1,5 +1,28 @@
 # Development log
 
+## 2026-11-06 — Course chapters in the browser
+
+- Learn SQL no longer opens with the introductory paragraph. Six chapters
+  list their lessons, each chapter with its own icon. A lesson is a sequence
+  of parts. Each part explains one idea, shows the example through `formatSql`
+  and the SQL editor colors, and asks one question before the next part.
+  Lesson questions follow the parts. Chapter questions open after every lesson
+  in that chapter is passed, and they open the next chapter. The writing step
+  is the SQL editor, so suggestions follow the tables in that step. There are
+  sixteen lessons. An older `course.json` without version 2 is ignored.
+- `browser/`: Flutter 3.47.9, Dart 3.13.7, Linux x64. `flutter analyze
+  --fatal-infos` reported no issues. `flutter test` passed 59 tests on 6
+  November 2026.
+- `flutter build apk --release --target-platform android-arm64` at 15:39
+  Asia/Hebron (UTC+2) wrote
+  `browser/dist/sqlite-plus-browser-arm64-v8a.apk`, 21381319 bytes, sha256
+  `b75777b4d4f20ce4f7782677c531bdc3c1781aea8d09e6552371ce3d0969bde4`.
+  `aapt dump badging` reports package `dev.sqliteplus.sqlite_plus_browser`,
+  versionName `1.0.0`, versionCode `21`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `SQLite Browser`, and native-code
+  `arm64-v8a`. The release build is signed with the Android debug certificate.
+  The package was not installed on a device or an emulator.
+
 ## 2026-11-06 — Explanations lead with the package
 
 - Each package README opens on its own file example. The catalog page and the

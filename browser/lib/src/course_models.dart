@@ -68,21 +68,56 @@ class SqlTask {
   final bool orderMatters;
 }
 
-/// One course level. Questions come before the statements.
-class SqlLevel {
-  const SqlLevel({
+/// The mark drawn beside a chapter.
+enum CourseMark { reading, writing, tables, summaries, combining, naming }
+
+/// One explanation, its example, and the question that checks that part.
+class SqlPart {
+  const SqlPart({
+    required this.title,
+    required this.teach,
+    required this.example,
+    required this.question,
+  });
+
+  final String title;
+  final String teach;
+  final SqlExample example;
+  final SqlQuestion question;
+}
+
+/// One lesson. [parts] are taught in order. [review] covers the whole lesson.
+class SqlLesson {
+  const SqlLesson({
     required this.title,
     required this.summary,
-    required this.teach,
-    required this.examples,
-    required this.questions,
+    required this.parts,
+    required this.review,
     required this.tasks,
   });
 
   final String title;
   final String summary;
-  final String teach;
-  final List<SqlExample> examples;
-  final List<SqlQuestion> questions;
+  final List<SqlPart> parts;
+  final List<SqlQuestion> review;
   final List<SqlTask> tasks;
+
+  List<SqlExample> get examples => [for (final part in parts) part.example];
+}
+
+/// One chapter. [review] opens after every lesson in the chapter is passed.
+class SqlChapter {
+  const SqlChapter({
+    required this.title,
+    required this.summary,
+    required this.mark,
+    required this.lessons,
+    required this.review,
+  });
+
+  final String title;
+  final String summary;
+  final CourseMark mark;
+  final List<SqlLesson> lessons;
+  final List<SqlQuestion> review;
 }

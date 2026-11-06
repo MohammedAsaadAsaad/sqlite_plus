@@ -14,10 +14,24 @@ const _line = Color(0xFFD9E2DC);
 const _ok = Color(0xFF0E7C66);
 const _error = Color(0xFFC4473A);
 const _note = Color(0xFF1C4E8A);
+const _paper = Color(0xFFEEF3F0);
 
-enum _Stage { list, examples, questions, practice, done }
+enum _Stage { list, lesson, quiz, done }
 
-/// Examples, questions, then one checked statement per level.
+enum _Phase { part, review, practice }
+
+IconData courseIcon(CourseMark mark) {
+  return switch (mark) {
+    CourseMark.reading => Icons.table_rows_rounded,
+    CourseMark.writing => Icons.edit_note_rounded,
+    CourseMark.tables => Icons.grid_on_rounded,
+    CourseMark.summaries => Icons.functions_rounded,
+    CourseMark.combining => Icons.account_tree_rounded,
+    CourseMark.naming => Icons.bookmark_rounded,
+  };
+}
+
+/// Chapters, then a lesson whose parts, review, and writing stay on one path.
 class CoursePage extends StatefulWidget {
   const CoursePage({super.key, required this.progress});
 
@@ -29,7 +43,13 @@ class CoursePage extends StatefulWidget {
 
 class _CoursePageState extends State<CoursePage> {
   _Stage _stage = _Stage.list;
+  _Phase _phase = _Phase.part;
   var _level = 0;
+  var _chapter = 0;
+  var _part = 0;
+  var _partReached = 0;
+  var _reviewReached = false;
+  var _practiceReached = false;
   var _question = 0;
   int? _choice;
   var _checked = false;
@@ -37,6 +57,7 @@ class _CoursePageState extends State<CoursePage> {
   var _ticket = 0;
   var _grading = false;
   var _tablesReady = false;
+  var _finishedChapter = false;
   SqlGrade? _grade;
   QueryTable? _preview;
   QueryTable? _expected;
@@ -46,6 +67,8 @@ class _CoursePageState extends State<CoursePage> {
   final _sql = TextEditingController();
 
   CourseProgress get progress => widget.progress;
+
+  SqlLesson get _lesson => sqlCourse[_level];
 
   @override
   void initState() {
@@ -68,36 +91,41 @@ class _CoursePageState extends State<CoursePage> {
     setState(() => _stage = _Stage.list);
   }
 
+  void _resetAnswer() {
+    _choice = null;
+    _checked = false;
+  }
+
   void _openLevel(int index) {
     _ticket++;
     _sql.clear();
     setState(() {
       _level = index;
-      _stage = _Stage.examples;
+      _stage = _Stage.lesson;
+      _phase = _Phase.part;
+      _part = 0;
+      _partReached = 0;
+      _reviewReached = false;
+      _practiceReached = false;
       _question = 0;
-      _choice = null;
-      _checked = false;
       _task = 0;
       _grade = null;
       _schema = const [];
-      _examples = List<QueryTable?>.filled(
-        sqlCourse[index].examples.length,
-        null,
-      );
-      _exampleErrors = List<Object?>.filled(
-        sqlCourse[index].examples.length,
-        null,
-      );
+      _finishedChapter = false;
+      _resetAnswer();
+      _examples = List<QueryTable?>.filled(sqlCourse[index].parts.length, null);
+      _exampleErrors =
+          List<Object?>.filled(sqlCourse[index].parts.length, null);
     });
     _loadExamples(index);
   }
 
   Future<void> _loadExamples(int index) async {
     final ticket = _ticket;
-    final level = sqlCourse[index];
-    for (var i = 0; i < level.examples.length; i++) {
+    final lesson = sqlCourse[index];
+    for (var i = 0; i < lesson.parts.length; i++) {
       try {
-        final table = await runExample(level.examples[i]);
+        final table = await runExample(lesson.parts[i].example);
         if (!mounted || ticket != _ticket) return;
         setState(() => _examples[i] = table);
       } on Object catch (error) {
@@ -107,19 +135,77 @@ class _CoursePageState extends State<CoursePage> {
     }
   }
 
+  void _openQuiz(int chapter) {
+    if (!progress.isChapterOpen(chapter)) return;
+    setState(() {
+      _chapter = chapter;
+      _stage = _Stage.quiz;
+      _question = 0;
+      _finishedChapter = false;
+      _resetAnswer();
+    });
+  }
+
+  void _checkAnswer() {
+    if (_choice == null || _checked) return;
+    setState(() => _checked = true);
+  }
+
+  void _continuePart() {
+    final last = _part == _lesson.parts.length - 1;
+    setState(() {
+      _resetAnswer();
+      if (last) {
+        _phase = _Phase.review;
+        _question = 0;
+        _reviewReached = true;
+      } else {
+        _part += 1;
+        if (_part > _partReached) _partReached = _part;
+      }
+    });
+  }
+
+  void _nextReviewQuestion() {
+    final last = _question == _lesson.review.length - 1;
+    if (last) {
+      _startPractice();
+      return;
+    }
+    setState(() {
+      _question += 1;
+      _resetAnswer();
+    });
+  }
+
+  void _nextQuizQuestion() {
+    final questions = sqlChapters[_chapter].review;
+    final last = _question == questions.length - 1;
+    if (last) {
+      _finishQuiz();
+      return;
+    }
+    setState(() {
+      _question += 1;
+      _resetAnswer();
+    });
+  }
+
   void _startPractice() {
     _sql.clear();
     setState(() {
-      _stage = _Stage.practice;
+      _phase = _Phase.practice;
+      _practiceReached = true;
       _task = 0;
       _grade = null;
+      _resetAnswer();
     });
     _loadTask();
   }
 
   Future<void> _loadTask() async {
     final ticket = ++_ticket;
-    final task = sqlCourse[_level].tasks[_task];
+    final task = _lesson.tasks[_task];
     setState(() {
       _tablesReady = false;
       _preview = null;
@@ -151,7 +237,7 @@ class _CoursePageState extends State<CoursePage> {
     if (_grading) return;
     final ticket = _ticket;
     setState(() => _grading = true);
-    final task = sqlCourse[_level].tasks[_task];
+    final task = _lesson.tasks[_task];
     final grade = await gradeSql(task, _sql.text);
     if (!mounted || ticket != _ticket) return;
     setState(() {
@@ -162,24 +248,69 @@ class _CoursePageState extends State<CoursePage> {
 
   void _nextTask() {
     _sql.clear();
-    setState(() => _task += 1);
+    setState(() {
+      _task += 1;
+      _grade = null;
+    });
     _loadTask();
   }
 
   Future<void> _finishLevel() async {
     await progress.markPassed(_level);
     if (!mounted) return;
-    setState(() => _stage = _Stage.done);
+    setState(() {
+      _finishedChapter = false;
+      _stage = _Stage.done;
+    });
+  }
+
+  Future<void> _finishQuiz() async {
+    await progress.markChapterPassed(_chapter);
+    if (!mounted) return;
+    setState(() {
+      _finishedChapter = true;
+      _stage = _Stage.done;
+    });
+  }
+
+  void _showPart(int index) {
+    if (index > _partReached) return;
+    setState(() {
+      _phase = _Phase.part;
+      _part = index;
+      _grade = null;
+      _resetAnswer();
+    });
+  }
+
+  void _showReview() {
+    if (!_reviewReached) return;
+    setState(() {
+      _phase = _Phase.review;
+      _question = 0;
+      _resetAnswer();
+    });
+  }
+
+  void _showPractice() {
+    if (!_practiceReached) return;
+    _startPractice();
   }
 
   @override
   Widget build(BuildContext context) {
-    final title = _stage == _Stage.list ? 'Learn SQL' : sqlCourse[_level].title;
+    final title = switch (_stage) {
+      _Stage.list => 'Learn SQL',
+      _Stage.lesson => _lesson.title,
+      _Stage.quiz => sqlChapters[_chapter].title,
+      _Stage.done =>
+        _finishedChapter ? sqlChapters[_chapter].title : _lesson.title,
+    };
     return AnimatedBuilder(
       animation: progress,
       builder: (context, _) {
         return Scaffold(
-          backgroundColor: const Color(0xFFEEF3F0),
+          backgroundColor: _paper,
           appBar: AppBar(
             automaticallyImplyLeading: false,
             leading: IconButton(
@@ -192,7 +323,7 @@ class _CoursePageState extends State<CoursePage> {
           ),
           body: Column(
             children: [
-              if (_showSteps) _steps(),
+              if (_stage == _Stage.lesson) _rail(),
               Expanded(child: _motion(_stageBody())),
             ],
           ),
@@ -201,24 +332,34 @@ class _CoursePageState extends State<CoursePage> {
     );
   }
 
-  bool get _showSteps =>
-      _stage == _Stage.examples ||
-      _stage == _Stage.questions ||
-      _stage == _Stage.practice;
-
   Widget _stageBody() {
     return switch (_stage) {
       _Stage.list => _list(),
-      _Stage.examples => _examplesView(),
-      _Stage.questions => _questionsView(),
-      _Stage.practice => _practiceView(),
+      _Stage.lesson => switch (_phase) {
+          _Phase.part => _partView(),
+          _Phase.review => _questionsView(
+              _lesson.review,
+              onAdvance: _nextReviewQuestion,
+              doneLabel: 'Write SQL',
+              doneKey: const Key('course-to-sql'),
+            ),
+          _Phase.practice => _practiceView(),
+        },
+      _Stage.quiz => _questionsView(
+          sqlChapters[_chapter].review,
+          onAdvance: _nextQuizQuestion,
+          doneLabel: 'Finish chapter',
+          doneKey: const Key('course-quiz-finish'),
+          heading: 'Chapter questions',
+        ),
       _Stage.done => _doneView(),
     };
   }
 
   Widget _motion(Widget child) {
     return TweenAnimationBuilder<double>(
-      key: ValueKey('${_stage.name}-$_level-$_question-$_task'),
+      key: ValueKey(
+          '${_stage.name}-$_level-$_chapter-$_phase-$_part-$_question-$_task'),
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 240),
       curve: Curves.easeOutCubic,
@@ -226,7 +367,7 @@ class _CoursePageState extends State<CoursePage> {
         return Opacity(
           opacity: value,
           child: Transform.translate(
-            offset: Offset(16 * (1 - value), 0),
+            offset: Offset(18 * (1 - value), 0),
             child: child,
           ),
         );
@@ -235,189 +376,205 @@ class _CoursePageState extends State<CoursePage> {
     );
   }
 
-  Widget _steps() {
-    const labels = ['Examples', 'Questions', 'Write'];
-    final current = switch (_stage) {
-      _Stage.examples => 0,
-      _Stage.questions => 1,
-      _Stage.practice => 2,
-      _ => 0,
-    };
-    return ColoredBox(
+  Widget _rail() {
+    final lesson = _lesson;
+    return Material(
       color: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-        child: Row(
+      child: SizedBox(
+        height: 58,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
           children: [
-            for (var index = 0; index < labels.length; index++) ...[
-              _step(index, current, labels[index]),
-              if (index < labels.length - 1)
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 240),
-                    height: 2,
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    color: index < current ? _ok : _line,
-                  ),
-                ),
-            ],
+            for (var index = 0; index < lesson.parts.length; index++)
+              _chip(
+                key: Key('course-step-$index'),
+                icon: Icons.menu_book_outlined,
+                label: lesson.parts[index].title,
+                active: _phase == _Phase.part && _part == index,
+                enabled: index <= _partReached,
+                onTap: () => _showPart(index),
+              ),
+            _chip(
+              key: const Key('course-step-review'),
+              icon: Icons.quiz_outlined,
+              label: 'Lesson questions',
+              active: _phase == _Phase.review,
+              enabled: _reviewReached,
+              onTap: _showReview,
+            ),
+            _chip(
+              key: const Key('course-step-write'),
+              icon: Icons.edit_outlined,
+              label: 'Write',
+              active: _phase == _Phase.practice,
+              enabled: _practiceReached,
+              onTap: _showPractice,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _step(int index, int current, String label) {
-    final done = index < current;
-    final active = index == current;
-    final color = done || active ? _ok : const Color(0xFFB7C4BE);
-    return Column(
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          width: 26,
-          height: 26,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: done || active ? _ok : Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(color: color),
-          ),
-          child: done
-              ? const Icon(Icons.check, size: 14, color: Colors.white)
-              : Text(
-                  '${index + 1}',
-                  style: TextStyle(
-                    color: active ? Colors.white : color,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: active ? _ink : _muted,
-            fontSize: 11,
-            fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _list() {
-    final passed = progress.passed.length;
-    final fraction = passed / sqlCourse.length;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-      children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _line),
-          ),
+  Widget _chip({
+    required Key key,
+    required IconData icon,
+    required String label,
+    required bool active,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    final color = !enabled
+        ? const Color(0xFFB7C4BE)
+        : active
+            ? Colors.white
+            : _ok;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: !enabled
+            ? const Color(0xFFF4F7F5)
+            : active
+                ? _ok
+                : const Color(0xFFE7F2EC),
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          key: key,
+          onTap: enabled ? onTap : null,
+          borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
               children: [
-                const Text(
-                  'SQL practice',
-                  style: TextStyle(
-                    color: _ok,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Twelve levels, from a first query to a full report. Each level shows examples, then questions, then a statement this program runs.',
-                  style: TextStyle(color: _ink, height: 1.4),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'This course runs on sqlite_plus. It is a practical path, not every SQLite feature.',
-                  style: TextStyle(color: _note, height: 1.4),
-                ),
-                const SizedBox(height: 14),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    minHeight: 6,
-                    value: fraction,
-                    color: _ok,
-                    backgroundColor: const Color(0xFFD6EBE4),
-                  ),
-                ),
-                const SizedBox(height: 6),
+                Icon(icon, size: 16, color: color),
+                const SizedBox(width: 6),
                 Text(
-                  '$passed of ${sqlCourse.length} levels passed',
-                  style: const TextStyle(color: _muted, fontSize: 12),
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        for (var index = 0; index < sqlCourse.length; index++)
-          _levelCard(index),
+      ),
+    );
+  }
+
+  Widget _list() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+      children: [
+        for (var chapter = 0; chapter < sqlChapters.length; chapter++)
+          _chapterBlock(chapter),
       ],
     );
   }
 
+  Widget _chapterBlock(int chapter) {
+    final item = sqlChapters[chapter];
+    final start = firstLessonOf(chapter);
+    final passed = [
+      for (var index = 0; index < item.lessons.length; index++)
+        if (progress.isPassed(start + index)) index,
+    ].length;
+    final quizOpen = progress.isChapterOpen(chapter);
+    final quizPassed = progress.isChapterPassed(chapter);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: quizPassed ? _ok : const Color(0xFFE7F2EC),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  courseIcon(item.mark),
+                  color: quizPassed ? Colors.white : _ok,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.summary,
+                      style: const TextStyle(
+                          color: _muted, fontSize: 12, height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '$passed/${item.lessons.length}',
+                style: const TextStyle(
+                  color: _ok,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (var index = 0; index < item.lessons.length; index++)
+            _levelCard(start + index),
+          _quizCard(chapter, open: quizOpen, done: quizPassed),
+        ],
+      ),
+    );
+  }
+
   Widget _levelCard(int index) {
-    final level = sqlCourse[index];
+    final lesson = sqlCourse[index];
     final open = progress.isUnlocked(index);
     final done = progress.isPassed(index);
+    final number = index - firstLessonOf(chapterOfLesson(index)) + 1;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
         color: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: _line),
+          side: BorderSide(color: done ? const Color(0xFFB7DDD2) : _line),
         ),
         child: InkWell(
           key: Key('course-level-$index'),
           onTap: open ? () => _openLevel(index) : null,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
             child: Row(
               children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 36,
-                  height: 36,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: done
-                        ? const Color(0xFFD6EBE4)
-                        : open
-                            ? const Color(0xFFF4F7F5)
-                            : const Color(0xFFF7FBF9),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '${index + 1}',
-                    style: TextStyle(
-                      color: open ? _ok : const Color(0xFFB7C4BE),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
+                _badge('$number', open: open, done: done),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        level.title,
+                        lesson.title,
                         style: TextStyle(
                           color: open ? _ink : const Color(0xFFB7C4BE),
                           fontWeight: FontWeight.w700,
@@ -425,7 +582,7 @@ class _CoursePageState extends State<CoursePage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        level.summary,
+                        lesson.summary,
                         style: TextStyle(
                           color: open ? _muted : const Color(0xFFB7C4BE),
                           fontSize: 12,
@@ -435,16 +592,12 @@ class _CoursePageState extends State<CoursePage> {
                   ),
                 ),
                 if (done)
-                  const Text(
-                    'Passed',
-                    style: TextStyle(
-                      color: _ok,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  )
+                  const Icon(Icons.check_circle, color: _ok, size: 20)
                 else if (!open)
-                  const Icon(Icons.lock_outline, color: Color(0xFFB7C4BE)),
+                  const Icon(Icons.lock_outline,
+                      color: Color(0xFFB7C4BE), size: 20)
+                else
+                  const Icon(Icons.chevron_right, color: _ok),
               ],
             ),
           ),
@@ -453,47 +606,141 @@ class _CoursePageState extends State<CoursePage> {
     );
   }
 
-  Widget _examplesView() {
-    final level = sqlCourse[_level];
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+  Widget _quizCard(int chapter, {required bool open, required bool done}) {
+    return Material(
+      color: open ? const Color(0xFFF7FBFF) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: open ? const Color(0xFFC5D7EE) : _line),
+      ),
+      child: InkWell(
+        key: Key('course-quiz-$chapter'),
+        onTap: open ? () => _openQuiz(chapter) : null,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          child: Row(
             children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _line),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    level.teach,
-                    style: const TextStyle(color: _ink, height: 1.5),
-                  ),
+              _badge('',
+                  open: open, done: done, icon: Icons.fact_check_outlined),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Chapter questions',
+                      style: TextStyle(
+                        color: open ? _ink : const Color(0xFFB7C4BE),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Questions that cover this whole chapter.',
+                      style: TextStyle(
+                        color: open ? _muted : const Color(0xFFB7C4BE),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              for (var i = 0; i < level.examples.length; i++)
-                _exampleCard(level.examples[i], i),
+              if (done)
+                const Icon(Icons.check_circle, color: _note, size: 20)
+              else if (!open)
+                const Icon(Icons.lock_outline,
+                    color: Color(0xFFB7C4BE), size: 20)
+              else
+                const Icon(Icons.chevron_right, color: _note),
             ],
           ),
         ),
-        _bar(
-          FilledButton(
-            key: const Key('course-to-questions'),
-            onPressed: () {
-              setState(() {
-                _stage = _Stage.questions;
-                _question = 0;
-                _choice = null;
-                _checked = false;
-              });
-            },
-            child: const Text('Questions'),
+      ),
+    );
+  }
+
+  Widget _badge(
+    String text, {
+    required bool open,
+    required bool done,
+    IconData? icon,
+  }) {
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: done
+            ? const Color(0xFFD6EBE4)
+            : open
+                ? const Color(0xFFF4F7F5)
+                : const Color(0xFFF7FBF9),
+        shape: BoxShape.circle,
+      ),
+      child: icon != null
+          ? Icon(icon, size: 18, color: open ? _note : const Color(0xFFB7C4BE))
+          : Text(
+              text,
+              style: TextStyle(
+                color: open ? _ok : const Color(0xFFB7C4BE),
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
+            ),
+    );
+  }
+
+  Widget _partView() {
+    final part = _lesson.parts[_part];
+    final last = _part == _lesson.parts.length - 1;
+    final correct = _checked && _choice == part.question.answer;
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Part ${_part + 1} of ${_lesson.parts.length}',
+                  style: const TextStyle(
+                    color: _ok,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  part.title,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  part.teach,
+                  style: const TextStyle(color: _ink, height: 1.5),
+                ),
+                const SizedBox(height: 16),
+                _exampleCard(part.example, _part),
+                const SizedBox(height: 8),
+                _questionCard(part.question, label: 'Question on this part'),
+              ],
+            ),
           ),
+        ),
+        _answerBar(
+          question: part.question,
+          last: last,
+          correct: correct,
+          advanceLabel: last ? 'Lesson questions' : 'Continue',
+          advanceKey:
+              last ? const Key('course-to-questions') : const Key('mcq-next'),
+          onAdvance: _continuePart,
         ),
       ],
     );
@@ -502,158 +749,183 @@ class _CoursePageState extends State<CoursePage> {
   Widget _exampleCard(SqlExample example, int index) {
     final table = index < _examples.length ? _examples[index] : null;
     final error = index < _exampleErrors.length ? _exampleErrors[index] : null;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _line),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Example ${index + 1}',
-                style: const TextStyle(
-                  color: _ok,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _line),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              example.title,
+              style: const TextStyle(
+                color: _ink,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
               ),
-              const SizedBox(height: 4),
-              Text(
-                example.title,
-                style: const TextStyle(
-                  color: _ink,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              example.note,
+              style: const TextStyle(color: _muted, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            SqlCodeView(source: formatSql(example.statement.trim())),
+            const SizedBox(height: 12),
+            const Text(
+              'Result',
+              style: TextStyle(
+                color: _ink,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
               ),
-              const SizedBox(height: 6),
-              Text(
-                example.note,
-                style: const TextStyle(color: _muted, height: 1.4),
-              ),
-              const SizedBox(height: 12),
-              _code(example.statement.trim()),
-              const SizedBox(height: 12),
-              const Text(
-                'Result',
-                style: TextStyle(
-                  color: _ink,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (error != null)
-                Text('$error', style: const TextStyle(color: _error))
-              else if (table == null)
-                const Text(
-                  'Running the example.',
-                  style: TextStyle(color: _note),
-                )
-              else
-                _ResultTable(table),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            if (error != null)
+              Text('$error', style: const TextStyle(color: _error))
+            else if (table == null)
+              const Text('Running the example.', style: TextStyle(color: _note))
+            else
+              _ResultTable(table),
+          ],
         ),
       ),
     );
   }
 
-  Widget _questionsView() {
-    final level = sqlCourse[_level];
-    final question = level.questions[_question];
+  Widget _questionsView(
+    List<SqlQuestion> questions, {
+    required VoidCallback onAdvance,
+    required String doneLabel,
+    required Key doneKey,
+    String heading = 'Lesson questions',
+  }) {
+    final question = questions[_question];
     final correct = _checked && _choice == question.answer;
-    final last = _question == level.questions.length - 1;
+    final last = _question == questions.length - 1;
     return Column(
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             children: [
               Text(
-                'Question ${_question + 1} of ${level.questions.length}',
+                '$heading · ${_question + 1} of ${questions.length}',
                 style: const TextStyle(
                   color: _muted,
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                question.prompt,
-                style: const TextStyle(
-                  color: _ink,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  height: 1.35,
-                ),
-              ),
-              const SizedBox(height: 16),
-              for (var i = 0; i < question.choices.length; i++)
-                _choiceTile(question, i),
+              const SizedBox(height: 12),
+              _questionCard(question, label: 'Question ${_question + 1}'),
             ],
           ),
         ),
-        _bar(
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_checked && !correct) ...[
-                Text(
-                  question.why,
-                  style: const TextStyle(color: _error, height: 1.35),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  key: const Key('course-retry'),
-                  onPressed: () {
-                    setState(() {
-                      _choice = null;
-                      _checked = false;
-                    });
-                  },
-                  child: const Text('Retry'),
-                ),
-              ] else if (_checked && correct && last)
-                FilledButton(
-                  key: const Key('course-to-sql'),
-                  onPressed: _startPractice,
-                  child: const Text('Write SQL'),
-                )
-              else
-                FilledButton(
-                  key: const Key('mcq-next'),
-                  onPressed: _choice == null
-                      ? null
-                      : () {
-                          if (!_checked) {
-                            setState(() => _checked = true);
-                            return;
-                          }
-                          setState(() {
-                            _question += 1;
-                            _choice = null;
-                            _checked = false;
-                          });
-                        },
-                  child: Text(_checked ? 'Next' : 'Check'),
-                ),
-            ],
-          ),
+        _answerBar(
+          question: question,
+          last: last,
+          correct: correct,
+          advanceLabel: last ? doneLabel : 'Next question',
+          advanceKey: last ? doneKey : const Key('mcq-next'),
+          onAdvance: onAdvance,
         ),
       ],
     );
   }
 
+  Widget _questionCard(SqlQuestion question, {required String label}) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _line),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: _note,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              question.prompt,
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 14),
+            for (var i = 0; i < question.choices.length; i++)
+              _choiceTile(question, i),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _answerBar({
+    required SqlQuestion question,
+    required bool last,
+    required bool correct,
+    required String advanceLabel,
+    required Key advanceKey,
+    required VoidCallback onAdvance,
+  }) {
+    final Widget button;
+    if (_checked && !correct) {
+      button = OutlinedButton(
+        key: const Key('course-retry'),
+        onPressed: () => setState(_resetAnswer),
+        child: const Text('Try again'),
+      );
+    } else if (_checked && correct) {
+      button = FilledButton.icon(
+        key: advanceKey,
+        onPressed: onAdvance,
+        icon: const Icon(Icons.arrow_forward),
+        label: Text(advanceLabel),
+      );
+    } else {
+      button = FilledButton(
+        key: const Key('mcq-next'),
+        onPressed: _choice == null ? null : _checkAnswer,
+        child: const Text('Check answer'),
+      );
+    }
+    return _bar(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_checked && !correct) ...[
+            Text(
+              question.why,
+              style: const TextStyle(color: _error, height: 1.35),
+            ),
+            const SizedBox(height: 8),
+          ],
+          SizedBox(height: 48, child: button),
+        ],
+      ),
+    );
+  }
+
   Widget _choiceTile(SqlQuestion question, int index) {
     final selected = _choice == index;
-    final show = _checked && selected;
+    final show = _checked && (selected || index == question.answer);
     final correct = index == question.answer;
     final color = !show
         ? (selected ? const Color(0xFFD6EBE4) : Colors.white)
@@ -668,7 +940,7 @@ class _CoursePageState extends State<CoursePage> {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: side, width: selected ? 1.5 : 1),
+          border: Border.all(color: side, width: selected || show ? 1.5 : 1),
         ),
         child: Material(
           color: const Color(0x00000000),
@@ -704,6 +976,8 @@ class _CoursePageState extends State<CoursePage> {
                       style: const TextStyle(color: _ink, height: 1.3),
                     ),
                   ),
+                  if (show && correct)
+                    const Icon(Icons.check, color: _ok, size: 18),
                 ],
               ),
             ),
@@ -714,19 +988,18 @@ class _CoursePageState extends State<CoursePage> {
   }
 
   Widget _practiceView() {
-    final level = sqlCourse[_level];
-    final task = level.tasks[_task];
+    final task = _lesson.tasks[_task];
     final grade = _grade;
     final passed = grade != null && grade.passed;
-    final last = _task == level.tasks.length - 1;
+    final last = _task == _lesson.tasks.length - 1;
     return Column(
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             children: [
               Text(
-                'Statement ${_task + 1} of ${level.tasks.length}',
+                'Statement ${_task + 1} of ${_lesson.tasks.length}',
                 style: const TextStyle(
                   color: _muted,
                   fontWeight: FontWeight.w700,
@@ -734,10 +1007,9 @@ class _CoursePageState extends State<CoursePage> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                task.prompt,
-                style: const TextStyle(color: _ink, height: 1.4),
-              ),
+              Text(task.prompt,
+                  style:
+                      const TextStyle(color: _ink, height: 1.45, fontSize: 16)),
               const SizedBox(height: 16),
               if (task.preview != null) ...[
                 const _Label('Starting rows'),
@@ -755,9 +1027,7 @@ class _CoursePageState extends State<CoursePage> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: [
-                    for (final object in _schema) _tablePill(object),
-                  ],
+                  children: [for (final object in _schema) _tablePill(object)],
                 ),
               ],
               if (grade != null && grade.actual.columns.isNotEmpty) ...[
@@ -781,6 +1051,11 @@ class _CoursePageState extends State<CoursePage> {
                 inputKey: const Key('task-sql'),
                 highlightKey: const Key('task-highlight'),
               ),
+              const SizedBox(height: 6),
+              const Text(
+                'Suggestions follow the word you are typing and the tables in this step.',
+                style: TextStyle(color: _muted, fontSize: 12, height: 1.3),
+              ),
               if (grade != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -792,24 +1067,26 @@ class _CoursePageState extends State<CoursePage> {
                 ),
               ],
               const SizedBox(height: 8),
-              if (passed && last)
-                FilledButton(
-                  key: const Key('task-finish'),
-                  onPressed: _finishLevel,
-                  child: const Text('Finish level'),
-                )
-              else if (passed)
-                FilledButton(
-                  key: const Key('task-next'),
-                  onPressed: _nextTask,
-                  child: const Text('Next statement'),
-                )
-              else
-                FilledButton(
-                  key: const Key('task-check'),
-                  onPressed: _grading ? null : _check,
-                  child: Text(_grading ? 'Checking' : 'Check'),
-                ),
+              SizedBox(
+                height: 48,
+                child: passed && last
+                    ? FilledButton(
+                        key: const Key('task-finish'),
+                        onPressed: _finishLevel,
+                        child: const Text('Finish lesson'),
+                      )
+                    : passed
+                        ? FilledButton(
+                            key: const Key('task-next'),
+                            onPressed: _nextTask,
+                            child: const Text('Next statement'),
+                          )
+                        : FilledButton(
+                            key: const Key('task-check'),
+                            onPressed: _grading ? null : _check,
+                            child: Text(_grading ? 'Checking' : 'Check'),
+                          ),
+              ),
             ],
           ),
         ),
@@ -819,44 +1096,49 @@ class _CoursePageState extends State<CoursePage> {
 
   Widget _waiting(QueryTable? table) {
     if (!_tablesReady || table == null) {
-      return const Text(
-        'Running the example.',
-        style: TextStyle(color: _note),
-      );
+      return const Text('Running the example.', style: TextStyle(color: _note));
     }
     return _ResultTable(table);
   }
 
   Widget _doneView() {
-    final last = _level == sqlCourse.length - 1;
-    final title =
-        last ? 'You finished the course.' : 'You finished this level.';
+    final nextLesson = _level + 1;
+    final hasNextLesson =
+        nextLesson < sqlCourse.length && progress.isUnlocked(nextLesson);
+    final chapter = _finishedChapter ? _chapter : chapterOfLesson(_level);
+    final showQuiz = !_finishedChapter &&
+        progress.isChapterOpen(chapter) &&
+        !progress.isChapterPassed(chapter) &&
+        !hasNextLesson;
+    final finishedCourse =
+        _finishedChapter && chapter == sqlChapters.length - 1;
+    final title = finishedCourse
+        ? 'You finished the course.'
+        : _finishedChapter
+            ? 'You finished this chapter.'
+            : 'You finished this lesson.';
+    final detail = finishedCourse
+        ? 'Every chapter is open from the list.'
+        : showQuiz
+            ? 'The chapter questions are open.'
+            : hasNextLesson
+                ? 'The next lesson is open.'
+                : 'You can return to the list.';
     return Column(
       children: [
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
             children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.9, end: 1),
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, child) {
-                  return Transform.scale(scale: value, child: child);
-                },
-                child: const Align(
-                  alignment: Alignment.centerLeft,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Color(0xFFD6EBE4),
-                      shape: BoxShape.circle,
-                    ),
-                    child: SizedBox(
-                      width: 56,
-                      height: 56,
-                      child: Icon(Icons.check, color: _ok, size: 28),
-                    ),
-                  ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Color(0xFFD6EBE4),
+                  shape: BoxShape.circle,
+                ),
+                child: SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: Icon(Icons.check, color: _ok, size: 28),
                 ),
               ),
               const SizedBox(height: 16),
@@ -869,12 +1151,7 @@ class _CoursePageState extends State<CoursePage> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                last
-                    ? 'You can open any level again from the list.'
-                    : 'The next level is open.',
-                style: const TextStyle(color: _muted, height: 1.4),
-              ),
+              Text(detail, style: const TextStyle(color: _muted, height: 1.4)),
             ],
           ),
         ),
@@ -882,17 +1159,32 @@ class _CoursePageState extends State<CoursePage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (!last)
-                FilledButton(
-                  key: const Key('course-next'),
-                  onPressed: () => _openLevel(_level + 1),
-                  child: const Text('Next level'),
+              if (hasNextLesson)
+                SizedBox(
+                  height: 48,
+                  child: FilledButton(
+                    key: const Key('course-next'),
+                    onPressed: () => _openLevel(nextLesson),
+                    child: const Text('Next lesson'),
+                  ),
                 ),
-              if (!last) const SizedBox(height: 8),
-              OutlinedButton(
-                key: const Key('course-home'),
-                onPressed: () => setState(() => _stage = _Stage.list),
-                child: const Text('All levels'),
+              if (showQuiz)
+                SizedBox(
+                  height: 48,
+                  child: FilledButton(
+                    key: const Key('course-next'),
+                    onPressed: () => _openQuiz(chapter),
+                    child: const Text('Chapter questions'),
+                  ),
+                ),
+              if (hasNextLesson || showQuiz) const SizedBox(height: 8),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  key: const Key('course-home'),
+                  onPressed: () => setState(() => _stage = _Stage.list),
+                  child: const Text('All lessons'),
+                ),
               ),
             ],
           ),
@@ -902,6 +1194,7 @@ class _CoursePageState extends State<CoursePage> {
   }
 
   Widget _tablePill(SchemaObject object) {
+    final columns = object.columns.map((column) => column.name).join(', ');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -909,59 +1202,9 @@ class _CoursePageState extends State<CoursePage> {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        object.name,
+        columns.isEmpty ? object.name : '${object.name}: $columns',
         style: const TextStyle(
-          color: _ok,
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-
-  Widget _code(String statement) {
-    final lines = statement.isEmpty ? const [''] : statement.split('\n');
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xFF17241F),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF2C3C36)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (var i = 0; i < lines.length; i++)
-                    SizedBox(
-                      height: 22,
-                      width: 28,
-                      child: Text(
-                        '${i + 1}',
-                        textAlign: TextAlign.right,
-                        style: sqlCodeFont.copyWith(
-                          color: const Color(0xFF6E847C),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              Text.rich(
-                TextSpan(
-                  style: sqlCodeFont,
-                  children: sqlHighlightSpans(statement),
-                ),
-              ),
-            ],
-          ),
-        ),
+            color: _ok, fontWeight: FontWeight.w700, fontSize: 12),
       ),
     );
   }
@@ -993,10 +1236,7 @@ class _Label extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        color: _ink,
-        fontWeight: FontWeight.w700,
-        fontSize: 13,
-      ),
+          color: _ink, fontWeight: FontWeight.w700, fontSize: 13),
     );
   }
 }
