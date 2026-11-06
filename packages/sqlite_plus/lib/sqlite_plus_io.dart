@@ -14,6 +14,7 @@ export 'src/storage/read_only_file_storage_backend.dart';
 export 'src/storage/durable_file_storage_backend.dart';
 export 'src/storage/official_file_storage.dart'
     show OfficialFileStorage, SqliteLock;
+export 'src/app/app_commands.dart' show Batch, ConflictAlgorithm, Transaction;
 export 'src/connection/database_owner.dart';
 
 /// Opens [path] for reading. A pending `-wal` or hot `-journal` is recovered

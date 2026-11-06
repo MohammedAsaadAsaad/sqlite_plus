@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.11
+
+`sqlite_plus` is `0.1.11`. `openDatabase` grows the table calls Flutter applications already use: `insert`, `query`, `update`, `delete`, `transaction`, and `batch`, plus `version` and `onCreate`. Integers in the maps are `BigInt`. This version is not uploaded.
+
 ## 0.1.10
 
 `sqlite_plus` is `0.1.10`. `openDatabase` creates a missing database file and a missing `-journal`. An existing database file is not replaced. This version is not uploaded.

@@ -6,7 +6,7 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.10
+  sqlite_plus: ^0.1.11
   sqlite_plus_orm: ^0.1.9
   sqlite_plus_arabic: ^0.1.3
   sqlite_plus_vec: ^0.1.3
@@ -24,21 +24,27 @@ dev_dependencies:
 ```dart
 import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-final db = await openDatabase('shelf.db');
-await db.execute(
-  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+final db = await openDatabase(
+  'shelf.db',
+  version: 1,
+  onCreate: (db, version) async {
+    await db.execute(
+      'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+    );
+  },
 );
-await db.execute(
-  'INSERT INTO note(title, body) VALUES (?, ?)',
-  ['Kept Garden', 'a garden kept in the margin'],
-);
+await db.insert('note', {
+  'title': 'Kept Garden',
+  'body': 'a garden kept in the margin',
+});
 final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ?',
-  ['%Garden%'],
+  'note',
+  where: 'title LIKE ?',
+  whereArgs: ['%Garden%'],
 );
 ```
 
-`rows` is `Kept Garden`. A missing `shelf.db` is created. The next launch opens the same file.
+The title is `Kept Garden`. A missing `shelf.db` is created. The next launch opens the same file. Integers come back as `BigInt`.
 
 ## Track a change
 
