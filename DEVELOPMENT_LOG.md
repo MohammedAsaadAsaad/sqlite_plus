@@ -1,5 +1,35 @@
 # Development log
 
+## 2026-11-06 — README opens use openDatabase and openFileImage
+
+- `openFileImage` in `sqlite_plus_io.dart` reads an existing database image and
+  does not replace it. A missing file starts empty and is not created. The
+  caller writes `exportImage`. A tokenizer or a module registers on that
+  connection. `openDatabase` still creates a missing file and keeps it.
+- Package READMEs no longer open a file by testing `existsSync` and then
+  calling `fromImage` or `create`. Ordinary tables use `openDatabase`. Arabic,
+  vec, geo, search, and the generator's registered connection use
+  `openFileImage`.
+- On Linux x64, Dart 3.13.7, `dart analyze --fatal-infos` reported no issues
+  for `sqlite_plus_io.dart` and `open_alias_test.dart`, and that test file
+  passed 15 tests. The full engine suite was not re-run.
+- pub.dev latest: `sqlite_plus` 0.1.12, `sqlite_plus_orm` 0.1.11,
+  `sqlite_plus_generator` 0.1.11, `sqlite_plus_arabic` 0.1.5,
+  `sqlite_plus_vec` 0.1.5, `sqlite_plus_geo` 0.1.4, and
+  `sqlite_plus_search` 0.1.0-dev.7. The score cards for these versions were
+  not read after the upload.
+
+## 2026-11-06 — Published the table API and the packages that follow it
+
+- pub.dev latest: `sqlite_plus` 0.1.11, `sqlite_plus_orm` 0.1.10,
+  `sqlite_plus_generator` 0.1.10, `sqlite_plus_arabic` 0.1.4,
+  `sqlite_plus_vec` 0.1.4, `sqlite_plus_geo` 0.1.3, and
+  `sqlite_plus_search` 0.1.0-dev.6. The ORM, generator, Arabic, vec, geo, and
+  search releases keep their previous behavior and raise the dependency floor
+  to these numbers. Engine `0.1.10` was not uploaded as its own version; that
+  file-creation behavior is inside `0.1.11`. The pub.dev score cards for these
+  versions were not read after the upload.
+
 ## 2026-11-06 — Familiar table calls on openDatabase
 
 - `openDatabase` in `sqlite_plus_io.dart` takes `version`, `onCreate`,

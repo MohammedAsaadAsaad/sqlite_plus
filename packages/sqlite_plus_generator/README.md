@@ -6,7 +6,7 @@ Write the class. This tool writes the columns, the revision, the JSON path, the 
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 ## The classes
@@ -242,14 +242,12 @@ class Neighbor {
 ```dart
 import 'dart:io';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
 import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
 
-final file = File('library.db');
-final database = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final database = await openFileImage('library.db');
 final connection = MutableDatabaseConnection(database, closeDatabase: true);
 SqlitePlusArabic.register(connection.database);
 SqlitePlusVec.register(connection.database);
@@ -263,7 +261,7 @@ gardens.add(Garden(body: 'سيارة'));
 neighbors.add(Neighbor(embedding: const [1, 0]));
 neighbors.add(Neighbor(embedding: const [0, 1]));
 await context.saveChanges(); // 4
-await file.writeAsBytes(database.exportImage(), flush: true);
+await File('library.db').writeAsBytes(database.exportImage(), flush: true);
 
 final garden =
     (await GardenQuery(gardens.query).search('الحديقة').toList()).single;
@@ -334,18 +332,12 @@ The write is deterministic and formatted. Hand-written files and symbolic links 
 [`sqlite_plus`](https://pub.dev/packages/sqlite_plus) runs the SQL and keeps it in a file:
 
 ```dart
-import 'dart:io';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final file = File('shelf.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final db = await openDatabase('shelf.db');
 await db.execute(
   'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
 );
-await file.writeAsBytes(db.exportImage(), flush: true);
 ```
 
 [`sqlite_plus_orm`](https://pub.dev/packages/sqlite_plus_orm) is what the application calls. `saveChanges` writes the tracked objects, and `row.doubled()` is the method above. `DbModules`, `DbTokenizers`, and `DbVectorMetrics` are the string constants in that package.
@@ -358,41 +350,37 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.9` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_geo> |
+| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.4` | <https://pub.dev/packages/sqlite_plus_geo> |
 
 ### sqlite_plus
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
+  sqlite_plus: ^0.1.12
 ```
 
 ```dart
-import 'dart:io';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final file = File('shelf.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final db = await openDatabase('shelf.db');
 await db.execute(
   'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
 );
-await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
-await file.writeAsBytes(db.exportImage(), flush: true);
+await db.insert('note', {'title': 'Kept Garden'});
 final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ?',
-  ['%Garden%'],
+  'note',
+  columns: ['title'],
+  where: 'title LIKE ?',
+  whereArgs: ['%Garden%'],
 );
 ```
 
-`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
+The title is `Kept Garden`. A missing `shelf.db` is created. The next launch opens the same file. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
 
 ![The row is written to shelf.db, the handle closes, and the next open reads the same title.](doc/shelf-file.png)
 
@@ -400,7 +388,7 @@ final rows = await db.query(
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.9
+  sqlite_plus_orm: ^0.1.11
 ```
 
 ```dart
@@ -429,7 +417,7 @@ final BigInt? rowid;
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 ```sh
@@ -442,7 +430,7 @@ From the package root, that command writes a part for every public `@DbEntity` u
 
 ```yaml
 dependencies:
-  sqlite_plus_arabic: ^0.1.3
+  sqlite_plus_arabic: ^0.1.5
 ```
 
 ```dart
@@ -460,7 +448,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_vec: ^0.1.3
+  sqlite_plus_vec: ^0.1.5
 ```
 
 ```dart
@@ -478,7 +466,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_geo: ^0.1.2
+  sqlite_plus_geo: ^0.1.4
 ```
 
 ```dart

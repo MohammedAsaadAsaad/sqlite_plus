@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5
+
+Depends on `sqlite_plus` ^0.1.12. The README opens `points.db` with `openFileImage`. The library behavior is the 0.1.4 release.
+
+## 0.1.4
+
+Depends on `sqlite_plus` ^0.1.11. The library behavior is the 0.1.3 release.
+
 ## 0.1.3
 
 Depends on `sqlite_plus` ^0.1.9. The README opens on the distance. The library behavior is the 0.1.2 release.

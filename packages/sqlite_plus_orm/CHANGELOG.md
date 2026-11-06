@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.11
+
+Depends on `sqlite_plus` ^0.1.12. The README opens an ordinary file with `openDatabase`. The library behavior is the 0.1.10 release.
+
+## 0.1.10
+
+Depends on `sqlite_plus` ^0.1.11. The library behavior is the 0.1.9 release.
+
 ## 0.1.9
 
 Depends on `sqlite_plus` ^0.1.9. The README opens on `books.db`. The library behavior is the 0.1.8 release.

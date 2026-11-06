@@ -6,15 +6,15 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.11
-  sqlite_plus_orm: ^0.1.9
-  sqlite_plus_arabic: ^0.1.3
-  sqlite_plus_vec: ^0.1.3
-  sqlite_plus_geo: ^0.1.2
-  sqlite_plus_search: ^0.1.0-dev.5
+  sqlite_plus: ^0.1.12
+  sqlite_plus_orm: ^0.1.11
+  sqlite_plus_arabic: ^0.1.5
+  sqlite_plus_vec: ^0.1.5
+  sqlite_plus_geo: ^0.1.4
+  sqlite_plus_search: ^0.1.0-dev.7
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 `sqlite_plus_arabic`, `sqlite_plus_vec`, `sqlite_plus_geo`, and `sqlite_plus_search` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer, `sqlite_plus_vec` for a vector column, `sqlite_plus_geo` for geometry, and `sqlite_plus_search` for an offline BM25 index. A package is loaded when the application imports it.

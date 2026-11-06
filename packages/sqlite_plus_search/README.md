@@ -4,11 +4,11 @@ Offline search for rows that already live in a [sqlite_plus](https://pub.dev/pac
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
-  sqlite_plus_search: ^0.1.0-dev.5
+  sqlite_plus: ^0.1.12
+  sqlite_plus_search: ^0.1.0-dev.7
 ```
 
-`0.1.0-dev.5` is a pre-release. The clinic shelf below is the example. The catalog measurement is at the end. Embeddings stay a local fixture you supply. The limits are in [doc/LIMITATIONS.md](doc/LIMITATIONS.md).
+`0.1.0-dev.7` is a pre-release. The clinic shelf below is the example. The catalog measurement is at the end. Embeddings stay a local fixture you supply. The limits are in [doc/LIMITATIONS.md](doc/LIMITATIONS.md).
 
 ## Clinic shelf
 
@@ -17,13 +17,10 @@ dependencies:
 ```dart
 import 'dart:io';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 import 'package:sqlite_plus_search/sqlite_plus_search.dart';
 
-final file = File('clinic.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final db = await openFileImage('clinic.db');
 await db.execute(
   'CREATE TABLE notes(id INTEGER PRIMARY KEY, shelf TEXT NOT NULL, body TEXT)',
 );
@@ -43,8 +40,10 @@ final pharmacy = await search.search(
   filter: SearchFilter('shelf = ?', ['pharmacy']),
 );
 print(pharmacy.hits.single.documentId); // 1
-await file.writeAsBytes(db.exportImage(), flush: true);
+await File('clinic.db').writeAsBytes(db.exportImage(), flush: true);
 ```
+
+`openFileImage` reads `clinic.db` in this process, or starts empty when the file is missing. `SqlitePlusSearch.open` uses that connection. `exportImage` writes the file back.
 
 ![The note is written to clinic.db and read back from that file.](doc/shelf-file.png)
 
@@ -150,6 +149,6 @@ A query of whole terms reads the leaves that contain those terms, plus one docum
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.9` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |

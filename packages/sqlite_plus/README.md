@@ -6,7 +6,7 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.11
+  sqlite_plus: ^0.1.12
 ```
 
 ## A table, a row, a query
@@ -119,7 +119,7 @@ final again = await MutableSqliteDatabase.fromImage(memory.exportImage());
 
 ## A file
 
-`openDatabase` needs `dart:io`. It writes a missing database as an empty image and a missing `-journal` as an empty file. An existing database file is not replaced. `version` runs `onCreate`, `onUpgrade`, or `onDowngrade` and stores that number. `insert`, `query`, `update`, `delete`, `transaction`, and `batch` use that connection. `query` names a table. `rawQuery` runs SQL and returns maps. `directoryEntriesDurable: false` writes nothing and throws. That flag is a caller attestation, not a power-loss result. `wal: true` does not create a `-wal` file. A second open of the same path fails while the first owner is open.
+`openDatabase` needs `dart:io`. It writes a missing database as an empty image and a missing `-journal` as an empty file. An existing database file is not replaced. `openFileImage` reads a file into this process, or starts empty when the file is missing, and does not write until `exportImage`. A tokenizer or a module registers on that connection. `version` runs `onCreate`, `onUpgrade`, or `onDowngrade` and stores that number. `insert`, `query`, `update`, `delete`, `transaction`, and `batch` use that connection. `query` names a table. `rawQuery` runs SQL and returns maps. `directoryEntriesDurable: false` writes nothing and throws. That flag is a caller attestation, not a power-loss result. `wal: true` does not create a `-wal` file. A second open of the same path fails while the first owner is open.
 
 ## SQLCipher 4
 
@@ -207,18 +207,18 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.11` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_geo> |
+| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.4` | <https://pub.dev/packages/sqlite_plus_geo> |
 
 ### sqlite_plus
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.11
+  sqlite_plus: ^0.1.12
 ```
 
 ```dart
@@ -249,7 +249,7 @@ The title is `Kept Garden`. A missing `shelf.db` is created. Integers come back 
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.9
+  sqlite_plus_orm: ^0.1.11
 ```
 
 ```dart
@@ -278,7 +278,7 @@ final BigInt? rowid;
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 ```sh
@@ -291,7 +291,7 @@ From the package root, that command writes a part for every public `@DbEntity` u
 
 ```yaml
 dependencies:
-  sqlite_plus_arabic: ^0.1.3
+  sqlite_plus_arabic: ^0.1.5
 ```
 
 ```dart
@@ -309,7 +309,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_vec: ^0.1.3
+  sqlite_plus_vec: ^0.1.5
 ```
 
 ```dart
@@ -327,7 +327,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_geo: ^0.1.2
+  sqlite_plus_geo: ^0.1.4
 ```
 
 ```dart
@@ -399,13 +399,13 @@ An application loads a package when it imports it. Arabic and vec stay out of a 
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
-  sqlite_plus_orm: ^0.1.9
-  sqlite_plus_arabic: ^0.1.3
-  sqlite_plus_vec: ^0.1.3
+  sqlite_plus: ^0.1.12
+  sqlite_plus_orm: ^0.1.11
+  sqlite_plus_arabic: ^0.1.5
+  sqlite_plus_vec: ^0.1.5
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 ### A reading card

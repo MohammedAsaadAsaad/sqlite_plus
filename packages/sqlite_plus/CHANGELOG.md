@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.12
+
+`openFileImage` reads a database file into the in-process connection. A missing file starts empty and is not written. An existing file is not replaced. A tokenizer or a module registers on that connection. `openDatabase` still keeps the file itself. The README examples use `openDatabase` for an ordinary table and `openFileImage` when the connection must stay in this process.
+
 ## 0.1.11
 
 `openDatabase` accepts `version`, `onCreate`, `onUpgrade`, and `onDowngrade`. The same connection has `insert`, `query`, `update`, `delete`, `transaction`, and `batch`. `query` reads a table and returns maps. `rawQuery` runs SQL. Integers in those maps, and insert ids, are `BigInt`. An `int` argument is stored as an integer. Linux x64, Dart 3.13.7: `dart analyze --fatal-infos` reported no issues and `dart test` passed 10631 tests.

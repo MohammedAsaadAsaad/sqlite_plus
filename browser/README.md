@@ -4,7 +4,7 @@ A database browser on the sqlite_plus engine. It opens a file, shows the schema,
 
 The engine is pure Dart. This program does not use FFI, native SQLite, or WASM.
 
-The Dart classes in this browser target the published libraries [sqlite_plus](https://pub.dev/packages/sqlite_plus) `^0.1.9`, [sqlite_plus_orm](https://pub.dev/packages/sqlite_plus_orm) `^0.1.9`, and [sqlite_plus_generator](https://pub.dev/packages/sqlite_plus_generator) `^0.1.9`. Arabic search, vectors, and geometry stay separate: [sqlite_plus_arabic](https://pub.dev/packages/sqlite_plus_arabic) `^0.1.3`, [sqlite_plus_vec](https://pub.dev/packages/sqlite_plus_vec) `^0.1.3`, and [sqlite_plus_geo](https://pub.dev/packages/sqlite_plus_geo) `^0.1.2`. This program links `sqlite_plus` by path. It does not embed those three packages. The versionCode 22 archive includes this course. A chosen answer is orange until it is checked, then green when it is right and red when it is wrong.
+The Dart classes in this browser target the published libraries [sqlite_plus](https://pub.dev/packages/sqlite_plus) `^0.1.12`, [sqlite_plus_orm](https://pub.dev/packages/sqlite_plus_orm) `^0.1.11`, and [sqlite_plus_generator](https://pub.dev/packages/sqlite_plus_generator) `^0.1.11`. Arabic search, vectors, and geometry stay separate: [sqlite_plus_arabic](https://pub.dev/packages/sqlite_plus_arabic) `^0.1.5`, [sqlite_plus_vec](https://pub.dev/packages/sqlite_plus_vec) `^0.1.5`, and [sqlite_plus_geo](https://pub.dev/packages/sqlite_plus_geo) `^0.1.4`. This program links `sqlite_plus` by path. It does not embed those three packages. The versionCode 22 archive includes this course. A chosen answer is orange until it is checked, then green when it is right and red when it is wrong.
 
 ```sh
 cd browser

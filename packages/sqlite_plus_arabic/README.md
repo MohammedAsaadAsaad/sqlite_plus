@@ -6,8 +6,8 @@ A light Arabic stemmer for an FTS5 table in [`sqlite_plus`](https://pub.dev/pack
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
-  sqlite_plus_arabic: ^0.1.3
+  sqlite_plus: ^0.1.12
+  sqlite_plus_arabic: ^0.1.5
 ```
 
 ## What one word becomes
@@ -47,13 +47,10 @@ Register before `CREATE`. The registry is the connection's. A second `register` 
 ```dart
 import 'dart:io';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 import 'package:sqlite_plus_arabic/sqlite_plus_arabic.dart';
 
-final file = File('garden.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final db = await openFileImage('garden.db');
 SqlitePlusArabic.register(db);
 await db.execute(
   "CREATE VIRTUAL TABLE docs USING fts5(body, tokenize = 'arabic')",
@@ -68,14 +65,14 @@ final found = await db.query(
 final missed = await db.query(
   "SELECT body FROM docs WHERE docs MATCH 'كتاب'",
 );
-await file.writeAsBytes(db.exportImage(), flush: true);
+await File('garden.db').writeAsBytes(db.exportImage(), flush: true);
 ```
 
 `found` is one row, `في الحديقة`. `MATCH 'الحديقة'` and `MATCH 'حديق'` return that same row, because all three strings share `حديق`. `missed` is empty: `سيارة` does not share a token with `حديقة`.
 
 Creating the table before `register` fails with `no such tokenizer: arabic`. The database stays usable. Call `register`, then run the `CREATE` again.
 
-`exportImage` keeps the table and the indexed rows. `MutableSqliteDatabase.fromImage` opens that image, and the new connection has an empty tokenizer registry. Call `SqlitePlusArabic.register` on the reopened database before the next `MATCH`.
+`openFileImage` reads `garden.db`, or starts empty when that file is missing. `exportImage` writes it back. The next open has an empty tokenizer registry, so call `SqlitePlusArabic.register` again before the next `MATCH`.
 
 [`sqlite_plus`](https://pub.dev/packages/sqlite_plus) stores the FTS5 index and answers `MATCH`, `highlight`, `snippet`, and `bm25`. This package only supplies the tokenizer named `arabic`.
 
@@ -102,12 +99,10 @@ The key column is `rowid`. Every other mapped column is text. A tokenizer on `Db
 ```dart
 import 'dart:io';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
-final file = File('garden.db');
-final database = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final database = await openFileImage('garden.db');
 final connection = MutableDatabaseConnection(database, closeDatabase: true);
 SqlitePlusArabic.register(connection.database);
 final context = DbContext(connection, generatedModel);
@@ -117,7 +112,7 @@ final notes = context.set(NoteMapping.instance);
 notes.add(Note(body: 'في الحديقة'));
 notes.add(Note(body: 'كتاب بعيد'));
 await context.saveChanges(); // 2
-await file.writeAsBytes(database.exportImage(), flush: true);
+await File('garden.db').writeAsBytes(database.exportImage(), flush: true);
 
 final found = await notes.query.search('الحديقة').single();
 final missed = await notes.query.search('سيارة').toList();
@@ -181,41 +176,37 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.9` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_geo> |
+| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.4` | <https://pub.dev/packages/sqlite_plus_geo> |
 
 ### sqlite_plus
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
+  sqlite_plus: ^0.1.12
 ```
 
 ```dart
-import 'dart:io';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final file = File('shelf.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final db = await openDatabase('shelf.db');
 await db.execute(
   'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
 );
-await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
-await file.writeAsBytes(db.exportImage(), flush: true);
+await db.insert('note', {'title': 'Kept Garden'});
 final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ?',
-  ['%Garden%'],
+  'note',
+  columns: ['title'],
+  where: 'title LIKE ?',
+  whereArgs: ['%Garden%'],
 );
 ```
 
-`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
+The title is `Kept Garden`. A missing `shelf.db` is created. The next launch opens the same file. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
 
 ![The row is written to shelf.db, the handle closes, and the next open reads the same title.](doc/shelf-file.png)
 
@@ -223,7 +214,7 @@ final rows = await db.query(
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.9
+  sqlite_plus_orm: ^0.1.11
 ```
 
 ```dart
@@ -252,7 +243,7 @@ final BigInt? rowid;
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 ```sh
@@ -265,7 +256,7 @@ From the package root, that command writes a part for every public `@DbEntity` u
 
 ```yaml
 dependencies:
-  sqlite_plus_arabic: ^0.1.3
+  sqlite_plus_arabic: ^0.1.5
 ```
 
 ```dart
@@ -283,7 +274,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_vec: ^0.1.3
+  sqlite_plus_vec: ^0.1.5
 ```
 
 ```dart
@@ -301,7 +292,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_geo: ^0.1.2
+  sqlite_plus_geo: ^0.1.4
 ```
 
 ```dart

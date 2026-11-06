@@ -6,8 +6,8 @@ Nearest neighbors for one float32 column. The module name is `vec0`. The query r
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
-  sqlite_plus_vec: ^0.1.3
+  sqlite_plus: ^0.1.12
+  sqlite_plus_vec: ^0.1.5
 ```
 
 ## Distances
@@ -34,13 +34,10 @@ Register before `CREATE`. `SqlitePlusVec.register` accepts a `SqliteDatabase`, a
 ```dart
 import 'dart:io';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
 
-final file = File('points.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final db = await openFileImage('points.db');
 SqlitePlusVec.register(db);
 await db.execute(
   'CREATE VIRTUAL TABLE items USING vec0(embedding float[2] distance_metric=l2)',
@@ -57,6 +54,7 @@ final near = await db.query(
   'SELECT rowid, distance FROM items WHERE embedding MATCH ? AND k = 2',
   [encodeVec(const [0.9, 0.1])],
 );
+await File('points.db').writeAsBytes(db.exportImage(), flush: true);
 ```
 
 `near` is row `1`, then row `3`. Row `1` is `[1, 0]`, the closer of the two to `[0.9, 0.1]`. Row `2` is `[0, 1]` and is farther, so `k = 2` leaves it out. `distance` is a `double`, and the first distance is smaller than the second.
@@ -65,7 +63,7 @@ The hidden columns are `distance` and `k`. The vector is column 0. `MATCH` witho
 
 Creating the table before `register` fails with `No such module: vec0`. `distance_metric=hamming` fails with `vec0: unknown distance metric`. `float[0]` is rejected. A blob whose length is not `dimensions * 4` can be inserted into the shadow table, and reading it throws `vec0 dimension mismatch`.
 
-The bytes live in `items_vec`. `DROP TABLE items` drops that shadow. `BEGIN`, an insert, and `ROLLBACK` leave `count(*)` at 0. `exportImage` keeps the shadow rows. `fromImage` needs `SqlitePlusVec.register` again before the next `MATCH` query. The virtual-table name in the schema is not enough. The module object lives on the connection.
+The bytes live in `items_vec`. `DROP TABLE items` drops that shadow. `BEGIN`, an insert, and `ROLLBACK` leave `count(*)` at 0. `exportImage` keeps the shadow rows. The next `openFileImage` needs `SqlitePlusVec.register` again before the next `MATCH` query. The virtual-table name in the schema is not enough. The module object lives on the connection.
 
 `rankVec0` reads that shadow without a second copy of the table. Pass `rowIds` and only those rows are scored; an empty list reads nothing. There is no `k` cutoff, so a later filter cannot drop a neighbor that was never scored. The rows come back in pages of 512, ordered by ascending distance and then row id. Each page is a stopped rowid scan. `rejectZeroVectors: true` throws `vec0 zero vector` when every stored coordinate is zero. The default keeps the cosine rule: that vector has distance 1 from a non-zero query. A missing requested row throws `vec0 row is missing`. Reopening the image and calling `rankVec0` does not require `register`, because the function reads the ordinary shadow table. `MATCH` with `k` is a different query and still selects `k` before any predicate it does not consume.
 
@@ -94,12 +92,10 @@ The table has one `rowid` and one `List<double>`. `distance` and `k` are reserve
 ```dart
 import 'dart:io';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
+import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
-final file = File('points.db');
-final database = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final database = await openFileImage('points.db');
 final connection = MutableDatabaseConnection(database, closeDatabase: true);
 SqlitePlusVec.register(connection.database);
 final context = DbContext(connection, generatedModel);
@@ -109,7 +105,7 @@ final points = context.set(PointMapping.instance);
 points.add(Point(embedding: const [1, 0]));
 points.add(Point(embedding: const [0, 1]));
 await context.saveChanges(); // 2
-await file.writeAsBytes(database.exportImage(), flush: true);
+await File('points.db').writeAsBytes(database.exportImage(), flush: true);
 
 final nearest = await points.query.nearest(const [0.9, 0.1], k: 1).single();
 final again = await context.migrations.plan();
@@ -164,41 +160,37 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.9` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_geo> |
+| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.4` | <https://pub.dev/packages/sqlite_plus_geo> |
 
 ### sqlite_plus
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
+  sqlite_plus: ^0.1.12
 ```
 
 ```dart
-import 'dart:io';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final file = File('shelf.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final db = await openDatabase('shelf.db');
 await db.execute(
   'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
 );
-await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
-await file.writeAsBytes(db.exportImage(), flush: true);
+await db.insert('note', {'title': 'Kept Garden'});
 final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ?',
-  ['%Garden%'],
+  'note',
+  columns: ['title'],
+  where: 'title LIKE ?',
+  whereArgs: ['%Garden%'],
 );
 ```
 
-`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
+The title is `Kept Garden`. A missing `shelf.db` is created. The next launch opens the same file. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
 
 ![The row is written to shelf.db, the handle closes, and the next open reads the same title.](doc/shelf-file.png)
 
@@ -206,7 +198,7 @@ final rows = await db.query(
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.9
+  sqlite_plus_orm: ^0.1.11
 ```
 
 ```dart
@@ -235,7 +227,7 @@ final BigInt? rowid;
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 ```sh
@@ -248,7 +240,7 @@ From the package root, that command writes a part for every public `@DbEntity` u
 
 ```yaml
 dependencies:
-  sqlite_plus_arabic: ^0.1.3
+  sqlite_plus_arabic: ^0.1.5
 ```
 
 ```dart
@@ -266,7 +258,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_vec: ^0.1.3
+  sqlite_plus_vec: ^0.1.5
 ```
 
 ```dart
@@ -284,7 +276,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_geo: ^0.1.2
+  sqlite_plus_geo: ^0.1.4
 ```
 
 ```dart

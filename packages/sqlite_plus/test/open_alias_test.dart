@@ -8,6 +8,47 @@ import 'package:test/test.dart';
 int _textEncoding(Uint8List image) => ByteData.sublistView(image).getUint32(56);
 
 void main() {
+  test('openFileImage reads an existing image and does not replace it',
+      () async {
+    final directory =
+        Directory.systemTemp.createTempSync('sqlite-plus-open-image-');
+    try {
+      final created = await MutableSqliteDatabase.create();
+      await created.execute('CREATE TABLE note (title TEXT)');
+      await created.execute('INSERT INTO note VALUES (?)', ['Kept Garden']);
+      final path = '${directory.path}/shelf.db';
+      final bytes = created.exportImage();
+      await File(path).writeAsBytes(bytes);
+      await created.close();
+      final opened = await openFileImage(path);
+      addTearDown(opened.close);
+      await opened.execute('INSERT INTO note VALUES (?)', ['Other']);
+      expect((await opened.query('SELECT title FROM note')).rows, [
+        ['Kept Garden'],
+        ['Other'],
+      ]);
+      expect(await File(path).readAsBytes(), bytes);
+    } finally {
+      directory.deleteSync(recursive: true);
+    }
+  });
+
+  test('openFileImage starts empty when the file is missing', () async {
+    final directory =
+        Directory.systemTemp.createTempSync('sqlite-plus-open-image-');
+    try {
+      final path = '${directory.path}/missing.db';
+      final opened = await openFileImage(path);
+      final created = await MutableSqliteDatabase.create();
+      addTearDown(opened.close);
+      addTearDown(created.close);
+      expect(File(path).existsSync(), isFalse);
+      expect(opened.exportImage(), created.exportImage());
+    } finally {
+      directory.deleteSync(recursive: true);
+    }
+  });
+
   test('openInMemory inserts a row the same way create does', () async {
     final opened = await openInMemory();
     final created = await MutableSqliteDatabase.create();

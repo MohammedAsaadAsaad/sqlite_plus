@@ -8,9 +8,9 @@ It is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification. The function
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
-  sqlite_plus_orm: ^0.1.9
-  sqlite_plus_geo: ^0.1.2
+  sqlite_plus: ^0.1.12
+  sqlite_plus_orm: ^0.1.11
+  sqlite_plus_geo: ^0.1.4
 ```
 
 The package page is <https://pub.dev/packages/sqlite_plus_geo>.
@@ -22,13 +22,10 @@ The package page is <https://pub.dev/packages/sqlite_plus_geo>.
 ```dart
 import 'dart:io';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 import 'package:sqlite_plus_geo/sqlite_plus_geo.dart';
 
-final file = File('places.db');
-final database = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final database = await openFileImage('places.db');
 final geo = GeoSession(database);
 await geo.createSpatialTable(
   'facilities',
@@ -50,8 +47,10 @@ final nearby = await geo.nearest(
   maxDistance: 5000,
   metric: GeodesicModel.sphere,
 );
-await file.writeAsBytes(database.exportImage(), flush: true);
+await File('places.db').writeAsBytes(database.exportImage(), flush: true);
 ```
+
+`openFileImage` reads `places.db` in this process, or starts empty when the file is missing. `GeoSession` registers its functions on that connection. `exportImage` writes the file back.
 
 `GeodesicModel.sphere` measures metres on the authalic sphere. `GeodesicModel.planar` measures the stored axes and must not be read as metres on SRID 4326. `ST_DWithin(a, b, distance)` is planar. `ST_DWithin(a, b, metres, 1)` is spheroidal and accepts points.
 
@@ -112,41 +111,37 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.9` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_geo> |
+| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.4` | <https://pub.dev/packages/sqlite_plus_geo> |
 
 ### sqlite_plus
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
+  sqlite_plus: ^0.1.12
 ```
 
 ```dart
-import 'dart:io';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final file = File('shelf.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
+final db = await openDatabase('shelf.db');
 await db.execute(
   'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
 );
-await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
-await file.writeAsBytes(db.exportImage(), flush: true);
+await db.insert('note', {'title': 'Kept Garden'});
 final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ?',
-  ['%Garden%'],
+  'note',
+  columns: ['title'],
+  where: 'title LIKE ?',
+  whereArgs: ['%Garden%'],
 );
 ```
 
-`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
+The title is `Kept Garden`. A missing `shelf.db` is created. The next launch opens the same file. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
 
 ![The row is written to shelf.db, the handle closes, and the next open reads the same title.](doc/shelf-file.png)
 
@@ -154,7 +149,7 @@ final rows = await db.query(
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.9
+  sqlite_plus_orm: ^0.1.11
 ```
 
 ```dart
@@ -183,7 +178,7 @@ final BigInt? rowid;
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 ```sh
@@ -196,7 +191,7 @@ From the package root, that command writes a part for every public `@DbEntity` u
 
 ```yaml
 dependencies:
-  sqlite_plus_arabic: ^0.1.3
+  sqlite_plus_arabic: ^0.1.5
 ```
 
 ```dart
@@ -214,7 +209,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_vec: ^0.1.3
+  sqlite_plus_vec: ^0.1.5
 ```
 
 ```dart
@@ -232,7 +227,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_geo: ^0.1.2
+  sqlite_plus_geo: ^0.1.4
 ```
 
 ```dart

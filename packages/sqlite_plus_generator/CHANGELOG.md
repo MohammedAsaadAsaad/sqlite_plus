@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.11
+
+Depends on `sqlite_plus_orm` ^0.1.11. The README opens `library.db` with `openFileImage` and an ordinary file with `openDatabase`. The generator behavior is the 0.1.10 release.
+
+## 0.1.10
+
+Depends on `sqlite_plus_orm` ^0.1.10. The generator behavior is the 0.1.9 release.
+
 ## 0.1.9
 
 Depends on `sqlite_plus_orm` ^0.1.9. The README opens on the classes this tool writes. The generator behavior is the 0.1.8 release.

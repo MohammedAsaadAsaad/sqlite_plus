@@ -1,3 +1,11 @@
+## 0.1.0-dev.7
+
+Depends on `sqlite_plus` ^0.1.12, `sqlite_plus_arabic` ^0.1.5, and `sqlite_plus_vec` ^0.1.5. The README opens `clinic.db` with `openFileImage`. The search behavior is the 0.1.0-dev.6 release.
+
+## 0.1.0-dev.6
+
+Depends on `sqlite_plus` ^0.1.11, `sqlite_plus_arabic` ^0.1.4, and `sqlite_plus_vec` ^0.1.4. The search behavior is the 0.1.0-dev.5 release.
+
 ## 0.1.0-dev.5
 
 Depends on `sqlite_plus` ^0.1.9, `sqlite_plus_arabic` ^0.1.3, and `sqlite_plus_vec` ^0.1.3. The README opens on `clinic.db`. The catalog measurement is at the end. The search behavior is the 0.1.0-dev.4 release.

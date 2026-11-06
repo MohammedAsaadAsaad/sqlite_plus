@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'src/crypto/sqlcipher.dart';
 import 'src/sql/database.dart';
+import 'src/sql/mutable_database.dart';
 import 'src/storage/official_file_storage.dart';
 
 export 'src/crypto/sqlcipher.dart'
@@ -16,6 +17,23 @@ export 'src/storage/official_file_storage.dart'
     show OfficialFileStorage, SqliteLock;
 export 'src/app/app_commands.dart' show Batch, ConflictAlgorithm, Transaction;
 export 'src/connection/database_owner.dart';
+export 'src/sql/mutable_database.dart' show MutableSqliteDatabase;
+
+/// Opens [path] as an in-process database image.
+///
+/// A missing file starts empty and is not created. An existing file is read
+/// and is not replaced. Later SQL stays in memory until the caller writes
+/// [MutableSqliteDatabase.exportImage]. Register a tokenizer or a module on
+/// this connection. [openDatabase] keeps the file and does not receive that
+/// registration.
+Future<MutableSqliteDatabase> openFileImage(String path) async {
+  final file = File(path);
+  if (await file.exists()) {
+    return MutableSqliteDatabase.fromImage(
+        Uint8List.fromList(await file.readAsBytes()));
+  }
+  return MutableSqliteDatabase.create();
+}
 
 /// Opens [path] for reading. A pending `-wal` or hot `-journal` is recovered
 /// in memory. The file and its sidecars are not modified. A shared SQLite
