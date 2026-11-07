@@ -142,7 +142,9 @@ void main() {
         .execute("UPDATE _sps_1_keys SET body=x'0102' WHERE source_key='520'");
     await expectLater(find('pineappl'), throwsStateError);
     await expectLater(search.verifyIndex(table: 'docs'), throwsStateError);
-  });
+    // A 520-row fixture is required to cross the 512-candidate boundary.
+    // This is a correctness stress test, not a 30-second latency assertion.
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('all query words are required before and after typo expansion',
       () async {

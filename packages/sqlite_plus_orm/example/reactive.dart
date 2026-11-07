@@ -47,8 +47,9 @@ Future<void> main() async {
     final tracked = await products.query.single();
     tracked.name = 'unsaved';
     snapshots.last.items.single.name = 'independent';
-    if (tracked.name != 'unsaved')
+    if (tracked.name != 'unsaved') {
       throw StateError('Tracked entity was overwritten');
+    }
     print('ORM reactive assertions passed; tracked edits remain independent.');
   } finally {
     await subscription.cancel();
