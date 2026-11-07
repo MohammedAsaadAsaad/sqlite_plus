@@ -3342,3 +3342,45 @@ README/changelog, dedicated API/consistency documentation, runnable examples and
 Linux CI coverage added. No remote CI run, real browser/device run, schema
 migration, APK build or package publishing. Queries are latest reads, not a
 transaction-spanning snapshot; opposite-direction flags are navigation hints.
+
+## 2026-11-07 — Integrate all additions with current main (PR #40)
+
+Combined fuzzy matching/optional learned alternatives and ranking, Changes and
+capture optimizations, Sync, Reactive ORM and built-in cursor pagination with
+main at 8d500a606a5d692160fb3b96c31b9efff09d2e19. Preserved its six newer commits,
+course changes, openDatabase/openFileImage APIs and published version metadata
+(core 0.1.12, ORM/generator 0.1.11, Search 0.1.0-dev.7). The new feature sections
+remain unreleased and Changes/Sync/Reactive remain publish_to:none. No package
+publication, release tag, schema migration or deployment is part of this merge.
+
+Resolved changelog, IO export and ORM dependency conflicts by retaining both
+sides. Added owner.page() on the owner returned by openDatabase, using its same
+client/transaction; retained direct client and read-only APIs. Refreshed the
+catalog's local path lock versions and removed imports made redundant by main's
+new IO exports. Added explicit core dependencies to the ORM/generator examples.
+
+Final integration validation: core 10664 pass, one optional SQLCipher CLI test
+skipped; ORM/Reactive/Changes/Sync 319 pass; Search 86 pass; generator 78 pass;
+catalog Flutter tests 17 pass; ORM example 4 pass. Whole packages analysis and
+all workspace example-package analyses are clean; catalog Flutter analysis is
+clean. VM Changes/Sync/Reactive and ORM Reactive/Pagination assertions pass;
+compiled Node core pagination and ORM reactive assertions pass. Repeated the
+17 pinned native cases after the test-platform adjustment. Some initial test
+commands used a repository-relative working directory for package-relative
+fixtures; the final runs used the correct directories. Local file-owner tests
+require loopback socket access; the permitted reruns passed.
+
+GitHub checks exposed the example dependency/lint omissions and the 520-row
+fuzzy candidate-boundary stress test exceeding the default 30 seconds on macOS.
+Fixed the declarations/braces and set a per-test two-minute correctness budget;
+no global timeouts or assertions were removed. The pinned CLI is built in Linux
+CI only, so the three added unconditional native-reference suites now explicitly
+select Linux; portable engine/ORM tests remain enabled on macOS and Windows.
+Initial Linux pagination/Changes/Sync jobs and the corrected Search matrix and
+ORM jobs passed; remaining integration workflow results are visible in PR #40.
+
+Historical benchmark data/manifests remain the measured pre-integration evidence,
+not fabricated reruns on the new versions. In particular the Reactive strict
+zero-regression performance gate remains open (+6.4% update/+5.8% count in the
+recorded shared-host sample). Experimental limits and platform caveats remain
+in package READMEs and the compatibility matrix.

@@ -488,3 +488,19 @@ not a general planner/large-scale/device speedup guarantee. No unused-path timin
 comparison in this milestone. No actual browser persistence, device benchmarks,
 remote CI result or package publication. Cursor flags include an opposite-side
 navigation hint; traversals across separate writes are not a snapshot.
+
+### Main integration — PR #40 (2026-11-07)
+
+All workspace additions are combined with main 8d500a6, preserving its newer file
+API, package versions and course updates. Final local checks: core 10664 pass
+(one optional SQLCipher CLI skip), ORM/Reactive/Changes/Sync 319, Search 86,
+generator 78, catalog 17 and ORM example 4. Package/example analyses and catalog
+Flutter analysis are clean. VM and Node integration assertions pass. The 17
+Linux pinned-reference cases pass after explicit Linux platform selection;
+normal engine/ORM desktop tests remain enabled on Windows/macOS. Example
+manifest dependencies and the per-test fuzzy stress budget were corrected using
+actual GitHub check output. See PR #40 for remote workflow conclusions.
+
+This is repository integration, not a package release or a production-readiness
+promotion. Existing experimental/performance/persistence gates stay in force;
+previous AOT artifacts retain their original measured source fingerprints.

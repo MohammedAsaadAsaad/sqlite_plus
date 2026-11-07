@@ -155,3 +155,11 @@ controlled hardware measurement/optimization. Full limits and evidence:
 
 No separate package, data migration, implicit index or runtime interception.
 See packages/sqlite_plus/doc/PAGINATION.md for scope and consistency limits.
+
+## Main repository integration (PR #40)
+
+- [x] Commit all completed workspace additions and preserve current main changes.
+- [x] Resolve version/export/changelog conflicts; integrate file-owner pagination.
+- [x] Validate core, ORM/add-ons, Search, generator, catalog and examples together.
+- [x] Fix example manifests and reference-test platform scope from GitHub checks.
+- [x] Preserve experimental status, benchmark evidence and open performance gates.
