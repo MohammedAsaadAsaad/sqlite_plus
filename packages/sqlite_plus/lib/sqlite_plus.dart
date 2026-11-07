@@ -34,7 +34,12 @@ export 'src/sql/function_registry.dart'
         VirtualMatchBoard,
         VirtualMatchHandler;
 export 'src/sql/fts_text.dart'
-    show FtsToken, FtsTokenizer, FtsTokenizerFactory, FtsTokenizerRegistry;
+    show
+        FtsToken,
+        FtsTokenizer,
+        FtsTokenizerFactory,
+        FtsTokenizerRegistry,
+        Unicode61Tokenizer;
 export 'src/sql/search_runtime.dart'
     show SearchSnapshot, ShadowRow, ShadowTable;
 export 'src/sql/virtual_table.dart'
@@ -45,3 +50,4 @@ export 'src/sql/virtual_table.dart'
         VirtualTableIndexPlan,
         VirtualTableModule,
         VirtualTableRegistry;
+export 'src/pagination/pagination.dart';

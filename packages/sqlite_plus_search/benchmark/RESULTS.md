@@ -207,3 +207,45 @@ Incremental FTS delete/insert and exact materialized retrieval are still expensi
 Further optimization must preserve filtered recall and transactional replay.
 No real-model inference, physical disk persistence, browser, macOS or Windows
 performance results are claimed. Larger-size and repeated-process gates remain open.
+
+## Repeated fuzzy alternatives — 2026-11-07
+
+Linux x64, Dart 3.13.7 AOT, one shared-host process; 20,000 actual bundled
+Arabic/English product names. Query `جودة بسكوت`, same 12 results throughout.
+Five samples per phase; learning threshold 5. Raw: fuzzy_learning_linux_20000.json.
+Baseline median 460.009 ms; training median 490.137 ms; learned median 15.590 ms.
+Learned samples range 13.563–52.993 ms. Image 3,178,496 -> 3,186,688 bytes
+(+8,192); peak RSS 285,007,872 bytes. This is not a phone result or a latency
+guarantee. Training includes observation writes; the host may add export/save cost.
+
+Reproduce from repository root:
+
+```sh
+dart compile exe packages/sqlite_plus_search/benchmark/fuzzy_learning_benchmark.dart -o /tmp/fuzzy-learning
+/tmp/fuzzy-learning
+```
+
+## Match precision ordering — 2026-11-07
+
+Linux x64 / Dart 3.13.7 AOT, one process, actual 20,000-name bilingual catalog.
+Five paired/alternating samples per query after learned typo warmup. No concurrent
+agent tests/builds during the final sample; host load is still uncontrolled.
+Raw: precision_linux_20000.json; program: precision_benchmark.dart.
+
+| Query | Hits | Baseline median ms | Precision median ms |
+|---|---:|---:|---:|
+| بسكويت | 493 | 22.260 | 24.768 |
+| جودة بسكويت | 12 | 12.465 | 14.105 |
+| جودة بسكوت (learned) | 12 | 15.843 | 15.432 |
+
+Hit counts are unchanged. The small learned-query difference is noise, not a
+speedup claim. Precision incurs CPU/memory proportional to matched text; a
+single text field reuses already-normalized key-map text, while multiple fields
+reuse the existing source-key probe. The image size includes +8,192 bytes from
+preparing learned alternatives, not a precision index. Peak RSS 284,540,928 bytes.
+These are not phone timings or a latency guarantee.
+
+```sh
+dart compile exe packages/sqlite_plus_search/benchmark/precision_benchmark.dart -o /tmp/precision
+/tmp/precision
+```

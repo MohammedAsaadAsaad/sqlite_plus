@@ -263,7 +263,7 @@ class CatalogController extends ChangeNotifier {
     }
     _query = trimmed;
     _searchedScope = scope;
-    await _loadPage(1);
+    await _loadPage(1, learn: true);
   }
 
   /// Another page is another search: it loads that slice and records its time.
@@ -273,7 +273,7 @@ class CatalogController extends ChangeNotifier {
     await _loadPage(next);
   }
 
-  Future<void> _loadPage(int next) async {
+  Future<void> _loadPage(int next, {bool learn = false}) async {
     final query = _query;
     final searched = _searchedScope;
     if (query == null || searched == null) return;
@@ -285,8 +285,12 @@ class CatalogController extends ChangeNotifier {
         'scope': searched.name,
         'limit': catalogPageSize,
         'offset': (next - 1) * catalogPageSize,
+        'learn': learn,
       });
       clock.stop();
+      if (response['learningChanged'] == true) {
+        await _save(await _storeFile());
+      }
       final rawMatches = response['matches'] as List;
       matches = [
         for (final raw in rawMatches)

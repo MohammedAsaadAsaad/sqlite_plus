@@ -250,10 +250,13 @@ Iterable<List<ProductLine>> productBatches(String text, String language) sync* {
 
 /// In-memory catalog. The caller decides when each step runs.
 class CatalogSession {
+  // App-owned revision: rebuild saved pre-fuzzy catalogs once, preserving rows.
+  static const _searchRevision = 1;
   MutableSqliteDatabase? database;
   SqlitePlusSearch? search;
   int productCount = 0;
   bool indexed = false;
+  bool lastFuzzyLearningChanged = false;
 
   /// The opened image used one leaf per document and was rewritten in place.
   bool repacked = false;
@@ -352,6 +355,8 @@ class CatalogSession {
         ['products'],
       );
       if (_asInt(indexedRows.rows.single[0]) != 1) return;
+      final revision = await db.query('PRAGMA user_version');
+      if (_asInt(revision.rows.single[0]) != _searchRevision) return;
       search = await SqlitePlusSearch.open(
         database: db,
         analyzer: const SearchTextAnalyzer(stemArabic: true),
@@ -394,6 +399,7 @@ class CatalogSession {
       textColumns: const ['name'],
       onProgress: onProgress,
     );
+    await db.execute('PRAGMA user_version = $_searchRevision');
     search = opened;
     indexed = true;
   }
@@ -403,6 +409,7 @@ class CatalogSession {
     SearchScope scope = SearchScope.all,
     int limit = catalogPageSize,
     int offset = 0,
+    bool learn = true,
   }) async {
     final opened = search;
     final db = database;
@@ -419,7 +426,11 @@ class CatalogSession {
       limit: limit,
       offset: offset,
       filter: _scopeFilter(scope),
+      fuzzy: const FuzzySearchConfig(learnAfter: 5),
+      ranking: const SearchRankingPolicy(),
+      recordFuzzyLearning: learn,
     );
+    lastFuzzyLearningChanged = results.fuzzyLearningChanged;
     searchClock.stop();
     final lookupClock = Stopwatch()..start();
     final matches = <ProductMatch>[];

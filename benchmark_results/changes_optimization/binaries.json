@@ -1,0 +1,22 @@
+{
+  "old_enabled": {
+    "path": "/tmp/changes-opt-old-enabled",
+    "bytes": 10254216,
+    "sha256": "0465069971f77d27d5b8fca1df2a9c9914fc8863a5ee69e0bfa95443988022f4"
+  },
+  "new_enabled": {
+    "path": "/tmp/changes-opt-new-enabled",
+    "bytes": 10256440,
+    "sha256": "b1afec69fe245374a93afea26aca26e9cdaf57bfc11b280e1f46bf0a65883638"
+  },
+  "old_disabled": {
+    "path": "/tmp/changes-opt-old-disabled",
+    "bytes": 10404056,
+    "sha256": "59d64682f1b5319dcf971bd89b596d31b2c7d6d0602b10e235256d4323aae34a"
+  },
+  "new_disabled": {
+    "path": "/tmp/changes-opt-new-disabled",
+    "bytes": 10422664,
+    "sha256": "771795da645e9f8bcb90b4da3fe09bfc0f58ff9c2809d67ded32aacd48e9e50c"
+  }
+}

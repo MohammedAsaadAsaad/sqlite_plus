@@ -4,6 +4,39 @@ part of '../sqlite_plus_orm.dart';
 abstract class OrmConnection {
   Object? _owner;
 
+  /// Optional same-isolate engine capability; null for RPC/custom connections.
+  MutableSqliteDatabase? get engineDatabase => null;
+  SqlitePlusChanges? get changeFeed => null;
+  bool get usesSaveTransactionDriver => false;
+  Future<R> exclusive<R>(Future<R> Function() action,
+          {bool schemaChange = false}) =>
+      action();
+
+  /// Own a complete save transaction. Adapters may replace the BEGIN/COMMIT
+  /// path, while preserving callback ordering and rolling back failed work.
+  Future<void> transaction(Future<void> Function() action,
+      {void Function()? onCommitting}) async {
+    if (inTransaction) {
+      throw const OrmStateException('Transaction already active');
+    }
+    await execute('BEGIN');
+    try {
+      await action();
+      onCommitting?.call();
+      await execute('COMMIT');
+    } catch (error, stack) {
+      try {
+        if (inTransaction) await execute('ROLLBACK');
+      } catch (cleanup) {
+        Error.throwWithStackTrace(
+            OrmStateException('Transaction failed and rollback also failed',
+                (operation: error, rollback: cleanup)),
+            stack);
+      }
+      Error.throwWithStackTrace(error, stack);
+    }
+  }
+
   /// Runs a statement that returns rows.
   Future<QueryResult> query(String sql, [List<Object?> parameters = const []]);
 
@@ -75,6 +108,8 @@ final class MutableDatabaseConnection extends OrmConnection {
 
   /// Engine database this connection forwards to.
   final MutableSqliteDatabase database;
+  @override
+  MutableSqliteDatabase get engineDatabase => database;
 
   /// Whether [close] also closes [database].
   final bool closeDatabase;
@@ -150,6 +185,8 @@ final class BrowserDatabaseConnection extends OrmConnection {
 
   /// In-memory engine loaded from [storage].
   final MutableSqliteDatabase database;
+  @override
+  MutableSqliteDatabase get engineDatabase => database;
   bool _closed = false;
 
   /// Loads [opened] into a memory database, or creates one when it is empty.
@@ -220,4 +257,84 @@ final class BrowserDatabaseConnection extends OrmConnection {
     await storage.close();
     _closed = true;
   }
+}
+
+/// Optional transaction bridge shared with Changes/Sync. Query reads outside a
+/// scope also queue on Changes, so they cannot interleave a foreign writer.
+final class ChangesOrmConnection extends OrmConnection {
+  ChangesOrmConnection(this.delegate, this.changes) {
+    if (!identical(delegate.engineDatabase, changes.database)) {
+      throw const OrmStateException(
+          'Changes requires the same exposed engine connection');
+    }
+  }
+  final OrmConnection delegate;
+  final SqlitePlusChanges changes;
+  final _writerZone = Object(), _rawZone = Object();
+  ChangeWriter? get _writer => Zone.current[_writerZone] as ChangeWriter?;
+  bool get _raw => Zone.current[_rawZone] == true;
+  @override
+  MutableSqliteDatabase? get engineDatabase => delegate.engineDatabase;
+  @override
+  SqlitePlusChanges get changeFeed => changes;
+  @override
+  bool get usesSaveTransactionDriver => true;
+  @override
+  bool get inTransaction => _writer != null || _raw && delegate.inTransaction;
+  @override
+  void _claim(Object owner) => delegate.claim(owner);
+  @override
+  void _release(Object owner) => delegate.release(owner);
+  @override
+  Future<R> exclusive<R>(Future<R> Function() action,
+      {bool schemaChange = false}) {
+    if (_raw) return action();
+    if (_writer != null) {
+      throw const OrmStateException('Schema scope cannot join a captured save');
+    }
+    return changes.exclusive(
+        (_) => runZoned(action, zoneValues: {_rawZone: true}),
+        notifyReset: schemaChange);
+  }
+
+  @override
+  Future<void> transaction(Future<void> Function() action,
+      {void Function()? onCommitting}) async {
+    if (inTransaction) {
+      throw const OrmStateException('Transaction already active');
+    }
+    await changes.transaction((tx) => runZoned(() async {
+          await action();
+          onCommitting?.call();
+        }, zoneValues: {_writerZone: tx}));
+  }
+
+  @override
+  Future<QueryResult> query(String sql, [List<Object?> parameters = const []]) {
+    final writer = _writer;
+    if (writer != null) return writer.query(sql, parameters);
+    if (_raw) return delegate.query(sql, parameters);
+    return changes.exclusive((_) => delegate.query(sql, parameters));
+  }
+
+  @override
+  Future<MutationResult> execute(String sql,
+      [List<Object?> parameters = const []]) {
+    final writer = _writer;
+    if (writer != null) return writer.execute(sql, parameters);
+    if (_raw) return delegate.execute(sql, parameters);
+    final head = SqlTokenizer.tokenize(sql).firstOrNull?.keyword;
+    if ({'INSERT', 'UPDATE', 'DELETE', 'REPLACE', 'WITH'}.contains(head)) {
+      return changes.transaction((tx) => tx.execute(sql, parameters));
+    }
+    if ({'BEGIN', 'COMMIT', 'END', 'ROLLBACK', 'SAVEPOINT', 'RELEASE'}
+        .contains(head)) {
+      throw const OrmStateException(
+          'Use transaction/exclusive on a Changes-backed connection');
+    }
+    return changes.exclusive((_) => delegate.execute(sql, parameters));
+  }
+
+  @override
+  Future<void> close() => delegate.close();
 }

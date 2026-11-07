@@ -1590,6 +1590,79 @@ final class ImageMutations {
     }
   }
 
+  /// Trigger expressions commonly read a small control table. Rebuilding every
+  /// unrelated table for each row makes that read proportional to database size.
+  /// Keep the ordinary reader/binder, but give simple reads only their complete
+  /// dependencies. Complex schemas/queries retain the full snapshot path.
+  Uint8List _triggerReadImage(Iterable<SelectStatement> queries) {
+    final tables = <String, _Table>{};
+    var supported = true;
+    late void Function(SelectStatement) visit;
+    void expression(Expr value) {
+      if (value is SubqueryExpr) visit(value.statement);
+      if (value is InSelectExpr) visit(value.statement);
+      for (final child in value.children) {
+        expression(child);
+      }
+    }
+
+    visit = (query) {
+      if (!supported) return;
+      if (query.ctes.isNotEmpty ||
+          query.compounds.isNotEmpty ||
+          query.sources.length > 1) {
+        supported = false;
+        return;
+      }
+      for (final source in query.sources) {
+        final table = _tables[asciiLower(source.table ?? '')];
+        if (source.query != null ||
+            source.group.isNotEmpty ||
+            source.pragmaArguments != null ||
+            source.indexedBy != null ||
+            source.schema != null && asciiLower(source.schema!) != 'main' ||
+            table == null ||
+            table.view ||
+            table.schema.virtual ||
+            table.schema.withoutRowid ||
+            asciiLower(table.schema.name).startsWith('sqlite_') ||
+            _indexes.any((index) =>
+                asciiLower(index.table) == asciiLower(table.schema.name))) {
+          supported = false;
+          return;
+        }
+        tables[asciiLower(table.schema.name)] = table;
+      }
+      for (final value in [
+        ...query.items.map((item) => item.expression),
+        query.where,
+        ...query.sources.map((source) => source.on),
+        ...query.groupBy,
+        query.having,
+        ...query.order.map((term) => term.expression),
+        query.limit,
+        query.offset,
+      ].whereType<Expr>()) {
+        expression(value);
+      }
+    };
+    for (final query in queries) {
+      visit(query);
+    }
+    if (!supported) return serialize();
+    final objects = <ImageObject>[];
+    _flushColumnAddends();
+    for (final table in tables.values) {
+      final rows = table.rows.toList()
+        ..sort((a, b) => a.rowId.compareTo(b.rowId));
+      objects.add(ImageObject(
+          'table', table.schema.name, table.schema.name, table.sql, tableRows: [
+        for (final row in rows) TableRow(row.rowId, _storedValues(table, row))
+      ]));
+    }
+    return DatabaseImageBuilder.build(original, objects);
+  }
+
   Future<QueryResult> _triggerSelect(String sql) async {
     final parsed = SqlParser(sql).select();
     if (parsed.parameterCount != 0) {
@@ -1600,7 +1673,7 @@ final class ImageMutations {
       throw const SqlException('SELECT wildcard requires a source');
     }
     final storage = MemoryStorageBackend();
-    await storage.write(0, serialize());
+    await storage.write(0, _triggerReadImage([parsed]));
     final reader = await SqliteDatabase.openReadOnly(storage,
         functions: SqlFunctionRegistry.current);
     try {
@@ -3348,7 +3421,11 @@ final class ImageMutations {
     SqlRows Function(SelectStatement, EvalContext)? snapshotSubquery;
     if (expressions.any((expr) => queries(expr).isNotEmpty)) {
       final storage = MemoryStorageBackend();
-      await storage.write(0, serialize());
+      await storage.write(
+          0,
+          _triggerContexts.isEmpty
+              ? serialize()
+              : _triggerReadImage(expressions.expand(queries)));
       final reader = await SqliteDatabase.openReadOnly(storage,
           functions: SqlFunctionRegistry.current);
       try {
@@ -3885,6 +3962,8 @@ final class ImageMutations {
             throw const SqlConstraintException('UNIQUE constraint failed');
           }
           table.rows[slot] = next;
+          table.rowById?[next.rowId] = next;
+          table.valueIndexes = null;
           table.rowidOrder = null;
           changes++;
           _changed();
@@ -4518,11 +4597,18 @@ final class ImageMutations {
     return (root, deltas);
   }
 
+  Uint8List? _rootImage;
+  Map<String, int>? _currentRoots;
+
   int? _tableRoot(_Table table) {
-    final declared = table.schema.rootPage;
-    if (declared > 1) return declared;
-    final roots = RowidPagePatch.schemaRoots(original);
-    final root = roots?[asciiLower(table.schema.name)];
+    // Compact rebuilds can renumber roots without replacing table descriptors.
+    // Cache only for this exact image; rollback/schema changes invalidate it by
+    // changing original. A failed catalog scan keeps the rebuild fallback.
+    if (!identical(_rootImage, original)) {
+      _rootImage = original;
+      _currentRoots = RowidPagePatch.schemaRoots(original);
+    }
+    final root = _currentRoots?[asciiLower(table.schema.name)];
     if (root == null || root <= 1) return null;
     return root;
   }

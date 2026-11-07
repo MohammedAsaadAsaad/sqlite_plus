@@ -1,0 +1,104 @@
+--- a/packages/sqlite_plus/lib/src/sql/image_mutations.dart
++++ b/packages/sqlite_plus/lib/src/sql/image_mutations.dart
+@@ -1590,6 +1590,79 @@
+     }
+   }
+ 
++  /// Trigger expressions commonly read a small control table. Rebuilding every
++  /// unrelated table for each row makes that read proportional to database size.
++  /// Keep the ordinary reader/binder, but give simple reads only their complete
++  /// dependencies. Complex schemas/queries retain the full snapshot path.
++  Uint8List _triggerReadImage(Iterable<SelectStatement> queries) {
++    final tables = <String, _Table>{};
++    var supported = true;
++    late void Function(SelectStatement) visit;
++    void expression(Expr value) {
++      if (value is SubqueryExpr) visit(value.statement);
++      if (value is InSelectExpr) visit(value.statement);
++      for (final child in value.children) {
++        expression(child);
++      }
++    }
++
++    visit = (query) {
++      if (!supported) return;
++      if (query.ctes.isNotEmpty ||
++          query.compounds.isNotEmpty ||
++          query.sources.length > 1) {
++        supported = false;
++        return;
++      }
++      for (final source in query.sources) {
++        final table = _tables[asciiLower(source.table ?? '')];
++        if (source.query != null ||
++            source.group.isNotEmpty ||
++            source.pragmaArguments != null ||
++            source.indexedBy != null ||
++            source.schema != null && asciiLower(source.schema!) != 'main' ||
++            table == null ||
++            table.view ||
++            table.schema.virtual ||
++            table.schema.withoutRowid ||
++            asciiLower(table.schema.name).startsWith('sqlite_') ||
++            _indexes.any((index) =>
++                asciiLower(index.table) == asciiLower(table.schema.name))) {
++          supported = false;
++          return;
++        }
++        tables[asciiLower(table.schema.name)] = table;
++      }
++      for (final value in [
++        ...query.items.map((item) => item.expression),
++        query.where,
++        ...query.sources.map((source) => source.on),
++        ...query.groupBy,
++        query.having,
++        ...query.order.map((term) => term.expression),
++        query.limit,
++        query.offset,
++      ].whereType<Expr>()) {
++        expression(value);
++      }
++    };
++    for (final query in queries) {
++      visit(query);
++    }
++    if (!supported) return serialize();
++    final objects = <ImageObject>[];
++    _flushColumnAddends();
++    for (final table in tables.values) {
++      final rows = table.rows.toList()
++        ..sort((a, b) => a.rowId.compareTo(b.rowId));
++      objects.add(ImageObject(
++          'table', table.schema.name, table.schema.name, table.sql, tableRows: [
++        for (final row in rows) TableRow(row.rowId, _storedValues(table, row))
++      ]));
++    }
++    return DatabaseImageBuilder.build(original, objects);
++  }
++
+   Future<QueryResult> _triggerSelect(String sql) async {
+     final parsed = SqlParser(sql).select();
+     if (parsed.parameterCount != 0) {
+@@ -1600,7 +1673,7 @@
+       throw const SqlException('SELECT wildcard requires a source');
+     }
+     final storage = MemoryStorageBackend();
+-    await storage.write(0, serialize());
++    await storage.write(0, _triggerReadImage([parsed]));
+     final reader = await SqliteDatabase.openReadOnly(storage,
+         functions: SqlFunctionRegistry.current);
+     try {
+@@ -3348,7 +3421,11 @@
+     SqlRows Function(SelectStatement, EvalContext)? snapshotSubquery;
+     if (expressions.any((expr) => queries(expr).isNotEmpty)) {
+       final storage = MemoryStorageBackend();
+-      await storage.write(0, serialize());
++      await storage.write(
++          0,
++          _triggerContexts.isEmpty
++              ? serialize()
++              : _triggerReadImage(expressions.expand(queries)));
+       final reader = await SqliteDatabase.openReadOnly(storage,
+           functions: SqlFunctionRegistry.current);
+       try {

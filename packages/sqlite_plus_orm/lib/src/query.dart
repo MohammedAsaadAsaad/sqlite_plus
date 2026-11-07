@@ -608,8 +608,10 @@ final class TypedQuery<T> {
       {required this.type,
       required this.connection,
       T Function(RowReader)? materialize,
-      OrmOperationRunner? serialize})
-      : _materialize = materialize,
+      OrmOperationRunner? serialize,
+      DbContext? context})
+      : _context = context,
+        _materialize = materialize,
         _serialize = serialize,
         _predicate = null,
         _ordering = const [],
@@ -624,6 +626,7 @@ final class TypedQuery<T> {
       this.connection,
       this._materialize,
       this._serialize,
+      this._context,
       this._predicate,
       this._ordering,
       this._offset,
@@ -639,6 +642,7 @@ final class TypedQuery<T> {
   final OrmConnection connection;
   final T Function(RowReader)? _materialize;
   final OrmOperationRunner? _serialize;
+  final DbContext? _context;
   final SqlPredicate<T>? _predicate;
   final List<SqlOrdering<T>> _ordering;
   final int _offset;
@@ -660,6 +664,7 @@ final class TypedQuery<T> {
           connection,
           _materialize,
           _serialize,
+          _context,
           predicate ?? _predicate,
           ordering ?? _ordering,
           offset ?? _offset,
@@ -816,6 +821,73 @@ final class TypedQuery<T> {
     return (_noTracking ? type.create : _materialize ?? type.create)(reader);
   }
 
+  DbContext get _watchOwner {
+    final owner = _context ??
+        (connection._owner is DbContext
+            ? connection._owner as DbContext
+            : null);
+    if (owner == null ||
+        !identical(owner.connection, connection) ||
+        !owner.model.entities.contains(type)) {
+      throw const OrmStateException(
+          'Watch requires a query owned by a matching DbContext/DbSet');
+    }
+    return owner;
+  }
+
+  /// Committed, independent read snapshots; never mutates the identity map.
+  ReactiveQuery<T> watch() => _watchOwner._watch(this);
+  Stream<T?> watchFirst() => take(1).watch().map((s) => s.items.firstOrNull);
+  Stream<BigInt> watchCount() => _watchOwner._watchCount(this);
+  Stream<bool> watchAny() => take(1).watchCount().map((n) => n > BigInt.zero);
+
+  /// Keyset page; mapped primary keys provide a deterministic tie-breaker.
+  /// Cannot combine cursor paging with skip/take or expression/rank ordering.
+  Future<SqlPage<T>> page(
+          {int size = 30,
+          PageCursor? after,
+          PageCursor? before,
+          String cursorScope = ''}) =>
+      _run(() async {
+        if (_offset != 0 || _limit != null) {
+          throw const OrmStateException(
+              'Cursor page cannot combine with skip/take');
+        }
+        if (_rank || _distance || type.scalars.any((s) => !s.deterministic)) {
+          throw const OrmStateException(
+              'Cursor page needs stable mapped-column ordering');
+        }
+        final order = <PageOrder>[];
+        for (final term in _ordering) {
+          final expression = term.expression;
+          if (expression is! MappedField<T, dynamic>) {
+            throw const OrmStateException(
+                'Cursor page currently supports mapped-column ordering');
+          }
+          order.add(PageOrder(expression.column.sqlName,
+              descending: term.descending, nullsFirst: term.nullsFirst));
+        }
+        final parameters = <Object?>[];
+        final where = _predicate?._sql(parameters);
+        registerOrmScalars(connection, [type]);
+        final result =
+            await SqlPagination((sql, args) => connection.query(sql, args))
+                .page(
+                    table: type.tableName,
+                    keyColumns: type.keys.map((k) => k.sqlName).toList(),
+                    orderBy: order,
+                    columns: type.columns.map((c) => c.sqlName).toList(),
+                    where: where,
+                    parameters: parameters,
+                    size: size,
+                    after: after,
+                    before: before,
+                    cursorScope: cursorScope);
+        return result.map((row) => (_noTracking
+            ? type.create
+            : _materialize ?? type.create)(RowReader(_copyOrmRow(row))));
+      });
+
   /// Materializes every matching row.
   Future<List<T>> toList() => _run(() async {
         final result = await _rows();
@@ -898,11 +970,7 @@ final class TypedQuery<T> {
 /// Registers model scalars on the engine connection the ORM is using.
 void registerOrmScalars(
     OrmConnection connection, Iterable<EntityType<dynamic>> entities) {
-  final database = switch (connection) {
-    MutableDatabaseConnection(:final database) => database,
-    BrowserDatabaseConnection(:final database) => database,
-    _ => null,
-  };
+  final database = connection.engineDatabase;
   if (database == null) return;
   for (final entity in entities) {
     for (final scalar in entity.scalars) {

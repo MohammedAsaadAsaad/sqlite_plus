@@ -540,3 +540,12 @@ final near = await neighbors.query.nearest(const [0.9, 0.1], k: 1).single();
 `openInMemory` is `MutableSqliteDatabase.create`. `exportImage` is the byte image a file can hold. `openBrowserStorage` reports `canRead`, `canWrite`, `durabilityPromised`, and `placement`.
 
 Compared with pinned SQLite 3.53.1: constant `EXPLAIN` arithmetic, a constant `WHERE`, one table scan, a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries still have no bytecode. This is not a VDBE. Contentless FTS4 returns the pinned `MATCH` row and stores no content table. File `journal_mode` `wal`, `persist`, and `truncate` follow the pinned header and journal bytes. This is not a multi-frame WAL. `incremental_vacuum` moves a live end page before truncating. ICU collations are absent. Correlated `json_each` matches the pinned CLI, including `json_each(docs.label) RIGHT JOIN docs`, which returns 0 rows. Set `doubleQuotedStrings` to treat an unresolved double-quoted identifier as a string. The default is off. The comparison is `db_browser_b3_dqs_test.dart`. Unquoted `a.title` beside a column named `a.title` returns the `title` column.
+
+
+## Built-in cursor pagination (unreleased workspace)
+
+Use `.page(size: 30, after: cursor)` or `before:` for keyset navigation. ORM
+infers primary-key tie-breakers, preserves filters/tracking and supports
+`asNoTracking()`. The direct engine API accepts a table, key columns, ordering
+and bound filter. No extra package or stored cursor index.
+See [usage, consistency and performance limits](doc/PAGINATION.md).

@@ -1,0 +1,424 @@
+[
+  {
+    "rows": 100,
+    "timings_us": {
+      "insert": 4943,
+      "read_100": 86794,
+      "batch_update": 301939,
+      "count_100": 126234
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 20144128,
+    "peak_rss": 20000768,
+    "variant": "before",
+    "iteration": 0
+  },
+  {
+    "rows": 100,
+    "watch_enabled": false,
+    "notifications": 0,
+    "timings_us": {
+      "insert": 3067,
+      "read_100": 73096,
+      "batch_update": 488590,
+      "count_100": 302583
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 20676608,
+    "peak_rss": 20471808,
+    "variant": "after",
+    "iteration": 0
+  },
+  {
+    "rows": 100,
+    "watch_enabled": false,
+    "notifications": 0,
+    "timings_us": {
+      "insert": 3256,
+      "read_100": 108738,
+      "batch_update": 320523,
+      "count_100": 182866
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 20312064,
+    "peak_rss": 20090880,
+    "variant": "after",
+    "iteration": 1
+  },
+  {
+    "rows": 100,
+    "timings_us": {
+      "insert": 3014,
+      "read_100": 72117,
+      "batch_update": 328949,
+      "count_100": 320755
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 21159936,
+    "peak_rss": 20934656,
+    "variant": "before",
+    "iteration": 1
+  },
+  {
+    "rows": 100,
+    "timings_us": {
+      "insert": 8127,
+      "read_100": 174303,
+      "batch_update": 541633,
+      "count_100": 510974
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 21164032,
+    "peak_rss": 20803584,
+    "variant": "before",
+    "iteration": 2
+  },
+  {
+    "rows": 100,
+    "watch_enabled": false,
+    "notifications": 0,
+    "timings_us": {
+      "insert": 3241,
+      "read_100": 171523,
+      "batch_update": 747416,
+      "count_100": 359694
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 20590592,
+    "peak_rss": 20291584,
+    "variant": "after",
+    "iteration": 2
+  },
+  {
+    "rows": 100,
+    "watch_enabled": false,
+    "notifications": 0,
+    "timings_us": {
+      "insert": 6380,
+      "read_100": 166285,
+      "batch_update": 718369,
+      "count_100": 331969
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 21184512,
+    "peak_rss": 20889600,
+    "variant": "after",
+    "iteration": 3
+  },
+  {
+    "rows": 100,
+    "timings_us": {
+      "insert": 8503,
+      "read_100": 145996,
+      "batch_update": 981717,
+      "count_100": 457077
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 20938752,
+    "peak_rss": 20549632,
+    "variant": "before",
+    "iteration": 3
+  },
+  {
+    "rows": 100,
+    "timings_us": {
+      "insert": 9103,
+      "read_100": 125231,
+      "batch_update": 688831,
+      "count_100": 314125
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 20992000,
+    "peak_rss": 20602880,
+    "variant": "before",
+    "iteration": 4
+  },
+  {
+    "rows": 100,
+    "watch_enabled": false,
+    "notifications": 0,
+    "timings_us": {
+      "insert": 3436,
+      "read_100": 180263,
+      "batch_update": 650810,
+      "count_100": 403471
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 20787200,
+    "peak_rss": 20393984,
+    "variant": "after",
+    "iteration": 4
+  },
+  {
+    "rows": 100,
+    "watch_enabled": true,
+    "notifications": 3,
+    "timings_us": {
+      "insert": 20472,
+      "read_100": 274851,
+      "batch_update": 1010486,
+      "count_100": 612334
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 20930560,
+    "peak_rss": 20594688,
+    "variant": "enabled",
+    "iteration": 0
+  },
+  {
+    "rows": 100,
+    "watch_enabled": true,
+    "notifications": 3,
+    "timings_us": {
+      "insert": 57054,
+      "read_100": 206316,
+      "batch_update": 813400,
+      "count_100": 561331
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 20791296,
+    "peak_rss": 20475904,
+    "variant": "enabled",
+    "iteration": 1
+  },
+  {
+    "rows": 100,
+    "watch_enabled": true,
+    "notifications": 3,
+    "timings_us": {
+      "insert": 7343,
+      "read_100": 214837,
+      "batch_update": 1128370,
+      "count_100": 464450
+    },
+    "image_bytes": 12288,
+    "image_sha256": "fa17a6bc52fac6a244602a3df9740a23b2a05c21ea985555e1371b6cde794133",
+    "rss": 21024768,
+    "peak_rss": 20803584,
+    "variant": "enabled",
+    "iteration": 2
+  },
+  {
+    "rows": 1000,
+    "timings_us": {
+      "insert": 182534,
+      "read_100": 1484926,
+      "batch_update": 60404938,
+      "count_100": 4188969
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 76349440,
+    "peak_rss": 79056896,
+    "variant": "before",
+    "iteration": 0
+  },
+  {
+    "rows": 1000,
+    "watch_enabled": false,
+    "notifications": 0,
+    "timings_us": {
+      "insert": 93352,
+      "read_100": 1321335,
+      "batch_update": 47849555,
+      "count_100": 3801219
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 76345344,
+    "peak_rss": 78835712,
+    "variant": "after",
+    "iteration": 0
+  },
+  {
+    "rows": 1000,
+    "watch_enabled": false,
+    "notifications": 0,
+    "timings_us": {
+      "insert": 158880,
+      "read_100": 1103899,
+      "batch_update": 35191788,
+      "count_100": 1721534
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 75784192,
+    "peak_rss": 79437824,
+    "variant": "after",
+    "iteration": 1
+  },
+  {
+    "rows": 1000,
+    "timings_us": {
+      "insert": 130649,
+      "read_100": 785694,
+      "batch_update": 30489838,
+      "count_100": 1426459
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 76509184,
+    "peak_rss": 79159296,
+    "variant": "before",
+    "iteration": 1
+  },
+  {
+    "rows": 1000,
+    "timings_us": {
+      "insert": 73176,
+      "read_100": 617122,
+      "batch_update": 32952730,
+      "count_100": 1995359
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 75866112,
+    "peak_rss": 78913536,
+    "variant": "before",
+    "iteration": 2
+  },
+  {
+    "rows": 1000,
+    "watch_enabled": false,
+    "notifications": 0,
+    "timings_us": {
+      "insert": 78334,
+      "read_100": 1499807,
+      "batch_update": 36942107,
+      "count_100": 1587139
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 75554816,
+    "peak_rss": 78778368,
+    "variant": "after",
+    "iteration": 2
+  },
+  {
+    "rows": 1000,
+    "watch_enabled": false,
+    "notifications": 0,
+    "timings_us": {
+      "insert": 130146,
+      "read_100": 633788,
+      "batch_update": 26031731,
+      "count_100": 1476774
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 76505088,
+    "peak_rss": 78700544,
+    "variant": "after",
+    "iteration": 3
+  },
+  {
+    "rows": 1000,
+    "timings_us": {
+      "insert": 36970,
+      "read_100": 537993,
+      "batch_update": 28097016,
+      "count_100": 1504512
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 75857920,
+    "peak_rss": 78954496,
+    "variant": "before",
+    "iteration": 3
+  },
+  {
+    "rows": 1000,
+    "timings_us": {
+      "insert": 92941,
+      "read_100": 654679,
+      "batch_update": 26755732,
+      "count_100": 1285282
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 76713984,
+    "peak_rss": 79007744,
+    "variant": "before",
+    "iteration": 4
+  },
+  {
+    "rows": 1000,
+    "watch_enabled": false,
+    "notifications": 0,
+    "timings_us": {
+      "insert": 50713,
+      "read_100": 605194,
+      "batch_update": 25009970,
+      "count_100": 1317194
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 76967936,
+    "peak_rss": 79638528,
+    "variant": "after",
+    "iteration": 4
+  },
+  {
+    "rows": 1000,
+    "watch_enabled": true,
+    "notifications": 3,
+    "timings_us": {
+      "insert": 63608,
+      "read_100": 451457,
+      "batch_update": 22280450,
+      "count_100": 1297590
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 78524416,
+    "peak_rss": 81739776,
+    "variant": "enabled",
+    "iteration": 0
+  },
+  {
+    "rows": 1000,
+    "watch_enabled": true,
+    "notifications": 3,
+    "timings_us": {
+      "insert": 66148,
+      "read_100": 557329,
+      "batch_update": 21023340,
+      "count_100": 1802388
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 77647872,
+    "peak_rss": 81002496,
+    "variant": "enabled",
+    "iteration": 1
+  },
+  {
+    "rows": 1000,
+    "watch_enabled": true,
+    "notifications": 3,
+    "timings_us": {
+      "insert": 58947,
+      "read_100": 599701,
+      "batch_update": 20557131,
+      "count_100": 1358951
+    },
+    "image_bytes": 24576,
+    "image_sha256": "35c208ddd169585d2f1584419c36ac80b7b699c751261372c84c34030fb82f11",
+    "rss": 77352960,
+    "peak_rss": 80678912,
+    "variant": "enabled",
+    "iteration": 2
+  }
+]

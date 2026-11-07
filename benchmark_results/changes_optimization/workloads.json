@@ -1,0 +1,11 @@
+{
+  "packages/sqlite_plus_changes/benchmark/enabled.dart": "81e8ba18b2db490caef7ab7e0628cc4186bf9a022aeb7f7f6d49e0afd012d131",
+  "tool/changes_benchmark/after.dart": "02d8e569ed064145c3bf13308fac6210ac77ca1149f34de28162ee7ec37cb85f",
+  "tool/changes_benchmark/workload.dart": "e29222cb8ccd76ccf55039d255e260957d9d91e40351861ee697fa27acf173f9",
+  "packages/sqlite_plus_changes/lib/sqlite_plus_changes.dart": "198f8ab89c1de530ffc85ff028d7c8646b154b0a701396678e45711e0d110026",
+  "packages/sqlite_plus_changes/lib/src/changes.dart": "246315df37534b0d9ae5acf20bb3297a153c8e1f3384f6c7ddc7c89cc4bdc5b1",
+  "packages/sqlite_plus_changes/lib/src/consumers.dart": "7b3a2ef30685cc1c1d5f2bb23851c42999d9c0c6388ee6c9b28337ba9ef692ed",
+  "packages/sqlite_plus_changes/lib/src/models.dart": "e2baead771e2180a6f7e016ef8c5abb6fd87b71988e65980130b1cf29c90911d",
+  "packages/sqlite_plus_changes/lib/src/tracking.dart": "4ecfff814e58676ec8e4b97bb5755e398f288744dab1192a3e71f172101f13f1",
+  "packages/sqlite_plus_changes/lib/src/writer.dart": "6775d91efcbf656b36006ee78287fb147001a5c252a0935b6efb4dedd6160043"
+}

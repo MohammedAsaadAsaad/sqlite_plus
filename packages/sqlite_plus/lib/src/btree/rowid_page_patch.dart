@@ -11,7 +11,134 @@ import '../format/record_encoder.dart';
 /// descending keys, and interior pages that cannot take one more child are
 /// left to that rebuild. A deleted cell becomes a freeblock.
 abstract final class RowidPagePatch {
+  /// Physical catalog roots, including a multi-page/overflow sqlite_schema.
+  /// Null preserves the caller's conservative full-rebuild fallback.
   static Map<String, int>? schemaRoots(Uint8List image) {
+    try {
+      final local = _localSchemaRoots(image);
+      if (local != null) return local;
+      final header = DatabaseHeader.decode(image);
+      final size = header.pageSize;
+      if (header.reservedBytes != 0 ||
+          image.length != header.databaseSize * size) {
+        return null;
+      }
+      final roots = <String, int>{};
+      final physicalRoots = <int>{};
+      final visited = <int>{};
+      final stack = <(int, int)>[(1, 0)];
+      BigInt? previousRowid;
+      Uint8List? page(int number) {
+        if (number < 1 ||
+            number > header.databaseSize ||
+            !visited.add(number)) {
+          return null;
+        }
+        return Uint8List.sublistView(image, (number - 1) * size, number * size);
+      }
+
+      while (stack.isNotEmpty) {
+        final (number, depth) = stack.removeLast();
+        if (depth > 64) return null;
+        final bytes = page(number);
+        if (bytes == null) return null;
+        final start = number == 1 ? 100 : 0;
+        final kind = bytes[start];
+        if (kind != 5 && kind != 13) return null;
+        final data = ByteData.sublistView(bytes);
+        final count = data.getUint16(start + 3);
+        final pointers = start + (kind == 5 ? 12 : 8);
+        final pointerEnd = pointers + count * 2;
+        if (pointerEnd > size) return null;
+        final children = <int>[];
+        final ranges = <(int, int)>[];
+        for (var i = 0; i < count; i++) {
+          final offset = data.getUint16(pointers + i * 2);
+          if (offset < pointerEnd || offset >= size) return null;
+          final reader = SqliteByteReader(bytes, offset: offset, end: size);
+          if (kind == 5) {
+            if (offset + 4 >= size) return null;
+            children.add(data.getUint32(offset));
+            reader.offset += 4;
+            reader.varint();
+            ranges.add((offset, reader.offset));
+            continue;
+          }
+          final payloadSize = reader.varint();
+          final rowid = reader.varint().toSigned(64);
+          if (previousRowid != null && rowid <= previousRowid) return null;
+          previousRowid = rowid;
+          if (payloadSize < BigInt.one ||
+              payloadSize > BigInt.from(image.length)) {
+            return null;
+          }
+          final length = payloadSize.toInt();
+          final maximum = size - 35;
+          final minimum = ((size - 12) * 32 ~/ 255) - 23;
+          var local = length;
+          if (length > maximum) {
+            local = minimum + (length - minimum) % (size - 4);
+            if (local > maximum) local = minimum;
+          }
+          final end = reader.offset + local;
+          if (end + (local < length ? 4 : 0) > size) return null;
+          final payload = Uint8List(length);
+          payload.setRange(0, local, bytes, reader.offset);
+          var used = local;
+          var next = local < length ? data.getUint32(end) : 0;
+          ranges.add((offset, end + (local < length ? 4 : 0)));
+          while (used < length) {
+            final overflow = page(next);
+            if (overflow == null) return null;
+            next = ByteData.sublistView(overflow).getUint32(0);
+            final take = length - used < size - 4 ? length - used : size - 4;
+            payload.setRange(used, used + take, overflow, 4);
+            used += take;
+          }
+          if (next != 0) return null;
+          final values =
+              RecordCodec.decode(payload, encoding: header.textEncoding);
+          if (values.length != 5 ||
+              values[0] is! String ||
+              values[1] is! String ||
+              values[3] is! BigInt) {
+            return null;
+          }
+          final root = values[3] as BigInt;
+          if (root.isNegative || root > BigInt.from(header.databaseSize)) {
+            return null;
+          }
+          if (root > BigInt.zero) {
+            if (root < BigInt.two || !physicalRoots.add(root.toInt())) {
+              return null;
+            }
+            if (values[0] != 'table' && values[0] != 'index') return null;
+            final name = String.fromCharCodes((values[1] as String)
+                .codeUnits
+                .map((c) => c >= 65 && c <= 90 ? c + 32 : c));
+            if (roots.containsKey(name)) return null;
+            roots[name] = root.toInt();
+          }
+        }
+        ranges.sort((a, b) => a.$1.compareTo(b.$1));
+        for (var i = 1; i < ranges.length; i++) {
+          if (ranges[i].$1 < ranges[i - 1].$2) return null;
+        }
+        if (kind == 5) {
+          children.add(data.getUint32(start + 8));
+          stack.addAll(children.reversed.map((child) => (child, depth + 1)));
+        }
+      }
+      if (physicalRoots.any(visited.contains)) return null;
+      return roots;
+    } on FormatException {
+      return null;
+    } on RangeError {
+      return null;
+    }
+  }
+
+  static Map<String, int>? _localSchemaRoots(Uint8List image) {
     final header = DatabaseHeader.decode(image);
     if (image.length < header.pageSize || header.reservedBytes != 0) {
       return null;
@@ -239,7 +366,9 @@ abstract final class RowidPagePatch {
   /// Empties [root] and drops pages past it when no other catalog root uses them.
   static Uint8List? clearRoot(Uint8List image, int root) {
     if (root < 2) return null;
-    final roots = schemaRoots(image);
+    // Truncation still requires a local single-leaf schema: otherwise schema
+    // children/overflow pages beyond this root must not be discarded.
+    final roots = _localSchemaRoots(image);
     final pages = _Pages.tryOpen(image);
     if (roots == null || pages == null || root > pages.pages.length) {
       return null;

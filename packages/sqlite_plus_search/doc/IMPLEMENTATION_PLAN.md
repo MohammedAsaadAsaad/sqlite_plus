@@ -101,3 +101,32 @@ Production embeddings/cross-language evaluation, repeated-process performance
 statistics, arbitrary external-writer ownership, real-device/torn-byte recovery,
 real browser storage and macOS/Windows/mobile execution remain open. Models must
 be provisioned locally by the application; none are downloaded automatically.
+
+## Optional fuzzy fallback (2026-11-06)
+
+- [x] Per-query opt-in Levenshtein fallback for filtered-empty keyword results.
+- [x] Limits, literal expansion, BM25/RRF integration and public API documentation.
+- [x] Nine new tests; Linux suite: 70 pass, 1 native test skipped (CLI absent).
+- [ ] Persistent candidate index and reproducible large-corpus fuzzy benchmarks.
+
+No storage format change or production-release acceptance claim.
+
+## Optional repeated-typo learning (2026-11-07)
+
+- [x] Configurable opt-in threshold, pending counters, persistent promotion and
+  learned token alternatives; no whole-vocabulary deletion index.
+- [x] Explicit new-input recording flag, cache/write result flags, collection and
+  settings isolation; rebuild/replay invalidation and corruption checks.
+- [x] App threshold 5, image persistence, exclusion of page navigation.
+- [x] AOT benchmark on actual 20,000-name catalog, raw results in benchmark/.
+- [ ] Eviction limits and comprehensive learned-metadata integrity diagnostics.
+
+## Optional match precision (2026-11-07)
+
+- [x] Keyword precision tiers, field coverage weights, configurable precedence,
+  explanations and stable ordering before pagination.
+- [x] Single-field normalized-text reuse and shared multi-field source probe.
+- [x] Six precision tests, sample integration, 20k-name paired AOT measurements.
+- [ ] Precision policies for hybrid/semantic retrieval.
+
+Requires the workspace engine Unicode61Tokenizer export; no new index format.

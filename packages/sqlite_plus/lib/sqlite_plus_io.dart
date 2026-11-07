@@ -17,6 +17,9 @@ export 'src/storage/official_file_storage.dart'
     show OfficialFileStorage, SqliteLock;
 export 'src/app/app_commands.dart' show Batch, ConflictAlgorithm, Transaction;
 export 'src/connection/database_owner.dart';
+export 'src/pagination/pagination.dart';
+export 'src/pagination/pagination_io.dart';
+
 export 'src/sql/mutable_database.dart' show MutableSqliteDatabase;
 
 /// Opens [path] as an in-process database image.

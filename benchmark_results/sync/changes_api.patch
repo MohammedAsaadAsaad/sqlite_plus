@@ -1,0 +1,362 @@
+--- a/packages/sqlite_plus_changes/lib/src/changes.dart
++++ b/packages/sqlite_plus_changes/lib/src/changes.dart
+@@ -175,7 +175,7 @@
+         return _atomic(() async {
+           await database.execute(
+               'UPDATE _spc_state SET active_batch=? WHERE id=1', [state.next]);
+-          final writer = ChangeWriter._(database);
++          final writer = ChangeWriter._(this, state);
+           late T result;
+           try {
+             result = await action(writer);
+--- a/packages/sqlite_plus_changes/lib/src/consumers.dart
++++ b/packages/sqlite_plus_changes/lib/src/consumers.dart
+@@ -33,7 +33,9 @@
+   }
+ 
+   Future<ChangeConsumer> consumer(
+-          {required String name, ChangeCheckpoint? startAt}) =>
++          {required String name,
++          ChangeCheckpoint? startAt,
++          bool resumeExisting = false}) =>
+       _run(() async {
+         if (name.isEmpty || name.contains('\u0000')) {
+           throw ArgumentError('Consumer name is required');
+@@ -57,6 +59,7 @@
+             throw const ChangeLogCorrupt('Consumer points beyond head');
+           }
+           if (startAt != null &&
++              !resumeExisting &&
+               (startAt.feedId != state.id || startAt.batch != row[0])) {
+             throw StateError('Consumer already exists; use reset explicitly');
+           }
+@@ -140,93 +143,107 @@
+ 
+   Future<ChangeBatch> _read(String name, int limit, int maxEvents) =>
+       _run(() async {
+-        if (maxEvents < 1 || maxEvents > 1000000) {
+-          throw ArgumentError('maxEvents must be 1..1000000');
+-        }
+-        if (limit < 1 || limit > 1000) {
+-          throw ArgumentError('maxTransactions must be 1..1000');
+-        }
+         await _verifySources();
+-        final state = await _state();
+-        final consumer = await _consumerRow(name);
+-        if (consumer[3] != state.id) {
+-          throw CheckpointExpired(
+-              ChangeCheckpoint(consumer[3] as String, _integer(consumer[0])),
+-              state.at(state.floor));
+-        }
+-        final ack = _integer(consumer[0]);
+-        _validCheckpoint(state, state.at(ack));
+-        if (_integer(consumer[1]) > state.head) {
+-          throw const ChangeLogCorrupt('Consumer points beyond head');
+-        }
+-        final sources = {
+-          for (final source in await _sources()) source.id: source
+-        };
+-        final batches = await database.browse(
+-            'SELECT id,event_count FROM _spc_batches WHERE id>? ORDER BY id LIMIT $limit',
+-            [ack]);
+-        final transactions = <ChangeTransaction>[];
+-        var next = ack + BigInt.one;
+-        var remaining = BigInt.from(maxEvents);
+-        for (final row in batches.rows) {
+-          final id = _integer(row[0]), count = _integer(row[1]);
+-          if (id != next || id > state.head || count < BigInt.one) {
+-            throw const ChangeLogCorrupt(
+-                'Missing or invalid transaction metadata');
+-          }
+-          if (count > remaining) {
+-            if (transactions.isEmpty) {
+-              throw ChangeBatchTooLarge(id, count, maxEvents);
+-            }
+-            break;
+-          }
+-          remaining -= count;
+-          final events = await database.query(
+-              'SELECT source_id,kind,old_key,new_key,columns_json FROM _spc_events WHERE batch_id=? ORDER BY id',
+-              [id]);
+-          if (BigInt.from(events.rows.length) != count) {
+-            throw const ChangeLogCorrupt('Incomplete transaction events');
+-          }
+-          transactions.add(ChangeTransaction(
+-              id, [for (final event in events.rows) _event(event, sources)]));
+-          next = id + BigInt.one;
+-        }
+-        if (transactions.isEmpty && ack < state.head) {
+-          throw const ChangeLogCorrupt('Missing retained transactions');
+-        }
+-        final checkpoint =
+-            state.at(transactions.isEmpty ? ack : transactions.last.id);
+-        if (checkpoint.batch > _integer(consumer[1])) {
+-          await _atomic(() => database.execute(
+-              'UPDATE _spc_consumers SET delivered_batch=? WHERE id=?',
+-              [checkpoint.batch, consumer[2]]));
+-        }
+-        return ChangeBatch(checkpoint, transactions);
+-      });
++        return _readAt(name, await _state(), limit, maxEvents);
++      });
++
++  Future<ChangeBatch> _readAt(
++      String name, _State state, int limit, int maxEvents,
++      {bool inScope = false}) async {
++    if (maxEvents < 1 || maxEvents > 1000000) {
++      throw ArgumentError('maxEvents must be 1..1000000');
++    }
++    if (limit < 1 || limit > 1000) {
++      throw ArgumentError('maxTransactions must be 1..1000');
++    }
++    final consumer = await _consumerRow(name);
++    if (consumer[3] != state.id) {
++      throw CheckpointExpired(
++          ChangeCheckpoint(consumer[3] as String, _integer(consumer[0])),
++          state.at(state.floor));
++    }
++    final ack = _integer(consumer[0]);
++    _validCheckpoint(state, state.at(ack));
++    if (_integer(consumer[1]) > state.head) {
++      throw const ChangeLogCorrupt('Consumer points beyond head');
++    }
++    final sources = {for (final source in await _sources()) source.id: source};
++    final batches = await database.browse(
++        'SELECT id,event_count FROM _spc_batches WHERE id>? ORDER BY id LIMIT $limit',
++        [ack]);
++    final transactions = <ChangeTransaction>[];
++    var next = ack + BigInt.one;
++    var remaining = BigInt.from(maxEvents);
++    for (final row in batches.rows) {
++      final id = _integer(row[0]), count = _integer(row[1]);
++      if (id != next || id > state.head || count < BigInt.one) {
++        throw const ChangeLogCorrupt('Missing or invalid transaction metadata');
++      }
++      if (count > remaining) {
++        if (transactions.isEmpty) {
++          throw ChangeBatchTooLarge(id, count, maxEvents);
++        }
++        break;
++      }
++      remaining -= count;
++      final events = await database.query(
++          'SELECT source_id,kind,old_key,new_key,columns_json FROM _spc_events WHERE batch_id=? ORDER BY id',
++          [id]);
++      if (BigInt.from(events.rows.length) != count) {
++        throw const ChangeLogCorrupt('Incomplete transaction events');
++      }
++      transactions.add(ChangeTransaction(
++          id, [for (final event in events.rows) _event(event, sources)]));
++      next = id + BigInt.one;
++    }
++    if (transactions.isEmpty && ack < state.head) {
++      throw const ChangeLogCorrupt('Missing retained transactions');
++    }
++    final checkpoint =
++        state.at(transactions.isEmpty ? ack : transactions.last.id);
++    if (checkpoint.batch > _integer(consumer[1])) {
++      Future<void> delivered() async {
++        await database.execute(
++            'UPDATE _spc_consumers SET delivered_batch=? WHERE id=?',
++            [checkpoint.batch, consumer[2]]);
++      }
++
++      if (inScope) {
++        await delivered();
++      } else {
++        await _atomic(delivered);
++      }
++    }
++    return ChangeBatch(checkpoint, transactions);
++  }
+ 
+   Future<void> _acknowledge(String name, ChangeCheckpoint checkpoint) =>
+       _run(() async {
+         final state = await _state();
+-        _validCheckpoint(state, checkpoint);
+-        final row = await _consumerRow(name);
+-        if (row[3] != state.id) {
+-          throw CheckpointExpired(
+-              ChangeCheckpoint(row[3] as String, _integer(row[0])),
+-              state.at(state.floor));
+-        }
+-        _validCheckpoint(state, state.at(_integer(row[0])));
+-        if (_integer(row[1]) > state.head) {
+-          throw const ChangeLogCorrupt('Consumer points beyond head');
+-        }
+-        if (checkpoint.batch < _integer(row[0]) ||
+-            checkpoint.batch > _integer(row[1])) {
+-          throw ArgumentError(
+-              'Acknowledge a delivered position without moving backwards');
+-        }
+-        await _atomic(() => database.execute(
+-            'UPDATE _spc_consumers SET acked_batch=? WHERE id=?',
+-            [checkpoint.batch, row[2]]));
+-      });
++        await _atomic(() => _acknowledgeAt(name, checkpoint, state));
++      });
++
++  Future<void> _acknowledgeAt(
++      String name, ChangeCheckpoint checkpoint, _State state) async {
++    _validCheckpoint(state, checkpoint);
++    final row = await _consumerRow(name);
++    if (row[3] != state.id) {
++      throw CheckpointExpired(
++          ChangeCheckpoint(row[3] as String, _integer(row[0])),
++          state.at(state.floor));
++    }
++    _validCheckpoint(state, state.at(_integer(row[0])));
++    if (_integer(row[1]) > state.head) {
++      throw const ChangeLogCorrupt('Consumer points beyond head');
++    }
++    if (checkpoint.batch < _integer(row[0]) ||
++        checkpoint.batch > _integer(row[1])) {
++      throw ArgumentError(
++          'Acknowledge a delivered position without moving backwards');
++    }
++    await database.execute('UPDATE _spc_consumers SET acked_batch=? WHERE id=?',
++        [checkpoint.batch, row[2]]);
++  }
+ 
+   Future<void> _reset(String name, ChangeCheckpoint checkpoint) =>
+       _run(() async {
+--- a/packages/sqlite_plus_changes/lib/src/models.dart
++++ b/packages/sqlite_plus_changes/lib/src/models.dart
+@@ -142,3 +142,13 @@
+   String toString() =>
+       'ChangeBatchTooLarge: transaction $transactionId has $eventCount events; limit=$limit';
+ }
++
++/// Verified definition of a currently tracked source.
++final class ChangeSource {
++  ChangeSource(
++      this.table, Iterable<String> primaryKey, Iterable<String> columns)
++      : primaryKey = List.unmodifiable(primaryKey),
++        columns = List.unmodifiable(columns);
++  final String table;
++  final List<String> primaryKey, columns;
++}
+--- a/packages/sqlite_plus_changes/lib/src/tracking.dart
++++ b/packages/sqlite_plus_changes/lib/src/tracking.dart
+@@ -1,6 +1,15 @@
+ part of 'changes.dart';
+ 
+ extension ChangeTracking on SqlitePlusChanges {
++  Future<List<ChangeSource>> sources() => _run(() async {
++        await _state();
++        await _verifySources();
++        return List.unmodifiable([
++          for (final source in await _sources(enabledOnly: true))
++            ChangeSource(source.name, source.keys, source.columns)
++        ]);
++      });
++
+   Future<void> _requireRecursiveTriggers() async {
+     final value = await database.query('PRAGMA recursive_triggers');
+     if (value.rows.single.single != BigInt.one) {
+--- a/packages/sqlite_plus_changes/lib/src/writer.dart
++++ b/packages/sqlite_plus_changes/lib/src/writer.dart
+@@ -2,8 +2,10 @@
+ 
+ /// DML-only scope. Await every operation. Use [savepoint] for recoverable errors.
+ final class ChangeWriter {
+-  ChangeWriter._(this._db);
+-  final MutableSqliteDatabase _db;
++  ChangeWriter._(this._feed, this._state);
++  final SqlitePlusChanges _feed;
++  final _State _state;
++  MutableSqliteDatabase get _db => _feed.database;
+   bool _closed = false, _busy = false;
+   Future<void>? _pending;
+   Object? _error;
+@@ -58,6 +60,81 @@
+     return _operation(() => _db.query(sql, parameters));
+   }
+ 
++  /// Committed head before this producer scope started.
++  ChangeCheckpoint get baseCheckpoint => _state.at(_state.head);
++
++  void _consumer(ChangeConsumer consumer) {
++    if (!identical(consumer._feed.database, _db)) {
++      throw ArgumentError('Consumer belongs to another database');
++    }
++  }
++
++  /// Source definitions verified at the start of this transaction.
++  Future<List<ChangeSource>> sources() =>
++      _operation(() async => List.unmodifiable([
++            for (final source in await _feed._sources(enabledOnly: true))
++              ChangeSource(source.name, source.keys, source.columns)
++          ]));
++
++  /// Read committed Changes inside this transaction, excluding its new events.
++  Future<ChangeBatch> readChanges(ChangeConsumer consumer,
++      {int maxTransactions = 100, int maxEvents = 1000}) {
++    _consumer(consumer);
++    return _operation(() => _feed._readAt(
++        consumer.name, _state, maxTransactions, maxEvents,
++        inScope: true));
++  }
++
++  /// Persist consumer progress atomically with this scope's application writes.
++  Future<void> acknowledge(
++      ChangeConsumer consumer, ChangeCheckpoint checkpoint) {
++    _consumer(consumer);
++    return _operation(
++        () => _feed._acknowledgeAt(consumer.name, checkpoint, _state));
++  }
++
++  /// Pending batch identity, or null when this scope has captured no events yet.
++  /// Allows application origin markers to commit with the captured events.
++  Future<ChangeCheckpoint?> pendingCheckpoint() => _operation(() async {
++        final rows = await _db.query(
++            'SELECT count(*) FROM _spc_events WHERE batch_id=?', [_state.next]);
++        return _integer(rows.rows.single.single) == BigInt.zero
++            ? null
++            : _state.at(_state.next);
++      });
++
++  /// Events captured so far in this scope, not yet published. Never includes
++  /// older committed batches; a rollback/savepoint rollback discards them.
++  Future<ChangeBatch> pendingChanges({int maxEvents = 1000000}) =>
++      _operation(() async {
++        if (maxEvents < 1 || maxEvents > 1000000) {
++          throw ArgumentError('maxEvents must be 1..1000000');
++        }
++        final count = _integer((await _db.query(
++                'SELECT count(*) FROM _spc_events WHERE batch_id=?',
++                [_state.next]))
++            .rows
++            .single
++            .single);
++        if (count > BigInt.from(maxEvents)) {
++          throw ChangeBatchTooLarge(_state.next, count, maxEvents);
++        }
++        if (count == BigInt.zero) return ChangeBatch(baseCheckpoint, const []);
++        final sources = {
++          for (final source in await _feed._sources()) source.id: source
++        };
++        final rows = await _db.query(
++            'SELECT source_id,kind,old_key,new_key,columns_json FROM _spc_events WHERE batch_id=? ORDER BY id',
++            [_state.next]);
++        if (BigInt.from(rows.rows.length) != count) {
++          throw const ChangeLogCorrupt('Incomplete pending batch');
++        }
++        return ChangeBatch(_state.at(_state.next), [
++          ChangeTransaction(_state.next,
++              [for (final row in rows.rows) _feed._event(row, sources)])
++        ]);
++      });
++
+   Future<void> _finish() async {
+     if (_pending != null) await _pending;
+     _closed = true;
+@@ -72,7 +149,7 @@
+   Future<T> savepoint<T>(Future<T> Function(ChangeWriter child) action) async {
+     _available();
+     _busy = true;
+-    final child = ChangeWriter._(_db);
++    final child = ChangeWriter._(_feed, _state);
+     final name = '_spc_save_${_savepoint++}';
+     final result = () async {
+       await _db.execute('SAVEPOINT $name');

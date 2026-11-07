@@ -1,0 +1,238 @@
+{
+  "1000": {
+    "timings": {
+      "insert": {
+        "before": {
+          "median_us": 32418,
+          "min_us": 30476,
+          "max_us": 36512
+        },
+        "disabled": {
+          "median_us": 27292,
+          "min_us": 26468,
+          "max_us": 31861
+        },
+        "median_delta_percent": -15.812203097044852
+      },
+      "point_500": {
+        "before": {
+          "median_us": 2407,
+          "min_us": 2307,
+          "max_us": 2468
+        },
+        "disabled": {
+          "median_us": 2398,
+          "min_us": 2275,
+          "max_us": 3247
+        },
+        "median_delta_percent": -0.37390943082675765
+      },
+      "range_50": {
+        "before": {
+          "median_us": 21120,
+          "min_us": 20990,
+          "max_us": 21920
+        },
+        "disabled": {
+          "median_us": 21011,
+          "min_us": 19885,
+          "max_us": 23975
+        },
+        "median_delta_percent": -0.5160984848484818
+      },
+      "update_batch_200": {
+        "before": {
+          "median_us": 840005,
+          "min_us": 796742,
+          "max_us": 862879
+        },
+        "disabled": {
+          "median_us": 830014,
+          "min_us": 806963,
+          "max_us": 890448
+        },
+        "median_delta_percent": -1.1893976821566565
+      },
+      "update_auto_20": {
+        "before": {
+          "median_us": 86926,
+          "min_us": 82503,
+          "max_us": 91176
+        },
+        "disabled": {
+          "median_us": 82196,
+          "min_us": 79282,
+          "max_us": 89552
+        },
+        "median_delta_percent": -5.441409934887142
+      },
+      "search_index": {
+        "before": {
+          "median_us": 154713,
+          "min_us": 151312,
+          "max_us": 162546
+        },
+        "disabled": {
+          "median_us": 148245,
+          "min_us": 141429,
+          "max_us": 161677
+        },
+        "median_delta_percent": -4.180644160477787
+      },
+      "search_20": {
+        "before": {
+          "median_us": 43413,
+          "min_us": 42169,
+          "max_us": 60535
+        },
+        "disabled": {
+          "median_us": 42881,
+          "min_us": 41239,
+          "max_us": 46987
+        },
+        "median_delta_percent": -1.2254393845161582
+      },
+      "export": {
+        "before": {
+          "median_us": 9,
+          "min_us": 8,
+          "max_us": 12
+        },
+        "disabled": {
+          "median_us": 10,
+          "min_us": 8,
+          "max_us": 13
+        },
+        "median_delta_percent": 11.111111111111116
+      }
+    },
+    "image_bytes": 172032,
+    "all_image_hashes_equal": true,
+    "rss_medians": {
+      "before": 47906816,
+      "disabled": 49537024
+    },
+    "peak_rss_medians": {
+      "before": 54353920,
+      "disabled": 54566912
+    }
+  },
+  "10000": {
+    "timings": {
+      "insert": {
+        "before": {
+          "median_us": 626285,
+          "min_us": 609997,
+          "max_us": 644930
+        },
+        "disabled": {
+          "median_us": 593187,
+          "min_us": 572095,
+          "max_us": 641274
+        },
+        "median_delta_percent": -5.284814421549299
+      },
+      "point_500": {
+        "before": {
+          "median_us": 2993,
+          "min_us": 2840,
+          "max_us": 3361
+        },
+        "disabled": {
+          "median_us": 3089,
+          "min_us": 2915,
+          "max_us": 3393
+        },
+        "median_delta_percent": 3.207484129635807
+      },
+      "range_50": {
+        "before": {
+          "median_us": 22457,
+          "min_us": 21655,
+          "max_us": 23117
+        },
+        "disabled": {
+          "median_us": 22682,
+          "min_us": 22091,
+          "max_us": 23674
+        },
+        "median_delta_percent": 1.0019147704501963
+      },
+      "update_batch_200": {
+        "before": {
+          "median_us": 7994609,
+          "min_us": 7837524,
+          "max_us": 8204728
+        },
+        "disabled": {
+          "median_us": 7900916,
+          "min_us": 7814109,
+          "max_us": 8135375
+        },
+        "median_delta_percent": -1.171952249322017
+      },
+      "update_auto_20": {
+        "before": {
+          "median_us": 797233,
+          "min_us": 786635,
+          "max_us": 843636
+        },
+        "disabled": {
+          "median_us": 811784,
+          "min_us": 773787,
+          "max_us": 847662
+        },
+        "median_delta_percent": 1.8251878685403122
+      },
+      "search_index": {
+        "before": {
+          "median_us": 3433981,
+          "min_us": 3322510,
+          "max_us": 3592002
+        },
+        "disabled": {
+          "median_us": 3300206,
+          "min_us": 3197435,
+          "max_us": 3373983
+        },
+        "median_delta_percent": -3.8956243496979126
+      },
+      "search_20": {
+        "before": {
+          "median_us": 191990,
+          "min_us": 170528,
+          "max_us": 211985
+        },
+        "disabled": {
+          "median_us": 181991,
+          "min_us": 176978,
+          "max_us": 185279
+        },
+        "median_delta_percent": -5.208083754362203
+      },
+      "export": {
+        "before": {
+          "median_us": 815,
+          "min_us": 240,
+          "max_us": 1441
+        },
+        "disabled": {
+          "median_us": 322,
+          "min_us": 217,
+          "max_us": 2467
+        },
+        "median_delta_percent": -60.490797546012274
+      }
+    },
+    "image_bytes": 1155072,
+    "all_image_hashes_equal": true,
+    "rss_medians": {
+      "before": 63111168,
+      "disabled": 62578688
+    },
+    "peak_rss_medians": {
+      "before": 214786048,
+      "disabled": 215560192
+    }
+  }
+}

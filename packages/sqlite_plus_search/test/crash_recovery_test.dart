@@ -12,7 +12,7 @@ Future<MutableSqliteDatabase> open(FaultStorage data, FaultStorage log) async =>
 
 void main() {
   const learning = AdaptiveLearningConfig(enabled: true);
-  for (final scenario in ['rebuild', 'replay', 'feedback']) {
+  for (final scenario in ['rebuild', 'replay', 'feedback', 'fuzzy']) {
     for (final immediate in [false, true]) {
       for (final journalMode in ['delete', 'persist']) {
         test(
@@ -44,6 +44,9 @@ void main() {
                   table: 'docs', primaryKey: 'id', textColumns: ['body']);
             } else if (scenario == 'replay') {
               await search.search('new', table: 'docs');
+            } else if (scenario == 'fuzzy') {
+              await search.search('milkk',
+                  table: 'docs', fuzzy: const FuzzySearchConfig(learnAfter: 1));
             } else {
               await search.feedback.submit(
                   searchId: searchId!,
@@ -88,7 +91,33 @@ void main() {
             final restored = await SqlitePlusSearch.open(
                 database: recovered, learning: learning);
             await restored.verifyIndex(table: 'docs');
-            if (scenario == 'feedback') {
+            if (scenario == 'fuzzy') {
+              final exists = await recovered.query(
+                  "SELECT name FROM sqlite_schema WHERE name='_sps_fuzzy_learning'");
+              final observations = exists.rows.isEmpty
+                  ? 0
+                  : (await recovered
+                          .query('SELECT count(*) FROM _sps_fuzzy_learning'))
+                      .rows
+                      .single
+                      .single as BigInt;
+              final next = (await recovered
+                      .query('SELECT next_search FROM _sps_state WHERE id=1'))
+                  .rows
+                  .single
+                  .single;
+              expect(observations == BigInt.one, next == BigInt.two,
+                  reason:
+                      'observations and search counter must commit together');
+              expect(
+                  (await restored.search('milkk',
+                          table: 'docs',
+                          fuzzy: const FuzzySearchConfig(learnAfter: 1)))
+                      .hits
+                      .single
+                      .documentId,
+                  '1');
+            } else if (scenario == 'feedback') {
               final weights = (await restored.feedback
                   .exportModel(table: 'docs'))['weights'] as List<double>;
               final used = (await recovered.query(

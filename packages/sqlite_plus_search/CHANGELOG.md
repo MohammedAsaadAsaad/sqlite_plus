@@ -1,3 +1,22 @@
+## Unreleased
+
+- Add optional keyword SearchRankingPolicy: precision tiers, field coverage
+  weights, configurable precedence, pre-pagination ordering and explanations.
+  Reuse normalized derived text for one field, the source probe for many fields.
+
+- Add opt-in `FuzzySearchConfig.learnAfter`: persist counters and activate learned
+  candidate lists after repeated successful input; expose cache/write flags and
+  `recordFuzzyLearning` for pagination. Rebuild/replay invalidate entries.
+
+- Fix multiword fuzzy queries: require all normalized lexical tokens in the
+  exact phase, then AND per-token groups of OR alternatives. A brand-only match
+  no longer prevents correction of a misspelled product term. Non-fuzzy analyzer
+  expressions retain their previous behavior.
+
+- Add opt-in `FuzzySearchConfig` to keyword/hybrid queries: filtered-empty
+  fallback, bounded Levenshtein alternatives, existing BM25/RRF ranking.
+  Candidate discovery scans derived text; no persistent format change.
+
 ## 0.1.0-dev.7
 
 Depends on `sqlite_plus` ^0.1.12, `sqlite_plus_arabic` ^0.1.5, and `sqlite_plus_vec` ^0.1.5. The README opens `clinic.db` with `openFileImage`. The search behavior is the 0.1.0-dev.6 release.

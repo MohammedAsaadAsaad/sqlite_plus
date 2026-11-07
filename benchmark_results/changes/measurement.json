@@ -1,0 +1,14 @@
+{
+  "runtime_files_unchanged": 97,
+  "workload_sha256": "e29222cb8ccd76ccf55039d255e260957d9d91e40351861ee697fa27acf173f9",
+  "binaries": {
+    "before": {
+      "bytes": 10315328,
+      "sha256": "d214c183d547e4bba0a0ee64b9cdda777a67609b02cb24032102a1df29db4e2e"
+    },
+    "disabled": {
+      "bytes": 10404056,
+      "sha256": "59d64682f1b5319dcf971bd89b596d31b2c7d6d0602b10e235256d4323aae34a"
+    }
+  }
+}

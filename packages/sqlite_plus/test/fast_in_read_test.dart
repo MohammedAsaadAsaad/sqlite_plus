@@ -4,6 +4,47 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('same-rowid updates invalidate warmed row and value probes', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE items(id INTEGER PRIMARY KEY,name TEXT)');
+    await db.execute('CREATE TABLE edits(id INT)');
+    await db.execute(
+        'CREATE TRIGGER changed AFTER UPDATE ON items BEGIN INSERT INTO edits VALUES(new.id); END');
+    await db.execute("INSERT INTO items VALUES (1,'old'),(2,'other')");
+    await db.query('SELECT id,name FROM items WHERE id IN (?)', [1]);
+    await db.query('SELECT id,name FROM items WHERE name = ?', ['old']);
+    await db.execute("UPDATE items SET name='new' WHERE id=1");
+    expect(
+        (await db.query('SELECT id,name FROM items WHERE id IN (?)', [1])).rows,
+        [
+          [BigInt.one, 'new']
+        ]);
+    expect(
+        (await db.query('SELECT id,name FROM items WHERE name = ?', ['old']))
+            .rows,
+        isEmpty);
+    expect(
+        (await db.query('SELECT id,name FROM items WHERE name = ?', ['new']))
+            .rows,
+        [
+          [BigInt.one, 'new']
+        ]);
+    await db.execute('BEGIN');
+    await db.execute("UPDATE items SET name='temporary' WHERE id=1");
+    expect(
+        (await db.query('SELECT id,name FROM items WHERE id IN (?)', [1]))
+            .rows
+            .single[1],
+        'temporary');
+    await db.execute('ROLLBACK');
+    expect(
+        (await db.query('SELECT id,name FROM items WHERE id IN (?)', [1]))
+            .rows
+            .single[1],
+        'new');
+  });
+
   test('rowid IN matches the scan, including a bound column filter', () async {
     final database = await MutableSqliteDatabase.create();
     addTearDown(database.close);

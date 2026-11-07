@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased — built-in pagination
+
+- Integrated keyset `.page()` API with forward/backward portable cursors.
+- Multi-column ASC/DESC, NULL placement, key tie-breakers and query-scope validation.
+- Engine/read-only API and ORM filters, codecs, serialization and tracking.
+- No stored format migration, automatic indexes or change to skip/take behavior.
+
+## Unreleased
+
+- Read physical catalog roots across multi-page/overflow sqlite_schema so indexed
+  row appends do not rebuild an unrelated database merely because its schema grew.
+  Preserve the single-leaf-only truncation guard and cache roots per current image.
+
+- Reduce temporary image reconstruction for simple trigger reads to the ordinary
+  unindexed rowid tables they actually reference, including scalar/IN subqueries.
+  Complex sources, views, indexed tables and schema queries keep the full path.
+  No change-log hooks or new persistent schema are installed.
+
+- Export the built-in Unicode61Tokenizer for clients needing FTS-equivalent tokens.
+- Refresh rowid lookup entries and invalidate value probes after a prepared
+  same-rowid update; warmed reads must observe the current projected values.
+
 ## 0.1.12
 
 `openFileImage` reads a database file into the in-process connection. A missing file starts empty and is not written. An existing file is not replaced. A tokenizer or a module registers on that connection. `openDatabase` still keeps the file itself. The README examples use `openDatabase` for an ordinary table and `openFileImage` when the connection must stay in this process.

@@ -11,9 +11,26 @@ languages:
 
 The lists are assets. The first launch reads both files, builds the keyword
 index, and saves the database image in the app's private files directory. Later
-launches open that file and go straight to search.
+launches open that file and go straight to search. Saved catalogs from before
+this fuzzy-search example rebuild their derived index once and save it again;
+product rows are retained. The app records its search revision in `user_version`.
 
 ## Search
+
+Search first requires every normalized keyword. Only when there are no matches
+within the selected language does `FuzzySearchConfig` try nearby words (one
+insertion, deletion or substitution, minimum four code points). For example,
+`biscut` can find `biscuit`, and `حلييب` can find `حليب`. Exact hits covering every query word
+suppress fuzzy expansion; pagination does not change that decision.
+
+Rebuilding creates the ordinary search index. Fuzzy candidate discovery currently
+scans its derived text; this example does not create a dedicated fuzzy index.
+Repeated typo learning is enabled at five successful submissions. The sixth
+submission of the same typo/token combination can reuse saved alternatives.
+Page navigation does not train. Learning changes are saved with the catalog;
+index rebuilds clear them. Exact results still take precedence.
+
+Historical timings below measure exact keyword searches, not fuzzy fallback.
 
 Type a query and press **Search**, or press an example (`biscuit` or
 `بسكويت`). The language control limits hits with a fixed `language = ?`
@@ -61,15 +78,33 @@ flutter run -d linux
 The app uses the packages in this repository through path dependencies. Search
 stays inside the pure-Dart engine.
 
+## Precision ordering
+
+The example enables SearchRankingPolicy: exact normalized names first, then the
+query phrase, adjacent words in another order, scattered words, and corrected
+matches. It reuses normalized indexed names. Hit counts and exact-first fuzzy
+fallback are unchanged; no index rebuild is needed. Displayed scores remain BM25
+base scores, while precision takes priority in sorting. Historical timings above
+predate this policy. See the package benchmark report for measured overhead.
+
 ## Android package
 
-`dist/product-catalog-arm64-v8a.apk` is the release package built with
-`flutter build apk --release --target-platform android-arm64` on Linux. It is 19817049
-bytes, sha256
-`66e14efeebfd7e33a93c7f8c6b4cb504213deb1071a48e012958b2de6995f165`. The
-application id is `dev.sqliteplus.product_catalog`, versionName `0.5.2`,
-versionCode `7`, minSdk 24. Native code is `arm64-v8a` only. The release build
-is signed with the Android debug certificate. It was not installed on a device
-here. Version code 7 replaces the earlier packages. Opening a saved catalog
-from 0.5.1 rebuilds a multi-product index once, then saves that packed index.
-A later search of that file uses the packed leaves.
+`dist/product-catalog-0.5.6-arm64-v8a.apk` is the release package built with
+Flutter 3.47.9 / Dart 3.13.7 on Linux using
+`flutter build apk --release --target-platform android-arm64`.
+
+- Application id: `dev.sqliteplus.product_catalog`
+- Version: `0.5.6+11`; minSdk 24, targetSdk 36; ARM64 only.
+- Size: 20,013,657 bytes.
+- SHA-256: `1cc4536df3cdf30699e2e64ec8ba852a6c431644c0e0d7a83086e4dc5d5b1517`.
+- Debug-certificate signing, APK v2 signature verified with apksigner.
+
+Flutter analysis and all 17 example tests passed, including exact-first/fuzzy
+fallback, language filtering, saved-index rebuild and widget pagination after a
+typo query. The APK was not installed on a physical device here. Opening a saved
+catalog from an earlier app revision rebuilds the index once and saves it;
+product records are preserved. Historical timings above do not measure this APK.
+
+Multiword queries keep every word: `جودة بسكوت` falls back to
+`(جودة OR nearby) AND (بسكوت OR بسكويت OR nearby)` and excludes quality-only
+products. This query-only fix does not require another index rebuild.

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus/sqlite_plus_io.dart';
 import 'package:sqlite_plus_orm/sqlite_plus_orm.dart';
 
