@@ -1,6 +1,6 @@
 name: sqlite_plus_orm
 description: Typed queries, JSON documents, search, vectors, and migrations for sqlite_plus.
-version: 0.1.9
+version: 0.1.11
 repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus_orm
 issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
 topics:
@@ -13,7 +13,7 @@ environment:
 dependencies:
   sqlite_plus_reactive: ^0.0.1-dev.1
   sqlite_plus_changes: ^0.0.1-dev.1
-  sqlite_plus: ^0.1.9
+  sqlite_plus: ^0.1.12
 dev_dependencies:
   sqlite_plus_sync: ^0.0.1-dev.1
   test: ^1.25.0

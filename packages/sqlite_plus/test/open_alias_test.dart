@@ -8,6 +8,47 @@ import 'package:test/test.dart';
 int _textEncoding(Uint8List image) => ByteData.sublistView(image).getUint32(56);
 
 void main() {
+  test('openFileImage reads an existing image and does not replace it',
+      () async {
+    final directory =
+        Directory.systemTemp.createTempSync('sqlite-plus-open-image-');
+    try {
+      final created = await MutableSqliteDatabase.create();
+      await created.execute('CREATE TABLE note (title TEXT)');
+      await created.execute('INSERT INTO note VALUES (?)', ['Kept Garden']);
+      final path = '${directory.path}/shelf.db';
+      final bytes = created.exportImage();
+      await File(path).writeAsBytes(bytes);
+      await created.close();
+      final opened = await openFileImage(path);
+      addTearDown(opened.close);
+      await opened.execute('INSERT INTO note VALUES (?)', ['Other']);
+      expect((await opened.query('SELECT title FROM note')).rows, [
+        ['Kept Garden'],
+        ['Other'],
+      ]);
+      expect(await File(path).readAsBytes(), bytes);
+    } finally {
+      directory.deleteSync(recursive: true);
+    }
+  });
+
+  test('openFileImage starts empty when the file is missing', () async {
+    final directory =
+        Directory.systemTemp.createTempSync('sqlite-plus-open-image-');
+    try {
+      final path = '${directory.path}/missing.db';
+      final opened = await openFileImage(path);
+      final created = await MutableSqliteDatabase.create();
+      addTearDown(opened.close);
+      addTearDown(created.close);
+      expect(File(path).existsSync(), isFalse);
+      expect(opened.exportImage(), created.exportImage());
+    } finally {
+      directory.deleteSync(recursive: true);
+    }
+  });
+
   test('openInMemory inserts a row the same way create does', () async {
     final opened = await openInMemory();
     final created = await MutableSqliteDatabase.create();
@@ -115,8 +156,94 @@ void main() {
     await expectLater(
         openDatabase(path, directoryEntriesDurable: true, wal: true),
         throwsStateError);
+    expect(File('$path-wal').existsSync(), isFalse);
     await expectLater(
         DatabaseOwner.open(path, directoryEntriesDurable: true, wal: true),
         throwsStateError);
+    expect(File('$path-wal').existsSync(), isFalse);
+  });
+
+  test('openDatabase creates a missing file and reads it back', () async {
+    final path = '${directory.path}/shelf.db';
+    final opened = await openDatabase(path);
+    addTearDown(opened.close);
+    await opened.execute(
+        'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)');
+    await opened.execute('INSERT INTO note(title, body) VALUES (?, ?), (?, ?)',
+        ['Kept Garden', 'a garden kept in the margin', 'Other Atlas', 'south']);
+    expect(
+        (await opened.client.query(
+                'SELECT title FROM note WHERE title LIKE ? ORDER BY title',
+                ['%Garden%']))
+            .rows,
+        [
+          ['Kept Garden']
+        ]);
+    await opened.close();
+    expect(File(path).existsSync(), isTrue);
+    expect(File('$path-journal').existsSync(), isTrue);
+    final again = await openDatabase(path);
+    addTearDown(again.close);
+    expect((await again.client.query('SELECT title FROM note')).rows, [
+      ['Kept Garden'],
+      ['Other Atlas']
+    ]);
+  });
+
+  test('openDatabase creates a missing parent directory', () async {
+    final path = '${directory.path}/nested/shelf.db';
+    final opened = await openDatabase(path);
+    addTearDown(opened.close);
+    expect(File(path).existsSync(), isTrue);
+    expect(File('$path-journal').existsSync(), isTrue);
+    await opened.execute('CREATE TABLE note (title TEXT)');
+    await opened.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
+    await opened.close();
+    final again = await openDatabase(path);
+    addTearDown(again.close);
+    expect((await again.client.query('SELECT title FROM note')).rows, [
+      ['Kept Garden']
+    ]);
+  });
+
+  test('openDatabase keeps an existing database and adds a missing journal',
+      () async {
+    final path = '${directory.path}/kept.db';
+    File(path)
+        .writeAsBytesSync(File('test/fixtures/write.db').readAsBytesSync());
+    final before = File(path).readAsBytesSync();
+    expect(File('$path-journal').existsSync(), isFalse);
+    final opened = await openDatabase(path);
+    addTearDown(opened.close);
+    expect(File(path).readAsBytesSync(), before);
+    expect(File('$path-journal').existsSync(), isTrue);
+    expect(
+        (await opened.client.query('SELECT id FROM notes WHERE id=1')).rows, [
+      [BigInt.one]
+    ]);
+  });
+
+  test('openDatabase leaves an empty existing file untouched', () async {
+    final path = '${directory.path}/empty.db';
+    File(path).writeAsBytesSync(const []);
+    await expectLater(openDatabase(path), throwsStateError);
+    expect(File(path).lengthSync(), 0);
+  });
+
+  test('openDatabase writes nothing when durability is refused', () async {
+    final path = '${directory.path}/refused.db';
+    await expectLater(openDatabase(path, directoryEntriesDurable: false),
+        throwsUnsupportedError);
+    expect(File(path).existsSync(), isFalse);
+    expect(File('$path-journal').existsSync(), isFalse);
+  });
+
+  test('openDatabase does not create a missing wal database', () async {
+    final path = '${directory.path}/wal-missing.db';
+    await expectLater(
+        openDatabase(path, wal: true), throwsA(isA<FileSystemException>()));
+    expect(File(path).existsSync(), isFalse);
+    expect(File('$path-wal').existsSync(), isFalse);
+    expect(File('$path-journal').existsSync(), isFalse);
   });
 }

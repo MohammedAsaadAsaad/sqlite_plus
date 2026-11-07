@@ -6,15 +6,15 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
-  sqlite_plus_orm: ^0.1.9
-  sqlite_plus_arabic: ^0.1.3
-  sqlite_plus_vec: ^0.1.3
-  sqlite_plus_geo: ^0.1.2
-  sqlite_plus_search: ^0.1.0-dev.5
+  sqlite_plus: ^0.1.12
+  sqlite_plus_orm: ^0.1.11
+  sqlite_plus_arabic: ^0.1.5
+  sqlite_plus_vec: ^0.1.5
+  sqlite_plus_geo: ^0.1.4
+  sqlite_plus_search: ^0.1.0-dev.7
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 `sqlite_plus_arabic`, `sqlite_plus_vec`, `sqlite_plus_geo`, and `sqlite_plus_search` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer, `sqlite_plus_vec` for a vector column, `sqlite_plus_geo` for geometry, and `sqlite_plus_search` for an offline BM25 index. A package is loaded when the application imports it.
@@ -22,29 +22,29 @@ dev_dependencies:
 ## Query
 
 ```dart
-import 'dart:io';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final file = File('shelf.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
-await db.execute(
-  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+final db = await openDatabase(
+  'shelf.db',
+  version: 1,
+  onCreate: (db, version) async {
+    await db.execute(
+      'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+    );
+  },
 );
-await db.execute(
-  'INSERT INTO note(title, body) VALUES (?, ?)',
-  ['Kept Garden', 'a garden kept in the margin'],
-);
+await db.insert('note', {
+  'title': 'Kept Garden',
+  'body': 'a garden kept in the margin',
+});
 final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ?',
-  ['%Garden%'],
+  'note',
+  where: 'title LIKE ?',
+  whereArgs: ['%Garden%'],
 );
-await file.writeAsBytes(db.exportImage(), flush: true);
 ```
 
-`rows` is `Kept Garden`. The next launch opens the same `shelf.db`.
+The title is `Kept Garden`. A missing `shelf.db` is created. The next launch opens the same file. Integers come back as `BigInt`.
 
 ## Track a change
 

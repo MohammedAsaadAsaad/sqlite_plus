@@ -6,34 +6,37 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
+  sqlite_plus: ^0.1.12
 ```
 
 ## A table, a row, a query
 
 ```dart
-import 'dart:io';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final file = File('shelf.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
-await db.execute(
-  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+final db = await openDatabase(
+  'shelf.db',
+  version: 1,
+  onCreate: (db, version) async {
+    await db.execute(
+      'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+    );
+  },
 );
-await db.execute(
-  'INSERT INTO note(title, body) VALUES (?, ?), (?, ?)',
-  ['Kept Garden', 'a garden kept in the margin', 'Other Atlas', 'south'],
-);
+await db.insert('note', {
+  'title': 'Kept Garden',
+  'body': 'a garden kept in the margin',
+});
 final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ? ORDER BY title',
-  ['%Garden%'],
+  'note',
+  columns: ['title'],
+  where: 'title LIKE ?',
+  whereArgs: ['%Garden%'],
+  orderBy: 'title',
 );
 ```
 
-`rows` is `Kept Garden`. Integers come back as `BigInt`. Parameters are `?`, `:name`, `@name`, and `$name`.
+`rows` is one map whose title is `Kept Garden`. A missing `shelf.db` is created, and so is an empty `-journal`. An existing file is opened and left in place. Integers come back as `BigInt`. An `int` argument is stored as an integer. `insert`, `query`, `update`, `delete`, `transaction`, and `batch` are on this same connection. SQL still runs through `execute` and `rawQuery`.
 
 ![The row is written to shelf.db, the handle closes, and the next open reads the same title.](doc/shelf-file.png)
 
@@ -47,7 +50,7 @@ await db.execute(
   'INSERT INTO book(card) VALUES (json_object(?, ?, ?, ?))',
   ['title', 'Kept Garden', 'pages', 320],
 );
-final pages = await db.query(
+final pages = await db.rawQuery(
   'SELECT json_extract(card, ?) FROM book WHERE json_extract(card, ?) = ?',
   [r'$.pages', r'$.title', 'Kept Garden'],
 );
@@ -63,7 +66,7 @@ await db.execute(
   'INSERT INTO book_text(title, body) VALUES (?, ?)',
   ['Kept Garden', 'a garden kept in the margin'],
 );
-final hit = await db.query(
+final hit = await db.rawQuery(
   "SELECT highlight(book_text, 1, '[', ']') FROM book_text WHERE book_text MATCH ?",
   ['kept'],
 );
@@ -78,7 +81,7 @@ await db.execute(
   'CREATE VIRTUAL TABLE shelf USING rtree(id, minX, maxX, minY, maxY)',
 );
 await db.execute('INSERT INTO shelf VALUES (1, 0, 1, 0, 1)');
-final place = await db.query(
+final place = await db.rawQuery(
   'SELECT id FROM shelf WHERE minX <= 1 AND maxX >= 0 AND minY <= 1 AND maxY >= 0',
 );
 ```
@@ -88,37 +91,35 @@ final place = await db.query(
 ## A function, a rollback, a reopen
 
 ```dart
-db.functions.registerScalar(
+import 'package:sqlite_plus/sqlite_plus.dart';
+
+final memory = await openInMemory();
+memory.functions.registerScalar(
   'twice',
   1,
   (args) => args.single == null ? null : (args.single as BigInt) * BigInt.two,
 );
-final doubled = await db.query('SELECT twice(?)', [21]);
+final doubled = await memory.query('SELECT twice(?)', [21]);
 
-await db.execute('BEGIN');
-await db.execute(
+await memory.execute(
+  'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT, body TEXT)',
+);
+await memory.execute('BEGIN');
+await memory.execute(
   'INSERT INTO note(title, body) VALUES (?, ?)',
   ['Rolled Back', 'gone'],
 );
-await db.execute('ROLLBACK');
+await memory.execute('ROLLBACK');
 
-await db.execute('PRAGMA user_version = 7');
-final again = await MutableSqliteDatabase.fromImage(db.exportImage());
+await memory.execute('PRAGMA user_version = 7');
+final again = await MutableSqliteDatabase.fromImage(memory.exportImage());
 ```
 
-`doubled` is `42`. The rolled-back row is gone. `again` opens the same image at `user_version` 7.
+`doubled` is `42`. The rolled-back row is gone. `again` opens the same image at `user_version` 7. Scalar functions and `exportImage` belong to this in-memory connection. The file opened above stays on disk.
 
 ## A file
 
-```dart
-import 'package:sqlite_plus/sqlite_plus_io.dart';
-
-final owner = await openDatabase(path, directoryEntriesDurable: true);
-final version = await owner.client.query('PRAGMA user_version');
-await owner.close();
-```
-
-`openDatabase` is `DatabaseOwner.open`. It needs `dart:io`. The file and its journal sidecar already exist. A second open of the same path fails while the first owner is open.
+`openDatabase` needs `dart:io`. It writes a missing database as an empty image and a missing `-journal` as an empty file. An existing database file is not replaced. `openFileImage` reads a file into this process, or starts empty when the file is missing, and does not write until `exportImage`. A tokenizer or a module registers on that connection. `version` runs `onCreate`, `onUpgrade`, or `onDowngrade` and stores that number. `insert`, `query`, `update`, `delete`, `transaction`, and `batch` use that connection. `query` names a table. `rawQuery` runs SQL and returns maps. `directoryEntriesDurable: false` writes nothing and throws. That flag is a caller attestation, not a power-loss result. `wal: true` does not create a `-wal` file. A second open of the same path fails while the first owner is open.
 
 ## SQLCipher 4
 
@@ -206,41 +207,41 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.9` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.9` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.3` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.2` | <https://pub.dev/packages/sqlite_plus_geo> |
+| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.4` | <https://pub.dev/packages/sqlite_plus_geo> |
 
 ### sqlite_plus
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
+  sqlite_plus: ^0.1.12
 ```
 
 ```dart
-import 'dart:io';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
-
-final file = File('shelf.db');
-final db = file.existsSync()
-    ? await MutableSqliteDatabase.fromImage(await file.readAsBytes())
-    : await MutableSqliteDatabase.create();
-await db.execute(
-  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
+final db = await openDatabase(
+  'shelf.db',
+  version: 1,
+  onCreate: (db, version) async {
+    await db.execute(
+      'CREATE TABLE note (id INTEGER PRIMARY KEY, title TEXT)',
+    );
+  },
 );
-await db.execute('INSERT INTO note(title) VALUES (?)', ['Kept Garden']);
-await file.writeAsBytes(db.exportImage(), flush: true);
+await db.insert('note', {'title': 'Kept Garden'});
 final rows = await db.query(
-  'SELECT title FROM note WHERE title LIKE ?',
-  ['%Garden%'],
+  'note',
+  where: 'title LIKE ?',
+  whereArgs: ['%Garden%'],
 );
 ```
 
-`rows` is `Kept Garden`. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
+The title is `Kept Garden`. A missing `shelf.db` is created. Integers come back as `BigInt`. There is no FFI and no native SQLite in this engine.
 
 ![The row is written to shelf.db, the handle closes, and the next open reads the same title.](doc/shelf-file.png)
 
@@ -248,7 +249,7 @@ final rows = await db.query(
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.9
+  sqlite_plus_orm: ^0.1.11
 ```
 
 ```dart
@@ -277,7 +278,7 @@ final BigInt? rowid;
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 ```sh
@@ -290,7 +291,7 @@ From the package root, that command writes a part for every public `@DbEntity` u
 
 ```yaml
 dependencies:
-  sqlite_plus_arabic: ^0.1.3
+  sqlite_plus_arabic: ^0.1.5
 ```
 
 ```dart
@@ -308,7 +309,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_vec: ^0.1.3
+  sqlite_plus_vec: ^0.1.5
 ```
 
 ```dart
@@ -326,7 +327,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_geo: ^0.1.2
+  sqlite_plus_geo: ^0.1.4
 ```
 
 ```dart
@@ -398,13 +399,13 @@ An application loads a package when it imports it. Arabic and vec stay out of a 
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.9
-  sqlite_plus_orm: ^0.1.9
-  sqlite_plus_arabic: ^0.1.3
-  sqlite_plus_vec: ^0.1.3
+  sqlite_plus: ^0.1.12
+  sqlite_plus_orm: ^0.1.11
+  sqlite_plus_arabic: ^0.1.5
+  sqlite_plus_vec: ^0.1.5
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.9
+  sqlite_plus_generator: ^0.1.11
 ```
 
 ### A reading card

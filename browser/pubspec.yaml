@@ -1,7 +1,7 @@
 name: sqlite_plus_browser
 description: Browse, query, and edit a sqlite_plus database on desktop and mobile.
 publish_to: none
-version: 1.0.0+20
+version: 1.0.0+22
 
 environment:
   sdk: '>=3.6.0 <4.0.0'

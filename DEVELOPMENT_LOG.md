@@ -1,5 +1,108 @@
 # Development log
 
+## 2026-11-06 — README opens use openDatabase and openFileImage
+
+- `openFileImage` in `sqlite_plus_io.dart` reads an existing database image and
+  does not replace it. A missing file starts empty and is not created. The
+  caller writes `exportImage`. A tokenizer or a module registers on that
+  connection. `openDatabase` still creates a missing file and keeps it.
+- Package READMEs no longer open a file by testing `existsSync` and then
+  calling `fromImage` or `create`. Ordinary tables use `openDatabase`. Arabic,
+  vec, geo, search, and the generator's registered connection use
+  `openFileImage`.
+- On Linux x64, Dart 3.13.7, `dart analyze --fatal-infos` reported no issues
+  for `sqlite_plus_io.dart` and `open_alias_test.dart`, and that test file
+  passed 15 tests. The full engine suite was not re-run.
+- pub.dev latest: `sqlite_plus` 0.1.12, `sqlite_plus_orm` 0.1.11,
+  `sqlite_plus_generator` 0.1.11, `sqlite_plus_arabic` 0.1.5,
+  `sqlite_plus_vec` 0.1.5, `sqlite_plus_geo` 0.1.4, and
+  `sqlite_plus_search` 0.1.0-dev.7. The score cards for these versions were
+  not read after the upload.
+
+## 2026-11-06 — Published the table API and the packages that follow it
+
+- pub.dev latest: `sqlite_plus` 0.1.11, `sqlite_plus_orm` 0.1.10,
+  `sqlite_plus_generator` 0.1.10, `sqlite_plus_arabic` 0.1.4,
+  `sqlite_plus_vec` 0.1.4, `sqlite_plus_geo` 0.1.3, and
+  `sqlite_plus_search` 0.1.0-dev.6. The ORM, generator, Arabic, vec, geo, and
+  search releases keep their previous behavior and raise the dependency floor
+  to these numbers. Engine `0.1.10` was not uploaded as its own version; that
+  file-creation behavior is inside `0.1.11`. The pub.dev score cards for these
+  versions were not read after the upload.
+
+## 2026-11-06 — Familiar table calls on openDatabase
+
+- `openDatabase` in `sqlite_plus_io.dart` takes `version`, `onCreate`,
+  `onUpgrade`, `onDowngrade`, `onConfigure`, and `onOpen`. The schema change
+  and the new `user_version` commit in one transaction. A failed `onCreate`
+  leaves the stored version at 0.
+- `DatabaseOwner` now has `insert`, `query`, `update`, `delete`, `rawQuery`,
+  `rawInsert`, `rawUpdate`, `rawDelete`, `transaction`, and `batch`. `query`
+  reads a table into maps. `rawQuery` runs SQL. Integers in those maps and
+  insert ids are `BigInt`. An `int` argument is stored as an integer. A
+  `List<int>` argument is stored as a blob. `client.query` still returns a
+  `QueryResult`. There is no separate library.
+- `packages/sqlite_plus/test/app_database_test.dart` covers a file round trip,
+  a rolled-back transaction, a nested savepoint, a batch, conflict algorithms,
+  an empty insert, a limited page, a quoted table name, version migration, a
+  refused directory, and a closed connection. On Linux x64, Dart 3.13.7,
+  `dart analyze --fatal-infos` reported no issues and `dart test` passed
+  10631 tests.
+
+## 2026-11-06 — openDatabase creates a missing file
+
+- `openDatabase` writes an empty database image when the file is missing, and
+  an empty `-journal` when that sidecar is missing. An existing database file
+  is not replaced, including a zero-length file. `directoryEntriesDurable`
+  defaults to true. Passing false writes nothing and throws
+  `UnsupportedError`. `wal: true` does not create a database or a `-wal`
+  file. `DatabaseOwner.query` and `execute` forward to the client.
+- `packages/sqlite_plus/test/open_alias_test.dart` covers a new file, a
+  missing parent directory, an existing fixture, a missing journal, an empty
+  file, a refused attestation, and a missing WAL path. On Linux x64, Dart
+  3.13.7, `dart analyze --fatal-infos` reported no issues and `dart test`
+  passed 10623 tests. This is not a power-loss result.
+  `directoryEntriesDurable` remains a caller attestation.
+
+## 2026-11-06 — Course answers show orange, then green or red
+
+- A selected training answer is orange, with an orange letter and a dot, before
+  it is checked. Check answer turns a right choice green and a wrong choice
+  red, and also marks the right choice green. `browser/` `flutter analyze
+  --fatal-infos` reported no issues and `flutter test` passed 59 tests.
+- `flutter build apk --release --target-platform android-arm64` at 15:43
+  Asia/Hebron (UTC+2) wrote
+  `browser/dist/sqlite-plus-browser-arm64-v8a.apk`, 21381387 bytes, sha256
+  `4c21deb88a1c0329e8d1783b5ec377028b159d7488ec0281d0076f7dca82ba04`.
+  `aapt dump badging` reports versionName `1.0.0`, versionCode `22`,
+  minSdk `24`, targetSdk `36`, compileSdk `36`, application-label
+  `SQLite Browser`, and native-code `arm64-v8a`. The release build is signed
+  with the Android debug certificate. The package was not installed on a
+  device or an emulator.
+
+## 2026-11-06 — Course chapters in the browser
+
+- Learn SQL no longer opens with the introductory paragraph. Six chapters
+  list their lessons, each chapter with its own icon. A lesson is a sequence
+  of parts. Each part explains one idea, shows the example through `formatSql`
+  and the SQL editor colors, and asks one question before the next part.
+  Lesson questions follow the parts. Chapter questions open after every lesson
+  in that chapter is passed, and they open the next chapter. The writing step
+  is the SQL editor, so suggestions follow the tables in that step. There are
+  sixteen lessons. An older `course.json` without version 2 is ignored.
+- `browser/`: Flutter 3.47.9, Dart 3.13.7, Linux x64. `flutter analyze
+  --fatal-infos` reported no issues. `flutter test` passed 59 tests on 6
+  November 2026.
+- `flutter build apk --release --target-platform android-arm64` at 15:39
+  Asia/Hebron (UTC+2) wrote
+  `browser/dist/sqlite-plus-browser-arm64-v8a.apk`, 21381319 bytes, sha256
+  `b75777b4d4f20ce4f7782677c531bdc3c1781aea8d09e6552371ce3d0969bde4`.
+  `aapt dump badging` reports package `dev.sqliteplus.sqlite_plus_browser`,
+  versionName `1.0.0`, versionCode `21`, minSdk `24`, targetSdk `36`,
+  compileSdk `36`, application-label `SQLite Browser`, and native-code
+  `arm64-v8a`. The release build is signed with the Android debug certificate.
+  The package was not installed on a device or an emulator.
+
 ## 2026-11-06 — Explanations lead with the package
 
 - Each package README opens on its own file example. The catalog page and the

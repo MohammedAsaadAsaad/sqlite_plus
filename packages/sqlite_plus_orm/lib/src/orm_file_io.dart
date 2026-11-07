@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus/sqlite_plus_io.dart';
 
 import 'orm_file_handle.dart';

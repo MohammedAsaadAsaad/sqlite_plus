@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.12
+
+`sqlite_plus` is `0.1.12`. An ordinary file opens with `openDatabase`. A connection that registers a tokenizer or a module opens with `openFileImage`, which reads the file in this process and writes it back through `exportImage`. `sqlite_plus_orm` and `sqlite_plus_generator` are `0.1.11`. `sqlite_plus_arabic` and `sqlite_plus_vec` are `0.1.5`. `sqlite_plus_geo` is `0.1.4`. `sqlite_plus_search` is `0.1.0-dev.7`. These versions are uploaded to pub.dev.
+
+## 0.1.11
+
+`sqlite_plus` is `0.1.11`. `openDatabase` grows the table calls Flutter applications already use: `insert`, `query`, `update`, `delete`, `transaction`, and `batch`, plus `version` and `onCreate`. Integers in the maps are `BigInt`. `sqlite_plus_orm` and `sqlite_plus_generator` are `0.1.10`. `sqlite_plus_arabic` and `sqlite_plus_vec` are `0.1.4`. `sqlite_plus_geo` is `0.1.3`. `sqlite_plus_search` is `0.1.0-dev.6`. Each of those depends on these numbers. These versions are uploaded to pub.dev. The `0.1.10` engine notes below shipped inside `0.1.11` and were not uploaded as their own version.
+
+## 0.1.10
+
+`sqlite_plus` is `0.1.10`. `openDatabase` creates a missing database file and a missing `-journal`. An existing database file is not replaced. This version is not uploaded.
+
 ## 0.1.9
 
 `sqlite_plus`, `sqlite_plus_orm`, and `sqlite_plus_generator` are `0.1.9`. `sqlite_plus_arabic` and `sqlite_plus_vec` are `0.1.3`. `sqlite_plus_geo` is `0.1.2`. `sqlite_plus_search` is `0.1.0-dev.5`. Each package README opens on that package. The catalog page is an application at the end. These versions are uploaded to pub.dev.

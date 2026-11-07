@@ -17,8 +17,8 @@ void main() {
       final owner = await openDatabase(path, directoryEntriesDurable: true);
       String token;
       try {
-        final first = await owner.client
-            .page(table: 'items', keyColumns: ['id'], size: 1);
+        final first =
+            await owner.page(table: 'items', keyColumns: ['id'], size: 1);
         token = first.nextCursor!.encode();
         await owner.client.execute('BEGIN');
         final second = await owner.client.page(
