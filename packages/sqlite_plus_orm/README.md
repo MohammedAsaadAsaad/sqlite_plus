@@ -558,3 +558,27 @@ await geo.createSpatialTable(
 ```
 
 X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
+
+
+## Reactive queries (unpublished workspace feature)
+
+Typed queries now expose `.watch()`, `.watchFirst()`, `.watchCount()` and
+`.watchAny()`, including filters, ordering and pagination. Generated mappings
+need no regeneration. Watch snapshots are independent, untracked objects and do
+not overwrite unsaved tracked changes. Ordinary ORM saves invalidate after
+successful commit; Changes and Sync observation is an optional context adapter.
+See [Reactive usage and limits](../sqlite_plus_reactive/README.md) and the
+[complete example](example/reactive.dart).
+
+The workspace ORM now depends on unpublished `sqlite_plus_reactive` and
+`sqlite_plus_changes`. Use matching local packages; this dependency set is not a
+published 0.1.9 installation recipe and must not be published independently.
+
+
+## Built-in cursor pagination (unreleased workspace)
+
+Use `.page(size: 30, after: cursor)` or `before:` for keyset navigation. ORM
+infers primary-key tie-breakers, preserves filters/tracking and supports
+`asNoTracking()`. The direct engine API accepts a table, key columns, ordering
+and bound filter. No extra package or stored cursor index.
+See [usage, consistency and performance limits](../sqlite_plus/doc/PAGINATION.md).

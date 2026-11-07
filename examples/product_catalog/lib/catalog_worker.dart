@@ -157,11 +157,13 @@ Future<void> _handle(_SessionHolder holder, Object? message) async {
           scope: SearchScope.values.byName(request['scope'] as String),
           limit: request['limit'] as int? ?? catalogPageSize,
           offset: request['offset'] as int? ?? 0,
+          learn: request['learn'] == true,
         );
         reply.send({
           'ok': true,
           'total': run.total,
           'searchUs': run.searchElapsed.inMicroseconds,
+          'learningChanged': holder.session.lastFuzzyLearningChanged,
           'lookupUs': run.lookupElapsed.inMicroseconds,
           'matches': [
             for (final match in run.matches)

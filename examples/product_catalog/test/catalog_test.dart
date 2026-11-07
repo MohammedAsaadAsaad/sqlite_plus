@@ -259,6 +259,146 @@ void main() {
     expect(hits.matches.single.name, 'لبن قديم');
   });
 
+  test(
+    'exact hits suppress nearby words; typos fall back within the language',
+    () async {
+      final session = CatalogSession();
+      addTearDown(session.close);
+      await session.insert(const [
+        ProductLine(
+          language: 'English',
+          sourceLine: 1,
+          name: 'biscuit vanilla',
+        ),
+        ProductLine(
+          language: 'English',
+          sourceLine: 2,
+          name: 'biscuits chocolate',
+        ),
+        ProductLine(language: 'Arabic', sourceLine: 1, name: 'حليب طازج'),
+      ]);
+      await session.buildIndex();
+      final exact = await session.searchProducts('biscuit');
+      expect(exact.matches.map((hit) => hit.name), ['biscuit vanilla']);
+      final nearby = await session.searchProducts('biscut');
+      expect(nearby.matches.map((hit) => hit.name), ['biscuit vanilla']);
+      expect(
+        (await session.searchProducts('حلييب')).matches.single.name,
+        'حليب طازج',
+      );
+      expect(
+        (await session.searchProducts(
+          'biscut',
+          scope: SearchScope.arabic,
+        )).total,
+        0,
+      );
+      expect((await session.searchProducts('zzzzzzzz')).total, 0);
+      final past = await session.searchProducts('biscut', offset: 20);
+      expect(past.matches, isEmpty);
+      expect(past.total, 1);
+    },
+  );
+
+  test(
+    'brand alone cannot suppress correction of a misspelled product',
+    () async {
+      final session = CatalogSession();
+      addTearDown(session.close);
+      await session.insert(const [
+        ProductLine(
+          language: 'Arabic',
+          sourceLine: 1,
+          name: 'بسكويت جودة فانيليا',
+        ),
+        ProductLine(language: 'Arabic', sourceLine: 2, name: 'سكر جودة ممتاز'),
+        ProductLine(
+          language: 'Arabic',
+          sourceLine: 3,
+          name: 'بسكويت شركة ثانية',
+        ),
+      ]);
+      await session.buildIndex();
+      for (final query in ['جودة بسكوت', 'بسكوت جودة', 'جودة بسكويت']) {
+        final results = await session.searchProducts(query);
+        expect(results.total, 1);
+        expect(results.matches.single.name, 'بسكويت جودة فانيليا');
+      }
+    },
+  );
+
+  test(
+    'five typo searches persist learned alternatives in the catalog image',
+    () async {
+      final session = CatalogSession();
+      addTearDown(session.close);
+      await session.insert(const [
+        ProductLine(language: 'Arabic', sourceLine: 1, name: 'بسكويت جودة'),
+      ]);
+      await session.buildIndex();
+      for (var i = 0; i < 5; i++) {
+        expect((await session.searchProducts('جودة بسكوت')).total, 1);
+        expect(session.lastFuzzyLearningChanged, true);
+      }
+      await session.searchProducts('جودة بسكوت');
+      expect(session.lastFuzzyLearningChanged, false);
+      final restored = CatalogSession();
+      addTearDown(restored.close);
+      await restored.openImage(session.exportImage());
+      expect((await restored.searchProducts('جودة بسكوت')).total, 1);
+      expect(restored.lastFuzzyLearningChanged, false);
+    },
+  );
+
+  test('precision prioritizes exact names then phrase adjacency and scattered words', () async {
+    final session = CatalogSession();
+    addTearDown(session.close);
+    await session.insert(const [
+      ProductLine(language: 'English', sourceLine: 1, name: 'red fresh apple'),
+      ProductLine(language: 'English', sourceLine: 2, name: 'apple red'),
+      ProductLine(
+        language: 'English',
+        sourceLine: 3,
+        name: 'best red apple now',
+      ),
+      ProductLine(language: 'English', sourceLine: 4, name: 'red apple'),
+    ]);
+    await session.buildIndex();
+    expect(
+      (await session.searchProducts('red apple')).matches.map((m) => m.name),
+      ['red apple', 'best red apple now', 'apple red', 'red fresh apple'],
+    );
+  });
+
+  test('old saved catalog rebuilds once and keeps all products', () async {
+    final original = CatalogSession();
+    addTearDown(original.close);
+    await original.insert(const [
+      ProductLine(language: 'English', sourceLine: 1, name: 'biscuit vanilla'),
+    ]);
+    await original.buildIndex();
+    await original.database!.execute('PRAGMA user_version = 0');
+
+    final restored = CatalogSession();
+    addTearDown(restored.close);
+    await restored.openImage(original.exportImage());
+    expect(restored.productCount, 1);
+    expect(restored.indexed, isFalse);
+    await restored.buildIndex();
+    expect(
+      (await restored.searchProducts('biscut')).matches.single.name,
+      'biscuit vanilla',
+    );
+
+    final current = CatalogSession();
+    addTearDown(current.close);
+    await current.openImage(restored.exportImage());
+    expect(current.indexed, isTrue);
+    expect(current.productCount, 1);
+    expect((await current.searchProducts('biscut')).total, 1);
+    expect(current.buildIndex(), throwsStateError);
+  });
+
   testWidgets('the catalog is prepared once and search stays on screen', (
     tester,
   ) async {
@@ -334,7 +474,7 @@ void main() {
     expect(find.byKey(const Key('page-next')), findsNothing);
   });
 
-  testWidgets('search shows its time and moves through result pages', (
+  testWidgets('typo fallback shows its time and moves through result pages', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(800, 1400);
@@ -362,7 +502,7 @@ void main() {
       ),
     );
     await _waitForText(tester, 'Ready');
-    await tester.enterText(find.byKey(const Key('search-field')), 'milk');
+    await tester.enterText(find.byKey(const Key('search-field')), 'milkk');
     await tester.pump();
     await _tap(tester, const Key('search-button'));
     await _waitForText(tester, '1 / 2');

@@ -10,10 +10,13 @@ import 'package:sqlite_plus_vec/sqlite_plus_vec.dart';
 import 'analyzer.dart';
 import 'embedding.dart';
 import 'ranking.dart';
+import 'fuzzy.dart';
 
 part 'learning.dart';
 part 'integrity.dart';
 part 'synchronization.dart';
+part 'fuzzy_learning.dart';
+part 'precision.dart';
 
 /// Retrieval strategy. Semantic and hybrid require a local embedding provider.
 enum SearchMode { keyword, semantic, hybrid }
@@ -35,11 +38,18 @@ final class SearchFilter {
 
 final class SearchHit {
   const SearchHit(
-      {required this.documentId, required this.score, this.explanation});
+      {required this.documentId,
+      required this.score,
+      this.explanation,
+      this.matchQuality,
+      this.fieldScore});
   final Map<String, double>? explanation;
   final String documentId;
+  final MatchQuality? matchQuality;
+  final double? fieldScore;
 
-  /// Larger scores rank first. Keyword scores negate the engine's BM25 value.
+  /// Base relevance score (negated BM25 for keywords). Optional precision
+  /// ordering compares match quality and field coverage before this score.
   final double score;
 }
 
@@ -47,11 +57,15 @@ final class SearchResults {
   SearchResults(
       {required this.searchId,
       required List<SearchHit> hits,
-      required this.total})
+      required this.total,
+      this.fuzzyCacheUsed = false,
+      this.fuzzyLearningChanged = false})
       : hits = List.unmodifiable(hits);
   final String searchId;
   final List<SearchHit> hits;
   final int total;
+  final bool fuzzyCacheUsed;
+  final bool fuzzyLearningChanged;
 }
 
 /// Search indexes on an application-owned database.
@@ -211,6 +225,7 @@ final class SqlitePlusSearch {
           }
           final meta = await _metadata(table);
           final base = '_sps_${meta.id}';
+          await _clearFuzzyLearning(meta.id);
           await database.execute(
               'DELETE FROM _sps_feedback WHERE collection_id=?',
               [BigInt.parse(meta.id)]);
@@ -307,7 +322,9 @@ final class SqlitePlusSearch {
   /// Source keys that still exist. The probe uses the key column itself so an
   /// integer primary key stays a point lookup.
   Future<Set<String>> _liveSourceKeys(String table, String key, bool integerKey,
-      List<String> keys, SearchFilter? filter) async {
+      List<String> keys, SearchFilter? filter,
+      {List<String> textColumns = const [],
+      Map<String, List<Object?>>? textRows}) async {
     if (keys.isEmpty) return const {};
     final parameters = <Object?>[
       for (final value in keys)
@@ -319,10 +336,15 @@ final class SqlitePlusSearch {
       ...?filter?.parameters
     ];
     final rows = await database.query(
-        'SELECT ${_quote(key)} FROM ${_quote(table)} WHERE ${_quote(key)} IN '
+        'SELECT ${_quote(key)}${textColumns.isEmpty ? '' : ',${textColumns.map(_quote).join(',')}'} FROM ${_quote(table)} WHERE ${_quote(key)} IN '
         '(${List.filled(keys.length, '?').join(',')})'
         '${filter == null ? '' : ' AND (${filter.sql})'}',
         parameters);
+    if (textRows != null) {
+      for (final row in rows.rows) {
+        textRows[row[0].toString()] = row.sublist(1);
+      }
+    }
     return {for (final row in rows.rows) row[0].toString()};
   }
 
@@ -375,13 +397,25 @@ final class SqlitePlusSearch {
           int limit = 10,
           int offset = 0,
           SearchFilter? filter,
-          bool explain = false}) =>
+          bool explain = false,
+          FuzzySearchConfig? fuzzy,
+          bool recordFuzzyLearning = true,
+          SearchRankingPolicy? ranking}) =>
       _run(() async {
         _identifier(table);
+        fuzzy?.validate();
+        if (fuzzy != null && mode == SearchMode.semantic) {
+          throw ArgumentError('Fuzzy search requires keyword or hybrid mode');
+        }
         if (limit < 1 || limit > 10000 || offset < 0) {
           throw ArgumentError('Invalid pagination');
         }
         final meta = await _metadata(table);
+        ranking?.validate(meta.columns);
+        if (ranking != null && mode != SearchMode.keyword) {
+          throw ArgumentError(
+              'Precision ranking currently requires keyword mode');
+        }
         if (meta.schema != await _schema(table) ||
             meta.analyzer != analyzer.signature) {
           throw StateError(
@@ -400,6 +434,9 @@ final class SqlitePlusSearch {
           throw StateError(
               'Embedding model changed; explicitly rebuild the index');
         }
+        final useDerivedPrecision = ranking != null && meta.columns.length == 1;
+        final sourceText = <String, List<Object?>>{};
+        Map<String, List<String>>? precisionAlternatives;
         final keyword = <SearchHit>[];
         final semantic = <SearchHit>[];
         // A correlated EXISTS against the source table scans once per key.
@@ -430,12 +467,12 @@ final class SqlitePlusSearch {
           return keyMap = ids;
         }
 
-        if (query.trim().isNotEmpty && mode != SearchMode.semantic) {
+        Future<void> loadKeyword(String expression) async {
           // MATCH stays on the FTS table alone. Joining that virtual table
           // currently returns no rows, so eligible ids are resolved afterwards.
           final matched = await database.query(
               'SELECT rowid, bm25(${base}_fts) FROM ${base}_fts WHERE ${base}_fts MATCH ?',
-              [analyzer.matchExpression(query)]);
+              [expression]);
           final scores = <BigInt, double>{};
           for (final row in matched.rows) {
             final id = row[0];
@@ -452,12 +489,13 @@ final class SqlitePlusSearch {
             // Resolve every hit in one primary-key probe. A per-hit scan of
             // the source table is what made a few hundred matches stall.
             final mapped = await database.query(
-                'SELECT id, source_key FROM ${base}_keys WHERE id IN ($placeholders)',
+                'SELECT id, source_key${useDerivedPrecision ? ',body' : ''} FROM ${base}_keys WHERE id IN ($placeholders)',
                 ids);
             if (mapped.rows.length != ids.length) {
               throw StateError('Search mapping is corrupt; rebuild index');
             }
             final byKey = <String, BigInt>{};
+            final normalizedText = <String, String>{};
             for (final row in mapped.rows) {
               final id = row[0];
               final key = row[1];
@@ -465,13 +503,78 @@ final class SqlitePlusSearch {
                 throw StateError('Search mapping is corrupt; rebuild index');
               }
               byKey[key] = id;
+              if (useDerivedPrecision) {
+                if (row[2] is! String) {
+                  throw StateError('Corrupt search text; rebuild index');
+                }
+                normalizedText[key] = row[2] as String;
+              }
             }
             final liveKeys = await _liveSourceKeys(
-                table, meta.key, integerKey, byKey.keys.toList(), filter);
+                table, meta.key, integerKey, byKey.keys.toList(), filter,
+                textColumns: ranking == null || useDerivedPrecision
+                    ? const []
+                    : meta.columns,
+                textRows:
+                    ranking == null || useDerivedPrecision ? null : sourceText);
             for (final key in liveKeys) {
               final id = byKey[key];
               if (id == null) continue;
+              if (useDerivedPrecision) sourceText[key] = [normalizedText[key]!];
               keyword.add(SearchHit(documentId: key, score: scores[id]!));
+            }
+          }
+        }
+
+        var fuzzyCacheUsed = false;
+        Map<String, List<String>>? learnedAlternatives;
+        if (query.trim().isNotEmpty && mode != SearchMode.semantic) {
+          final exactExpression = fuzzy == null
+              ? analyzer.matchExpression(query)
+              : fuzzyExactExpression(analyzer.normalize(query));
+          if (exactExpression.isNotEmpty) await loadKeyword(exactExpression);
+          if (keyword.isEmpty && fuzzy != null) {
+            final normalized = analyzer.normalize(query);
+            final cached = fuzzy.learnAfter == null
+                ? <String, List<String>>{}
+                : await _readFuzzyLearning(meta.id, normalized, fuzzy);
+            final tokens = fuzzyTerms(normalized).toSet();
+            fuzzyCacheUsed =
+                tokens.isNotEmpty && tokens.every(cached.containsKey);
+            if (fuzzyCacheUsed) {
+              precisionAlternatives = cached;
+              final expression = fuzzyGroupsExpression(cached);
+              if (expression != null) await loadKeyword(expression);
+            } else {
+              final vocabulary = <String>{};
+              var lastId = BigInt.zero;
+              while (true) {
+                final page = await database.browse(
+                  'SELECT id, body FROM ${base}_keys WHERE id > ? ORDER BY id LIMIT 512',
+                  [lastId],
+                );
+                if (page.rows.isEmpty) break;
+                for (final row in page.rows) {
+                  lastId = row[0] as BigInt;
+                  if (row[1] is! String) {
+                    throw StateError('Corrupt search text; rebuild index');
+                  }
+                  vocabulary.addAll(fuzzyTerms(row[1] as String));
+                }
+              }
+              final alternatives =
+                  fuzzyAlternatives(normalized, vocabulary, fuzzy);
+              precisionAlternatives = alternatives;
+              final expression = fuzzyGroupsExpression(alternatives);
+              if (expression != null) {
+                await loadKeyword(expression);
+                if (keyword.isNotEmpty &&
+                    fuzzy.learnAfter != null &&
+                    recordFuzzyLearning &&
+                    offset == 0) {
+                  learnedAlternatives = alternatives;
+                }
+              }
             }
           }
         }
@@ -545,10 +648,41 @@ final class SqlitePlusSearch {
         final weights = learning.enabled ? await _weights(meta.id) : [0.0, 0.0];
         final scale =
             scores.values.fold<double>(0, (a, b) => math.max(a, b.abs()));
+        final precision = <String, _Precision>{};
+        if (ranking != null) {
+          final tokenizer = Unicode61Tokenizer();
+          List<String> tokenize(String text, {bool normalized = false}) =>
+              tokenizer
+                  .tokenize(normalized ? text : analyzer.normalize(text))
+                  .map((token) => token.text)
+                  .toList();
+          final queryTokens = tokenize(query);
+          final tokenAlternatives = precisionAlternatives == null
+              ? null
+              : <String, List<String>>{
+                  for (final entry in precisionAlternatives.entries)
+                    if (tokenize(entry.key).length == 1)
+                      tokenize(entry.key).single:
+                          entry.value.expand(tokenize).toSet().toList(),
+                };
+          for (final entry in sourceText.entries) {
+            precision[entry.key] = _precision(
+                queryTokens,
+                {
+                  for (var i = 0; i < meta.columns.length; i++)
+                    meta.columns[i]: tokenize((entry.value[i] as String?) ?? '',
+                        normalized: useDerivedPrecision),
+                },
+                ranking,
+                tokenAlternatives);
+          }
+        }
         final hits = [
           for (final entry in scores.entries)
             SearchHit(
                 documentId: entry.key,
+                matchQuality: precision[entry.key]?.quality,
+                fieldScore: precision[entry.key]?.fieldScore,
                 score: entry.value +
                     scale *
                         0.25 *
@@ -562,13 +696,32 @@ final class SqlitePlusSearch {
                           'keywordRank': keywordRanks[entry.key]!.toDouble(),
                         if (semanticRanks.containsKey(entry.key))
                           'vectorRank': semanticRanks[entry.key]!.toDouble(),
+                        if (precision.containsKey(entry.key)) ...{
+                          'matchTier': ranking!.qualityOrder
+                              .indexOf(precision[entry.key]!.quality)
+                              .toDouble(),
+                          'fieldScore': precision[entry.key]!.fieldScore,
+                        },
                         'baseScore': entry.value,
                         'keywordWeight': weights[0],
                         'vectorWeight': weights[1],
                       })
                     : null)
-        ]..sort(_compareHits);
+        ]..sort((a, b) {
+            if (ranking != null) {
+              final tier = ranking.qualityOrder
+                  .indexOf(a.matchQuality!)
+                  .compareTo(ranking.qualityOrder.indexOf(b.matchQuality!));
+              if (tier != 0) return tier;
+              final field = b.fieldScore!.compareTo(a.fieldScore!);
+              if (field != 0) return field;
+            }
+            return _compareHits(a, b);
+          });
         final searchId = await _transaction(() async {
+          if (learnedAlternatives != null) {
+            await _writeFuzzyLearning(meta.id, fuzzy!, learnedAlternatives);
+          }
           final state = await database
               .query('SELECT next_search FROM _sps_state WHERE id=1');
           final next = state.rows.single.single as BigInt;
@@ -600,7 +753,9 @@ final class SqlitePlusSearch {
         return SearchResults(
             searchId: searchId,
             hits: hits.skip(offset).take(limit).toList(),
-            total: hits.length);
+            total: hits.length,
+            fuzzyCacheUsed: fuzzyCacheUsed,
+            fuzzyLearningChanged: learnedAlternatives != null);
       });
 
   /// Applies pending source changes without running a query. Source edits must

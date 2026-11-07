@@ -6,3 +6,5 @@ export 'src/analyzer.dart';
 export 'src/search.dart';
 export 'src/ranking.dart';
 export 'src/evaluation.dart';
+
+export 'src/fuzzy.dart' show FuzzySearchConfig;

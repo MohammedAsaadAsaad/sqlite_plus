@@ -49,6 +49,10 @@ jobs:
           python3 tool/generate_json_oracle.py --verify
           python3 tool/generate_search_oracle.py --verify
           python3 tool/generate_gap_oracle.py --verify
+      - name: Build pinned development SQLite reference
+        if: matrix.package == 'sqlite_plus'
+        working-directory: ${{ github.workspace }}
+        run: bash tool/build_sqlite_reference.sh
       - name: Install dependencies
         working-directory: ${{ github.workspace }}
         run: dart pub get --enforce-lockfile
@@ -137,3 +141,117 @@ jobs:
         run: |
           dart compile js tool/platform_smoke.dart -o /tmp/sqlite_plus_search.js
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/sqlite_plus_search.js
+  changes:
+    name: Changes development milestone
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/sqlite_plus_changes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.7
+      - name: Build pinned development SQLite reference
+        working-directory: ${{ github.workspace }}
+        run: bash tool/build_sqlite_reference.sh
+      - name: Install workspace dependencies
+        working-directory: ${{ github.workspace }}
+        run: dart pub get --enforce-lockfile
+      - name: Format, analyze and test
+        run: |
+          dart format --output=none --set-exit-if-changed .
+          dart analyze --fatal-infos
+          dart test
+      - name: Run examples and JavaScript assertions
+        run: |
+          dart run example/main.dart
+          dart run example/shared_assertions.dart
+          dart compile js example/shared_assertions.dart -o /tmp/sqlite_plus_changes.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/sqlite_plus_changes.js
+
+  sync:
+    name: Sync development milestone
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/sqlite_plus_sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.7
+      - name: Build pinned development SQLite reference
+        working-directory: ${{ github.workspace }}
+        run: bash tool/build_sqlite_reference.sh
+      - name: Install workspace dependencies
+        working-directory: ${{ github.workspace }}
+        run: dart pub get --enforce-lockfile
+      - name: Format, analyze and test
+        run: |
+          dart format --output=none --set-exit-if-changed .
+          dart analyze --fatal-infos
+          dart test
+      - name: Run examples and JavaScript assertions
+        run: |
+          dart run example/main.dart
+          dart run example/shared_assertions.dart
+          dart compile js example/shared_assertions.dart -o /tmp/sqlite_plus_sync.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/sqlite_plus_sync.js
+
+  reactive:
+    name: Reactive and ORM development milestone
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.7
+      - name: Build pinned development SQLite reference
+        run: bash tool/build_sqlite_reference.sh
+      - name: Install workspace dependencies
+        run: dart pub get --enforce-lockfile
+      - name: Format and analyze affected packages
+        run: |
+          dart format --output=none --set-exit-if-changed packages/sqlite_plus_reactive packages/sqlite_plus_orm packages/sqlite_plus_changes
+          dart analyze --fatal-infos packages/sqlite_plus_reactive packages/sqlite_plus_orm packages/sqlite_plus_changes
+      - name: Reactive and ORM tests
+        run: dart test packages/sqlite_plus_reactive/test packages/sqlite_plus_orm/test
+      - name: Generated ORM regression tests
+        working-directory: packages/sqlite_plus_generator
+        run: dart test
+      - name: VM and JavaScript assertion examples
+        run: |
+          dart run packages/sqlite_plus_reactive/example/main.dart
+          dart run packages/sqlite_plus_orm/example/reactive.dart
+          dart compile js packages/sqlite_plus_reactive/example/main.dart -o /tmp/reactive.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/reactive.js
+          dart compile js packages/sqlite_plus_orm/example/reactive.dart -o /tmp/orm_reactive.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/orm_reactive.js
+
+  pagination:
+    name: Built-in engine and ORM pagination
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.7
+      - name: Build pinned development SQLite reference
+        run: bash tool/build_sqlite_reference.sh
+      - name: Install workspace dependencies
+        run: dart pub get --enforce-lockfile
+      - name: Format and analyze
+        run: |
+          dart format --output=none --set-exit-if-changed packages/sqlite_plus/lib/src/pagination packages/sqlite_plus/test/pagination_test.dart packages/sqlite_plus/test/pagination_native_test.dart packages/sqlite_plus/example/pagination.dart packages/sqlite_plus_orm tool/pagination_benchmark
+          dart analyze --fatal-infos packages/sqlite_plus packages/sqlite_plus_orm
+      - name: Pagination SQL, ORM and storage tests
+        run: dart test packages/sqlite_plus/test/pagination_test.dart packages/sqlite_plus/test/pagination_native_test.dart packages/sqlite_plus/test/pagination_file_test.dart packages/sqlite_plus_orm/test/pagination_test.dart packages/sqlite_plus_orm/test/pagination_storage_test.dart
+      - name: VM and JavaScript assertion examples
+        run: |
+          dart run packages/sqlite_plus/example/pagination.dart
+          dart run packages/sqlite_plus_orm/example/pagination.dart
+          dart compile js packages/sqlite_plus/example/pagination.dart -o /tmp/pagination.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/pagination.js
+          dart compile js packages/sqlite_plus_orm/example/pagination.dart -o /tmp/orm_pagination.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/orm_pagination.js

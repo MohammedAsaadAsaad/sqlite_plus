@@ -1,0 +1,28 @@
+{
+  "date_utc": "2026-11-07",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "dart": "Dart SDK version: 3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "runtime": "AOT executable",
+  "binary_bytes": 10187136,
+  "binary_sha256": "fe50e07dbc9e5d713fbde8ff8117a6757ecff722cf89f82d17e6faffeb62e1eb",
+  "processes_per_size": 3,
+  "records_per_variant_per_process": 7,
+  "warm_records_per_variant_per_process": 6,
+  "row_counts": [
+    1000,
+    10000
+  ],
+  "sizes_not_run": [
+    100000,
+    1000000
+  ],
+  "source_sha256": {
+    "packages/sqlite_plus/lib/src/pagination/pagination.dart": "7598e30cd69e7c1ea78a63e40a53288514785630bfda23025da194092ec61c64",
+    "packages/sqlite_plus/lib/sqlite_plus.dart": "45e6b1f110c2617650b516a9f112f4ada5ad4ce881bea8a365a25ebf1692990b",
+    "packages/sqlite_plus_orm/lib/sqlite_plus_orm.dart": "eaebab4761e674036dd0d53fee145d6450bb611eafa1aca3cb7a2ce49aa9a6cf",
+    "packages/sqlite_plus_orm/lib/src/query.dart": "b90c2aa087b1972323679ff98aa41f4b5cfcdd74eb8ed388eea766f1a60c799a",
+    "tool/pagination_benchmark/main.dart": "eaf591aa8d394f817fb751d5f92bac980e76e576bd232df0f597eef1cb6b207e",
+    "packages/sqlite_plus/lib/sqlite_plus_io.dart": "6cb77fd10534f7d04e9e4b18a25d62e8ee0e39736ab4744b609b4dfba3c1d69f",
+    "packages/sqlite_plus/lib/src/pagination/pagination_io.dart": "4a0e0275688a75d2408f887f9ca0220de2a72a8fa716e738300fe82ce0b8bd4c"
+  }
+}

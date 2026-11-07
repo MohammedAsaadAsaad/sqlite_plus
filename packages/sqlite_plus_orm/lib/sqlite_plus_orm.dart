@@ -6,6 +6,18 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:sqlite_plus/sqlite_plus.dart';
+export 'package:sqlite_plus/sqlite_plus.dart'
+    show SqlPage, PageCursor, PageOrder;
+import 'package:sqlite_plus_changes/sqlite_plus_changes.dart';
+import 'package:sqlite_plus_reactive/sqlite_plus_reactive.dart';
+
+export 'package:sqlite_plus_reactive/sqlite_plus_reactive.dart'
+    show
+        ReactiveQuery,
+        ReactiveSnapshot,
+        ReactiveRowChange,
+        ReactiveChangeKind,
+        ReactiveLimitException;
 
 import 'src/orm_file_handle.dart';
 import 'src/orm_file_stub.dart' if (dart.library.io) 'src/orm_file_io.dart'
@@ -21,3 +33,5 @@ part 'src/query.dart';
 part 'src/context.dart';
 part 'src/relationships.dart';
 part 'src/migrations.dart';
+
+part 'src/reactive.dart';

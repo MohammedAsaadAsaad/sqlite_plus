@@ -47,6 +47,7 @@ extension on SqlitePlusSearch {
           'Synchronizing vectors requires the original local model');
     }
     await _transaction(() async {
+      await _clearFuzzyLearning(meta.id);
       final columns =
           await database.query('PRAGMA table_info(${_quote(table)})');
       final declared =

@@ -96,3 +96,33 @@ The latter tests feature preference transfer, not real-model semantic relevance.
 Index format 3 requires an explicit rebuild of format 2 and earlier development
 indexes. No automatic or destructive migration of source records is performed.
 `open` does not rebuild an index that is already stored in the database file.
+
+## Optional fuzzy fallback
+
+Fuzzy candidate discovery scans all normalized derived text in pages and retains
+the distinct vocabulary in memory per fallback. Expansion is capped per token
+before filtering, so filtered alternatives can be omitted. Unicode lexical runs
+are used for candidates; custom query syntax/analyzers require integration tests.
+Final ranking is BM25/RRF, not edit-distance ranking. Only filtered keyword
+hits covering every lexical query token suppress fallback. Fuzzy-enabled queries
+use AND across tokens and OR across alternatives for each token; non-fuzzy queries
+retain the analyzer's existing expression behavior. No persistent
+fuzzy index, morphology, phonetic matching or large-corpus latency guarantee.
+
+## Learned fuzzy alternatives
+
+Optional learnAfter stores observation rows even before promotion; candidate lists
+are stored only at the threshold. No eviction policy or hard total-entry cap.
+All query tokens need ready entries to avoid discovery scanning. Changing fuzzy
+settings/threshold uses a separate learning key. Rebuild or autoUpdate replay
+invalidates collection learning. verifyIndex does not fingerprint learning rows.
+Applications exporting images must persist learning changes explicitly.
+
+## Optional precision ranking
+
+Keyword mode only. All matching candidates are classified before pagination, so
+CPU/memory grows with result count and text size; there is no constant-latency
+promise or top-candidate truncation. Field weights affect normalized token
+coverage within precision tiers, not native per-field BM25. Scores remain base
+scores. Query processing is literal/analyzer-normalized; special MATCH overrides
+need integration tests. No precision index is stored.

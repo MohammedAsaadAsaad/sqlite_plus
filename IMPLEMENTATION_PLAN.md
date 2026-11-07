@@ -91,3 +91,67 @@ Every milestone must include `dart format`, `dart analyze`, tests, documented di
 - [ ] Search release acceptance. Core keyword/vector/hybrid, feedback and incremental
   indexing are implemented; real-model, large-scale physical persistence, real-device recovery and broader
   platform gates remain open. VM/Node search assertions now pass. See packages/sqlite_plus_search/doc/IMPLEMENTATION_PLAN.md.
+
+## Changes package development milestone
+
+- [x] Independent opt-in key/column change log; no engine/search runtime hooks.
+- [x] Scoped producer transactions, savepoints, typed keys and named consumers.
+- [x] Read budgets, retention/expiry and explicit generation rotation.
+- [x] Native SQL/file comparisons, crash injection and VM/Node assertions.
+- [x] Baseline AOT captured before package addition; paired disabled comparison.
+- [x] Reduce temporary trigger-read reconstruction and repeat paired AOT checks.
+- [x] User-approved development baseline and package README prepared.
+- [ ] Enabled-write production gate: persisted/device and larger retained-log
+  workloads remain unmeasured; see benchmark/OPTIMIZATION.md.
+- [x] Atomic database-local consumer processing for Sync.
+- [ ] Engine/ORM interception, shared search log and automatic age/size quotas. No existing application has been switched over.
+
+See packages/sqlite_plus_changes/README.md and its benchmark/OPTIMIZATION.md. This does
+not advance M9 or claim a production-ready changes engine.
+
+
+## Sync development milestone 1
+
+- [x] Plan bounded state-based client/server synchronization with explicit runOnce.
+- [x] Add Changes scoped atomic consumption and origin-marker inspection.
+- [x] Durable frozen outbox, monotonic server revisions, pull cursor and tombstones.
+- [x] Default conflict rejection and explicit keepLocal/acceptRemote resolution.
+- [x] Simulated storage-failure recovery and native SQLite/image comparisons.
+- [x] Final VM/Node, package regressions, AOT size/cost evidence and README.
+- [ ] Production server adapter/authentication, real-device/browser persistence,
+  large-retained-log/scalability and automatic resnapshot/retention gates.
+
+See packages/sqlite_plus_sync/IMPLEMENTATION_PLAN.md. Existing apps are unchanged;
+no server is deployed and no package is published by this milestone.
+
+## Reactive ORM milestone (2026-11-07)
+
+- [x] Preserve original ORM AOT baseline and pre-feature runtime hashes.
+- [x] Stateless Changes reads, optional post-commit/reset hints and serialized scopes;
+  preserve durable consumers and stored feed format.
+- [x] Lazy shared registry with dependencies, distinct/diff snapshots, coalescing,
+  row budgets, error recovery and pause/cancel/owner-close lifecycle.
+- [x] Native ORM watch/watchFirst/watchCount/watchAny; independent entities and
+  optional same-engine Changes adapter for ORM/Sync source transactions.
+- [x] VM tests, pinned native SQL comparison, generator regressions, simulated
+  browser/file reopen checks, VM and Node assertion examples, documentation/CI.
+- [x] AOT disabled/enabled comparison with raw data, hashes and reproducible driver.
+
+Development implementation only; no publication. Timing evidence does not prove
+zero regression: observed disabled 1000-row medians include +6.4% batch update and
++5.8% counts on a shared host. Strict no-regression approval remains open pending
+controlled hardware measurement/optimization. Full limits and evidence:
+`packages/sqlite_plus_reactive/README.md`, `benchmark_results/reactive/README.md`.
+
+## Built-in pagination milestone (2026-11-07)
+
+- [x] One shared core implementation; mutable/read-only `.page()` extensions.
+- [x] ORM `.page()` with inferred keys, existing filter/codec/identity ownership.
+- [x] Lexicographic forward/backward order, mixed directions and NULL placement.
+- [x] Versioned typed cursors, scoped query fingerprint, BLOB/64-bit isolation.
+- [x] Explicit validation of unsupported query windows/expression ordering.
+- [x] Final core/ORM/generator regressions, native differential and platform checks.
+- [x] AOT OFFSET/keyset evidence, README/examples/CI and compatibility log.
+
+No separate package, data migration, implicit index or runtime interception.
+See packages/sqlite_plus/doc/PAGINATION.md for scope and consistency limits.

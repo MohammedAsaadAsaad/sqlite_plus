@@ -274,3 +274,217 @@ IO, other OS runs, remote CI for this performance edit, real-device power-loss,
 external-writer ownership and production local model integration remain open. See the package implementation
 plan and benchmark report for exact evidence and limits. No new SQL compatibility
 claim is implied.
+
+## Optional search fuzzy fallback (2026-11-06)
+
+`sqlite_plus_search` accepts opt-in `FuzzySearchConfig` for filtered-empty
+keyword fallback, including the keyword side of hybrid search. Candidate discovery
+scans derived text; final retrieval/ranking uses existing FTS5/BM25/RRF. No index
+format change. Linux VM: 70 search tests passed, 1 native integration test skipped
+because the pinned SQLite CLI is unavailable; static analysis passed. No new
+native SQL compatibility, indexed fuzzy performance or device support claim.
+
+## Product catalog fuzzy example (2026-11-06)
+
+The Flutter catalog enables default `FuzzySearchConfig`: filtered keyword results
+suppress nearby-word expansion. App user_version 1 marks a rebuilt derived index;
+older saved catalogs retain products and rebuild once through prepare/save.
+Package index format is unchanged. A Linux Dart VM check of actual CatalogSession
+passed exact/fuzzy English and Arabic, scope, empty results, pagination, legacy
+rebuild and current-image reopen. Flutter asset services were stubbed for that
+check; UI/assets were not tested. Flutter SDK is unavailable: Flutter analysis,
+widget tests and APK rebuilding are unrun.
+
+## Catalog APK validation (2026-11-06)
+
+Flutter 3.47.9/Dart 3.13.7 Linux tooling is now provisioned: product catalog
+analysis and all 14 Flutter tests pass, superseding earlier unrun example notes.
+Version 0.5.3+8 builds as an ARM64 release APK, minSdk 24/targetSdk 36; APK v2
+signature verified. This verifies Android compilation, not a device install,
+power-loss behavior or new fuzzy performance. No broader platform gate closes.
+
+## Multiword fuzzy correction (2026-11-07)
+
+Fuzzy-enabled queries require all lexical tokens in exact retrieval and AND
+per-token OR alternative groups during fallback. Non-fuzzy behavior is unchanged.
+Search: 71 tests pass, 1 pinned-native test skipped; catalog: 15 tests pass; both
+analyses pass. ARM64 APK 0.5.4+9 builds and signature verifies. No storage change,
+new native differential result, device install or fuzzy speed claim.
+
+## Repeated typo learning (2026-11-07)
+
+Opt-in successful-input threshold persists learned fuzzy candidate lists; rebuild
+and autoUpdate replay invalidate them. Catalog threshold 5 excludes navigation and
+saves image changes. Search 79 pass/1 pinned-native skip; app 16 pass; analyses
+pass. Four new crash-recovery scenarios cover 20 learning-write fault points.
+Linux AOT 20,000-name shared-host sample: median fuzzy 460.009 ms before learning
+and 15.590 ms learned, same 12 hits, +8,192 image bytes. See benchmark raw data.
+APK 0.5.5+10 ARM64 builds and signature verifies; no device latency guarantee,
+native differential result, eviction policy or whole-metadata integrity claim.
+
+## Match precision ordering (2026-11-07)
+
+Opt-in keyword SearchRankingPolicy adds precision tiers and field coverage
+weights before BM25/feedback ties, prior to pagination. Single-field derived text
+is reused; multi-field source probes project text. No persistent precision index.
+The workspace exports Unicode61Tokenizer; prepared same-rowid replacements refresh
+row/value lookup caches (pinned SQLite 3.53.1 differential regression passes).
+Final Linux: 86 search tests, 17 app tests, 32 targeted engine tests pass; analyses
+pass. One timed-out concurrent search suite passes on isolated rerun. Full engine
+suite is not rerun. AOT 20k-name baseline/precision median: 22.260/24.768 ms for
+493 hits; 12.465/14.105 ms for 12 exact hits; 15.843/15.432 ms learned fuzzy.
+See raw benchmark data; no phone guarantee. APK 0.5.6+11 builds and verifies.
+Hybrid/semantic precision, publication of the engine API and device timing remain
+open; no broad compatibility gate closes.
+
+
+### sqlite_plus_changes — experimental optional package (2026-11-07)
+
+Independent pure-Dart package using ordinary tables and SQL triggers. Explicit
+writer transactions and recursive-trigger opt-in are required. Supports typed
+composite keys, atomic change batches, independent durable consumers, checkpoints,
+acknowledgement, pruning and explicit expiry/generation resets. Does not intercept
+arbitrary existing SQL/ORM writes or replace search synchronization. Current app
+is unchanged. Consumer output and acknowledgement are separate transactions.
+
+35 tests pass, including 80 injected storage faults, native SQLite 3.53.1 image
+integrity/trigger comparisons and existing-search coexistence. VM/compiled Node
+assertions and 17 existing catalog tests pass. Browser persistence, WAL-specific
+recovery, devices and remote CI remain unverified. Metadata layout includes
+workarounds for observed existing TEXT-key lookup/deletion-publication behavior;
+this does not close any general core compatibility gate.
+
+Disabled AOT comparison: 97 existing runtime files unchanged; five paired runs
+per 1k/10k dataset produce identical images, with no timing increase outside
+sample-range overlap. Memory equivalence is not established. Enabled sample:
+100 updates 465.668 → 8,676.980 ms; high-write performance gate remains open.
+See packages/sqlite_plus_changes/benchmark/RESULTS.md and retained raw evidence.
+
+
+### Changes performance follow-up (2026-11-07)
+
+The unreleased core narrows simple trigger-read snapshots to their complete
+ordinary unindexed rowid-table dependencies; more complex/schema/virtual/indexed
+reads keep the previous full snapshot. The Changes API and on-disk log format
+are unchanged, with no app activation or migration. This is an internal trigger
+optimization, not transparent capture of arbitrary existing SQL transactions.
+
+Full engine 10,630 pass, one optional SQLCipher CLI test skipped; 12 new pinned
+SQLite 3.53.1 trigger/image comparisons included. Changes 35 (80 fault points),
+search 86, catalog 17 and VM/Node assertions pass. Socket-dependent tests pass on
+complete reruns with local networking. Remote CI/devices remain unverified.
+
+Five alternating AOT pairs per size/workload: 1k-row/100-update tracked median
+8,989.797 → 444.681 ms, with a 466.953 ms new untracked control. Disabled mixed
+workload images match exactly at 1k/10k; no timing increase outside sample-range
+overlap. Memory equivalence is not proved. Enabled image sizes match old/new.
+This does not close persisted/device, high-write-volume or broader compatibility
+gates. See packages/sqlite_plus_changes/benchmark/OPTIMIZATION.md for all samples
+and the deliberately different update count used at 10k rows.
+
+
+Changes development baseline accepted by the user (2026-11-07). Package README
+now documents local workspace availability, runnable quick start, consumer
+lifecycle and measured optimization. This is documentation/adoption of the
+verified revision, not package publication or closure of production/device gates.
+
+
+## sqlite_plus_sync development milestone 1 (2026-11-07)
+
+Implemented opt-in state synchronization on Changes: typed keys/SQL wire values,
+explicit bounded bootstrap, durable immutable outbox and retry identity,
+server-assigned revisions/tombstones, atomic incoming cursor/origin application,
+and durable blocking conflicts with explicit local/remote resolution. Production
+transport/auth/server persistence is an application contract; the included server
+is a development-only in-memory reference. Current apps remain unchanged.
+
+Changes now supports scoped read/output/ack and pending event/source inspection
+without a stored format migration. Sync owns ordinary metadata and one independent
+consumer; inbound writes remain available to other consumers/search. Default
+conflicts never silently overwrite unsent local data. Forced expiry, generation
+mismatch, incomplete dirty scans and malformed replies fail closed.
+
+Verification: full engine 10,634 pass/one optional SQLCipher CLI skip; four new
+pinned 3.53.1 catalog tests. Sync 60 pass (24 recovery scenarios/380 injected
+storage faults; native SQL/images and search coexistence), Changes 38/80 fault
+points, search 86, catalog 17, VM and compiled Node pass. Core catalog traversal
+supports multi-page/overflow schema roots; truncation remains restricted to its
+previous safe shape. Exactly two of 97 recorded core/search runtime files change.
+
+Disabled paired AOT at 1k/10k produces identical images and no timing increase
+outside sample-range overlap; heap equivalence is not established. Activated
+100-row/100-update sample: Changes-only capture 276.667 ms, Sync capture 292.635
+ms, runOnce 178.515 ms using the reference transport. Ready Sync/Changes-only
+images 90,112/36,864 bytes. See package benchmark report for complete evidence.
+
+Unpublished/experimental: no real backend deployment, remote CI run, device,
+real browser persistence, Sync WAL-specific recovery or production-scale gate.
+Non-binary/custom key collations, arbitrary dependency resolution, automatic history
+expiry recovery, server canonicalization and custom merge policies are outside
+this milestone. This does not assert general SQLite or synchronization conformance.
+
+### Reactive + ORM development implementation (2026-11-07)
+
+Optional shared SQL result observation through typed ORM watch/watchFirst/
+watchCount/watchAny. Ordinary ORM saves work on memory, file owner and simulated
+browser adapters without capture metadata. Optional same-engine Changes adapter
+captures a whole ORM save, observes external/Sync source transactions, serializes
+reads/schema setup and does not replace dirty tracked entities. Generated mappings
+need no regeneration. Changes gains optional connection-wide post-commit/reset
+hints, stateless bounded reads and exclusive scopes; no stored format migration.
+
+Verified Linux x64 Dart 3.13.7: combined ORM/Reactive/Changes/Sync suite 315 pass,
+generator 78 pass; affected package analysis clean. The combined suite includes
+existing Changes/Sync recovery tests (80/380 injected fault points), file reopen,
+simulated browser reopen, rollback isolation, Sync inbound invalidation, sharing,
+paused close, pagination, composite/64-bit keys and BLOB isolation. Differential
+snapshots use pinned SQLite 3.53.1 source id from the existing native reference.
+Raw SQL and typed ORM examples both passed VM and compiled JavaScript/Node
+assertions. Existing engine/Sync runtime hashes match pre-feature versions; the
+engine-wide suite was not rerun for this additive milestone. CI added, not run
+remotely in this session.
+
+AOT results and raw samples: `benchmark_results/reactive/README.md`. Default ORM
+watch mode adds no stored index/cache; disabled images match baseline bytes and
+hashes at 100 and 1000 rows (12288/24576 bytes). Performance is not certified as
+zero-regression: shared-host disabled medians at 1000 rows were +1.1% reads,
++3.0% insert, +6.4% batch update and +5.8% counts. Source/binary fingerprints and
+isolated-copy reproduction driver are included. Strict latency budgets still
+need controlled hardware checks. No claim for real browser persistence, real
+Android/iOS/desktop device performance, arbitrary cross-process changes,
+incremental SQL computation, hard byte caps or published package availability.
+The RPC file owner supports ordinary watches but cannot bind an unrelated
+Changes engine handle. New dependencies are unpublished workspace packages.
+
+### Integrated cursor pagination (2026-11-07)
+
+Core mutable/read-only database, file-owner DatabaseClient and ORM TypedQuery
+`.page()` share a
+single keyset implementation. Forward/backward continuation, mixed ASC/DESC,
+NULL placement, implicit mapped-key tie-breakers, declared/explicit collations,
+composite keys and typed versioned scoped cursors. No new package, stored format,
+automatic index, transaction boundary or existing query execution hook. Normal
+ORM tracking/no-tracking and operation serialization apply; cursors use SQL row
+values before identity-map materialization. Unsupported skip/take, rank/distance
+and computed ordering combinations fail explicitly.
+
+Linux x64 Dart 3.13.7: engine 10647 pass, one optional SQLCipher CLI test skipped;
+ORM/Reactive/Changes/Sync regression run 317 pass plus two pagination storage
+adapter tests; generator 78 pass. Final targeted pagination suite 18 pass, including direct file-client transaction
+ownership and read-only-file cursor resume.
+Analysis/format clean. Pinned official SQLite 3.53.1 comparisons cover forward/
+backward order with/without indexes, NULLs, storage-class mixtures, collations
+and signed 64-bit keys. File-owner resume after reopen and browser/Changes
+adapter reads pass using simulated browser storage. Core and ORM examples pass
+VM and compiled JavaScript/Node assertions. Full engine rerun initially hit local
+socket sandbox restrictions; final full rerun with local network access passed.
+
+AOT late-page integer rowid workload, three processes per size: 1000 rows OFFSET
+3.616 ms versus cursor API 0.796 ms; 10000 rows 43.294 versus 3.578 ms. Warm
+medians, bound LIMIT and 90% offset; matching result assertions and unchanged
+image hashes (20480/98304 bytes). Actual plan uses INTEGER PRIMARY KEY rowid
+range. See benchmark_results/pagination for all raw samples and limits. This is
+not a general planner/large-scale/device speedup guarantee. No unused-path timing
+comparison in this milestone. No actual browser persistence, device benchmarks,
+remote CI result or package publication. Cursor flags include an opposite-side
+navigation hint; traversals across separate writes are not a snapshot.

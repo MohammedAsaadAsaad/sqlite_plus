@@ -1,0 +1,548 @@
+[
+  {
+    "rows": 1000,
+    "offset": 900,
+    "size": 30,
+    "records": [
+      {
+        "iteration": 0,
+        "variant": "offset",
+        "microseconds": 3517
+      },
+      {
+        "iteration": 0,
+        "variant": "cursor",
+        "microseconds": 1291
+      },
+      {
+        "iteration": 1,
+        "variant": "cursor",
+        "microseconds": 1288
+      },
+      {
+        "iteration": 1,
+        "variant": "offset",
+        "microseconds": 5394
+      },
+      {
+        "iteration": 2,
+        "variant": "offset",
+        "microseconds": 5495
+      },
+      {
+        "iteration": 2,
+        "variant": "cursor",
+        "microseconds": 810
+      },
+      {
+        "iteration": 3,
+        "variant": "cursor",
+        "microseconds": 773
+      },
+      {
+        "iteration": 3,
+        "variant": "offset",
+        "microseconds": 3308
+      },
+      {
+        "iteration": 4,
+        "variant": "offset",
+        "microseconds": 3409
+      },
+      {
+        "iteration": 4,
+        "variant": "cursor",
+        "microseconds": 779
+      },
+      {
+        "iteration": 5,
+        "variant": "cursor",
+        "microseconds": 783
+      },
+      {
+        "iteration": 5,
+        "variant": "offset",
+        "microseconds": 3721
+      },
+      {
+        "iteration": 6,
+        "variant": "offset",
+        "microseconds": 3351
+      },
+      {
+        "iteration": 6,
+        "variant": "cursor",
+        "microseconds": 800
+      }
+    ],
+    "image_bytes": 20480,
+    "image_sha256": "d9c87972cd60aa4d6489f2e8ae44451f0d6e35d5696efd771b235cd9c471a43a",
+    "rss": 49639424,
+    "peak_rss": 49397760,
+    "cursor_sql": "SELECT * FROM \"items\" WHERE ((\"id\" > ?)) ORDER BY \"id\" ASC NULLS FIRST LIMIT ?",
+    "plan": [
+      [
+        "2",
+        "0",
+        "196",
+        "SEARCH items USING INTEGER PRIMARY KEY (rowid>?)"
+      ]
+    ],
+    "process_iteration": 0
+  },
+  {
+    "rows": 1000,
+    "offset": 900,
+    "size": 30,
+    "records": [
+      {
+        "iteration": 0,
+        "variant": "offset",
+        "microseconds": 3909
+      },
+      {
+        "iteration": 0,
+        "variant": "cursor",
+        "microseconds": 1365
+      },
+      {
+        "iteration": 1,
+        "variant": "cursor",
+        "microseconds": 1518
+      },
+      {
+        "iteration": 1,
+        "variant": "offset",
+        "microseconds": 6301
+      },
+      {
+        "iteration": 2,
+        "variant": "offset",
+        "microseconds": 7106
+      },
+      {
+        "iteration": 2,
+        "variant": "cursor",
+        "microseconds": 980
+      },
+      {
+        "iteration": 3,
+        "variant": "cursor",
+        "microseconds": 774
+      },
+      {
+        "iteration": 3,
+        "variant": "offset",
+        "microseconds": 3470
+      },
+      {
+        "iteration": 4,
+        "variant": "offset",
+        "microseconds": 3321
+      },
+      {
+        "iteration": 4,
+        "variant": "cursor",
+        "microseconds": 797
+      },
+      {
+        "iteration": 5,
+        "variant": "cursor",
+        "microseconds": 774
+      },
+      {
+        "iteration": 5,
+        "variant": "offset",
+        "microseconds": 3761
+      },
+      {
+        "iteration": 6,
+        "variant": "offset",
+        "microseconds": 3296
+      },
+      {
+        "iteration": 6,
+        "variant": "cursor",
+        "microseconds": 794
+      }
+    ],
+    "image_bytes": 20480,
+    "image_sha256": "d9c87972cd60aa4d6489f2e8ae44451f0d6e35d5696efd771b235cd9c471a43a",
+    "rss": 49594368,
+    "peak_rss": 49344512,
+    "cursor_sql": "SELECT * FROM \"items\" WHERE ((\"id\" > ?)) ORDER BY \"id\" ASC NULLS FIRST LIMIT ?",
+    "plan": [
+      [
+        "2",
+        "0",
+        "196",
+        "SEARCH items USING INTEGER PRIMARY KEY (rowid>?)"
+      ]
+    ],
+    "process_iteration": 1
+  },
+  {
+    "rows": 1000,
+    "offset": 900,
+    "size": 30,
+    "records": [
+      {
+        "iteration": 0,
+        "variant": "offset",
+        "microseconds": 4052
+      },
+      {
+        "iteration": 0,
+        "variant": "cursor",
+        "microseconds": 1252
+      },
+      {
+        "iteration": 1,
+        "variant": "cursor",
+        "microseconds": 1435
+      },
+      {
+        "iteration": 1,
+        "variant": "offset",
+        "microseconds": 5842
+      },
+      {
+        "iteration": 2,
+        "variant": "offset",
+        "microseconds": 6192
+      },
+      {
+        "iteration": 2,
+        "variant": "cursor",
+        "microseconds": 926
+      },
+      {
+        "iteration": 3,
+        "variant": "cursor",
+        "microseconds": 986
+      },
+      {
+        "iteration": 3,
+        "variant": "offset",
+        "microseconds": 3845
+      },
+      {
+        "iteration": 4,
+        "variant": "offset",
+        "microseconds": 3538
+      },
+      {
+        "iteration": 4,
+        "variant": "cursor",
+        "microseconds": 924
+      },
+      {
+        "iteration": 5,
+        "variant": "cursor",
+        "microseconds": 874
+      },
+      {
+        "iteration": 5,
+        "variant": "offset",
+        "microseconds": 4031
+      },
+      {
+        "iteration": 6,
+        "variant": "offset",
+        "microseconds": 3801
+      },
+      {
+        "iteration": 6,
+        "variant": "cursor",
+        "microseconds": 916
+      }
+    ],
+    "image_bytes": 20480,
+    "image_sha256": "d9c87972cd60aa4d6489f2e8ae44451f0d6e35d5696efd771b235cd9c471a43a",
+    "rss": 49709056,
+    "peak_rss": 49356800,
+    "cursor_sql": "SELECT * FROM \"items\" WHERE ((\"id\" > ?)) ORDER BY \"id\" ASC NULLS FIRST LIMIT ?",
+    "plan": [
+      [
+        "2",
+        "0",
+        "196",
+        "SEARCH items USING INTEGER PRIMARY KEY (rowid>?)"
+      ]
+    ],
+    "process_iteration": 2
+  },
+  {
+    "rows": 10000,
+    "offset": 9000,
+    "size": 30,
+    "records": [
+      {
+        "iteration": 0,
+        "variant": "offset",
+        "microseconds": 44459
+      },
+      {
+        "iteration": 0,
+        "variant": "cursor",
+        "microseconds": 4515
+      },
+      {
+        "iteration": 1,
+        "variant": "cursor",
+        "microseconds": 3369
+      },
+      {
+        "iteration": 1,
+        "variant": "offset",
+        "microseconds": 46422
+      },
+      {
+        "iteration": 2,
+        "variant": "offset",
+        "microseconds": 56356
+      },
+      {
+        "iteration": 2,
+        "variant": "cursor",
+        "microseconds": 4980
+      },
+      {
+        "iteration": 3,
+        "variant": "cursor",
+        "microseconds": 3465
+      },
+      {
+        "iteration": 3,
+        "variant": "offset",
+        "microseconds": 41719
+      },
+      {
+        "iteration": 4,
+        "variant": "offset",
+        "microseconds": 40972
+      },
+      {
+        "iteration": 4,
+        "variant": "cursor",
+        "microseconds": 4317
+      },
+      {
+        "iteration": 5,
+        "variant": "cursor",
+        "microseconds": 3382
+      },
+      {
+        "iteration": 5,
+        "variant": "offset",
+        "microseconds": 38909
+      },
+      {
+        "iteration": 6,
+        "variant": "offset",
+        "microseconds": 40505
+      },
+      {
+        "iteration": 6,
+        "variant": "cursor",
+        "microseconds": 3690
+      }
+    ],
+    "image_bytes": 98304,
+    "image_sha256": "9136dc502bd21e5cf9849c1b9fb7af6003e167ba888327aa6b0944460d21e29e",
+    "rss": 74440704,
+    "peak_rss": 74141696,
+    "cursor_sql": "SELECT * FROM \"items\" WHERE ((\"id\" > ?)) ORDER BY \"id\" ASC NULLS FIRST LIMIT ?",
+    "plan": [
+      [
+        "2",
+        "0",
+        "196",
+        "SEARCH items USING INTEGER PRIMARY KEY (rowid>?)"
+      ]
+    ],
+    "process_iteration": 0
+  },
+  {
+    "rows": 10000,
+    "offset": 9000,
+    "size": 30,
+    "records": [
+      {
+        "iteration": 0,
+        "variant": "offset",
+        "microseconds": 45600
+      },
+      {
+        "iteration": 0,
+        "variant": "cursor",
+        "microseconds": 6100
+      },
+      {
+        "iteration": 1,
+        "variant": "cursor",
+        "microseconds": 3383
+      },
+      {
+        "iteration": 1,
+        "variant": "offset",
+        "microseconds": 43602
+      },
+      {
+        "iteration": 2,
+        "variant": "offset",
+        "microseconds": 44819
+      },
+      {
+        "iteration": 2,
+        "variant": "cursor",
+        "microseconds": 4046
+      },
+      {
+        "iteration": 3,
+        "variant": "cursor",
+        "microseconds": 3225
+      },
+      {
+        "iteration": 3,
+        "variant": "offset",
+        "microseconds": 42757
+      },
+      {
+        "iteration": 4,
+        "variant": "offset",
+        "microseconds": 41547
+      },
+      {
+        "iteration": 4,
+        "variant": "cursor",
+        "microseconds": 3498
+      },
+      {
+        "iteration": 5,
+        "variant": "cursor",
+        "microseconds": 4188
+      },
+      {
+        "iteration": 5,
+        "variant": "offset",
+        "microseconds": 44439
+      },
+      {
+        "iteration": 6,
+        "variant": "offset",
+        "microseconds": 42986
+      },
+      {
+        "iteration": 6,
+        "variant": "cursor",
+        "microseconds": 3405
+      }
+    ],
+    "image_bytes": 98304,
+    "image_sha256": "9136dc502bd21e5cf9849c1b9fb7af6003e167ba888327aa6b0944460d21e29e",
+    "rss": 57917440,
+    "peak_rss": 61132800,
+    "cursor_sql": "SELECT * FROM \"items\" WHERE ((\"id\" > ?)) ORDER BY \"id\" ASC NULLS FIRST LIMIT ?",
+    "plan": [
+      [
+        "2",
+        "0",
+        "196",
+        "SEARCH items USING INTEGER PRIMARY KEY (rowid>?)"
+      ]
+    ],
+    "process_iteration": 1
+  },
+  {
+    "rows": 10000,
+    "offset": 9000,
+    "size": 30,
+    "records": [
+      {
+        "iteration": 0,
+        "variant": "offset",
+        "microseconds": 48038
+      },
+      {
+        "iteration": 0,
+        "variant": "cursor",
+        "microseconds": 3692
+      },
+      {
+        "iteration": 1,
+        "variant": "cursor",
+        "microseconds": 3320
+      },
+      {
+        "iteration": 1,
+        "variant": "offset",
+        "microseconds": 43531
+      },
+      {
+        "iteration": 2,
+        "variant": "offset",
+        "microseconds": 45946
+      },
+      {
+        "iteration": 2,
+        "variant": "cursor",
+        "microseconds": 7648
+      },
+      {
+        "iteration": 3,
+        "variant": "cursor",
+        "microseconds": 3450
+      },
+      {
+        "iteration": 3,
+        "variant": "offset",
+        "microseconds": 44888
+      },
+      {
+        "iteration": 4,
+        "variant": "offset",
+        "microseconds": 56268
+      },
+      {
+        "iteration": 4,
+        "variant": "cursor",
+        "microseconds": 12581
+      },
+      {
+        "iteration": 5,
+        "variant": "cursor",
+        "microseconds": 3460
+      },
+      {
+        "iteration": 5,
+        "variant": "offset",
+        "microseconds": 41877
+      },
+      {
+        "iteration": 6,
+        "variant": "offset",
+        "microseconds": 40933
+      },
+      {
+        "iteration": 6,
+        "variant": "cursor",
+        "microseconds": 4128
+      }
+    ],
+    "image_bytes": 98304,
+    "image_sha256": "9136dc502bd21e5cf9849c1b9fb7af6003e167ba888327aa6b0944460d21e29e",
+    "rss": 65617920,
+    "peak_rss": 65191936,
+    "cursor_sql": "SELECT * FROM \"items\" WHERE ((\"id\" > ?)) ORDER BY \"id\" ASC NULLS FIRST LIMIT ?",
+    "plan": [
+      [
+        "2",
+        "0",
+        "196",
+        "SEARCH items USING INTEGER PRIMARY KEY (rowid>?)"
+      ]
+    ],
+    "process_iteration": 2
+  }
+]

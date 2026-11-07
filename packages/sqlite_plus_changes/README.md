@@ -1,0 +1,297 @@
+# sqlite_plus_changes
+
+An opt-in transactional change feed for `sqlite_plus`. Capture which rows changed,
+then let independent consumers process those changes using durable checkpoints.
+Source writes and their change events commit in the same database transaction.
+
+Use it to invalidate caches, refresh derived data, or drive an application-owned
+background worker. Events contain table names, operations, typed primary keys and
+changed column names. Read the source table when you need the current values;
+this package does not store a history of row contents.
+
+Pure Dart, using the public engine API and ordinary SQLite tables/triggers.
+No native bindings, polling timers or background scans.
+
+## Status and availability
+
+**Accepted development implementation; experimental and unpublished.** The
+optimized trigger-read path is adopted in this workspace. The package remains
+`0.0.1-dev.1` with `publish_to: none`; there is no pub.dev installation yet.
+Performance results require the current unreleased workspace engine, rather than
+the published `sqlite_plus` 0.1.9 release.
+
+From this repository root:
+
+```sh
+dart pub get
+dart run packages/sqlite_plus_changes/example/main.dart
+```
+
+The root Dart workspace resolves the local engine and Changes package. Add this
+package as a local path dependency when testing it from another application.
+Use the matching workspace engine revision there as well.
+
+Enabling Changes is an application decision. Existing catalog/search defaults
+remain unchanged; no automatic migration or source-data backfill is performed.
+
+## Quick start
+
+```dart
+import 'package:sqlite_plus/sqlite_plus.dart';
+import 'package:sqlite_plus_changes/sqlite_plus_changes.dart';
+
+Future<void> main() async {
+  final db = await openInMemory();
+  try {
+    // Required explicitly on each writer connection, including for REPLACE.
+    await db.execute('PRAGMA recursive_triggers=ON');
+    await db.execute(
+        'CREATE TABLE products(id INTEGER PRIMARY KEY,name TEXT,price INTEGER)');
+    final changes = await SqlitePlusChanges.open(database: db);
+    await changes.track(table: 'products', columns: ['name', 'price']);
+    final cache = await changes.consumer(name: 'product-cache');
+    await changes.transaction((tx) async {
+      await tx.execute('INSERT INTO products VALUES(?,?,?)', [1, 'حليب', 10]);
+      await tx.execute('UPDATE products SET price=? WHERE id=?', [12, 1]);
+    });
+    final batch = await cache.read();
+    for (final transaction in batch.transactions) {
+      for (final event in transaction.events) {
+        print(
+            '${transaction.id}: ${event.kind.name} ${event.table} ${event.key} ${event.changedColumns}');
+      }
+    }
+    // Acknowledge only after successful, idempotent application processing.
+    await cache.acknowledge(batch.checkpoint);
+    print('checkpoint: ${batch.checkpoint.encode()}');
+    await changes.pruneAcknowledged();
+  } finally {
+    await db.close();
+  }
+}
+```
+
+The example emits an insert and an update. Both belong to one committed
+transaction. For a persisted database, reopening the same consumer before
+acknowledgment delivers that work again. This example uses an in-memory database;
+closing it without saving the image discards its data.
+
+## API at a glance
+
+| API | Purpose |
+|---|---|
+| `SqlitePlusChanges.open(database: db)` | Create or reopen feed metadata on an application-owned connection. |
+| `track(table: ..., columns: ...)` | Capture future writes to a table; primary-key columns are always monitored. |
+| `transaction((tx) async { ... })` | Write source rows and publish their events atomically. |
+| `tx.savepoint((child) async { ... })` | Isolate work that may fail without discarding the entire producer transaction. |
+| `consumer(name: ...)` | Create or reopen an independently acknowledged subscription. |
+| `consumer.read(...)` | Read complete producer transactions within an event budget. |
+| `consumer.acknowledge(batch.checkpoint)` | Persist successful consumer progress. |
+| `batch.affectedKeys()` | Deduplicate old/new keys for cache invalidation. |
+| `head()` | Obtain the current committed feed checkpoint. |
+| `sources()` / `tx.sources()` | Inspect verified tracked-source definitions. |
+| `tx.readChanges(consumer)` / `tx.acknowledge(...)` | Process committed work and acknowledge it atomically with database-local output. |
+| `tx.pendingChanges()` / `tx.pendingCheckpoint()` | Inspect this scope's unpublished events for transactional origin markers. |
+| `pruneAcknowledged()` | Remove history acknowledged by every consumer. |
+| `untrack(table)` | Remove capture triggers while retaining old events. |
+
+Consumer names and progress are stored in the database. Reopen the same name to
+resume. A newly created consumer starts at batch zero by default; if that history
+has already been pruned, supply a valid `startAt` explicitly. To observe future
+commits only:
+
+```dart
+final consumer = await changes.consumer(
+  name: 'future-product-cache',
+  startAt: await changes.head(),
+);
+```
+
+`startAt` applies when creating a consumer. Use `reset` explicitly to reposition
+an existing consumer. Coordinate any initial snapshot and checkpoint under the
+same exclusive connection ownership so writes cannot slip between them.
+
+## Atomic local processing
+
+```dart
+await changes.transaction((tx) async {
+  final batch = await tx.readChanges(consumer);
+  // Await application-owned database writes through tx.execute(...).
+  // Those writes and this acknowledgement either commit or roll back together.
+  await tx.acknowledge(consumer, batch.checkpoint);
+});
+```
+
+Scoped reads exclude events generated by the current transaction.
+`tx.baseCheckpoint` is its starting committed head. Pending inspection sees only
+this scope's new events and does not publish them. Savepoint rollback removes
+pending events as well as their source writes. Await each operation; producer
+budgets and source guards still apply. No log format migration is required.
+
+`consumer(..., startAt: checkpoint, resumeExisting: true)` applies the initial
+checkpoint only when creating a consumer; an existing consumer keeps its saved
+position. Expiry is still explicit and requires reset/resnapshot.
+
+## Performance and size
+
+Linux x64, Dart 3.13.7 AOT, in-memory databases; five alternating fresh-process
+pairs. Each row below measures individual UPDATE statements in **one transaction**.
+The update counts differ deliberately; compare before/after within each row.
+
+| Source rows | Updates | Tracked before | Tracked after | Speedup |
+|---:|---:|---:|---:|---:|
+| 1,000 | 100 | 8,989.797 ms | 444.681 ms | 20.2x |
+| 10,000 | 10 | 6,849.543 ms | 554.848 ms | 12.3x |
+
+The optimization narrows temporary trigger-read snapshots to their dependencies.
+It adds no persistent structure and changes neither trigger definitions nor the
+stored log format. Before/after image sizes agree in these samples. At 1,000
+rows, activation adds 28 KiB and 100 events add another 8 KiB; pruning returns the
+in-memory image to its ready size. Physical files may retain reusable pages.
+
+When Changes is not opened, it creates no metadata or capture triggers. Disabled
+mixed-workload database images match exactly before/after at 1k and 10k rows.
+Timing differences overlap sample ranges; ten additional 1k pairs are also
+reported. This does not establish strict zero time/memory overhead. Linking
+reachable optional code can increase executable size.
+
+These measurements do not predict phone or sustained-write performance. Device,
+persisted, single-row-transaction, multiple-table and large-retained-log workloads
+remain release gates. See the [current report](benchmark/OPTIMIZATION.md) for
+controls, ranges, memory, source hashes and reproduction. The
+[initial report](benchmark/RESULTS.md) is retained as historical evidence.
+
+## Contract and boundaries
+
+- No feature activation means **do not call open**. Importing/linking the package
+  adds no schema, SQL, triggers, row copies or per-write checks. Linking reachable
+  optional code can still increase executable size; the AOT comparison retains a
+  runtime-reachable activation demo intentionally.
+- `open` creates five reserved ordinary tables and two indexes transactionally.
+  `track` installs six transactional source triggers and starts observing future
+  writes. Existing rows are not backfilled. Take an initial application snapshot
+  when needed.
+- One application-owned connection, exclusive access during every feed operation.
+  Outside SQL/ORM calls must not interleave a feed callback. Feed calls serialize
+  among themselves and reject caller transactions/reentrant feed operations.
+- Tracked main-schema ordinary tables need a complete declared primary key.
+  Keys are non-null integer/text values; composite keys and signed64 integers
+  retain types. Integers encode as strings in captured JSON/checkpoints to avoid
+  JavaScript precision loss. BLOB/real/null keys are rejected. Virtual, TEMP and
+  attached sources are unsupported.
+- Primary-key columns are always monitored. An UPDATE records columns whose
+  actual binary value/type changed; no-op updates and changes only to unmonitored
+  fields emit no event. INSERT/DELETE list all monitored columns. Key changes
+  include both old and new keys. No non-key before/after values are retained.
+- Tracked writes must use `changes.transaction`. Guards reject raw source writes
+  outside that scope; there is no transparent interception of existing raw
+  BEGIN/COMMIT or ORM transactions in this milestone. Ordinary SQLite tools can
+  inspect the database/log, but arbitrary external producers are unsupported.
+- Writes and captured events commit together. No events from rollback or rolled
+  back savepoints are published. The writer exposes DML/SELECT and a `savepoint`
+  helper, not schema/PRAGMA/transaction commands or reserved-metadata access.
+  Await operations; using parent and child scopes concurrently is rejected.
+- A failed SQL operation aborts the producer transaction even if caught by the
+  callback. Use a savepoint for a recoverable failure. A SQL OR ROLLBACK cannot
+  let later scope writes escape into autocommit. Producer `maxEvents` defaults to
+  1,000,000 (supported range 1..1,000,000); exceeding it rolls back the transaction.
+- No event is published until COMMIT succeeds. A committed producer transaction
+  is never split by consumer reads. `maxEvents` limits the event count before
+  loading it; an oversized first transaction raises `ChangeBatchTooLarge`.
+  Explicitly increase the budget or split future producer work. This bounds event
+  count, not bytes in unusually large text keys.
+- `ChangeBatch.affectedKeys()` deduplicates invalidation keys, including both
+  sides of a key change. It leaves the full transaction/event history intact.
+- Consumers receive the whole feed. Filter by `event.table`/`changedColumns` in
+  application processing. Independent durable delivered/acknowledged positions
+  provide at-least-once delivery until acknowledgment. Future/undelivered,
+  backward or cross-feed acknowledgments are rejected.
+- `consumer.acknowledge` is a separate transaction. For database-local output,
+  use `tx.readChanges(consumer)` and `tx.acknowledge(consumer, checkpoint)` inside
+  `changes.transaction` to commit output and progress together. This does not
+  provide exactly-once processing of external/network side effects. New log metadata statements also
+  affect connection-level changes()/last_insert_rowid(); use each writer's
+  returned MutationResult for the source statement's counters.
+
+## Retention, restart and restore
+
+`pruneAcknowledged()` deletes only the prefix all consumers have acknowledged.
+With no consumers it preserves history. Slow consumers block pruning. Explicit
+`pruneThrough(checkpoint, expireLaggingConsumers: true)` can expire them: reads
+raise `CheckpointExpired` until the application resnapshots and calls `reset`.
+No automatic age/byte quotas, eviction scheduler or consumer deletion API is
+implemented. An unused consumer can be explicitly reset to head to release its
+retention hold.
+
+Checkpoints include a persistent random feed identity and a string-encoded batch
+number. `checkpoint.encode()` / `ChangeCheckpoint.decode()` round-trip them.
+After an intentional backup restore/fork, call `rotateGeneration()` explicitly;
+old checkpoints are rejected and existing consumers must resnapshot/reset.
+A raw file copy preserves identity: arbitrary restores/forks **cannot be detected
+automatically** without external information.
+
+Image-backed applications must persist `db.exportImage()` after producer commits,
+consumer delivery/acknowledgment, resets and pruning as needed. Source rows and
+log are in the same image. Durability with an ImagePager follows that backend's
+contract; no physical-device power-loss guarantee is made.
+
+Deleting log rows does not promise a smaller physical file; pages may only become
+reusable. Schema/owned-trigger drift fails explicitly. Prefer `untrack` before a
+source schema migration. If drift already happened, `open(allowSchemaRepair:
+true)` permits obtaining a handle for explicit untrack; other read/write methods
+still verify the source. Restore/resnapshot application state before resuming.
+Missing log tables/indexes and malformed active metadata are not silently repaired.
+This is not tamper-proof auditing or a full corruption diagnosis.
+
+The first version rejects RAISE(FAIL)/RAISE(IGNORE) triggers in the main schema,
+which can retain unlogged effects. It does not turn recursive_triggers on silently.
+
+## Existing search
+
+A test verifies coexistence with the current search autoUpdate triggers. The two
+packages keep separate logs; Changes does not replace `_sps_*_pending`, alter
+ranking, clear search indexes or change existing app defaults. Consumers may use
+keys to drive idempotent application updates. A dedicated search adapter and
+shared-log migration remain future work.
+
+## Storage implementation and validation
+
+Consumer names are unique through the serialized API; their rows use integer
+primary keys. Batch summaries retain a row-zero anchor and an event-count index.
+These choices avoid reproduced metadata index/empty-delete publication issues in
+the current engine; the trigger-read optimization retains these workarounds.
+Reserved metadata/indexes must not be edited externally. Pruning is covered by
+crash injection and pinned SQLite cross-open/integrity checks.
+
+Verified locally: Dart 3.13.7/Linux x64, 38 tests including 80 injected storage fault
+points across four operations, pinned SQLite 3.53.1 event comparisons and native
+integrity checks. VM and compiled JavaScript/Node assertions cover signed64 keys,
+savepoints, checkpoints and image reopen. Existing Flutter catalog: 17 tests pass.
+Real browser storage, other OS/device runs and WAL-specific package recovery are
+unverified. The current engine suite passes 10,630 tests, with one SQLCipher CLI
+check skipped because its executable is absent. Twelve new trigger snapshot
+comparisons cover pinned SQLite and image reopen/integrity. Existing search: 86
+pass. No publication or physical-device measurement is claimed.
+
+
+## Optional reactive observation (unpublished workspace feature)
+
+`commits` is a lazy, asynchronous broadcast stream of `ChangeNotification`
+(checkpoint and optional reset flag). It supplies hints only after successful
+commits with events, and after track/untrack/generation reset. Empty scopes and
+rolled-back work emit no commit hint. It is shared by handles for the same engine
+object. No listener means no signal controller allocation on the write path.
+It is in-process, non-durable and does not replace durable consumer checkpoints.
+
+`readSince(checkpoint, maxTransactions: ..., maxEvents: ...)` reads without
+creating a consumer, acknowledging events or changing stored metadata. It has the
+same checkpoint validation, transaction boundaries and event budgets as consumer
+reads. It does not hold pruning. Observers must recover from checkpoint expiry
+or feed rotation by reloading their current result. `ChangesReactiveSource` does
+this with a bounded number of pages before falling back to a full invalidation.
+
+`exclusive(action, notifyReset: false)` serializes an application-owned read or
+schema operation with this feed. It does not enable tracked source writes or
+suspend guards; use `transaction` for writes. A leaked raw transaction is rolled
+back and rejected. The ORM adapter uses it to preserve connection ownership.
+These additions do not alter the stored Changes format.

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — built-in pagination
+
+- Integrated keyset `.page()` API with forward/backward portable cursors.
+- Multi-column ASC/DESC, NULL placement, key tie-breakers and query-scope validation.
+- Engine/read-only API and ORM filters, codecs, serialization and tracking.
+- No stored format migration, automatic indexes or change to skip/take behavior.
+
+## Unreleased
+
+- Native typed watch/watchFirst/watchCount/watchAny with independent snapshots.
+- Optional Changes-backed connection observes captured external/Sync commits.
+- Lazy subscriptions, dependency filtering, shared reads and lifecycle cleanup.
+- Adds local unpublished Reactive/Changes dependencies; publication remains pending.
+
 ## 0.1.9
 
 Depends on `sqlite_plus` ^0.1.9. The README opens on `books.db`. The library behavior is the 0.1.8 release.

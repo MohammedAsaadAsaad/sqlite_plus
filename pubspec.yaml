@@ -18,3 +18,6 @@ workspace:
   - packages/sqlite_plus_geo/example
   - packages/sqlite_plus_search
   - packages/sqlite_plus_search/example
+  - packages/sqlite_plus_changes
+  - packages/sqlite_plus_sync
+  - packages/sqlite_plus_reactive

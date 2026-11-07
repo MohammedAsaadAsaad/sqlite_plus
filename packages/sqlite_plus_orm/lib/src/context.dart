@@ -161,7 +161,8 @@ final class DbSet<T> {
       type: type,
       connection: context.connection,
       materialize: (row) => context._materialize(type, row),
-      serialize: context._run);
+      serialize: context._run,
+      context: context);
 
   /// The tracked entity for [key], loading it when it is not already tracked.
   Future<T?> find(EntityKey key) => context._run(() async {
@@ -220,9 +221,18 @@ final class _SaveBatch {
 /// save is rejected; SQL query operations are queued instead.
 final class DbContext {
   /// Claims [connection] exclusively for this context and [model].
-  DbContext(this.connection, this.model) {
-    connection.claim(this);
-    registerOrmScalars(connection, model.entities);
+  DbContext(OrmConnection connection, this.model,
+      {SqlitePlusChanges? changes,
+      this.reactiveDebounce = Duration.zero,
+      this.reactiveMaxRows = 10000})
+      : connection = changes == null
+            ? connection
+            : ChangesOrmConnection(connection, changes) {
+    if (reactiveDebounce.isNegative || reactiveMaxRows < 1) {
+      throw ArgumentError('Invalid reactive limits');
+    }
+    this.connection.claim(this);
+    registerOrmScalars(this.connection, model.entities);
   }
 
   /// Connection used for every statement.
@@ -230,6 +240,10 @@ final class DbContext {
 
   /// Entity mappings and foreign keys.
   final DbModel model;
+  final Duration reactiveDebounce;
+  final int reactiveMaxRows;
+  ReactiveRegistry? _reactiveRegistry;
+  bool _captureInitialized = false;
   final Map<Object, EntityEntry<dynamic>> _entries = Map.identity();
   final Map<EntityType<dynamic>, Map<EntityKey, EntityEntry<dynamic>>>
       _identities = {};
@@ -249,8 +263,8 @@ final class DbContext {
   bool get _transactionFailed => _poisoned || _migrations?._failed == true;
 
   /// Schema planner bound to this context's connection and model.
-  SchemaMigrator get migrations =>
-      _migrations ??= SchemaMigrator(connection, model, serialize: _run);
+  SchemaMigrator get migrations => _migrations ??=
+      SchemaMigrator(connection, model, serialize: _runMigration);
 
   void _checkUsable() {
     if (_closed || _closing) {
@@ -276,11 +290,14 @@ final class DbContext {
       throw const OrmStateException(
           'Context cannot adopt an external transaction');
     }
-    await connection.execute('PRAGMA foreign_keys=ON');
-    final enabled = await connection.query('PRAGMA foreign_keys');
-    if (enabled.rows.length != 1 || enabled.rows.single.single != BigInt.one) {
-      throw const OrmStateException('Foreign key enforcement is required');
-    }
+    await connection.exclusive(() async {
+      await connection.execute('PRAGMA foreign_keys=ON');
+      final enabled = await connection.query('PRAGMA foreign_keys');
+      if (enabled.rows.length != 1 ||
+          enabled.rows.single.single != BigInt.one) {
+        throw const OrmStateException('Foreign key enforcement is required');
+      }
+    });
     _initialized = true;
   }
 
@@ -1209,10 +1226,9 @@ final class DbContext {
     final byEntry = {
       for (final plan in [...batch.writes, ...batch.deletes]) plan.entry: plan
     };
-    try {
-      began = true;
-      await connection.execute('BEGIN');
-      final triggerTables = await _triggerTables();
+    Set<String> triggerTables = const {};
+    Future<void> write() async {
+      triggerTables = await _triggerTables();
       await _writePlans(batch, stored, triggerTables);
       await _deletePlans(batch, stored, triggerTables);
       // A trigger or a rewriting foreign-key action can change rows other than
@@ -1240,8 +1256,19 @@ final class DbContext {
         }
         identities[entry.type]![identity] = entry;
       }
-      committing = true;
-      await connection.execute('COMMIT');
+    }
+
+    try {
+      began = true;
+      if (connection.usesSaveTransactionDriver) {
+        await connection.transaction(write,
+            onCommitting: () => committing = true);
+      } else {
+        await connection.execute('BEGIN');
+        await write();
+        committing = true;
+        await connection.execute('COMMIT');
+      }
       committing = false;
       began = false;
     } catch (error, stack) {
@@ -1288,6 +1315,7 @@ final class DbContext {
       throw OrmStateException(
           'Save committed but applying mapped store values failed', error);
     }
+    _notifySaved(batch, stored, triggerTables);
     return batch.writes.length + batch.deletes.length;
   }
 
@@ -1375,6 +1403,7 @@ final class DbContext {
     _tail = _tail.then((_) async {
       try {
         _closed = true;
+        await _reactiveRegistry?.close();
         for (final entry in _entries.values.toList()) {
           _detach(entry);
         }

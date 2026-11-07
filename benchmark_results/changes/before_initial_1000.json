@@ -1,0 +1,1 @@
+{"rows":1000,"timings_us":{"insert":38184,"point_500":3023,"range_50":23456,"update_batch_200":828260,"update_auto_20":85140,"search_index":151137,"search_20":41177,"export":9},"image_bytes":172032,"image_sha256":"2666dbbde36d1e299a20042e384d1b5958d76731d1bfa96fa9ee5bd29a924442","rss":47620096,"peak_rss":54575104}

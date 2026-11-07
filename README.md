@@ -241,3 +241,41 @@ for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator sqlite_plus_ara
   (cd packages/$package && dart analyze --fatal-infos && dart test) || exit
 done
 ```
+
+### Changes package development
+
+[`sqlite_plus_changes`](packages/sqlite_plus_changes/README.md) is an opt-in
+transaction-scoped key change log with named consumer checkpoints. It is a
+development implementation with an adopted trigger-read optimization, not enabled
+in existing apps. Its README includes setup, consumer/recovery contracts and
+[measured performance](packages/sqlite_plus_changes/benchmark/OPTIMIZATION.md).
+The package remains experimental and unpublished.
+
+
+### Sync package development
+
+[`sqlite_plus_sync`](packages/sqlite_plus_sync/README.md) builds explicit
+client/server state synchronization on Changes: a durable frozen outbox, atomic
+incoming pages/cursors, typed keys and explicit conflicts. The application
+provides a compatible transport/server. Experimental, unpublished and disabled
+in existing applications; see its plan, example and measured limits.
+
+## Reactive ORM (unpublished workspace feature)
+
+[`sqlite_plus_reactive`](packages/sqlite_plus_reactive/README.md) adds typed
+`watch`, `watchFirst`, `watchCount` and `watchAny` to the ORM. Queries share SQL
+execution, infer mapped dependencies and deliver independent snapshots without
+overwriting tracked edits. Ordinary ORM saves work without Changes metadata;
+optional Changes binding also observes Sync inbound commits. See the
+[example](packages/sqlite_plus_orm/example/reactive.dart) and
+[AOT evidence and limits](benchmark_results/reactive/README.md).
+The modified ORM dependency set includes unpublished local packages and is not
+ready for independent pub.dev publication.
+
+
+## Built-in pagination (unreleased workspace)
+
+The engine and ORM provide cursor-based `.page()` with forward/backward
+navigation, typed portable cursors, NULL handling and deterministic key
+tie-breakers. No separate pagination package. See
+[usage and limits](packages/sqlite_plus/doc/PAGINATION.md).

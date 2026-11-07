@@ -71,6 +71,123 @@ final search = await SqlitePlusSearch.open(
 );
 ```
 
+## Optional typo fallback
+
+```dart
+final results = await search.search(
+  'biscut',
+  table: 'products',
+  fuzzy: const FuzzySearchConfig(
+    maxEdits: 1,
+    minTokenLength: 4,
+    maxExpansions: 16,
+  ),
+);
+```
+
+Fuzzy is off by default. In keyword or hybrid mode it runs only when keyword
+search has no hits matching every query token after the source filter, before
+pagination. With fuzzy enabled, exact matching joins literal lexical tokens with
+AND; fallback joins alternatives within each token with OR and token groups with
+AND. Thus `جودة بسكوت` can find `بسكويت جودة` without returning unrelated products
+that only contain `جودة`. Existing all-token hits are never expanded. Alternatives
+come from normalized derived text and use the existing FTS5/BM25 path. Hybrid embeds the
+original query and fuses the resulting ranks as usual. Semantic-only mode rejects
+this option.
+
+Distance is Unicode-code-point Levenshtein: insertion, deletion, substitution;
+transposition costs two edits. `maxEdits` is 1–2, `minTokenLength` is at least 1,
+and `maxExpansions` is 1–64 alternatives per token. Alternatives sort by distance
+then spelling before the cap; final document order uses BM25, not edit distance.
+Candidate tokens are Unicode letter/number/mark/private-use runs. Custom analyzers
+that implement special query syntax should leave fuzzy disabled unless tested
+with this literal grouped AND/OR fallback.
+
+This first implementation scans all derived text in pages of 512 rows and holds
+its distinct vocabulary in memory on each fallback. It has no persistent fuzzy
+index or large-corpus performance guarantee. Candidate caps apply before the
+source filter and can exclude a useful filtered alternative. No schema change,
+index rebuild or model download is needed for this option.
+
+### Learn repeated typo alternatives
+
+```dart
+final result = await search.search(
+  'جودة بسكوت',
+  table: 'products',
+  fuzzy: const FuzzySearchConfig(learnAfter: 5),
+);
+```
+
+Learning is opt-in (`learnAfter: null` by default). A successful first-page fuzzy
+fallback records one observation per normalized query token. Before the threshold,
+only tokens/counters are stored; alternatives remain empty. The fifth successful
+observation stores the candidate lists; the sixth query can reuse them without
+scanning text, when every query token has a ready entry. Alternatives preserve
+ambiguity rather than selecting an assumed single correct word. All-word matching,
+filters and ranking still apply. Uncached token combinations still use the scan.
+
+`SearchResults.fuzzyCacheUsed` reports the fast path; `fuzzyLearningChanged`
+reports writes the caller may need to persist. Pass `recordFuzzyLearning: false`
+for navigation/retries that should not count as new input. Nonzero offsets never
+train. Failed/empty and exact queries do not train. The catalog example counts
+new submissions only and saves its image after learning writes; its displayed
+search timing excludes that subsequent save.
+
+Entries are scoped by collection, analyzer, fuzzy settings and threshold. Explicit
+rebuild and pending-change replay delete collection entries transactionally.
+Without autoUpdate, source edits require the existing explicit rebuild contract.
+Learning uses a separate ordinary metadata table, not a full deletion index. Image
+export includes it; hosts must persist their database as usual. Observation rows
+for rare queries still consume space; no global eviction cap is implemented.
+`verifyIndex` fingerprints derived indexes, not learned observations; malformed
+active learning records fail explicitly and rebuild clears them.
+
+## Optional match precision ordering
+
+```dart
+final result = await search.search(
+  'red apple',
+  table: 'products',
+  ranking: const SearchRankingPolicy(
+    fieldWeights: {'name': 3, 'description': 1},
+  ),
+);
+```
+
+Keyword mode supports an opt-in policy. Default precedence:
+
+1. An indexed field equals the whole normalized token sequence (`exact`).
+2. The sequence occurs inside one field (`phrase`).
+3. All tokens are adjacent in one field, in another order (`adjacent`).
+4. All words occur, possibly scattered or across fields (`allWords`).
+5. Learned/scanned fuzzy alternatives were needed (`corrected`).
+6. A partial result from ordinary OR retrieval (`partial`).
+
+Within a tier, weighted distinct-query-token coverage across indexed fields wins,
+then the existing BM25/feedback score, then stable document id. Omitted fields
+have weight 1; weights must be finite/nonnegative and name indexed text columns.
+This is reranking, not native per-column BM25. `qualityOrder` can reorder all six
+categories. `SearchHit.matchQuality` and `fieldScore` expose the classification;
+`explain` adds numeric matchTier (0 is first) and fieldScore. `score` remains the
+base relevance score and need not decrease across different precision tiers.
+
+Normalization uses the configured analyzer and the engine's unicode61 tokenizer,
+including its diacritic folds. Phrase matching never crosses a field boundary.
+Punctuation/case/Arabic folding follow these rules, not raw byte equality.
+All candidates are ordered before pagination; filters, hit counts, exact-first
+fuzzy retrieval and learned alternatives are preserved. Exact-first retrieval
+still suppresses fuzzy expansion, rather than combining both result populations.
+
+No new persistent index is created. A single indexed text column reuses the
+normalized derived text already fetched in the key-mapping probe. Multiple fields
+share the existing source-key probe with extra projected text columns; there is
+no query per hit or scan of nonmatching documents. CPU/memory cost grows with the
+matching text and result count. The policy defaults off and currently rejects
+semantic/hybrid mode; those modes retain their existing ranking without it.
+Custom analyzers with special MATCH syntax need integration tests. This feature
+requires the workspace engine's public Unicode61Tokenizer API until its release.
+
 ## A vector beside the words
 
 `SearchMode.hybrid` mixes the keyword order with a vector order. You supply the vectors through `LocalEmbeddingProvider`. The provider must be local: no download and no network during `embed`.

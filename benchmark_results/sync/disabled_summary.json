@@ -1,0 +1,258 @@
+{
+  "1000": {
+    "timings": {
+      "insert": {
+        "before": {
+          "median": 28479,
+          "min": 27916,
+          "max": 37174
+        },
+        "disabled": {
+          "median": 27092,
+          "min": 26540,
+          "max": 30019
+        }
+      },
+      "point_500": {
+        "before": {
+          "median": 2474,
+          "min": 2373,
+          "max": 2530
+        },
+        "disabled": {
+          "median": 2376,
+          "min": 2262,
+          "max": 2882
+        }
+      },
+      "range_50": {
+        "before": {
+          "median": 20284,
+          "min": 20181,
+          "max": 22862
+        },
+        "disabled": {
+          "median": 20413,
+          "min": 19728,
+          "max": 21927
+        }
+      },
+      "update_batch_200": {
+        "before": {
+          "median": 806889,
+          "min": 790361,
+          "max": 866258
+        },
+        "disabled": {
+          "median": 807870,
+          "min": 793043,
+          "max": 810210
+        }
+      },
+      "update_auto_20": {
+        "before": {
+          "median": 80752,
+          "min": 77994,
+          "max": 89539
+        },
+        "disabled": {
+          "median": 80569,
+          "min": 79995,
+          "max": 93125
+        }
+      },
+      "search_index": {
+        "before": {
+          "median": 144936,
+          "min": 144557,
+          "max": 156038
+        },
+        "disabled": {
+          "median": 142457,
+          "min": 140185,
+          "max": 150239
+        }
+      },
+      "search_20": {
+        "before": {
+          "median": 40560,
+          "min": 40092,
+          "max": 44721
+        },
+        "disabled": {
+          "median": 41109,
+          "min": 39990,
+          "max": 47740
+        }
+      },
+      "export": {
+        "before": {
+          "median": 9,
+          "min": 9,
+          "max": 11
+        },
+        "disabled": {
+          "median": 9,
+          "min": 8,
+          "max": 12
+        }
+      }
+    },
+    "image_bytes": 172032,
+    "all_images_equal": true,
+    "memory": {
+      "rss": {
+        "before": {
+          "median": 49831936,
+          "min": 49635328,
+          "max": 51191808
+        },
+        "disabled": {
+          "median": 51269632,
+          "min": 50987008,
+          "max": 51793920
+        }
+      },
+      "peak_rss": {
+        "before": {
+          "median": 54554624,
+          "min": 54374400,
+          "max": 55017472
+        },
+        "disabled": {
+          "median": 54525952,
+          "min": 54235136,
+          "max": 55087104
+        }
+      }
+    }
+  },
+  "10000": {
+    "timings": {
+      "insert": {
+        "before": {
+          "median": 588297,
+          "min": 583207,
+          "max": 612722
+        },
+        "disabled": {
+          "median": 568718,
+          "min": 563803,
+          "max": 622293
+        }
+      },
+      "point_500": {
+        "before": {
+          "median": 2961,
+          "min": 2846,
+          "max": 3257
+        },
+        "disabled": {
+          "median": 2931,
+          "min": 2838,
+          "max": 3039
+        }
+      },
+      "range_50": {
+        "before": {
+          "median": 21737,
+          "min": 21095,
+          "max": 22494
+        },
+        "disabled": {
+          "median": 21594,
+          "min": 21071,
+          "max": 22898
+        }
+      },
+      "update_batch_200": {
+        "before": {
+          "median": 7748954,
+          "min": 7685340,
+          "max": 7884595
+        },
+        "disabled": {
+          "median": 7764806,
+          "min": 7641471,
+          "max": 7840953
+        }
+      },
+      "update_auto_20": {
+        "before": {
+          "median": 794041,
+          "min": 760867,
+          "max": 805948
+        },
+        "disabled": {
+          "median": 777358,
+          "min": 754834,
+          "max": 800748
+        }
+      },
+      "search_index": {
+        "before": {
+          "median": 3313129,
+          "min": 3251184,
+          "max": 3412709
+        },
+        "disabled": {
+          "median": 3286811,
+          "min": 3277996,
+          "max": 3484586
+        }
+      },
+      "search_20": {
+        "before": {
+          "median": 181360,
+          "min": 164177,
+          "max": 214456
+        },
+        "disabled": {
+          "median": 185671,
+          "min": 161331,
+          "max": 192433
+        }
+      },
+      "export": {
+        "before": {
+          "median": 221,
+          "min": 214,
+          "max": 997
+        },
+        "disabled": {
+          "median": 248,
+          "min": 209,
+          "max": 816
+        }
+      }
+    },
+    "image_bytes": 1155072,
+    "all_images_equal": true,
+    "memory": {
+      "rss": {
+        "before": {
+          "median": 62939136,
+          "min": 60932096,
+          "max": 216981504
+        },
+        "disabled": {
+          "median": 62902272,
+          "min": 59203584,
+          "max": 217059328
+        }
+      },
+      "peak_rss": {
+        "before": {
+          "median": 214437888,
+          "min": 206786560,
+          "max": 229548032
+        },
+        "disabled": {
+          "median": 215818240,
+          "min": 207294464,
+          "max": 216719360
+        }
+      }
+    }
+  }
+}

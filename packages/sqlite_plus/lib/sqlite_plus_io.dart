@@ -15,6 +15,8 @@ export 'src/storage/durable_file_storage_backend.dart';
 export 'src/storage/official_file_storage.dart'
     show OfficialFileStorage, SqliteLock;
 export 'src/connection/database_owner.dart';
+export 'src/pagination/pagination.dart';
+export 'src/pagination/pagination_io.dart';
 
 /// Opens [path] for reading. A pending `-wal` or hot `-journal` is recovered
 /// in memory. The file and its sidecars are not modified. A shared SQLite
