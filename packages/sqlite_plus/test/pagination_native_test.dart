@@ -1,3 +1,6 @@
+@TestOn('linux')
+library;
+
 import 'dart:io';
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
