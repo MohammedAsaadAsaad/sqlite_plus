@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+
+Depends on `sqlite_plus` ^0.1.13 and `sqlite_plus_orm` ^0.1.12. The library behavior is the 0.1.4 release.
+
 ## 0.1.4
 
 Depends on `sqlite_plus` ^0.1.12 and `sqlite_plus_orm` ^0.1.11. The README opens `places.db` with `openFileImage`. The library behavior is the 0.1.3 release.

@@ -1,12 +1,17 @@
 name: sqlite_plus_reactive
 description: Opt-in shared reactive query snapshots for sqlite_plus and its ORM.
 version: 0.0.1-dev.1
-publish_to: none
+repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus_reactive
+issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
+topics:
+  - sqlite
+  - database
+  - streams
 resolution: workspace
 environment:
   sdk: '>=3.6.0 <4.0.0'
 dependencies:
-  sqlite_plus: ^0.1.9
+  sqlite_plus: ^0.1.13
   sqlite_plus_changes: ^0.0.1-dev.1
 dev_dependencies:
   lints: ^5.0.0

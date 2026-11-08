@@ -4,10 +4,14 @@ Optional, state-based synchronization for `sqlite_plus`, built on
 `sqlite_plus_changes`. Work locally without a connection, freeze pending changes
 into a durable outbox, then explicitly push and pull through your server adapter.
 
-**Experimental, unpublished development implementation.** Pure Dart production
-runtime; no native SQLite, background networking, timers or platform channels.
-The current workspace engine and Changes APIs are required. This does not deploy
-a server or enable synchronization in existing applications.
+`0.0.1-dev.1` is a pre-release. Pure Dart. No background networking and no server in this package. The application supplies the transport and calls `runOnce`.
+
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.13
+  sqlite_plus_changes: ^0.0.1-dev.1
+  sqlite_plus_sync: ^0.0.1-dev.1
+```
 
 ## Run the example
 
@@ -25,19 +29,23 @@ checks convergence and verifies that incoming writes remain visible to other
 Changes consumers without being sent back to the server. The reference server
 is neither durable nor authenticated and is not a production backend.
 
-The package uses workspace/path resolution and `publish_to: none`. There is no
-pub.dev installation yet; local consumers need the matching engine and Changes
-workspace revisions as well.
-
 ## Client setup
 
 Create your ordinary application table and explicitly enable recursive triggers
 on each writer connection. `transport` below is your `SyncTransport` adapter.
 
 ```dart
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus_io.dart';
+import 'package:sqlite_plus_changes/sqlite_plus_changes.dart';
+import 'package:sqlite_plus_sync/sqlite_plus_sync.dart';
+
+final db = await openFileImage('catalog.db');
 await db.execute('PRAGMA recursive_triggers=ON');
-await db.execute('CREATE TABLE products('
-    'id TEXT PRIMARY KEY, name TEXT, price INTEGER)');
+await db.execute(
+  'CREATE TABLE IF NOT EXISTS products(id TEXT PRIMARY KEY, name TEXT, price INTEGER)',
+);
 
 final changes = await SqlitePlusChanges.open(database: db);
 final sync = await SqlitePlusSync.open(
@@ -57,8 +65,10 @@ await changes.transaction((tx) async {
 
 // One bounded push, then one pull page; schedule calls in your application.
 final result = await sync.runOnce();
-print('${result.pushed} mutations sent; ${result.pulled} records applied');
+await File('catalog.db').writeAsBytes(db.exportImage(), flush: true);
 ```
+
+`result.pushed` is how many local mutations left this device. `result.pulled` is how many remote records landed in `catalog.db`. A lost reply retries the same operation id. A conflict stays stored until the application keeps the local row or accepts the remote row.
 
 `scope` identifies one stable server dataset per local database. Reopening with a
 different scope, replica identity or Changes generation fails explicitly. The

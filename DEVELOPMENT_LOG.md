@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-08 — Published the new packages and the pages that show them
+
+- READMEs open the new behavior on a file. The engine page walks `notes.db`. The ORM page turns a page of `books.db`, renames a title, and watches the shelf. Search opens `typos.db` on `جودة بسكوت`. Changes, Sync, Reactive, and Inspector each open their own file.
+- pub.dev latest: `sqlite_plus` 0.1.13, `sqlite_plus_orm` 0.1.12, `sqlite_plus_generator` 0.1.12, `sqlite_plus_arabic` 0.1.6, `sqlite_plus_vec` 0.1.6, `sqlite_plus_geo` 0.1.5, `sqlite_plus_search` 0.1.0-dev.8, `sqlite_plus_changes` 0.0.1-dev.1, `sqlite_plus_sync` 0.0.1-dev.1, `sqlite_plus_reactive` 0.0.1-dev.1, and `sqlite_plus_inspector` 0.0.1-dev.1.
+- Arabic and vec keep a development dependency of `sqlite_plus_orm` ^0.1.11 so they could be uploaded before the ORM. That range accepts 0.1.12. Their production dependency is `sqlite_plus` ^0.1.13.
+- The score cards for these versions were not read. Nothing was pushed to GitHub.
+
 ## 2026-11-06 — README opens use openDatabase and openFileImage
 
 - `openFileImage` in `sqlite_plus_io.dart` reads an existing database image and

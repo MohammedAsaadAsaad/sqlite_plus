@@ -1,4 +1,8 @@
-## Unreleased
+## 0.0.1-dev.1
+
+Depends on `sqlite_plus` ^0.1.13. The README opens `products.db`. Capture stays off until `track`.
+
+## Feed
 
 - Add scoped consumer reads/acknowledgements so database-local output commits
   atomically with consumption; pending-event/checkpoint and source inspection

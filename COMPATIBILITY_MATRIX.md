@@ -340,6 +340,8 @@ open; no broad compatibility gate closes.
 
 ### sqlite_plus_changes — experimental optional package (2026-11-07)
 
+`sqlite_plus_changes`, `sqlite_plus_sync`, `sqlite_plus_reactive`, and `sqlite_plus_inspector` are on pub.dev as `0.0.1-dev.1`. The limits below still apply.
+
 Independent pure-Dart package using ordinary tables and SQL triggers. Explicit
 writer transactions and recursive-trigger opt-in are required. Supports typed
 composite keys, atomic change batches, independent durable consumers, checkpoints,
@@ -454,7 +456,7 @@ need controlled hardware checks. No claim for real browser persistence, real
 Android/iOS/desktop device performance, arbitrary cross-process changes,
 incremental SQL computation, hard byte caps or published package availability.
 The RPC file owner supports ordinary watches but cannot bind an unrelated
-Changes engine handle. New dependencies are unpublished workspace packages.
+Changes engine handle. `sqlite_plus_reactive` and `sqlite_plus_changes` are published as `0.0.1-dev.1`.
 
 ### Integrated cursor pagination (2026-11-07)
 

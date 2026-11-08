@@ -1,6 +1,6 @@
 name: sqlite_plus_search
 description: Offline keyword search for sqlite_plus. One phone returned 20 of 493 names in 47.236 ms.
-version: 0.1.0-dev.7
+version: 0.1.0-dev.8
 repository: https://github.com/MohammedAsaadAsaad/sqlite_plus/tree/main/packages/sqlite_plus_search
 issue_tracker: https://github.com/MohammedAsaadAsaad/sqlite_plus/issues
 topics:
@@ -15,9 +15,9 @@ environment:
   sdk: '>=3.6.0 <4.0.0'
 dependencies:
   crypto: ^3.0.8
-  sqlite_plus: ^0.1.12
-  sqlite_plus_arabic: ^0.1.5
-  sqlite_plus_vec: ^0.1.5
+  sqlite_plus: ^0.1.13
+  sqlite_plus_arabic: ^0.1.6
+  sqlite_plus_vec: ^0.1.6
 dev_dependencies:
   lints: ^5.0.0
   test: ^1.25.0

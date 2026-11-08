@@ -6,17 +6,22 @@ scopes and explicit query planning. Reports stay in application memory until you
 choose to export them. No UI, server, telemetry, database tables, polling loop,
 engine execution hook or automatic index creation.
 
-**Experimental, unpublished workspace package (`publish_to: none`).** Use the
-matching local workspace packages, including the unpublished ORM dependencies.
-This addition does not publish a new version of the engine or ORM.
+`0.0.1-dev.1` is a pre-release. The report stays in memory until you export it. Calls made on the original connection are not measured.
+
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.13
+  sqlite_plus_orm: ^0.1.12
+  sqlite_plus_inspector: ^0.0.1-dev.1
+```
 
 ## Inspect engine queries
 
 ```dart
-import 'package:sqlite_plus/sqlite_plus.dart';
-import 'package:sqlite_plus_inspector/sqlite_plus_inspector.dart';
+import 'package:sqlite_plus/sqlite_plus_io.dart';
+import 'package:sqlite_plus_inspector/sqlite_plus_inspector_io.dart';
 
-final engine = await openInMemory();
+final engine = await openDatabase('catalog.db');
 final inspector = SqlInspector(
   options: InspectorOptions(
     slowThreshold: const Duration(milliseconds: 50),
@@ -25,7 +30,7 @@ final inspector = SqlInspector(
     maxGroups: 100,
   ),
 );
-final db = inspector.database(engine, label: 'catalog');
+final db = inspector.file(engine, label: 'catalog');
 
 await inspector.scope('load-products', () async {
   await db.query('SELECT id,name FROM products WHERE category_id=?', [categoryId]);

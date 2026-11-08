@@ -6,18 +6,22 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.12
-  sqlite_plus_orm: ^0.1.11
-  sqlite_plus_arabic: ^0.1.5
-  sqlite_plus_vec: ^0.1.5
-  sqlite_plus_geo: ^0.1.4
-  sqlite_plus_search: ^0.1.0-dev.7
+  sqlite_plus: ^0.1.13
+  sqlite_plus_orm: ^0.1.12
+  sqlite_plus_arabic: ^0.1.6
+  sqlite_plus_vec: ^0.1.6
+  sqlite_plus_geo: ^0.1.5
+  sqlite_plus_search: ^0.1.0-dev.8
+  sqlite_plus_changes: ^0.0.1-dev.1
+  sqlite_plus_sync: ^0.0.1-dev.1
+  sqlite_plus_reactive: ^0.0.1-dev.1
+  sqlite_plus_inspector: ^0.0.1-dev.1
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.11
+  sqlite_plus_generator: ^0.1.12
 ```
 
-`sqlite_plus_arabic`, `sqlite_plus_vec`, `sqlite_plus_geo`, and `sqlite_plus_search` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer, `sqlite_plus_vec` for a vector column, `sqlite_plus_geo` for geometry, and `sqlite_plus_search` for an offline BM25 index. A package is loaded when the application imports it.
+`sqlite_plus_arabic`, `sqlite_plus_vec`, `sqlite_plus_geo`, and `sqlite_plus_search` are optional. Import `sqlite_plus_arabic` for the Arabic stemmer, `sqlite_plus_vec` for a vector column, `sqlite_plus_geo` for geometry, and `sqlite_plus_search` for an offline BM25 index. `sqlite_plus_changes`, `sqlite_plus_sync`, `sqlite_plus_reactive`, and `sqlite_plus_inspector` are optional pre-releases. A package is loaded when the application imports it.
 
 ## Query
 
@@ -45,8 +49,6 @@ final rows = await db.query(
 ```
 
 The title is `Kept Garden`. A missing `shelf.db` is created. The next launch opens the same file. Integers come back as `BigInt`.
-
-## Track a change
 
 ## Track a change
 
@@ -152,6 +154,10 @@ The package pages are [sqlite_plus](https://pub.dev/packages/sqlite_plus), [sqli
 | [`sqlite_plus_vec`](packages/sqlite_plus_vec) · [pub.dev](https://pub.dev/packages/sqlite_plus_vec) | `vec0` nearest neighbors. A full scan of float32 vectors |
 | [`sqlite_plus_geo`](packages/sqlite_plus_geo) · [pub.dev](https://pub.dev/packages/sqlite_plus_geo) | Geometry, spatial SQL, and R-tree queries in Pure Dart |
 | [`sqlite_plus_search`](packages/sqlite_plus_search) · [pub.dev](https://pub.dev/packages/sqlite_plus_search) | Packed FTS5 keyword search. One phone page of 20,000 names took 47.236 ms. Not a language model |
+| [`sqlite_plus_changes`](packages/sqlite_plus_changes) · [pub.dev](https://pub.dev/packages/sqlite_plus_changes) | A key log of inserts, updates, and deletes, with a durable consumer checkpoint |
+| [`sqlite_plus_sync`](packages/sqlite_plus_sync) · [pub.dev](https://pub.dev/packages/sqlite_plus_sync) | An explicit push and pull, with a durable outbox and stored conflicts |
+| [`sqlite_plus_reactive`](packages/sqlite_plus_reactive) · [pub.dev](https://pub.dev/packages/sqlite_plus_reactive) | `watch` on the current rows, shared by every listener of the same query |
+| [`sqlite_plus_inspector`](packages/sqlite_plus_inspector) · [pub.dev](https://pub.dev/packages/sqlite_plus_inspector) | In-memory timing of the SQL you send through its wrapper |
 | [`browser`](browser) | Flutter browser for a database image on phone and desktop |
 
 | You want | Command |
@@ -242,49 +248,6 @@ for package in sqlite_plus sqlite_plus_orm sqlite_plus_generator sqlite_plus_ara
 done
 ```
 
-### Changes package development
+## A change log, a sync, a watch, a trace
 
-[`sqlite_plus_changes`](packages/sqlite_plus_changes/README.md) is an opt-in
-transaction-scoped key change log with named consumer checkpoints. It is a
-development implementation with an adopted trigger-read optimization, not enabled
-in existing apps. Its README includes setup, consumer/recovery contracts and
-[measured performance](packages/sqlite_plus_changes/benchmark/OPTIMIZATION.md).
-The package remains experimental and unpublished.
-
-
-### Sync package development
-
-[`sqlite_plus_sync`](packages/sqlite_plus_sync/README.md) builds explicit
-client/server state synchronization on Changes: a durable frozen outbox, atomic
-incoming pages/cursors, typed keys and explicit conflicts. The application
-provides a compatible transport/server. Experimental, unpublished and disabled
-in existing applications; see its plan, example and measured limits.
-
-## Reactive ORM (unpublished workspace feature)
-
-[`sqlite_plus_reactive`](packages/sqlite_plus_reactive/README.md) adds typed
-`watch`, `watchFirst`, `watchCount` and `watchAny` to the ORM. Queries share SQL
-execution, infer mapped dependencies and deliver independent snapshots without
-overwriting tracked edits. Ordinary ORM saves work without Changes metadata;
-optional Changes binding also observes Sync inbound commits. See the
-[example](packages/sqlite_plus_orm/example/reactive.dart) and
-[AOT evidence and limits](benchmark_results/reactive/README.md).
-The modified ORM dependency set includes unpublished local packages and is not
-ready for independent pub.dev publication.
-
-
-## Built-in pagination (unreleased workspace)
-
-The engine and ORM provide cursor-based `.page()` with forward/backward
-navigation, typed portable cursors, NULL handling and deterministic key
-tie-breakers. No separate pagination package. See
-[usage and limits](packages/sqlite_plus/doc/PAGINATION.md).
-
-## Optional SQL inspector (unpublished workspace)
-
-[`sqlite_plus_inspector`](packages/sqlite_plus_inspector/README.md) profiles
-explicit engine/file/ORM connections with bounded history, slow-query statistics,
-redacted SQL/bind summaries, operation scopes, repeated-read hints and JSON reports.
-Plans are requested explicitly. No engine execution hook or stored diagnostic
-schema; calls bypassing the wrapper are not intercepted. See its README and
-[AOT evidence](benchmark_results/inspector/README.md) for coverage and costs.
+[`sqlite_plus_changes`](packages/sqlite_plus_changes) writes the changed keys into `products.db` and lets one consumer acknowledge them. [`sqlite_plus_sync`](packages/sqlite_plus_sync) pushes that log when the application calls `runOnce`. [`sqlite_plus_reactive`](packages/sqlite_plus_reactive) is what `books.query.watch()` uses. [`sqlite_plus_inspector`](packages/sqlite_plus_inspector) times the SQL that goes through its wrapper. Each package README opens on its own file. `page` on `openDatabase` is part of the engine, and the ORM page uses the same cursor.
