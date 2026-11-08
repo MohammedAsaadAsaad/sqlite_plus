@@ -1,0 +1,16 @@
+{
+  "baseline_commit": "b59ed6463fcf3cefa0ea57cf1c30282c53a71070",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "dart": "Dart SDK version: 3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "samples": 6,
+  "source_sha256": {
+    "packages/sqlite_plus_branch/lib/sqlite_plus_branch.dart": "5bb1ef6b1744cf1a7b91f135003423e46cbb4a88d42647244a31da60d0d0e902",
+    "packages/sqlite_plus_branch/lib/sqlite_plus_branch_io.dart": "f6d0422a8b07ab70c30580e8d4321b4856453da64f39143e48076713240fa29c",
+    "packages/sqlite_plus_branch/lib/sqlite_plus_branch_orm.dart": "46ad32412412cbc59451968cb2f8f0f30e2bcd0a195201cc67cea9b866354534",
+    "packages/sqlite_plus_branch/lib/src/branch.dart": "28fd3d25c9e25e20acec02e22dabbaa0e649d4de319321063cca6088d6500e1d",
+    "packages/sqlite_plus_branch/lib/src/models.dart": "cff169daab92d6dca39c1ce203972b8d27ac4d02b5f420f2b44cd29c8cb1257e",
+    "packages/sqlite_plus_branch/lib/src/snapshot.dart": "2aad8268dcacf8d4192e51087543ed25b6fe796b3d1dc59602e8747a02b858fc",
+    "tool/branch_benchmark/main.dart": "823162eab5c5593eafc594fe5da2ce7b765828014dc7cb7f0d524b2c9d3eb7d2"
+  },
+  "binary_sha256": "e57b97597c68fb863975d97805ca8abef4edae1329cafab62d3ad6236511aa51"
+}

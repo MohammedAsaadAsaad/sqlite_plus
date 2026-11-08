@@ -251,3 +251,12 @@ done
 ## A change log, a sync, a watch, a trace
 
 [`sqlite_plus_changes`](packages/sqlite_plus_changes) writes the changed keys into `products.db` and lets one consumer acknowledge them. [`sqlite_plus_sync`](packages/sqlite_plus_sync) pushes that log when the application calls `runOnce`. [`sqlite_plus_reactive`](packages/sqlite_plus_reactive) is what `books.query.watch()` uses. [`sqlite_plus_inspector`](packages/sqlite_plus_inspector) times the SQL that goes through its wrapper. Each package README opens on its own file. `page` on `openDatabase` is part of the engine, and the ORM page uses the same cursor.
+
+### Optional database branches
+
+[`sqlite_plus_branch`](packages/sqlite_plus_branch/README.md) creates an isolated
+full-copy working database, exposes final row diffs and three-way conflicts, and
+merges atomically with explicit resolutions and same-transaction retry receipts.
+Portable checkpoints, optional two-slot IO storage and a complete ORM example are
+included. Experimental/unpublished: ordinary keyed tables only; no shared pages,
+schema/virtual/trigger merges or automatic Changes/Reactive/Sync integration.

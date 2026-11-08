@@ -3489,3 +3489,74 @@ generated mapping explanation. Remote main matched local baseline b4b0b7f when
 fetched. Rechecked formatting and fatal-info analysis; added the self-contained
 walkthrough to CI VM/Node assertions. Earlier validation counts above describe
 local runs; merge and remote-check outcomes are recorded separately when known.
+
+## 2026-11-08 — sqlite_plus_branch first milestone
+
+Added an independent, unpublished branch package on baseline b59ed64 (PR #41,
+whose preceding integration passed 29 remote checks). Branch work itself remains
+local. No existing core/ORM/Changes/Sync/Reactive runtime file changed. Default
+applications acquire no write hooks, capture triggers or branch metadata. The
+first successful explicit merge alone adds the reserved _spb_merges receipt table.
+
+Implemented immutable full-image base and isolated working engine, final net row
+diffs, three-way field/row conflicts, explicit resolutions and stale approvals.
+Merge is atomic, validates the complete expected result to reject silent SQL
+REPLACE/IGNORE effects, checks final FKs and restores the source's FK setting.
+Conflicts are grouped by changed row to avoid scanning the full conflict list for
+every change. SQL values compare exact numeric equivalence consistently on VM/JS;
+64-bit/BLOB primary keys and defensive public values are supported. Stable source
+identity is application-provided. Schema drift and unsupported schemas fail closed.
+
+Portable versioned/checksummed archives include both base and working images.
+Explicit two-slot flushed IO checkpoints can fall back from a torn newest slot;
+lock ownership is coordinated within one isolate. Same-transaction receipts make
+pre-merge checkpoints retry safely after committed-source recovery. Tests inject
+failures before and after the atomic pager boundary and simulate checkpoint
+corruption/process exit. No physical power-loss/directory-fsync guarantee claimed.
+
+Validation: full branch suite 41 passed plus the final multi-field/multi-row
+resolution case passed separately (42 distinct cases). Prior combined branch/
+ORM/Inspector run passed 295 tests before the last branch-only additions. Pinned
+SQLite 3.53.1 differential results and cross-open integrity passed for UTF-8,
+UTF-16LE and UTF-16BE. ORM/source lifecycle, final FK rollback, unique/CHECK failures,
+BLOB/64-bit archive isolation, stale approvals, row choices, resource budgets,
+simulated browser byte storage, corruption and commit recovery are covered.
+Analysis/format and enforce-lockfile offline resolution passed. VM and compiled
+JS/Node SQL/ORM/typed-value examples pass; final scripts/logs record local evidence.
+Existing engine/generator full suites were not rerun: their runtime sources did
+not change. No actual browser/device, Windows/macOS, remote branch CI, publication,
+commit/push or merge was performed for this milestone.
+
+Six fresh-process AOT samples at 1000/10000 rows (10 edits on each side) report
+phase times, image/archive sizes, exact logical assertions, process memory and
+source/binary hashes in benchmark_results/branch. Final 10k medians: create
+92.707ms, diff117.738ms, preview237.270ms, archive120.322ms, merge380.056ms.
+These are small in-memory full-copy/scanning workloads, not shared-page or
+unused-feature overhead claims. No FFI/native runtime added; SQLite CLI is only
+used for development verification. Public examples explicitly identify manual
+Column declarations and their generated ProductColumns/ProductMapping equivalents.
+
+Limits and deferred work: main-schema ordinary keyed tables only; no triggers,
+virtual/generated columns, schema merges, automatic key remapping, branch catalog/
+rebase, receipt pruning, Changes/Sync/Reactive transaction integration or shared
+pages. Source manager calls require exclusive same-isolate loan; ORM contexts
+must finish/save/close before branch operations and reopen after source merge.
+
+
+## 2026-11-08 — Branch upload and release-readiness findings
+
+Prepared the branch milestone for GitHub review, without package publication or
+merging main. The publish dry-run reports one repository/homepage metadata
+warning; publish_to:none is intentionally retained. An independent temporary
+installation using published sqlite_plus 0.1.12 / sqlite_plus_orm 0.1.11 resolves,
+but analysis fails on the ORM example's upsert/update methods absent from that
+published ORM. Workspace validation uses newer local ORM code; documented the
+release blocker in the branch README. No dependency versions were promoted and
+no production-release readiness claim is made.
+
+
+During upload, fetched upstream 346c540, which updates package manifests, examples
+and documentation (including core 0.1.13 / ORM 0.1.12). Merged these upstream
+changes and retained the new workspace example entries, preserving the branch
+addition. The independent release test above remains specifically a 0.1.11 test;
+no independent published-0.1.12 readiness claim is inferred from a version bump.

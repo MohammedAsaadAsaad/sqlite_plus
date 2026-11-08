@@ -194,3 +194,21 @@ RPC plan capability or real device/browser gate is claimed.
 Local, experimental and unpublished. No remote CI, release or no-overhead gate
 is claimed. Existing corrupt UTF-16 collation indexes need explicit REINDEX after
 backup; automatic migration is not performed. See ORM doc/DIRECT_WRITES.md.
+
+## Optional full-copy branches milestone (2026-11-08)
+
+- [x] Independent sqlite_plus_branch package; no existing engine/ORM runtime edits.
+- [x] Immutable base and independent working image; stable branch/source identity.
+- [x] Net row diff, field/row conflicts, explicit resolutions and stale approvals.
+- [x] Atomic merge, final expected-state/FK checks and same-transaction receipt.
+- [x] Portable checkpoints and two-slot IO store; explicit save/reopen/discard.
+- [x] Corruption, interrupted storage, uncertain-commit and process-exit coverage.
+- [x] ORM model-to-merge walkthrough with clear descriptor origins; VM/Node checks.
+- [x] Pinned SQLite cross-open comparisons on UTF-8/UTF-16LE/UTF-16BE.
+- [x] AOT phase/storage evidence, schema/resource limits and optional CI matrix.
+
+First milestone only: complete image copies/scans, same-isolate exclusive source
+loan, ordinary primary-keyed tables, no triggers/generated/virtual tables/schema
+merges, implicit key remapping, shared pages, branch registry/rebase, receipt
+pruning or Changes/Sync/Reactive transaction integration. Existing performance and
+release gates remain; package is local, experimental and unpublished.
