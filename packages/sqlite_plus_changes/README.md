@@ -12,69 +12,50 @@ this package does not store a history of row contents.
 Pure Dart, using the public engine API and ordinary SQLite tables/triggers.
 No native bindings, polling timers or background scans.
 
-## Status and availability
+`0.0.1-dev.1` is a pre-release. Capture is off until the application calls `track`.
 
-**Accepted development implementation; experimental and unpublished.** The
-optimized trigger-read path is adopted in this workspace. The package remains
-`0.0.1-dev.1` with `publish_to: none`; there is no pub.dev installation yet.
-Performance results require the current unreleased workspace engine, rather than
-the published `sqlite_plus` 0.1.9 release.
-
-From this repository root:
-
-```sh
-dart pub get
-dart run packages/sqlite_plus_changes/example/main.dart
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.13
+  sqlite_plus_changes: ^0.0.1-dev.1
 ```
 
-The root Dart workspace resolves the local engine and Changes package. Add this
-package as a local path dependency when testing it from another application.
-Use the matching workspace engine revision there as well.
+## One sale, then the cache
 
-Enabling Changes is an application decision. Existing catalog/search defaults
-remain unchanged; no automatic migration or source-data backfill is performed.
-
-## Quick start
+`openFileImage` keeps the connection in this process, which is what the change log registers on. `exportImage` writes `products.db` back. The next launch reads the same file and the same consumer checkpoint.
 
 ```dart
-import 'package:sqlite_plus/sqlite_plus.dart';
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus_io.dart';
 import 'package:sqlite_plus_changes/sqlite_plus_changes.dart';
 
-Future<void> main() async {
-  final db = await openInMemory();
-  try {
-    // Required explicitly on each writer connection, including for REPLACE.
-    await db.execute('PRAGMA recursive_triggers=ON');
-    await db.execute(
-        'CREATE TABLE products(id INTEGER PRIMARY KEY,name TEXT,price INTEGER)');
-    final changes = await SqlitePlusChanges.open(database: db);
-    await changes.track(table: 'products', columns: ['name', 'price']);
-    final cache = await changes.consumer(name: 'product-cache');
-    await changes.transaction((tx) async {
-      await tx.execute('INSERT INTO products VALUES(?,?,?)', [1, 'حليب', 10]);
-      await tx.execute('UPDATE products SET price=? WHERE id=?', [12, 1]);
-    });
-    final batch = await cache.read();
-    for (final transaction in batch.transactions) {
-      for (final event in transaction.events) {
-        print(
-            '${transaction.id}: ${event.kind.name} ${event.table} ${event.key} ${event.changedColumns}');
-      }
-    }
-    // Acknowledge only after successful, idempotent application processing.
-    await cache.acknowledge(batch.checkpoint);
-    print('checkpoint: ${batch.checkpoint.encode()}');
-    await changes.pruneAcknowledged();
-  } finally {
-    await db.close();
-  }
-}
+final db = await openFileImage('products.db');
+await db.execute('PRAGMA recursive_triggers=ON');
+await db.execute(
+  'CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY, name TEXT, price INTEGER)',
+);
+final changes = await SqlitePlusChanges.open(database: db);
+await changes.track(table: 'products', columns: ['name', 'price']);
+final cache = await changes.consumer(name: 'product-cache');
+await changes.transaction((tx) async {
+  await tx.execute(
+    'INSERT INTO products VALUES(?, ?, ?)',
+    [1, 'حليب', 10],
+  );
+  await tx.execute('UPDATE products SET price=? WHERE id=?', [12, 1]);
+});
+final batch = await cache.read();
+await cache.acknowledge(batch.checkpoint);
+await changes.pruneAcknowledged();
+await File('products.db').writeAsBytes(db.exportImage(), flush: true);
 ```
 
-The example emits an insert and an update. Both belong to one committed
-transaction. For a persisted database, reopening the same consumer before
-acknowledgment delivers that work again. This example uses an in-memory database;
-closing it without saving the image discards its data.
+`batch.transactions` holds one committed transaction. Its events are the insert and the update of key `1`. Acknowledge only after the cache applied that work. Reopening `product-cache` before acknowledge delivers the same batch again.
+
+```sh
+dart run packages/sqlite_plus_changes/example/main.dart
+```
 
 ## API at a glance
 
@@ -274,7 +255,7 @@ comparisons cover pinned SQLite and image reopen/integrity. Existing search: 86
 pass. No publication or physical-device measurement is claimed.
 
 
-## Optional reactive observation (unpublished workspace feature)
+## Optional reactive observation
 
 `commits` is a lazy, asynchronous broadcast stream of `ChangeNotification`
 (checkpoint and optional reset flag). It supplies hints only after successful

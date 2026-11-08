@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased — direct writes
+## 0.1.12
+
+Depends on `sqlite_plus` ^0.1.13, `sqlite_plus_reactive` ^0.0.1-dev.1, and `sqlite_plus_changes` ^0.0.1-dev.1. The README shows the next page of `books.db`, a direct title update, and `watch`.
+
+## Direct writes
 
 - Typed constant/arithmetic UPDATE and selective UPSERT/atomic chunked UPSERT.
 - Real unique-target/collation validation and whole-batch duplicate rejection.
@@ -8,19 +12,19 @@
 - Conservative pending-change protection, Changes/Reactive/Inspector integration.
 - Explicit transaction/window/virtual/limit restrictions; no automatic retry.
 
-## Unreleased — built-in pagination
+## Built-in pagination
 
 - Integrated keyset `.page()` API with forward/backward portable cursors.
 - Multi-column ASC/DESC, NULL placement, key tie-breakers and query-scope validation.
 - Engine/read-only API and ORM filters, codecs, serialization and tracking.
 - No stored format migration, automatic indexes or change to skip/take behavior.
 
-## Unreleased
+## Reactive queries
 
 - Native typed watch/watchFirst/watchCount/watchAny with independent snapshots.
 - Optional Changes-backed connection observes captured external/Sync commits.
 - Lazy subscriptions, dependency filtering, shared reads and lifecycle cleanup.
-- Adds local unpublished Reactive/Changes dependencies; publication remains pending.
+- Depends on the published pre-releases `sqlite_plus_reactive` and `sqlite_plus_changes`.
 
 ## 0.1.11
 

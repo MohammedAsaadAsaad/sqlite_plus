@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.0.1-dev.1 (unpublished)
+## 0.0.1-dev.1
+
+Depends on `sqlite_plus` ^0.1.13, `sqlite_plus_orm` ^0.1.12, and `sqlite_plus_changes` ^0.0.1-dev.1. The README opens `catalog.db`.
 
 - Optional raw/read-only/file/ORM observation adapters; no engine runtime hooks.
 - Bounded records, aggregates and nested/concurrent operation scopes, slow-query

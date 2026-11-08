@@ -6,7 +6,7 @@ Dart objects on `sqlite_plus`. You change a field. `saveChanges` writes one tran
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.11
+  sqlite_plus_orm: ^0.1.12
 ```
 
 ## Save two books, rename one
@@ -47,6 +47,63 @@ final stored = await books.query
 ```
 
 `stored.revision` is 1. An idle save writes nothing. The other book stays at revision 0. Closing the set leaves `books.db` on disk, and the next `openDbFile` reads the revised title.
+
+## The next page of books
+
+`page` uses the same filter as `select`. The primary key keeps two books with the same title apart. `books.db` stays the file from the example above.
+
+```dart
+final first = await books.query
+    .orderByFields((row) => [row.title.ascending])
+    .page(size: 20);
+final following = await books.query
+    .orderByFields((row) => [row.title.ascending])
+    .page(size: 20, after: first.nextCursor);
+final token = first.nextCursor?.encode();
+```
+
+`first.items` is the first shelf of books. `following` starts after that cursor. `token` is the text you can store and pass to `PageCursor.parse` on the next launch.
+
+## Rename every matching title
+
+`update` writes now. It does not wait for `saveChanges`. A book that already has an unsaved edit in this context refuses the write.
+
+```dart
+final renamed = await books.query
+    .filter((row) => row.title.equalTo('Kept Garden'))
+    .update({BookColumns.title: 'Kept Garden Revised'});
+```
+
+`renamed.affectedRows` is how many titles changed. The revision column still increments. `BookColumns` is written next to `BookMapping` in the generated part.
+
+A known key can insert the row or refresh its title:
+
+```dart
+await books.upsert(
+  Book(id: BigInt.from(2), title: 'Other Atlas'),
+  conflictOn: [BookColumns.id],
+  update: [BookColumns.title],
+);
+```
+
+`conflictOn` is the key that decides whether the row is new. `update` lists the columns replaced when that key is already stored.
+
+## Watch the shelf
+
+`watch` emits the current rows, then emits again after a successful `saveChanges`. The objects in the snapshot are copies. Editing a copy does not save it.
+
+```dart
+final shelf = books.query
+    .orderByFields((row) => [row.title.ascending])
+    .watch()
+    .listen((snapshot) {
+  print(snapshot.items.map((book) => book.title));
+});
+await books.saveChanges();
+await shelf.cancel();
+```
+
+`watchFirst` is one book or null. `watchCount` is a `BigInt`. `watchAny` is true when at least one row matches.
 
 ## Create the table
 
@@ -422,18 +479,18 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.4` | <https://pub.dev/packages/sqlite_plus_geo> |
+| sqlite_plus | `^0.1.13` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.12` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.12` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_geo> |
 
 ### sqlite_plus
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.12
+  sqlite_plus: ^0.1.13
 ```
 
 ```dart
@@ -460,7 +517,7 @@ The title is `Kept Garden`. A missing `shelf.db` is created. The next launch ope
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.11
+  sqlite_plus_orm: ^0.1.12
 ```
 
 ```dart
@@ -489,7 +546,7 @@ final BigInt? rowid;
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.11
+  sqlite_plus_generator: ^0.1.12
 ```
 
 ```sh
@@ -502,7 +559,7 @@ From the package root, that command writes a part for every public `@DbEntity` u
 
 ```yaml
 dependencies:
-  sqlite_plus_arabic: ^0.1.5
+  sqlite_plus_arabic: ^0.1.6
 ```
 
 ```dart
@@ -520,7 +577,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_vec: ^0.1.5
+  sqlite_plus_vec: ^0.1.6
 ```
 
 ```dart
@@ -538,7 +595,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_geo: ^0.1.4
+  sqlite_plus_geo: ^0.1.5
 ```
 
 ```dart
@@ -554,40 +611,3 @@ await geo.createSpatialTable(
 ```
 
 X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
-
-
-## Reactive queries (unpublished workspace feature)
-
-Typed queries now expose `.watch()`, `.watchFirst()`, `.watchCount()` and
-`.watchAny()`, including filters, ordering and pagination. Generated mappings
-need no regeneration. Watch snapshots are independent, untracked objects and do
-not overwrite unsaved tracked changes. Ordinary ORM saves invalidate after
-successful commit; Changes and Sync observation is an optional context adapter.
-See [Reactive usage and limits](../sqlite_plus_reactive/README.md) and the
-[complete example](example/reactive.dart).
-
-The workspace ORM now depends on unpublished `sqlite_plus_reactive` and
-`sqlite_plus_changes`. Use matching local packages; this dependency set is not a
-published 0.1.9 installation recipe and must not be published independently.
-
-
-## Built-in cursor pagination (unreleased workspace)
-
-Use `.page(size: 30, after: cursor)` or `before:` for keyset navigation. ORM
-infers primary-key tie-breakers, preserves filters/tracking and supports
-`asNoTracking()`. The direct engine API accepts a table, key columns, ordering
-and bound filter. No extra package or stored cursor index.
-See [usage, consistency and performance limits](../sqlite_plus/doc/PAGINATION.md).
-
-## Direct UPDATE and UPSERT (unreleased workspace)
-
-Typed queries now expose `.update({column: value})` and numeric
-`column.add(...)`/`subtract(...)`. DbSet provides `.upsert(...)` and atomic
-`.upsertMany(...)`, with explicit conflict/update columns and returned SQL values.
-Clean tracked entities synchronize after commit; pending local changes reject
-these operations. Managed revisions, Changes, Reactive and Inspector integration
-are covered. See [API, safety policy and limits](doc/DIRECT_WRITES.md) and the
-[runnable example](example/direct_writes.dart).
-
-For a complete model-to-write walkthrough with every column defined, see
-[the self-contained example](example/direct_writes_from_scratch.dart).

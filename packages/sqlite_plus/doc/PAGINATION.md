@@ -1,6 +1,6 @@
 # Cursor pagination in sqlite_plus and ORM
 
-Unreleased workspace feature, integrated into the existing packages. No new
+Built into the engine and the ORM. No new
 package, schema migration, persistent cursor table, automatic index or background
 work. Existing `query`, `skip`, `take`, `count` and reactive APIs keep their behavior.
 

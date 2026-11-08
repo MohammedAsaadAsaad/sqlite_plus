@@ -6,7 +6,7 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.12
+  sqlite_plus: ^0.1.13
 ```
 
 ## A table, a row, a query
@@ -121,6 +121,34 @@ final again = await MutableSqliteDatabase.fromImage(memory.exportImage());
 
 `openDatabase` needs `dart:io`. It writes a missing database as an empty image and a missing `-journal` as an empty file. An existing database file is not replaced. `openFileImage` reads a file into this process, or starts empty when the file is missing, and does not write until `exportImage`. A tokenizer or a module registers on that connection. `version` runs `onCreate`, `onUpgrade`, or `onDowngrade` and stores that number. `insert`, `query`, `update`, `delete`, `transaction`, and `batch` use that connection. `query` names a table. `rawQuery` runs SQL and returns maps. `directoryEntriesDurable: false` writes nothing and throws. That flag is a caller attestation, not a power-loss result. `wal: true` does not create a `-wal` file. A second open of the same path fails while the first owner is open.
 
+## The next page
+
+`page` keeps the sort stable by the key columns. The cursor is the last row of the page you already showed. The next launch opens the same `notes.db`.
+
+```dart
+import 'package:sqlite_plus/sqlite_plus_io.dart';
+
+final db = await openDatabase('notes.db');
+await db.execute(
+  'CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY, title TEXT)',
+);
+final first = await db.page(
+  table: 'note',
+  keyColumns: ['id'],
+  orderBy: [PageOrder('title')],
+  size: 20,
+);
+final next = await db.page(
+  table: 'note',
+  keyColumns: ['id'],
+  orderBy: [PageOrder('title')],
+  size: 20,
+  after: first.nextCursor,
+);
+```
+
+`first.items` holds up to 20 maps. `first.hasNextPage` is true when another row is waiting. `next` continues after `first.nextCursor`. Pass `before:` to walk back. Integers in the maps are `BigInt`. There is no extra index and no stored cursor table.
+
 ## SQLCipher 4
 
 ```dart
@@ -207,18 +235,18 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.4` | <https://pub.dev/packages/sqlite_plus_geo> |
+| sqlite_plus | `^0.1.13` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.12` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.12` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_geo> |
 
 ### sqlite_plus
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.12
+  sqlite_plus: ^0.1.13
 ```
 
 ```dart
@@ -249,7 +277,7 @@ The title is `Kept Garden`. A missing `shelf.db` is created. Integers come back 
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.11
+  sqlite_plus_orm: ^0.1.12
 ```
 
 ```dart
@@ -278,7 +306,7 @@ final BigInt? rowid;
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.11
+  sqlite_plus_generator: ^0.1.12
 ```
 
 ```sh
@@ -291,7 +319,7 @@ From the package root, that command writes a part for every public `@DbEntity` u
 
 ```yaml
 dependencies:
-  sqlite_plus_arabic: ^0.1.5
+  sqlite_plus_arabic: ^0.1.6
 ```
 
 ```dart
@@ -309,7 +337,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_vec: ^0.1.5
+  sqlite_plus_vec: ^0.1.6
 ```
 
 ```dart
@@ -327,7 +355,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_geo: ^0.1.4
+  sqlite_plus_geo: ^0.1.5
 ```
 
 ```dart
@@ -399,13 +427,13 @@ An application loads a package when it imports it. Arabic and vec stay out of a 
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.12
-  sqlite_plus_orm: ^0.1.11
-  sqlite_plus_arabic: ^0.1.5
-  sqlite_plus_vec: ^0.1.5
+  sqlite_plus: ^0.1.13
+  sqlite_plus_orm: ^0.1.12
+  sqlite_plus_arabic: ^0.1.6
+  sqlite_plus_vec: ^0.1.6
 
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.11
+  sqlite_plus_generator: ^0.1.12
 ```
 
 ### A reading card
@@ -540,12 +568,3 @@ final near = await neighbors.query.nearest(const [0.9, 0.1], k: 1).single();
 `openInMemory` is `MutableSqliteDatabase.create`. `exportImage` is the byte image a file can hold. `openBrowserStorage` reports `canRead`, `canWrite`, `durabilityPromised`, and `placement`.
 
 Compared with pinned SQLite 3.53.1: constant `EXPLAIN` arithmetic, a constant `WHERE`, one table scan, a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries still have no bytecode. This is not a VDBE. Contentless FTS4 returns the pinned `MATCH` row and stores no content table. File `journal_mode` `wal`, `persist`, and `truncate` follow the pinned header and journal bytes. This is not a multi-frame WAL. `incremental_vacuum` moves a live end page before truncating. ICU collations are absent. Correlated `json_each` matches the pinned CLI, including `json_each(docs.label) RIGHT JOIN docs`, which returns 0 rows. Set `doubleQuotedStrings` to treat an unresolved double-quoted identifier as a string. The default is off. The comparison is `db_browser_b3_dqs_test.dart`. Unquoted `a.title` beside a column named `a.title` returns the `title` column.
-
-
-## Built-in cursor pagination (unreleased workspace)
-
-Use `.page(size: 30, after: cursor)` or `before:` for keyset navigation. ORM
-infers primary-key tie-breakers, preserves filters/tracking and supports
-`asNoTracking()`. The direct engine API accepts a table, key columns, ordering
-and bound filter. No extra package or stored cursor index.
-See [usage, consistency and performance limits](doc/PAGINATION.md).

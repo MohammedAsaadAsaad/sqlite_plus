@@ -2,7 +2,9 @@
 
 ## 0.0.1-dev.1
 
-- Initial unpublished development milestone: explicit state-based push/pull,
+Depends on `sqlite_plus` ^0.1.13 and `sqlite_plus_changes` ^0.0.1-dev.1. The README opens `catalog.db`.
+
+- Initial development milestone: explicit state-based push/pull,
   immutable durable outbox and stable operation IDs, scoped server namespaces,
   typed composite keys, monotonic revisions and tombstones.
 - Atomic Changes output/ack, incoming source/revision/origin/cursor commits and

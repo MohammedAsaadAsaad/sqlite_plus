@@ -4,8 +4,8 @@ Offline search for rows that already live in a [sqlite_plus](https://pub.dev/pac
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.12
-  sqlite_plus_search: ^0.1.0-dev.7
+  sqlite_plus: ^0.1.13
+  sqlite_plus_search: ^0.1.0-dev.8
 ```
 
 `0.1.0-dev.7` is a pre-release. The clinic shelf below is the example. The catalog measurement is at the end. Embeddings stay a local fixture you supply. The limits are in [doc/LIMITATIONS.md](doc/LIMITATIONS.md).
@@ -72,17 +72,41 @@ final search = await SqlitePlusSearch.open(
 
 ## Optional typo fallback
 
+Fuzzy stays off until you ask for it. This shelf is its own file. `بسكوت` is one edit from `بسكويت`, and both words of `جودة بسكوت` have to match.
+
 ```dart
-final results = await search.search(
-  'biscut',
-  table: 'products',
-  fuzzy: const FuzzySearchConfig(
-    maxEdits: 1,
-    minTokenLength: 4,
-    maxExpansions: 16,
-  ),
+import 'dart:io';
+
+import 'package:sqlite_plus/sqlite_plus_io.dart';
+import 'package:sqlite_plus_search/sqlite_plus_search.dart';
+
+final db = await openFileImage('typos.db');
+await db.execute(
+  'CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY, name TEXT)',
 );
+await db.execute(
+  "INSERT INTO products(name) VALUES ('بسكويت جودة'), ('شاي')",
+);
+final search = await SqlitePlusSearch.open(database: db);
+await search.indexTable(
+  table: 'products',
+  primaryKey: 'id',
+  textColumns: ['name'],
+);
+final corrected = await search.search(
+  'جودة بسكوت',
+  table: 'products',
+  fuzzy: const FuzzySearchConfig(maxEdits: 1, minTokenLength: 4),
+);
+final learned = await search.search(
+  'جودة بسكوت',
+  table: 'products',
+  fuzzy: const FuzzySearchConfig(learnAfter: 5),
+);
+await File('typos.db').writeAsBytes(db.exportImage(), flush: true);
 ```
+
+`corrected` returns the biscuit row. A row that only contains `جودة` stays out. `learned` records the typo. After the same successful query is repeated `learnAfter` times, the next search reuses the stored alternatives. `fuzzyCacheUsed` says that fast path was used. `recordFuzzyLearning: false` keeps a repeated page from counting as a new typo.
 
 Fuzzy is off by default. In keyword or hybrid mode it runs only when keyword
 search has no hits matching every query token after the source filter, before
@@ -184,8 +208,7 @@ share the existing source-key probe with extra projected text columns; there is
 no query per hit or scan of nonmatching documents. CPU/memory cost grows with the
 matching text and result count. The policy defaults off and currently rejects
 semantic/hybrid mode; those modes retain their existing ranking without it.
-Custom analyzers with special MATCH syntax need integration tests. This feature
-requires the workspace engine's public Unicode61Tokenizer API until its release.
+Custom analyzers with special MATCH syntax need integration tests. The policy uses the engine's public `Unicode61Tokenizer`.
 
 ## A vector beside the words
 
@@ -266,6 +289,6 @@ A query of whole terms reads the leaves that contain those terms, plus one docum
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus | `^0.1.13` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_arabic | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_vec> |

@@ -1,4 +1,4 @@
-# Direct UPDATE and UPSERT (unreleased workspace)
+# Direct UPDATE and UPSERT
 
 These operations execute immediately through an owning DbContext. They do not
 queue entity edits for saveChanges, attach input objects or begin a caller-visible

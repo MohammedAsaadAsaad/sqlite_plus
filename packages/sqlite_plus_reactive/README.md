@@ -4,10 +4,14 @@ Observe current SQL results as Dart streams, with shared query execution,
 post-commit invalidation and row diffs. Pure Dart; no Flutter dependency, polling
 loop, native SQLite or engine patch.
 
-**Development implementation, experimental and unpublished (`publish_to: none`).**
-Use the matching local workspace packages. ORM now depends on the local Reactive
-and Changes packages; the changed ORM dependency set is not ready to publish to
-pub.dev independently of them.
+`0.0.1-dev.1` is a pre-release. The ORM already depends on this package. A watch follows the current rows. It does not poll.
+
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.13
+  sqlite_plus_orm: ^0.1.12
+  sqlite_plus_reactive: ^0.0.1-dev.1
+```
 
 ## ORM integration
 

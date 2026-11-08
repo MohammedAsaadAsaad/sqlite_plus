@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased — built-in collation correctness
+## 0.1.13
+
+Cursor `page` on `openDatabase`, UTF-16 `NOCASE` and `RTRIM` comparisons, and narrower trigger reads. The README shows the next page of `notes.db`.
+
+## Built-in collation correctness
 
 - Compare NOCASE/RTRIM in UTF-8 regardless of database text encoding; preserve
   BINARY ordering. NOCASE keeps SQLite's shared-NUL/full-byte-length rule.
@@ -8,14 +12,14 @@
 - Existing affected indexes may require explicit REINDEX after backup; no
   automatic index/schema rewrite is performed.
 
-## Unreleased — built-in pagination
+## Built-in pagination
 
 - Integrated keyset `.page()` API with forward/backward portable cursors.
 - Multi-column ASC/DESC, NULL placement, key tie-breakers and query-scope validation.
 - Engine/read-only API and ORM filters, codecs, serialization and tracking.
 - No stored format migration, automatic indexes or change to skip/take behavior.
 
-## Unreleased
+## Engine reads
 
 - Read physical catalog roots across multi-page/overflow sqlite_schema so indexed
   row appends do not rebuild an unrelated database merely because its schema grew.

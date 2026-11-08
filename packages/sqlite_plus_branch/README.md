@@ -14,8 +14,9 @@ Git's storage format. The base and working images both live in memory.
 This is a workspace development package (`publish_to: none`). An independent
 installation against published sqlite_plus_orm 0.1.11 currently fails analysis
 of example/orm.dart: that published version lacks the new upsert/update methods.
-Publish a compatible ORM release and update the dependency before releasing this
-package, or adapt the example to published APIs and revalidate independently.
+Declare and independently verify a compatible ORM release before releasing this
+package, or adapt the example to published APIs. Upstream main subsequently
+bumped ORM to 0.1.12; the independent check described here used 0.1.11.
 A publish dry-run also recommends repository/homepage metadata. Neither local
 workspace checks nor the dry-run establish production or public-release readiness.
 

@@ -6,8 +6,8 @@ Nearest neighbors for one float32 column. The module name is `vec0`. The query r
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.12
-  sqlite_plus_vec: ^0.1.5
+  sqlite_plus: ^0.1.13
+  sqlite_plus_vec: ^0.1.6
 ```
 
 ## Distances
@@ -160,18 +160,18 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.12` | <https://pub.dev/packages/sqlite_plus> |
-| sqlite_plus_orm | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_orm> |
-| sqlite_plus_generator | `^0.1.11` | <https://pub.dev/packages/sqlite_plus_generator> |
-| sqlite_plus_arabic | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_arabic> |
-| sqlite_plus_vec | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_vec> |
-| sqlite_plus_geo | `^0.1.4` | <https://pub.dev/packages/sqlite_plus_geo> |
+| sqlite_plus | `^0.1.13` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus_orm | `^0.1.12` | <https://pub.dev/packages/sqlite_plus_orm> |
+| sqlite_plus_generator | `^0.1.12` | <https://pub.dev/packages/sqlite_plus_generator> |
+| sqlite_plus_arabic | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_arabic> |
+| sqlite_plus_vec | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_vec> |
+| sqlite_plus_geo | `^0.1.5` | <https://pub.dev/packages/sqlite_plus_geo> |
 
 ### sqlite_plus
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.12
+  sqlite_plus: ^0.1.13
 ```
 
 ```dart
@@ -198,7 +198,7 @@ The title is `Kept Garden`. A missing `shelf.db` is created. The next launch ope
 
 ```yaml
 dependencies:
-  sqlite_plus_orm: ^0.1.11
+  sqlite_plus_orm: ^0.1.12
 ```
 
 ```dart
@@ -227,7 +227,7 @@ final BigInt? rowid;
 
 ```yaml
 dev_dependencies:
-  sqlite_plus_generator: ^0.1.11
+  sqlite_plus_generator: ^0.1.12
 ```
 
 ```sh
@@ -240,7 +240,7 @@ From the package root, that command writes a part for every public `@DbEntity` u
 
 ```yaml
 dependencies:
-  sqlite_plus_arabic: ^0.1.5
+  sqlite_plus_arabic: ^0.1.6
 ```
 
 ```dart
@@ -258,7 +258,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_vec: ^0.1.5
+  sqlite_plus_vec: ^0.1.6
 ```
 
 ```dart
@@ -276,7 +276,7 @@ await db.execute(
 
 ```yaml
 dependencies:
-  sqlite_plus_geo: ^0.1.4
+  sqlite_plus_geo: ^0.1.5
 ```
 
 ```dart
