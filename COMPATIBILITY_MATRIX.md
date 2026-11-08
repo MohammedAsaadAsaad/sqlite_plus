@@ -554,3 +554,28 @@ for UTF-8, UTF-16LE and UTF-16BE. NOCASE/RTRIM now compare UTF-8 as native SQLit
 does; existing incorrectly ordered UTF-16 indexes are not automatically rebuilt.
 AOT evidence covers 100/1000-row in-memory writes only; no unused-feature latency
 guarantee or file/large-data performance claim.
+
+## Optional sqlite_plus_branch (2026-11-08)
+
+Full-copy isolated main-schema database branches; net row diffs and three-way
+field/row conflicts; explicit main/branch/custom-field choices; stale-preview
+validation. Atomic merge verifies complete expected logical state and final FKs,
+rejecting silent SQL REPLACE/IGNORE side effects. Same-transaction merge receipts
+support retry from a pre-commit checkpoint after a source restart. FK actions are
+temporarily disabled/restored on the exclusively loaned source. Immediate unique
+constraints can reject valid swaps; keys are never automatically remapped.
+
+Portable checksummed archive and two-slot flushed IO checkpoint restore, explicit
+ORM connection adapter. Ordinary tables require non-null BINARY-collation INTEGER,
+TEXT or BLOB primary-key values; composite/WITHOUT ROWID supported. Exact schema
+and user_version/application_id/encoding must match base. Triggers, virtual and
+generated columns are rejected, including Changes capture/virtual Search tables.
+No existing engine/ORM runtime edits; no unused-feature latency gate claimed.
+
+Linux VM and compiled JS/Node examples, simulated browser byte store, pinned
+SQLite 3.53.1 row comparison/cross-open integrity on all three encodings, injected
+atomic pager failures and checkpoint corruption/process-exit coverage. IO has no
+portable directory-fsync/power-loss or multi-isolate guarantee. Real browser,
+physical crash, Windows/macOS and remote CI remain unverified for this milestone.
+Default budgets and measured 1k/10k phase times/storage:
+packages/sqlite_plus_branch/README.md and benchmark_results/branch/README.md.

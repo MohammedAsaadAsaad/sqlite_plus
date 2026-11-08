@@ -319,3 +319,44 @@ jobs:
           dart run packages/sqlite_plus_orm/example/direct_writes_from_scratch.dart
           dart compile js packages/sqlite_plus_orm/example/direct_writes_from_scratch.dart -o /tmp/direct_writes_from_scratch.js
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/direct_writes_from_scratch.js
+
+  branches:
+    name: Branches (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+        working-directory: packages/sqlite_plus_branch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.7
+      - name: Build pinned development SQLite reference
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}
+        run: bash tool/build_sqlite_reference.sh
+      - name: Install workspace dependencies
+        working-directory: ${{ github.workspace }}
+        run: dart pub get --enforce-lockfile
+      - name: Format, analyze and test
+        run: |
+          dart format --output=none --set-exit-if-changed .
+          dart analyze --fatal-infos
+          dart test
+          dart run example/main.dart
+          dart run example/orm.dart
+          dart run example/typed_values.dart
+      - name: JavaScript assertion examples
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          dart compile js example/main.dart -o /tmp/branch.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/branch.js
+          dart compile js example/orm.dart -o /tmp/branch_orm.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/branch_orm.js
+          dart compile js example/typed_values.dart -o /tmp/branch_typed.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/branch_typed.js

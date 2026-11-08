@@ -288,3 +288,12 @@ redacted SQL/bind summaries, operation scopes, repeated-read hints and JSON repo
 Plans are requested explicitly. No engine execution hook or stored diagnostic
 schema; calls bypassing the wrapper are not intercepted. See its README and
 [AOT evidence](benchmark_results/inspector/README.md) for coverage and costs.
+
+### Optional database branches
+
+[`sqlite_plus_branch`](packages/sqlite_plus_branch/README.md) creates an isolated
+full-copy working database, exposes final row diffs and three-way conflicts, and
+merges atomically with explicit resolutions and same-transaction retry receipts.
+Portable checkpoints, optional two-slot IO storage and a complete ORM example are
+included. Experimental/unpublished: ordinary keyed tables only; no shared pages,
+schema/virtual/trigger merges or automatic Changes/Reactive/Sync integration.
