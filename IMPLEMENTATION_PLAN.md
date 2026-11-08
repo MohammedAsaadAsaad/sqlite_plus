@@ -163,3 +163,34 @@ See packages/sqlite_plus/doc/PAGINATION.md for scope and consistency limits.
 - [x] Validate core, ORM/add-ons, Search, generator, catalog and examples together.
 - [x] Fix example manifests and reference-test platform scope from GitHub checks.
 - [x] Preserve experimental status, benchmark evidence and open performance gates.
+
+## Inspector development milestone (2026-11-07)
+
+- [x] Independent optional package and explicit engine/read-only/file/ORM adapters;
+  no changes to existing runtime sources or stored schema.
+- [x] Bounded completion history, LRU groups, operation scopes, slow/error/row counts,
+  default literal/bind redaction and opt-in bounded previews.
+- [x] In-flight/active/depth/history limits with visible skip/eviction counters;
+  original query results/errors and clear/disable/close lifecycle preserved.
+- [x] Explicit main-image SELECT planning; no automatic diagnostic query replay.
+- [x] Changes-driver/Reactive, ownership, file/browser, native plan and VM/Node checks.
+- [x] Five-process AOT direct/disabled/enabled evidence, examples, docs and CI setup.
+
+Experimental and unpublished. Only calls through supplied adapters are observed;
+no UI/server, automatic engine-wide tracing, exact N+1 proof, CPU attribution,
+RPC plan capability or real device/browser gate is claimed.
+
+## Direct ORM writes milestone (2026-11-08)
+
+- [x] Typed immediate partial UPDATE, bound numeric add/subtract, managed versions.
+- [x] Explicit unique-target UPSERT and atomic, bounded-batch upsertMany.
+- [x] Validate actual unique indexes/collations and duplicate inputs before writes.
+- [x] Reject dirty contexts; refresh clean tracking after commit; preserve late edits.
+- [x] Changes transaction-driver, Reactive invalidation and Inspector coverage.
+- [x] Trigger final-state reads, rollback/commit uncertainty and poisoning tests.
+- [x] Native UTF-8/UTF-16 comparisons; fix core built-in collation index ordering.
+- [x] Full regressions, VM/Node example, AOT measurements, docs and CI definition.
+
+Local, experimental and unpublished. No remote CI, release or no-overhead gate
+is claimed. Existing corrupt UTF-16 collation indexes need explicit REINDEX after
+backup; automatic migration is not performed. See ORM doc/DIRECT_WRITES.md.

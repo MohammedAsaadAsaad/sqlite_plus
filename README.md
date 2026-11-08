@@ -279,3 +279,12 @@ The engine and ORM provide cursor-based `.page()` with forward/backward
 navigation, typed portable cursors, NULL handling and deterministic key
 tie-breakers. No separate pagination package. See
 [usage and limits](packages/sqlite_plus/doc/PAGINATION.md).
+
+## Optional SQL inspector (unpublished workspace)
+
+[`sqlite_plus_inspector`](packages/sqlite_plus_inspector/README.md) profiles
+explicit engine/file/ORM connections with bounded history, slow-query statistics,
+redacted SQL/bind summaries, operation scopes, repeated-read hints and JSON reports.
+Plans are requested explicitly. No engine execution hook or stored diagnostic
+schema; calls bypassing the wrapper are not intercepted. See its README and
+[AOT evidence](benchmark_results/inspector/README.md) for coverage and costs.

@@ -1,0 +1,11 @@
+{
+  "baseline_commit": "b4b0b7f66d8467858e3a335498c1bec0103d5faf",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "runs": 18,
+  "source_sha256": {
+    "packages/sqlite_plus/lib/src/sql/values.dart": "63373995ce34f2c4d1a6501663530e9fb8ef4bdff5e05e00e00180ecdaf62b7c",
+    "packages/sqlite_plus_orm/lib/src/writes.dart": "ed3090f092f00b3d3dd03383b91ab44ce5df5e01f0048eff13162000af0c35d6",
+    "tool/direct_writes_benchmark/main.dart": "ada8edb457d3ce2a21d02edd9e3e43f432c59454128d5a1ba2ef26b0c68c93ed"
+  },
+  "binary_sha256": "1f21ca6aece736e68cb69ae978edafc92f1ca0d4ebec2d729d58d851a2b87b04"
+}

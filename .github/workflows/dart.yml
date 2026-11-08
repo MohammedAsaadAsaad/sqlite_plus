@@ -50,7 +50,7 @@ jobs:
           python3 tool/generate_search_oracle.py --verify
           python3 tool/generate_gap_oracle.py --verify
       - name: Build pinned development SQLite reference
-        if: matrix.package == 'sqlite_plus'
+        if: matrix.package == 'sqlite_plus' || matrix.package == 'sqlite_plus_orm'
         working-directory: ${{ github.workspace }}
         run: bash tool/build_sqlite_reference.sh
       - name: Install dependencies
@@ -255,3 +255,67 @@ jobs:
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/pagination.js
           dart compile js packages/sqlite_plus_orm/example/pagination.dart -o /tmp/orm_pagination.js
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/orm_pagination.js
+
+  inspector:
+    name: Inspector (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+        working-directory: packages/sqlite_plus_inspector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.7
+      - name: Build pinned development SQLite reference
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: ${{ github.workspace }}
+        run: bash tool/build_sqlite_reference.sh
+      - name: Install dependencies
+        working-directory: ${{ github.workspace }}
+        run: dart pub get --enforce-lockfile
+      - name: Format, analyze and test
+        run: |
+          dart format --output=none --set-exit-if-changed .
+          dart analyze --fatal-infos
+          dart test
+          dart run example/main.dart
+          dart run example/orm.dart
+      - name: Compile and run JavaScript assertions
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          dart compile js example/main.dart -o /tmp/inspector.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/inspector.js
+          dart compile js example/orm.dart -o /tmp/inspector_orm.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/inspector_orm.js
+
+  direct_writes:
+    name: ORM direct updates and upserts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.7
+      - name: Build pinned development SQLite reference
+        run: bash tool/build_sqlite_reference.sh
+      - name: Install workspace dependencies
+        run: dart pub get --enforce-lockfile
+      - name: Analyze and test direct writes
+        run: |
+          dart analyze --fatal-infos packages/sqlite_plus packages/sqlite_plus_orm
+          dart analyze --fatal-infos packages/sqlite_plus_orm/example
+          dart test packages/sqlite_plus_orm/test/direct_writes_test.dart packages/sqlite_plus_orm/test/direct_writes_advanced_test.dart packages/sqlite_plus_orm/test/direct_writes_native_test.dart packages/sqlite_plus/test/utf_collation_native_test.dart
+      - name: VM and JavaScript assertions
+        run: |
+          dart run packages/sqlite_plus_orm/example/direct_writes.dart
+          dart compile js packages/sqlite_plus_orm/example/direct_writes.dart -o /tmp/direct_writes.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/direct_writes.js
+          dart run packages/sqlite_plus_orm/example/direct_writes_from_scratch.dart
+          dart compile js packages/sqlite_plus_orm/example/direct_writes_from_scratch.dart -o /tmp/direct_writes_from_scratch.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/direct_writes_from_scratch.js
