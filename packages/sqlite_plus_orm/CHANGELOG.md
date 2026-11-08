@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — direct writes
+
+- Typed constant/arithmetic UPDATE and selective UPSERT/atomic chunked UPSERT.
+- Real unique-target/collation validation and whole-batch duplicate rejection.
+- Managed versions, returned SQL snapshots and post-commit tracking reconciliation.
+- Conservative pending-change protection, Changes/Reactive/Inspector integration.
+- Explicit transaction/window/virtual/limit restrictions; no automatic retry.
+
 ## Unreleased — built-in pagination
 
 - Integrated keyset `.page()` API with forward/backward portable cursors.

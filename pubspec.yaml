@@ -21,3 +21,4 @@ workspace:
   - packages/sqlite_plus_changes
   - packages/sqlite_plus_sync
   - packages/sqlite_plus_reactive
+  - packages/sqlite_plus_inspector

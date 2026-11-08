@@ -578,3 +578,16 @@ infers primary-key tie-breakers, preserves filters/tracking and supports
 `asNoTracking()`. The direct engine API accepts a table, key columns, ordering
 and bound filter. No extra package or stored cursor index.
 See [usage, consistency and performance limits](../sqlite_plus/doc/PAGINATION.md).
+
+## Direct UPDATE and UPSERT (unreleased workspace)
+
+Typed queries now expose `.update({column: value})` and numeric
+`column.add(...)`/`subtract(...)`. DbSet provides `.upsert(...)` and atomic
+`.upsertMany(...)`, with explicit conflict/update columns and returned SQL values.
+Clean tracked entities synchronize after commit; pending local changes reject
+these operations. Managed revisions, Changes, Reactive and Inspector integration
+are covered. See [API, safety policy and limits](doc/DIRECT_WRITES.md) and the
+[runnable example](example/direct_writes.dart).
+
+For a complete model-to-write walkthrough with every column defined, see
+[the self-contained example](example/direct_writes_from_scratch.dart).

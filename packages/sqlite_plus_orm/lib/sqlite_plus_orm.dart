@@ -35,3 +35,4 @@ part 'src/relationships.dart';
 part 'src/migrations.dart';
 
 part 'src/reactive.dart';
+part 'src/writes.dart';

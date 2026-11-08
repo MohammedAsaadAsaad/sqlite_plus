@@ -34,3 +34,16 @@ Kept Garden Revised on north, revision 1; Other Atlas stays at revision 0; 1 mat
 ```
 
 Relationships and reviewed renames are in the [package README](../README.md).
+
+## Direct-write examples: handwritten versus generated columns
+
+[`direct_writes_from_scratch.dart`](direct_writes_from_scratch.dart) explicitly
+**handwrites** `skuColumn`, `priceColumn`, `stockColumn` and `productType` before
+using them. These names are not created by an import or by the generator.
+[`direct_writes.dart`](direct_writes.dart) imports handwritten descriptors from
+`lib/direct_write_model.dart`; its `amount` descriptor maps to the `price` field.
+
+With `sqlite_plus_generator`, use `ProductColumns.sku`, `ProductColumns.price`,
+`ProductColumns.stock` and `ProductMapping.instance` instead. Both mapping styles
+support the same direct-write APIs. See the [model, generation command and name
+comparison](../doc/DIRECT_WRITES.md#where-do-the-column-variables-come-from).

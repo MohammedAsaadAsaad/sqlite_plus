@@ -504,3 +504,53 @@ actual GitHub check output. See PR #40 for remote workflow conclusions.
 This is repository integration, not a package release or a production-readiness
 promotion. Existing experimental/performance/persistence gates stay in force;
 previous AOT artifacts retain their original measured source fingerprints.
+
+### Optional sqlite_plus_inspector (2026-11-07)
+
+Added unpublished opt-in diagnostic adapters for mutable/read-only engines, file
+owner/client and ORM. No existing engine/ORM/Changes/Sync/Reactive/Search runtime
+source changed (hash compared to b4b0b7f). Collects bounded statement records,
+per-connection template aggregates, nested/concurrent named scopes, slow/error/
+row counts and heuristic repeated reads. Default string/number/BLOB SQL literal
+and parameter redaction, bounded opt-in scalar previews; no result-value/error
+message/stack retention. In-flight/scope/history budgets and JSON reports expose
+incomplete observation via skip/drop counters. Explicit SELECT plans use the
+same-process engine's main-image planner, not automatic SQL replay.
+
+Verified Linux x64 Dart 3.13.7: inspector 25 tests and full ORM 209 tests (234
+combined) pass; final inspector-only rerun 25 pass. Includes public-API ownership,
+rollback/dirty objects, Changes driver ordering, Reactive reads, file owner/client
+and ORM reopen, simulated browser persistence, metadata failures, original
+exceptions/stacks, scope isolation/lifecycle, privacy and bounds. Pinned SQLite
+3.53.1 covering-index plan/results agree; image unchanged. VM engine/ORM examples
+and compiled Node assertions pass (including integer metadata on JS). Analysis/
+format clean. Native reference tests select Linux; added CI matrix has not been
+run remotely for this milestone. Existing core/generator suites were not rerun:
+their execution sources are unchanged and inspector introduces no hook there.
+
+AOT, five fresh processes per mode/size, 270 statements: 1000-row direct/disabled/
+enabled medians 7.881/7.143/8.134 ms; 10000-row 10.176/9.294/10.792 ms. Retained
+enabled records 270 and groups 3; disabled/direct zero. Matching image hashes and
+sizes 20480/110592 bytes. Disabled lower samples are variance, not a speedup claim.
+See benchmark_results/inspector for raw data, fingerprints, conditions and limits.
+No unused-package timing gate, general overhead bound, physical persistence/device
+benchmark, graphical inspector, automatic internal SQL/trigger/Sync/Search tracing,
+exact N+1 diagnosis or release publication is claimed. RPC file adapters lack
+main-image plan access. Changes must be wrapped inside inspection, as documented.
+
+## ORM direct writes (2026-11-08, local)
+
+TypedQuery.update supports constants and numeric add/subtract; DbSet.upsert and
+upsertMany use actual ordinary full unique indexes or primary keys. Parameters,
+managed versions, trigger final state, atomic batches, clean identity tracking,
+Changes, Reactive and Inspector are tested. Dirty contexts, caller-owned
+transactions, virtual tables, NULL conflict keys, ambiguous collations, expression
+and partial unique targets are rejected. Batch limits and returning semantics:
+packages/sqlite_plus_orm/doc/DIRECT_WRITES.md.
+
+VM and compiled JavaScript/Node assertion examples pass; real browser/device and
+remote CI remain unverified. Pinned SQLite differential/cross-open integrity pass
+for UTF-8, UTF-16LE and UTF-16BE. NOCASE/RTRIM now compare UTF-8 as native SQLite
+does; existing incorrectly ordered UTF-16 indexes are not automatically rebuilt.
+AOT evidence covers 100/1000-row in-memory writes only; no unused-feature latency
+guarantee or file/large-data performance claim.

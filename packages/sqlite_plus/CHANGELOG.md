@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — built-in collation correctness
+
+- Compare NOCASE/RTRIM in UTF-8 regardless of database text encoding; preserve
+  BINARY ordering. NOCASE keeps SQLite's shared-NUL/full-byte-length rule.
+- Native comparisons and cross-open integrity cover UTF-8/UTF-16LE/UTF-16BE.
+- Existing affected indexes may require explicit REINDEX after backup; no
+  automatic index/schema rewrite is performed.
+
 ## Unreleased — built-in pagination
 
 - Integrated keyset `.page()` API with forward/backward portable cursors.

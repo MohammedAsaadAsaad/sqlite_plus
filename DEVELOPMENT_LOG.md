@@ -3384,3 +3384,101 @@ not fabricated reruns on the new versions. In particular the Reactive strict
 zero-regression performance gate remains open (+6.4% update/+5.8% count in the
 recorded shared-host sample). Experimental limits and platform caveats remain
 in package READMEs and the compatibility matrix.
+
+## 2026-11-07 — sqlite_plus_inspector development implementation
+
+Implemented optional bounded SQL diagnostics without changing existing runtime
+sources. Explicit mutable/read-only/file and ORM adapters measure awaited calls,
+record completion-order timing/row/error metadata, group normalized templates by
+connection identity and provide named nested/concurrent operation scopes. Report
+JSON has default literal/bind redaction and bounded explicit scalar previews;
+result rows, BLOB contents, error messages and stacks are never retained. LRU/
+record/scope/in-flight limits expose drop/skip counters; clear/disable/close do
+not alter database operations or cancel callers' work. Repeated reads are hints,
+not a semantic N+1 assertion. Planning is explicit main-image SELECT metadata.
+
+Forwarded ORM engine/scalar capability, ownership, exclusive scopes and Changes
+transaction-driver semantics. Changes is composed inside the inspector so
+ORM-issued captured statements remain visible; raw internal Changes/Sync/Search
+or trigger work bypassing the adapter is not claimed. The IO ORM bridge preserves
+file ownership and rejects duplicate claims. Initial tests found a synchronous
+unsupported-plan error path; it now returns a failed future consistently. A
+short-display fallback bound and JS integer-vs-double metadata classification
+were corrected and tested; non-ASCII identifier case is not folded together.
+
+Final checks: 234 combined inspector/ORM tests pass (25 inspector + 209 ORM), then
+25 inspector tests pass after the final composition guard. Native pinned SQLite
+3.53.1 plan/result comparison and unchanged-image assertions pass. VM engine/ORM
+and compiled Node examples pass, including default redaction and integer previews.
+File tests need the same loopback access as core owner tests; permitted reruns
+passed. Analysis and format clean. Existing runtime hashes equal b4b0b7f;
+engine/generator full suites were not rerun for a standalone wrapper package.
+
+AOT workload after tests/JS compilation: five rotated fresh processes per mode
+at 1000/10000 rows, 200 point reads + 20 ranges + 50 point updates. Direct/disabled/
+enabled medians 7.881/7.143/8.134 ms and 10.176/9.294/10.792 ms. All result/sum/image
+assertions agree, enabled logs exactly 270 statements, no diagnostic DB schema.
+Raw runs, environment/binary/source fingerprints, driver and caveats are in
+benchmark_results/inspector. Disabled lower timings are not a speedup proof;
+retained-count limits are not a hard engine memory cap.
+
+README/examples/changelog and an optional CI matrix added. Package remains
+experimental with publish_to:none. No remote CI run, commit/push/merge, package
+publication, dashboard/service deployment or real browser/device test performed
+for this milestone. Existing production entry points/default apps are unchanged.
+
+## 2026-11-08 — Direct ORM UPDATE and UPSERT
+
+Added public extension APIs in src/writes.dart without changing saveChanges:
+partial typed updates, bound arithmetic, managed-version increments, selective
+upserts and atomic upsertMany. Inputs snapshot before asynchronous execution;
+actual unique metadata/collations and duplicate keys validate before mutations.
+Dirty tracking rejects direct writes; clean tracking refreshes after commit,
+late property edits survive, uncertain commits/publication failures poison the
+context. Changes uses its existing transaction driver; Reactive invalidates even
+when an IGNORE trigger produces zero outer changes; Inspector observes adapter SQL.
+
+Native differential testing found and fixed core NOCASE/RTRIM comparisons using
+database UTF-16 bytes instead of UTF-8; embedded NUL comparison now matches native
+length semantics. Cross-open integrity tests cover all three encodings. Existing
+bad indexes require explicit maintenance; no automatic REINDEX.
+
+Validation: core 10667 passed / 1 optional SQLCipher skip; ORM 232 + Inspector 26
+passed; final combined run including core native collation tests 261 passed.
+Generator 78, Changes/Sync/Reactive 110, Search 86 passed. Format and analysis
+clean; VM and compiled JS/Node example assertions pass. Linux native reference
+is pinned SQLite 3.53.1. CI definition updated but not run remotely.
+
+18 fresh-process AOT samples compare tracked save, direct UPDATE and UPSERT at
+100/1000 rows. Final logical values/counts match; raw timings, hashes, footprint,
+source fingerprints and limitations are in benchmark_results/direct_writes.
+This measures strategies on one host, not disabled-feature overhead. Workspace
+changes remain local, experimental and unpublished; Inspector work preserved.
+
+## 2026-11-08 — Self-contained direct-write walkthrough
+
+Added example/direct_writes_from_scratch.dart defining Product, every Column,
+EntityType and context before insertion, atomic stock update and selective price
+upsert. Distinguishes instance values from column descriptors; uses integer minor
+currency units and explicit SKU primary key. Linked from ORM README/direct-write
+docs, including clarification that the older amount descriptor maps to price.
+Example formatted and analyzed with fatal infos; VM and compiled JS/Node passed
+with stock 10→7→7 and price 500→650 assertions. No runtime sources changed.
+
+## 2026-11-08 — Explain column descriptor origins
+
+Marked both direct-write examples as handwritten mappings and identified the
+file/declaration supplying every descriptor. Added a manual/generated name table,
+annotated Product alternative, generator command, part-import guidance and
+ProductColumns/ProductMapping usage in DIRECT_WRITES.md; linked real Book output.
+Example README now identifies both mapping styles. Changes are explanatory only.
+Format and fatal-info example analysis passed; the complete VM walkthrough passed.
+
+## 2026-11-08 — Prepare main repository integration
+
+Integration includes the optional Inspector package, direct ORM writes, UTF-16
+built-in collation correction, benchmark evidence and the complete handwritten /
+generated mapping explanation. Remote main matched local baseline b4b0b7f when
+fetched. Rechecked formatting and fatal-info analysis; added the self-contained
+walkthrough to CI VM/Node assertions. Earlier validation counts above describe
+local runs; merge and remote-check outcomes are recorded separately when known.

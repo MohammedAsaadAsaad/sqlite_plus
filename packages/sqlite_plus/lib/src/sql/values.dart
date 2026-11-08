@@ -207,12 +207,16 @@ int compareValues(Object? a, Object? b, [int encoding = 1, String? collation]) {
   if (a is BigInt && b is double) return mixed(a, b);
   if (a is double && b is BigInt) return -mixed(b, a);
   if (a is double && b is double) return a == b ? 0 : a.compareTo(b);
+  var noCase = false;
   if (a is String && b is String) {
     if (collation != null && collation != 'binary') {
       if (collation == 'nocase') {
-        a = asciiLower(a).split('\u0000').first;
-        b = asciiLower(b).split('\u0000').first;
+        noCase = true;
+        encoding = 1; // SQLite registers NOCASE as a UTF-8 collation.
+        a = asciiLower(a);
+        b = asciiLower(b);
       } else if (collation == 'rtrim') {
+        encoding = 1; // RTRIM also compares UTF-8 bytes, unlike BINARY.
         a = a.replaceFirst(RegExp(r' +$'), '');
         b = b.replaceFirst(RegExp(r' +$'), '');
       } else if (collation == 'decimal') {
@@ -222,9 +226,12 @@ int compareValues(Object? a, Object? b, [int encoding = 1, String? collation]) {
       } else {
         final key = asciiLower(collation);
         if (key == 'nocase') {
-          a = asciiLower(a).split('\u0000').first;
-          b = asciiLower(b).split('\u0000').first;
+          noCase = true;
+          encoding = 1;
+          a = asciiLower(a);
+          b = asciiLower(b);
         } else if (key == 'rtrim') {
+          encoding = 1;
           a = a.replaceFirst(RegExp(r' +$'), '');
           b = b.replaceFirst(RegExp(r' +$'), '');
         } else if (key == 'decimal') {
@@ -245,6 +252,14 @@ int compareValues(Object? a, Object? b, [int encoding = 1, String? collation]) {
       a is String ? encodeSqlText(a, encoding) : a as Uint8List;
   final List<int> bb =
       b is String ? encodeSqlText(b, encoding) : b as Uint8List;
+  if (noCase) {
+    // sqlite3_strnicmp stops at a shared NUL, then compares full UTF-8 lengths.
+    for (var i = 0; i < aa.length && i < bb.length; i++) {
+      if (aa[i] != bb[i]) return aa[i].compareTo(bb[i]);
+      if (aa[i] == 0) break;
+    }
+    return aa.length.compareTo(bb.length);
+  }
   for (var i = 0; i < aa.length && i < bb.length; i++) {
     if (aa[i] != bb[i]) return aa[i].compareTo(bb[i]);
   }
