@@ -16,7 +16,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 4 | Performance regression matrix | Initial matrix complete; expand per future item |
 | 5 | Bounded Top-K selection | Accepted for tested scope; measured control costs documented |
 | 6 | Use index ordering to avoid sorting | Implemented/unaccepted; direct-path forward order only; preliminary AOT recorded |
-| 7 | Reverse index scans | Queued |
+| 7 | Reverse index scans | Implemented/unaccepted; full-scan reverse matches SQLite 3.53.1; AOT ranges overlap |
 | 8 | Safe early termination | Queued |
 | 9 | Partial/block sorting | Queued |
 | 10 | Table/index/lookup/sort cost comparison | Queued |
@@ -159,3 +159,20 @@ is not a zero-cost result. Raw rows:
 Do not start item 7. Repeat the probe at more sizes, then decide whether the
 update and non-covering medians are noise or a planning cost that must be
 removed. No main merge and no package publication.
+
+## Item 7 partial checkpoint, 2026-11-11
+
+Not accepted. A direct full scan walks backward when every `ORDER BY` direction
+is the opposite of the stored primary or covering-index key. Equality and range
+seeks are not reversed. `index_order_test` matches pinned SQLite 3.53.1,
+including `ORDER BY id DESC`, `ORDER BY a DESC`, and `ORDER BY b` on a DESC
+index. The package suite passed 10,711 with one skip after the nine FTS failures
+were traced to a local SQLite built without FTS4 and then rerun green.
+
+Preliminary 10,000-row AOT median ratios: rowid DESC 0.911461, covering
+`ORDER BY a DESC` 0.757401. Both sample ranges overlap, including one covering
+candidate slower than every baseline sample. Raw rows:
+`benchmark_results/optimizer_reverse_order/preliminary.json`.
+
+Item 8 may start. Its early stop must preserve these orders. No package
+publication.

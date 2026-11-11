@@ -1,5 +1,15 @@
 # Development log
 
+## 2026-11-11 — Item 7 partial, unaccepted reverse scans
+
+Full primary and covering-index scans can walk from the last key when every
+requested direction is flipped. Range seeks still sort. Results match pinned
+SQLite 3.53.1. Package tests: 10,711 passed, one skip; nine FTS failures were a
+local SQLite built without FTS4 and passed after `tool/build_sqlite_reference.sh`.
+10,000-row AOT median ratios 0.911461 and 0.757401 overlap their baselines, so
+the item is not accepted. Rows:
+`benchmark_results/optimizer_reverse_order/preliminary.json`.
+
 ## 2026-11-11 — Item 6 partial, unaccepted index-order checkpoint
 
 Direct single-table forward scans can skip a later sort when the chosen tree

@@ -54,8 +54,11 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
     const queries = [
       'SELECT id FROM t ORDER BY id',
       'SELECT id FROM t ORDER BY id DESC',
+      'SELECT id FROM t ORDER BY id DESC LIMIT 2',
       'SELECT a, id FROM t ORDER BY a, id',
       'SELECT a FROM t ORDER BY a',
+      'SELECT a FROM t ORDER BY a DESC',
+      'SELECT b FROM t ORDER BY b',
       'SELECT a, b FROM t ORDER BY a, b',
       'SELECT b, id FROM t ORDER BY b DESC, id',
       'SELECT b, id FROM t ORDER BY b COLLATE NOCASE, id',
@@ -88,13 +91,18 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
         isTrue);
     expect(
         reader.explain('SELECT id FROM t ORDER BY id DESC').scanSatisfiesOrder,
-        isFalse);
+        isTrue);
+    expect(reader.explain('SELECT id FROM t ORDER BY id DESC').scanReverse,
+        isTrue);
     expect(reader.explain('SELECT a FROM t ORDER BY a').access,
         'secondary-index-scan');
     expect(reader.explain('SELECT a FROM t ORDER BY a').indexName, 'ia');
-    expect(reader.explain('SELECT * FROM t ORDER BY a').access, 'table-scan');
+    expect(reader.explain('SELECT a FROM t ORDER BY a DESC').indexName, 'ia');
     expect(
-        reader.explain('SELECT a FROM t ORDER BY a DESC').access, 'table-scan');
+        reader.explain('SELECT a FROM t ORDER BY a DESC').scanReverse, isTrue);
+    expect(reader.explain('SELECT b FROM t ORDER BY b').indexName, 'ib_desc');
+    expect(reader.explain('SELECT b FROM t ORDER BY b').scanReverse, isTrue);
+    expect(reader.explain('SELECT * FROM t ORDER BY a').access, 'table-scan');
     expect(reader.explain('SELECT a FROM t NOT INDEXED ORDER BY a').access,
         'table-scan');
     expect(reader.explain('SELECT abs(a) FROM t ORDER BY abs(a)').access,
