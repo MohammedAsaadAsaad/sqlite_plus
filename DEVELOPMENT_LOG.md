@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 16 skip-scan and intersection rejected
+
+An index is not skip-scanned when its leading column is unconstrained, and
+two single-column indexes are not intersected. The residual predicate on one
+chosen index matches pinned SQLite 3.53.1. This is a rejection, not a cost
+acceptance.
+
 ## 2026-11-11 — Item 15 WITHOUT ROWID secondary index seeks
 
 A `WITHOUT ROWID` table can seek a secondary index for an equality or range
