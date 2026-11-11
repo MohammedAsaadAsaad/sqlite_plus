@@ -27,12 +27,18 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 13, partial and expression index eligibility.** Item 12 is
-correctness-verified and not cost-accepted. Inclusive `BETWEEN` is planned as
-`>=` and `<=` bounds. A composite index can equality-seek its prefix and
-range-seek the next column, and that range can already yield `ORDER BY` on
-the range column. `NOT BETWEEN` stays a filter. Pinned SQLite 3.53.1 matches
-the new comparisons. No AOT sample is recorded yet.
+**Active item: 14, IN/OR multiple-seek or union paths.** Item 13 is
+correctness-verified and not cost-accepted. An automatic plan may use a
+partial index when a numeric comparison is stronger than the index predicate.
+`a >= 0`, an equality that fails the predicate, and `COLLATE` stay on the
+table scan. `INDEXED BY` still requires the exact predicate, matching SQLite
+3.53.1. Automatic results match that SQLite. No AOT sample is recorded yet.
+
+Item 12 is correctness-verified and not cost-accepted. Inclusive `BETWEEN` is
+planned as `>=` and `<=` bounds. A composite index can equality-seek its
+prefix and range-seek the next column, and that range can already yield
+`ORDER BY` on the range column. `NOT BETWEEN` stays a filter. Pinned SQLite
+3.53.1 matches the new comparisons. No AOT sample is recorded yet.
 
 Item 11 is correctness-verified and not cost-accepted. Equal `sqlite_stat1`
 estimates, including indexes with no statistics, prefer an index that already

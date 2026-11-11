@@ -22,7 +22,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 10 | Table/index/lookup/sort cost comparison | Implemented/unaccepted; non-covering full-index visits stay on the table scan; no AOT sample |
 | 11 | Broader covering-index reads and costing | Implemented/unaccepted; equal-estimate ties prefer order, then covering; no AOT sample |
 | 12 | Composite equality/range/order planning | Implemented/unaccepted; inclusive BETWEEN becomes index bounds; no AOT sample |
-| 13 | Partial/expression index eligibility | Queued |
+| 13 | Partial/expression index eligibility | Implemented/unaccepted; stronger numeric bounds prove a partial predicate for automatic plans; no AOT sample |
 | 14 | IN/OR multiple-seek/union paths | Queued |
 | 15 | WITHOUT ROWID access planning | Queued |
 | 16 | Evaluate intersection and skip-scan | Queued |
@@ -237,3 +237,15 @@ order. `WHERE a BETWEEN 0 AND 2 ORDER BY a` is a range scan on `ia`.
 rows. No fresh AOT sample is recorded.
 
 Next is item 13. No package publication.
+
+## Item 13 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. An automatic plan may use a partial index when a
+numeric query comparison is stronger than the index predicate, for example
+`a > 1`, `a >= 1`, or `a = 3` against `WHERE a > 0`. `a >= 0`, `a = 0`, and a
+`COLLATE` term do not prove it. `INDEXED BY` still requires the existing exact
+proof, so `INDEXED BY partial WHERE a > 1` remains an error, matching SQLite
+3.53.1. The automatic results match that SQLite. No fresh AOT sample is
+recorded.
+
+Next is item 14. No package publication.

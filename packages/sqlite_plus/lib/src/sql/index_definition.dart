@@ -193,7 +193,7 @@ final class IndexDefinition {
 /// Conservative implication: conjuncts, matching OR terms and null-rejecting
 /// comparisons. An unproved predicate retains the complete-table path.
 bool impliesIndexPredicate(Expr? query, Expr? predicate,
-    {String Function(ColumnExpr)? columnKey}) {
+    {String Function(ColumnExpr)? columnKey, bool strongerNumeric = false}) {
   if (predicate == null) return true;
   if (query == null) return false;
   final conjuncts = <Expr>[];
@@ -228,10 +228,92 @@ bool impliesIndexPredicate(Expr? query, Expr? predicate,
           (sameExpression(term.left, needed.left, columnKey: columnKey) ||
               sameExpression(term.right, needed.left, columnKey: columnKey)));
     }
+    if (strongerNumeric &&
+        needed is BinaryExpr &&
+        conjuncts.any((term) => _numericRangeImplies(term, needed))) {
+      return true;
+    }
     return needed is BoolNameExpr && needed.resolvedLiteral == true
         ? needed.expected
         : needed is Literal && truth(needed.value) == true;
   }
 
   return implies(predicate);
+}
+
+/// A numeric query bound implies a numeric index bound when every value the
+/// query accepts also satisfies the index predicate. Text and COLLATE terms
+/// stay on the exact-expression check above.
+bool _numericRangeImplies(Expr query, Expr needed) {
+  final left = _numericComparison(query);
+  final right = _numericComparison(needed);
+  if (left == null || right == null) return false;
+  if (_containsCollate(query) || _containsCollate(needed)) return false;
+  if (!sameExpression(left.operand, right.operand)) return false;
+  final compared = compareValues(left.number, right.number, 1, 'binary');
+  if (left.op == '=' || left.op == '==') {
+    return _numberSatisfies(compared, right.op);
+  }
+  final leftLower = left.op == '>' || left.op == '>=';
+  final rightLower = right.op == '>' || right.op == '>=';
+  if (leftLower != rightLower) return false;
+  if (leftLower) {
+    if (right.op == '>' && left.op == '>=') return compared > 0;
+    return compared >= 0;
+  }
+  if (right.op == '<' && left.op == '<=') return compared < 0;
+  return compared <= 0;
+}
+
+bool _numberSatisfies(int compared, String op) => switch (op) {
+      '>' => compared > 0,
+      '>=' => compared >= 0,
+      '<' => compared < 0,
+      '<=' => compared <= 0,
+      '=' || '==' => compared == 0,
+      _ => false,
+    };
+
+({Expr operand, String op, Object number})? _numericComparison(Expr expr) {
+  if (expr is! BinaryExpr ||
+      !['=', '==', '<', '<=', '>', '>='].contains(expr.op)) {
+    return null;
+  }
+  final left = indexOperand(expr.left);
+  final right = indexOperand(expr.right);
+  if (left is Literal && right is! Literal) {
+    final number = _finiteNumber(left.value);
+    if (number == null) return null;
+    return (
+      operand: right,
+      op: const {
+        '<': '>',
+        '<=': '>=',
+        '>': '<',
+        '>=': '<=',
+        '=': '=',
+        '==': '=='
+      }[expr.op]!,
+      number: number
+    );
+  }
+  if (right is Literal && left is! Literal) {
+    final number = _finiteNumber(right.value);
+    if (number == null) return null;
+    return (operand: left, op: expr.op, number: number);
+  }
+  return null;
+}
+
+Object? _finiteNumber(Object? value) =>
+    value is BigInt || value is int || value is double && value.isFinite
+        ? value
+        : null;
+
+bool _containsCollate(Expr expr) {
+  if (expr is CollateExpr) return true;
+  for (final child in expr.children) {
+    if (_containsCollate(child)) return true;
+  }
+  return false;
 }

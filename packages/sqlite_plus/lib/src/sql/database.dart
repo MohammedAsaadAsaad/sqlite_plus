@@ -651,7 +651,8 @@ final class SqliteDatabase {
           final parsed = entry.sql == null
               ? null
               : IndexDefinition.parse(entry.sql!, table);
-          if (!impliesIndexPredicate(statement.where, parsed?.predicate)) {
+          if (!impliesIndexPredicate(statement.where, parsed?.predicate,
+              strongerNumeric: true)) {
             diagnostics?.record(
                 'secondary-index', 'partial-predicate-not-proved',
                 index: entry.name, eligible: false);
@@ -2095,7 +2096,8 @@ final class SqliteDatabase {
           }();
       final delivery = _indexScanDelivery(statement, table, definition, 0);
       if (definition.terms.any((term) => term.columnName == null) ||
-          !impliesIndexPredicate(statement.where, definition.predicate) ||
+          !impliesIndexPredicate(statement.where, definition.predicate,
+              strongerNumeric: true) ||
           delivery == null) {
         continue;
       }
