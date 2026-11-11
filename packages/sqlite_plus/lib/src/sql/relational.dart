@@ -49,10 +49,172 @@ extension _RelationalQueries on SqliteDatabase {
       expr is ColumnExpr && expr.name.contains('.') ||
       expr.children.any(_qualified);
 
+  /// Uncorrelated `EXISTS` with one ordinary table and no later-row dependency.
+  ///
+  /// An aggregate, window, `ORDER BY`, compound, or nested query can change
+  /// the answer after the first row, so those stay on the full load.
+  bool _existsShape(SelectStatement query) {
+    if (query.distinct ||
+        query.groupBy.isNotEmpty ||
+        query.having != null ||
+        query.order.isNotEmpty ||
+        query.compounds.isNotEmpty ||
+        query.ctes.isNotEmpty ||
+        query.valuesQuery ||
+        query.limit != null ||
+        query.offset != null ||
+        query.sources.length != 1) {
+      return false;
+    }
+    final source = query.sources.single;
+    if (source.query != null ||
+        source.group.isNotEmpty ||
+        source.table == null ||
+        source.schema != null ||
+        source.indexedBy != null ||
+        source.notIndexed ||
+        _isPragmaTableSource(source)) {
+      return false;
+    }
+    if (query.items.any((item) =>
+            item.expression?.containsAggregate == true ||
+            item.expression?.containsWindow == true) ||
+        query.where?.containsAggregate == true ||
+        query.where?.containsWindow == true ||
+        (query.where != null && _nested(query.where!).isNotEmpty)) {
+      return false;
+    }
+    CatalogTable resolved;
+    try {
+      resolved = catalog.table(source.table!);
+    } on SqlException {
+      return false;
+    }
+    if (resolved.virtual) return false;
+    final alias = asciiLower(source.alias ?? source.table!);
+    final names = {
+      for (final column in resolved.columns) asciiLower(column.name),
+      if (!resolved.withoutRowid) ...['rowid', 'oid', '_rowid_']
+    };
+    for (final expr in query.where == null
+        ? const <ColumnExpr>[]
+        : _columnExprs(query.where!)) {
+      final qualifier =
+          expr.qualifier == null ? null : asciiLower(expr.qualifier!);
+      if (qualifier != null && qualifier != alias) return false;
+      final bare = qualifier == null
+          ? asciiLower(expr.name)
+          : asciiLower(expr.name.substring(expr.qualifier!.length + 1));
+      if (!names.contains(bare)) return false;
+    }
+    return true;
+  }
+
+  Iterable<ColumnExpr> _columnExprs(Expr expr) sync* {
+    if (expr is ColumnExpr) yield expr;
+    for (final child in expr.children) {
+      yield* _columnExprs(child);
+    }
+  }
+
+  bool _existsRowMatches(SelectStatement query, CatalogTable table,
+      RowValues row, List<Object?> parameters) {
+    final where = query.where;
+    if (where == null) return true;
+    final alias = asciiLower(query.sources.single.alias ?? table.name);
+    final visible = <String, Object?>{...row};
+    final affinities = <String, String>{
+      for (final column in table.columns)
+        asciiLower(column.name): column.affinity
+    };
+    final collations = <String, String>{
+      for (final column in table.columns)
+        asciiLower(column.name): column.collation
+    };
+    if (!table.withoutRowid) {
+      for (final name in ['rowid', 'oid', '_rowid_']) {
+        affinities.putIfAbsent(name, () => 'numeric');
+        collations.putIfAbsent(name, () => 'binary');
+      }
+    }
+    for (final entry in row.entries) {
+      final qualified = '$alias.${entry.key}';
+      visible[qualified] = entry.value;
+      affinities[qualified] = affinities[entry.key] ?? 'none';
+      collations[qualified] = collations[entry.key] ?? 'binary';
+    }
+    final context =
+        EvalContext(visible, affinities, parameters, _pager.header.textEncoding)
+          ..collations = collations;
+    return truth(where.evaluate(context), _pager.header.textEncoding) == true;
+  }
+
+  bool _tableUsedOutside(SelectStatement parent, SelectStatement existsQuery) {
+    final name = asciiLower(existsQuery.sources.single.table!);
+    var used = false;
+    void walk(SelectStatement statement) {
+      if (used || identical(statement, existsQuery)) return;
+      for (final source in statement.leafSources) {
+        if (source.table != null && asciiLower(source.table!) == name) {
+          used = true;
+          return;
+        }
+      }
+      for (final expr in _expressions(statement)) {
+        for (final nested in _nested(expr)) {
+          walk(nested);
+        }
+      }
+      for (final part in statement.compounds) {
+        walk(part.$2);
+      }
+    }
+
+    walk(parent);
+    return used;
+  }
+
+  Future<void> _loadExprRelations(
+      SelectStatement parent,
+      Expr expr,
+      Map<String, (CatalogTable, List<RowValues>)> cache,
+      Set<String> loading,
+      Set<String> cteScope,
+      List<Object?> parameters) async {
+    if (expr is SubqueryExpr) {
+      final query = expr.statement;
+      if (expr.exists &&
+          _existsShape(query) &&
+          !_tableUsedOutside(parent, query)) {
+        await _loadRelations(
+            query,
+            cache,
+            loading,
+            cteScope,
+            parameters,
+            (loaded, row) => _existsRowMatches(query, loaded, row, parameters),
+            '\u0000exists:${identityHashCode(query)}');
+        return;
+      }
+      await _loadRelations(query, cache, loading, cteScope, parameters);
+      return;
+    }
+    if (expr is InSelectExpr) {
+      await _loadRelations(
+          expr.statement, cache, loading, cteScope, parameters);
+    }
+    for (final child in expr.children) {
+      await _loadExprRelations(
+          parent, child, cache, loading, cteScope, parameters);
+    }
+  }
+
   Future<void> _loadRelations(SelectStatement s,
       Map<String, (CatalogTable, List<RowValues>)> cache, Set<String> loading,
       [Set<String> cteNames = const {},
-      List<Object?> parameters = const []]) async {
+      List<Object?> parameters = const [],
+      bool Function(CatalogTable table, RowValues row)? stopAfter,
+      String? privateKey]) async {
     final cteScope = {...cteNames, ...s.ctes.keys};
     for (final name in _usedCteNames(s)) {
       await _loadRelations(
@@ -221,8 +383,11 @@ extension _RelationalQueries on SqliteDatabase {
             }
             table.evaluateGenerated(row, _pager.header.textEncoding,
                 lazy: true);
+            if (stopAfter != null && !stopAfter(table, row)) continue;
             rows.add(row);
+            if (stopAfter != null) break;
           }
+          if (privateKey != null) cache[privateKey] = (table, rows);
           cache[key] = (table, rows);
         }
         cache.putIfAbsent(shared, () => cache[key]!);
@@ -232,9 +397,7 @@ extension _RelationalQueries on SqliteDatabase {
       }
     }
     for (final expr in _expressions(s)) {
-      for (final nested in _nested(expr)) {
-        await _loadRelations(nested, cache, loading, cteScope, parameters);
-      }
+      await _loadExprRelations(s, expr, cache, loading, cteScope, parameters);
     }
     for (final part in s.compounds) {
       await _loadRelations(part.$2, cache, loading, cteScope, parameters);
@@ -313,6 +476,16 @@ extension _RelationalQueries on SqliteDatabase {
     SqlRows subquery(SelectStatement query, EvalContext context) {
       if (mutationSubqueries != null) {
         return mutationSubqueries(query, context, cache);
+      }
+      final stopped = cache['\u0000exists:${identityHashCode(query)}'];
+      if (stopped != null) {
+        return QueryResult(
+            const ['1'],
+            stopped.$2.isEmpty
+                ? const []
+                : [
+                    [BigInt.one]
+                  ]);
       }
       final correlated =
           _mutationCorrelated(query, cache, context.row.keys.toSet());

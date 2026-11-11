@@ -606,6 +606,75 @@ void main() {
     }
   });
 
+  test('uncorrelated EXISTS stops after the first match', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE b(id INTEGER PRIMARY KEY, k INT)');
+    await db.execute('CREATE TABLE a(id INTEGER PRIMARY KEY, k INT)');
+    await db.execute('CREATE TABLE empty(id INTEGER PRIMARY KEY)');
+    final values = [for (var i = 1; i <= 4000; i++) '($i, $i)'].join(',');
+    await db.execute('INSERT INTO b(id, k) VALUES $values');
+    await db.execute('INSERT INTO a VALUES (1, 1), (2, 4000), (3, 7)');
+    var calls = 0;
+    db.functions.registerScalar('probe', 1, (_) {
+      calls++;
+      return 1;
+    });
+    expect(
+        (await db.query(
+                'SELECT EXISTS(SELECT 1 FROM b WHERE probe(k) OR k = -1)'))
+            .rows,
+        [
+          [BigInt.one]
+        ]);
+    expect(calls, 1);
+    expect(
+        (await db.query('SELECT EXISTS(SELECT 1 FROM b WHERE k = -1)')).rows, [
+      [BigInt.zero]
+    ]);
+    expect((await db.query('SELECT EXISTS(SELECT count(*) FROM empty)')).rows, [
+      [BigInt.one]
+    ]);
+    expect((await db.query('SELECT EXISTS(SELECT 1 FROM empty)')).rows, [
+      [BigInt.zero]
+    ]);
+    final image = db.exportImage();
+    final stopped = await SqliteDatabase.openReadOnly(ByteImageStorage(image));
+    addTearDown(stopped.close);
+    final before = stopped.pagesRead;
+    expect(
+        (await stopped.query('SELECT EXISTS(SELECT 1 FROM b WHERE k = 1)'))
+            .rows,
+        [
+          [BigInt.one]
+        ]);
+    final existsPages = stopped.pagesRead - before;
+    final full = await SqliteDatabase.openReadOnly(ByteImageStorage(image));
+    addTearDown(full.close);
+    final beforeFull = full.pagesRead;
+    await full.query('SELECT count(*) FROM b');
+    expect(existsPages, lessThan(full.pagesRead - beforeFull));
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const correlated =
+        'SELECT a.id AS aid FROM a WHERE EXISTS (SELECT 1 FROM b WHERE b.k = a.k) ORDER BY aid';
+    final setup = 'CREATE TABLE b(id INTEGER PRIMARY KEY, k INT); '
+        'CREATE TABLE a(id INTEGER PRIMARY KEY, k INT); '
+        'INSERT INTO b(id, k) VALUES $values; '
+        'INSERT INTO a VALUES (1, 1), (2, 4000), (3, 7);';
+    final native =
+        await Process.run(pinned, ['-json', ':memory:', '$setup $correlated;']);
+    expect(native.exitCode, 0, reason: native.stderr.toString());
+    final actual = await db.query(correlated);
+    final expected = jsonDecode(native.stdout.toString()) as List;
+    expect([
+      for (final row in actual.rows)
+        for (final value in row) value is BigInt ? value.toInt() : value
+    ], [
+      for (final row in expected) ...(row as Map).values
+    ]);
+  });
+
   test('an inner lookup stops after 1024 distinct keys', () async {
     Future<void> check(int rows, String planText) async {
       final db = await MutableSqliteDatabase.create();

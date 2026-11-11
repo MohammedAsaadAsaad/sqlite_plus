@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 26, EXISTS early exit.** Item 25 is correctness-verified
+**Active item: 27, safe reuse of uncorrelated subqueries.** Item 26 is
+correctness-verified and not cost-accepted. An uncorrelated `EXISTS` on one
+ordinary table stops the scan at the first match. Aggregates, correlation,
+and a second use of the same table stay on the full load. A 4000-row probe
+runs once, and the stopped read touches fewer pages than `count(*)`. The
+correlated result matches pinned SQLite 3.53.1. No AOT sample is recorded.
+
+Item 25 is correctness-verified
 and not cost-accepted. An inner-join lookup keeps at most 1024 distinct
 keys. `sqlite_stat1` above that stays a scan. 1024 keys still seek, and
 both sizes match pinned SQLite 3.53.1. No AOT sample is recorded.
