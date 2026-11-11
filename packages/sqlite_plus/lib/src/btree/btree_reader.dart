@@ -118,22 +118,29 @@ final class BtreeReader {
     }
   }
 
-  Stream<BtreeRecord> scanTable(int rootPage) => _scan(rootPage, true);
-  Stream<BtreeRecord> scanIndex(int rootPage) => _scan(rootPage, false);
+  Stream<BtreeRecord> scanTable(int rootPage, {bool reverse = false}) =>
+      _scan(rootPage, true, null, null, reverse);
+  Stream<BtreeRecord> scanIndex(int rootPage, {bool reverse = false}) =>
+      _scan(rootPage, false, null, null, reverse);
 
   /// Visits branches that may contain keys whose sorted-prefix comparison is zero.
   /// [compare] must compare an index record with one fixed search prefix in the
   /// index's declared order. Unvisited branches are not corruption-validated.
+  /// [reverse] yields that same visited set from the opposite end. It is used
+  /// for a full scan whose comparison is always zero. A selective seek stays
+  /// forward unless the caller has proved the reverse walk is the requested order.
   Stream<BtreeRecord> seekIndex(
-          int rootPage, int Function(List<Object?>) compare) =>
-      _scan(rootPage, false, compare);
+          int rootPage, int Function(List<Object?>) compare,
+          {bool reverse = false}) =>
+      _scan(rootPage, false, compare, null, reverse);
 
   Stream<BtreeRecord> seekTable(int rootPage, int Function(BigInt) compare) =>
       _scan(rootPage, true, null, compare);
 
   Stream<BtreeRecord> _scan(int root, bool table,
       [int Function(List<Object?>)? compare,
-      int Function(BigInt)? compareRowid]) async* {
+      int Function(BigInt)? compareRowid,
+      bool reverse = false]) async* {
     final selective = compare != null || compareRowid != null;
     final used = <int>{};
     final stack = <Object>[_PageTask(root, table, null, null)];
@@ -143,7 +150,8 @@ final class BtreeReader {
       if (task is BtreeRecord) {
         final rowId = task.rowId;
         if (rowId != null) {
-          if (previous != null && rowId <= previous) {
+          if (previous != null &&
+              (reverse ? rowId >= previous : rowId <= previous)) {
             throw const FormatException(
                 'Table rowids are not strictly ordered');
           }
@@ -212,7 +220,7 @@ final class BtreeReader {
         actions.add(
             _PageTask(header.rightmostChild!, node.table, lower, node.upper));
       }
-      stack.addAll(actions.reversed);
+      stack.addAll(reverse ? actions : actions.reversed);
     }
   }
 

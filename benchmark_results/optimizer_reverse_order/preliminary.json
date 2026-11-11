@@ -1,0 +1,257 @@
+{
+  "rows": 10000,
+  "pairs": 8,
+  "dart": "3.13.7",
+  "summary": {
+    "iddesc": {
+      "baseline_median_us": 74210.0,
+      "candidate_median_us": 67639.5,
+      "median_ratio_candidate_over_baseline": 0.9114607195795715,
+      "baseline_min": 70685,
+      "baseline_max": 75946,
+      "candidate_min": 66449,
+      "candidate_max": 72427,
+      "checksums": [
+        1
+      ]
+    },
+    "adesc": {
+      "baseline_median_us": 96948.0,
+      "candidate_median_us": 73428.5,
+      "median_ratio_candidate_over_baseline": 0.7574008746957132,
+      "baseline_min": 94504,
+      "baseline_max": 99053,
+      "candidate_min": 71371,
+      "candidate_max": 107905,
+      "checksums": [
+        1
+      ]
+    }
+  },
+  "samples": [
+    {
+      "mode": "iddesc",
+      "pair": 0,
+      "label": "baseline",
+      "microseconds": 71584,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 0,
+      "label": "candidate",
+      "microseconds": 72427,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 1,
+      "label": "candidate",
+      "microseconds": 67521,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 1,
+      "label": "baseline",
+      "microseconds": 73973,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 2,
+      "label": "baseline",
+      "microseconds": 70685,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 2,
+      "label": "candidate",
+      "microseconds": 67758,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 3,
+      "label": "candidate",
+      "microseconds": 66964,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 3,
+      "label": "baseline",
+      "microseconds": 73275,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 4,
+      "label": "baseline",
+      "microseconds": 75373,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 4,
+      "label": "candidate",
+      "microseconds": 67891,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 5,
+      "label": "candidate",
+      "microseconds": 70839,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 5,
+      "label": "baseline",
+      "microseconds": 75946,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 6,
+      "label": "baseline",
+      "microseconds": 74447,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 6,
+      "label": "candidate",
+      "microseconds": 66449,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 7,
+      "label": "candidate",
+      "microseconds": 66844,
+      "checksum": 1
+    },
+    {
+      "mode": "iddesc",
+      "pair": 7,
+      "label": "baseline",
+      "microseconds": 75344,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 0,
+      "label": "baseline",
+      "microseconds": 94643,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 0,
+      "label": "candidate",
+      "microseconds": 76732,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 1,
+      "label": "candidate",
+      "microseconds": 73404,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 1,
+      "label": "baseline",
+      "microseconds": 98695,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 2,
+      "label": "baseline",
+      "microseconds": 98569,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 2,
+      "label": "candidate",
+      "microseconds": 72505,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 3,
+      "label": "candidate",
+      "microseconds": 71371,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 3,
+      "label": "baseline",
+      "microseconds": 94504,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 4,
+      "label": "baseline",
+      "microseconds": 96573,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 4,
+      "label": "candidate",
+      "microseconds": 107905,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 5,
+      "label": "candidate",
+      "microseconds": 80813,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 5,
+      "label": "baseline",
+      "microseconds": 99053,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 6,
+      "label": "baseline",
+      "microseconds": 96151,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 6,
+      "label": "candidate",
+      "microseconds": 73453,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 7,
+      "label": "candidate",
+      "microseconds": 73079,
+      "checksum": 1
+    },
+    {
+      "mode": "adesc",
+      "pair": 7,
+      "label": "baseline",
+      "microseconds": 97323,
+      "checksum": 1
+    }
+  ]
+}

@@ -27,11 +27,26 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 6, index-order reuse. Partial and unaccepted.** The direct
+**Active item: 9, partial/block sorting.** Item 8 is accepted only for a scan
+that already yields `ORDER BY` and has no `WHERE`, aggregate, window,
+`DISTINCT`, grouping, compound, or CTE. On 10,000 rows, `ORDER BY id DESC
+LIMIT 1` median ratio is 0.011224 with separated ranges. The filtered control
+median is 1.014597 with overlapping ranges, so there is no zero-cost claim.
+Evidence: `benchmark_results/optimizer_early_stop/`.
+
+**Item 7 remains implemented and unaccepted.**
+A full scan can walk backward when `ORDER BY` is the exact reverse of the
+primary or covering index. Range seeks still sort. Pinned SQLite 3.53.1 matches
+the new DESC queries. 10,000-row AOT median ratios are 0.911461 for
+`ORDER BY id DESC` and 0.757401 for covering `ORDER BY a DESC`; both ranges
+overlap, so this is not acceptance. Evidence:
+`benchmark_results/optimizer_reverse_order/`. Item 6 remains unaccepted.
+
+**Item 6, index-order reuse, remains partial and unaccepted.** The direct
 single-table reader can keep a forward primary or index order and can scan a
 covering index when the primary tree does not already supply that order.
-Descending reversal, aliases, qualified names, non-covering order-only scans,
-and unproved partial or expression indexes still sort. Preliminary 20,000-row
+Aliases, qualified names, non-covering order-only scans, and unproved partial
+or expression indexes still sort. Full-scan reversal is item 7. Preliminary 20,000-row
 AOT medians: covering index order 0.752 with non-overlapping ranges; rowid
 0.962; plain sort 0.988; non-covering order 1.035; 200 updates 1.041. The last
 three ranges overlap, which is not a zero-cost result. Evidence:

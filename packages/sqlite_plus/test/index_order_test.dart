@@ -4,23 +4,33 @@ import 'dart:io';
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
 
-void main() {
+String? _sqliteCli() {
+  final fromEnv = Platform.environment['SQLITE_PLUS_SQLITE3'];
+  if (fromEnv != null && File(fromEnv).existsSync()) return fromEnv;
   const pinned = '/tmp/sqlite-build/sqlite3';
-  final cli = File(pinned).existsSync() ? pinned : '/usr/bin/sqlite3';
+  if (File(pinned).existsSync()) return pinned;
+  return null;
+}
+
+void main() {
+  final cli = _sqliteCli();
 
   test('forward index and primary order match the CLI without changing ties',
       () async {
-    final version = await Process.run(cli, [
-      ':memory:',
-      'SELECT sqlite_version() || char(10) || sqlite_source_id();'
-    ]);
-    expect(version.exitCode, 0, reason: version.stderr.toString());
-    final identity = version.stdout.toString().trim();
-    if (cli == pinned) {
-      expect(
-          identity,
-          startsWith(
-              '3.53.1\n2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9'));
+    String? identity;
+    if (cli != null) {
+      final version = await Process.run(cli, [
+        ':memory:',
+        'SELECT sqlite_version() || char(10) || sqlite_source_id();'
+      ]);
+      expect(version.exitCode, 0, reason: version.stderr.toString());
+      identity = version.stdout.toString().trim();
+      if (cli == '/tmp/sqlite-build/sqlite3') {
+        expect(
+            identity,
+            startsWith(
+                '3.53.1\n2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9'));
+      }
     }
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
@@ -54,8 +64,13 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
     const queries = [
       'SELECT id FROM t ORDER BY id',
       'SELECT id FROM t ORDER BY id DESC',
+      'SELECT id FROM t ORDER BY id DESC LIMIT 2',
+      'SELECT id FROM t ORDER BY id DESC LIMIT 1 OFFSET 1',
+      "SELECT id FROM t WHERE b = 'a' ORDER BY id LIMIT 1",
       'SELECT a, id FROM t ORDER BY a, id',
       'SELECT a FROM t ORDER BY a',
+      'SELECT a FROM t ORDER BY a DESC',
+      'SELECT b FROM t ORDER BY b',
       'SELECT a, b FROM t ORDER BY a, b',
       'SELECT b, id FROM t ORDER BY b DESC, id',
       'SELECT b, id FROM t ORDER BY b COLLATE NOCASE, id',
@@ -71,13 +86,14 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
       "SELECT a, id FROM t ORDER BY a NULLS LAST, id",
     ];
     for (final query in queries) {
+      final actual = await db.query(query);
+      if (cli == null) continue;
       final native =
           await Process.run(cli, ['-json', ':memory:', '$setup $query;']);
       expect(native.exitCode, 0, reason: '$query\n${native.stderr}');
       final expected = native.stdout.toString().trim().isEmpty
           ? <Object?>[]
           : jsonDecode(native.stdout.toString()) as List;
-      final actual = await db.query(query);
       expect(_rows(actual), expected, reason: '$query via $identity');
     }
     final reader =
@@ -88,13 +104,18 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
         isTrue);
     expect(
         reader.explain('SELECT id FROM t ORDER BY id DESC').scanSatisfiesOrder,
-        isFalse);
+        isTrue);
+    expect(reader.explain('SELECT id FROM t ORDER BY id DESC').scanReverse,
+        isTrue);
     expect(reader.explain('SELECT a FROM t ORDER BY a').access,
         'secondary-index-scan');
     expect(reader.explain('SELECT a FROM t ORDER BY a').indexName, 'ia');
-    expect(reader.explain('SELECT * FROM t ORDER BY a').access, 'table-scan');
+    expect(reader.explain('SELECT a FROM t ORDER BY a DESC').indexName, 'ia');
     expect(
-        reader.explain('SELECT a FROM t ORDER BY a DESC').access, 'table-scan');
+        reader.explain('SELECT a FROM t ORDER BY a DESC').scanReverse, isTrue);
+    expect(reader.explain('SELECT b FROM t ORDER BY b').indexName, 'ib_desc');
+    expect(reader.explain('SELECT b FROM t ORDER BY b').scanReverse, isTrue);
+    expect(reader.explain('SELECT * FROM t ORDER BY a').access, 'table-scan');
     expect(reader.explain('SELECT a FROM t NOT INDEXED ORDER BY a').access,
         'table-scan');
     expect(reader.explain('SELECT abs(a) FROM t ORDER BY abs(a)').access,
@@ -120,6 +141,14 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
         isFalse);
     expect(reader.explain('SELECT id, a FROM t AS src ORDER BY src.a').access,
         isNot('secondary-index-scan'));
+    final limited =
+        await reader.diagnoseQuery('SELECT id FROM t ORDER BY id DESC LIMIT 1');
+    expect(limited.rowsLoaded, 1);
+    expect(limited.result.rows.single.single, BigInt.from(6));
+    final filtered = await reader
+        .diagnoseQuery("SELECT id FROM t WHERE b = 'a' ORDER BY id LIMIT 1");
+    expect(filtered.rowsLoaded, greaterThan(1));
+    expect(filtered.result.rows.single.single, BigInt.from(3));
   });
 }
 
