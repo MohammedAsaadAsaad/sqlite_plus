@@ -41,7 +41,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 29 | CTE/derived pushdown and materialization choices | Implemented/unaccepted; a repeated CTE runs once, NOT MATERIALIZED runs per use, derived LIMIT stays inside; no AOT sample |
 | 30 | Ordered DISTINCT/GROUP BY | Implemented/unaccepted; ordered DISTINCT compares the previous row, and GROUP BY sorts only when a group arrives out of order; no AOT sample |
 | 31 | MIN/MAX/COUNT shortcuts | Implemented/unaccepted; MIN/MAX of an integer primary key read one end; COUNT and filtered MIN stay full reads; no AOT sample |
-| 32 | Streaming aggregation | Queued |
+| 32 | Streaming aggregation | Implemented/unaccepted; count/sum/avg/total/min/max keep a running value; bare columns still retain the group; no AOT sample |
 | 33 | Safe constant-expression simplification | Queued |
 | 34 | Predicate simplification/contradictions | Queued |
 | 35 | Intermediate projection pruning | Queued |
@@ -421,3 +421,13 @@ filter read one end of the primary tree. `WHERE`, a non-key column, and
 `count(*)` on 4000 rows. No fresh AOT sample is recorded.
 
 Next is item 32. No package publication.
+
+## Item 32 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. `count`, `sum`, `avg`, `total`, `min`, and `max`
+without `DISTINCT` or an internal `ORDER BY` keep a running value. A group
+stores its rows when a bare column, `HAVING`, or window reads them.
+`sum(probe(b))` calls the probe once per row. Results match pinned SQLite
+3.53.1, including NULL and `group_concat`. No fresh AOT sample is recorded.
+
+Next is item 33. No package publication.

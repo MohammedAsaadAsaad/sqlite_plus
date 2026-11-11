@@ -27,7 +27,15 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 32, streaming aggregation.** Item 31 is
+**Active item: 33, safe constant-expression simplification.** Item 32 is
+correctness-verified and not cost-accepted. `count`, `sum`, `avg`, `total`,
+`min`, and `max` update a running value instead of retaining every input.
+Group rows are kept when a bare column, `HAVING`, or window needs them.
+`sum(probe(b))` still calls the probe once per row. Results, including
+NULL and `group_concat`, match pinned SQLite 3.53.1. No AOT sample is
+recorded.
+
+Item 31 is
 correctness-verified and not cost-accepted. `MIN` and `MAX` of an integer
 primary key, with no `WHERE`, read one end of the table. A filter, another
 column, and `COUNT` still read the qualifying rows. Empty `MIN`/`MAX` is

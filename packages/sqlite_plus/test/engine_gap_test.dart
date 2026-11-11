@@ -720,6 +720,58 @@ void main() {
     ]);
   });
 
+  test('plain aggregates stream without changing results', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(a INT, b INT)');
+    await db.execute(
+        'INSERT INTO t VALUES (1, 1), (1, NULL), (2, 4), (2, 6), (3, NULL)');
+    var calls = 0;
+    db.functions.registerScalar('probe', 1, (args) {
+      calls++;
+      return args.single;
+    });
+    expect((await db.query('SELECT sum(probe(b)) FROM t')).rows.single.single,
+        BigInt.from(11));
+    expect(calls, 5);
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const setup = 'CREATE TABLE t(a INT, b INT); '
+        'INSERT INTO t VALUES (1, 1), (1, NULL), (2, 4), (2, 6), (3, NULL);';
+    for (final sql in [
+      'SELECT count(*), count(b), sum(b), min(b), max(b), avg(b) FROM t',
+      'SELECT count(*) FROM t WHERE 0',
+      'SELECT a, count(b) AS n, sum(b) AS s FROM t GROUP BY a ORDER BY a',
+      'SELECT a, count(*) AS n FROM t GROUP BY a HAVING count(*) > 1 ORDER BY a',
+      "SELECT group_concat(b, ',') AS g FROM t",
+    ]) {
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(sql);
+      final text = native.stdout.toString().trim();
+      final expected = text.isEmpty ? const [] : jsonDecode(text) as List;
+      expect(actual.rows.length, expected.length, reason: sql);
+      for (var i = 0; i < actual.rows.length; i++) {
+        final left = [
+          for (final value in actual.rows[i])
+            value is BigInt ? value.toInt() : value
+        ];
+        final right = (expected[i] as Map).values.toList();
+        expect(left.length, right.length, reason: sql);
+        for (var c = 0; c < left.length; c++) {
+          final l = left[c];
+          final r = right[c];
+          if (l is double && r is num) {
+            expect(l, closeTo(r.toDouble(), 1e-9), reason: sql);
+          } else {
+            expect(l, r, reason: sql);
+          }
+        }
+      }
+    }
+  });
+
   test('MIN and MAX of an integer primary key read one end', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);

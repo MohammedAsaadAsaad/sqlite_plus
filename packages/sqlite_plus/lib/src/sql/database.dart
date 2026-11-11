@@ -2938,6 +2938,20 @@ final class SqliteDatabase {
       final preparedGroupKeys = <EvalContext, List<Object?>>{};
       final windowGroups = <RowValues, List<RowValues>>{};
       final windowAggregates = <RowValues, Map<Expr, Object?>>{};
+      bool referencesStoredRow(Expr expression) {
+        if (expression is FunctionExpr && expression.isAggregate) return false;
+        if (expression is ColumnExpr) {
+          return !groupBy.any((key) => sameExpression(key, expression));
+        }
+        return expression.children.any(referencesStoredRow);
+      }
+
+      final storeGroupRows = !aggregate ||
+          windowed ||
+          (statement.having != null &&
+              referencesStoredRow(statement.having!)) ||
+          items.any((item) => referencesStoredRow(item.expression!)) ||
+          order.any((term) => referencesStoredRow(term.expression));
       Iterable<EvalContext> prepare() sync* {
         final Iterable<(List<Object?>, Iterable<RowValues>)> inputs = aggregate
             ? groups
@@ -2953,7 +2967,7 @@ final class SqliteDatabase {
               ? functions.map((fn) => PreparedSqlAggregate(fn, base)).toList()
               : <PreparedSqlAggregate>[];
           for (final candidate in group.$2) {
-            groupRows.add(candidate);
+            if (storeGroupRows) groupRows.add(candidate);
             if (aggregate) {
               final context = base.forRow(candidate);
               for (final accumulator in accumulators) {

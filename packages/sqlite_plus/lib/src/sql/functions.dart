@@ -717,6 +717,19 @@ final class PreparedSqlAggregate {
   RowValues? representative;
   Object? _extreme;
   bool _copyBare = true;
+  int _runningCount = 0;
+  BigInt _runningInteger = BigInt.zero;
+  double _runningReal = 0;
+  double _runningCorrection = 0;
+  bool _runningFloat = false;
+  bool _runningSawValue = false;
+
+  bool get _runningAggregate =>
+      function.order.isEmpty &&
+      !function.distinct &&
+      function.registered == null &&
+      const {'count', 'sum', 'avg', 'total', 'min', 'max'}
+          .contains(function.key);
 
   void step(EvalContext row) {
     final fn = function;
@@ -749,6 +762,10 @@ final class PreparedSqlAggregate {
         return;
       }
     }
+    if (_runningAggregate) {
+      _stepRunning(args, row);
+      return;
+    }
     _prepared.add((args, keys, _prepared.length));
     if (fn.registered == null && ['min', 'max'].contains(fn.key)) {
       final value = args.single;
@@ -776,7 +793,96 @@ final class PreparedSqlAggregate {
     }
   }
 
+  void _stepRunning(List<Object?> args, EvalContext row) {
+    final key = function.key;
+    if (key == 'count') {
+      if (function.star || function.arguments.isEmpty || args.single != null) {
+        _runningCount++;
+      }
+      return;
+    }
+    final value = args.single;
+    if (value == null) return;
+    if (key == 'min' || key == 'max') {
+      final comparison = _extreme == null
+          ? 0
+          : compareValues(value, _extreme, context.encoding,
+              function.arguments.single.collation(context));
+      final replace =
+          _extreme == null || (key == 'min' ? comparison < 0 : comparison > 0);
+      if (replace) {
+        _extreme = value;
+        representative = row.row;
+      }
+      _runningSawValue = true;
+      return;
+    }
+    _runningSawValue = true;
+    _runningCount++;
+    _runningFloat = key != 'sum' || _runningFloat;
+    var n =
+        numeric(value, prefix: true, encoding: context.encoding) ?? BigInt.zero;
+    if (value is String && value.contains('\u0000')) {
+      n = numeric(value) ?? n;
+    }
+    if (value is Uint8List || value is String && numeric(value) == null) {
+      n = n is BigInt ? n.toDouble() : n;
+    }
+    if (n is BigInt && !_runningFloat) {
+      _runningInteger += n;
+      if (_runningInteger < -(BigInt.one << 63) ||
+          _runningInteger >= BigInt.one << 63) {
+        throw const SqlException('integer overflow');
+      }
+      return;
+    }
+    if (!_runningFloat) {
+      _addRunningInteger(_runningInteger);
+      _runningFloat = true;
+    }
+    if (n is BigInt) {
+      _addRunningInteger(n);
+    } else {
+      _addRunning(n as double);
+    }
+  }
+
+  void _addRunning(double value) {
+    final total = _runningReal + value;
+    if (!_runningReal.isFinite || !value.isFinite || !total.isFinite) {
+      _runningReal = total;
+      _runningCorrection = 0;
+      return;
+    }
+    _runningCorrection += _runningReal.abs() > value.abs()
+        ? (_runningReal - total) + value
+        : (value - total) + _runningReal;
+    _runningReal = total;
+  }
+
+  void _addRunningInteger(BigInt value) {
+    final high = (value ~/ BigInt.from(16384)) * BigInt.from(16384);
+    _addRunning(high.toDouble());
+    _addRunning((value - high).toDouble());
+  }
+
+  Object? _finishRunning() {
+    final key = function.key;
+    if (key == 'count') return BigInt.from(_runningCount);
+    if (key == 'min' || key == 'max') return _runningSawValue ? _extreme : null;
+    if (!_runningSawValue) return key == 'total' ? 0.0 : null;
+    if (_runningFloat && _runningReal.isFinite) {
+      _runningReal += _runningCorrection;
+    }
+    if (key == 'avg') {
+      return _runningReal.isNaN ? null : _runningReal / _runningCount;
+    }
+    if (_runningFloat) return _runningReal.isNaN ? null : _runningReal;
+    return _runningInteger;
+  }
+
   Object? finish() {
+    if (_runningAggregate) return _finishRunning();
     if (_state != null) {
       try {
         return sqlValue(_state!.finish());
