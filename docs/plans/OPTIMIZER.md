@@ -50,7 +50,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 38 | Bound planning complexity | Implemented/unaccepted; IN stays capped at 32 and join reorder at 4 sources; rows match SQLite; no AOT sample |
 | 39 | Prepared statement integration | Implemented/unaccepted; a bound `a = ?` still chooses the index; rows match SQLite; no AOT sample |
 | 40 | Evaluate plan caching, default off | Implemented/unaccepted; plans are not stored; ANALYZE changes the next explain; no AOT sample |
-| 41 | Inspector integration | Queued |
+| 41 | Inspector integration | Implemented/unaccepted; diagnoseQuery shows an index seek, one-end MIN/MAX, and an inner-join SEARCH; item 3 manifests unchanged; no AOT sample |
 | 42 | Whole-roadmap regression/release documentation | Queued |
 
 ## Acceptance per item
@@ -510,3 +510,13 @@ is a table scan. The rows match pinned SQLite 3.53.1. No plan cache is
 enabled. No fresh AOT sample is recorded.
 
 Next is item 41. No package publication.
+
+## Item 41 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. `diagnoseQuery` reports `secondary-index-lookup` for
+an index equality, a `primary-key-extreme` decision for `MAX` of the
+integer primary key, and `inner-join-search` for a plain inner join. A
+join that calls a function still rejects before the callback. Item 3's
+accepted manifests are unchanged. No fresh AOT sample is recorded.
+
+Next is item 42. No package publication.

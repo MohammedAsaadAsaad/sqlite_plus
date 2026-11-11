@@ -216,6 +216,38 @@ bool _unsupportedDiagnosticExpression(Expr expression) {
   return false;
 }
 
+bool _plainDiagnosticJoin(SelectStatement statement, List<Expr> expressions) {
+  if (statement.sources.length != 2 ||
+      statement.compounds.isNotEmpty ||
+      statement.ctes.isNotEmpty ||
+      statement.groupBy.isNotEmpty ||
+      statement.having != null ||
+      statement.valuesQuery) {
+    return false;
+  }
+  if (statement.sources.any((source) =>
+      source.schema != null ||
+      source.query != null ||
+      source.table == null ||
+      source.join == 'LEFT' ||
+      source.join == 'RIGHT' ||
+      source.join == 'FULL')) {
+    return false;
+  }
+  bool blocked(Expr expression) =>
+      expression is FunctionExpr ||
+      expression is SubqueryExpr ||
+      expression is InSelectExpr ||
+      expression.containsAggregate ||
+      expression.containsWindow ||
+      expression.children.any(blocked);
+  if (expressions.any(blocked)) return false;
+  for (final source in statement.sources) {
+    if (source.on != null && blocked(source.on!)) return false;
+  }
+  return statement.sources.any((source) => source.join == 'INNER');
+}
+
 extension SqlReadDiagnostics on SqliteDatabase {
   /// Executes once with explicit bounded diagnostics. Unsupported shapes reject
   /// before SQL callbacks. Normal query/prepare paths retain their SQL coverage.
@@ -253,14 +285,6 @@ extension SqlReadDiagnostics on SqliteDatabase {
           if (statement.limit != null) statement.limit!,
           if (statement.offset != null) statement.offset!,
         ];
-        if (_needsRelational(statement) ||
-            statement.valuesQuery ||
-            statement.groupBy.isNotEmpty ||
-            statement.having != null ||
-            statement.windowDefinitions.isNotEmpty ||
-            expressions.any(_unsupportedDiagnosticExpression)) {
-          throw UnsupportedError('Diagnosis requires a simple scalar SELECT');
-        }
         final table =
             statement.table == null ? null : catalog.table(statement.table!);
         if (table != null &&
@@ -268,6 +292,48 @@ extension SqlReadDiagnostics on SqliteDatabase {
                 table.columns.any((c) => c.generatedExpression != null))) {
           throw UnsupportedError(
               'Diagnosis requires an ordinary non-generated source');
+        }
+        final primaryExtreme =
+            table == null ? null : _primaryKeyExtreme(statement, table);
+        final plainJoin = _plainDiagnosticJoin(statement, expressions);
+        if (!plainJoin &&
+            (_needsRelational(statement) ||
+                statement.valuesQuery ||
+                statement.groupBy.isNotEmpty ||
+                statement.having != null ||
+                statement.windowDefinitions.isNotEmpty ||
+                (expressions.any(_unsupportedDiagnosticExpression) &&
+                    primaryExtreme == null))) {
+          throw UnsupportedError('Diagnosis requires a simple scalar SELECT');
+        }
+        if (plainJoin) {
+          parse.stop();
+          final rows = _explainQueryPlan(sql);
+          final trace = _SqlDiagnosticTrace(options.maxCandidates);
+          for (final row in rows) {
+            final search = row.detail.startsWith('SEARCH');
+            trace.record(search ? 'inner-join-search' : 'scan', row.detail,
+                chosen: search);
+          }
+          trace.plan = SqlDiagnosticPlan._(QueryPlan(
+              rows.any((row) => row.detail.startsWith('SEARCH'))
+                  ? 'inner-join-search'
+                  : 'scan',
+              null,
+              null));
+          final pagesBefore = pagesRead;
+          final preparation = Stopwatch()..start();
+          final result = await _query(sql, bound);
+          preparation.stop();
+          total.stop();
+          return SqlQueryDiagnostics._(
+              result,
+              trace,
+              parse.elapsed,
+              preparation.elapsed,
+              Duration.zero,
+              total.elapsed,
+              pagesRead - pagesBefore);
         }
         parse.stop();
         final trace = _SqlDiagnosticTrace(options.maxCandidates);

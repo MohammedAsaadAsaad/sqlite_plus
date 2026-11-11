@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 41 diagnosis shows the later access paths
+
+`diagnoseQuery` reports an index seek, a one-end primary-key `MAX`, and
+`SEARCH` for a plain inner join. Function joins still reject before the
+callback. Item 3's manifests are unchanged. No AOT sample is recorded, so
+this is not a cost acceptance.
+
 ## 2026-11-11 — Item 40 plans are not cached
 
 Each statement is planned from the current catalog. `ANALYZE` changes the
