@@ -1,5 +1,11 @@
 # Development log
 
+## 2026-11-11 — Item 28 correlated subqueries stay per row
+
+A correlated scalar subquery is not flattened into a join. Three outer rows
+call the inner probe three times. The plain values match pinned SQLite
+3.53.1. This is a rejection, not a cost acceptance.
+
 ## 2026-11-11 — Item 27 uncorrelated subqueries run once
 
 A scalar subquery with no outer column is executed once and reused. A
