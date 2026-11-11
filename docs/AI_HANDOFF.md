@@ -27,7 +27,13 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 35, intermediate projection pruning.** Item 34 is
+**Active item: 36, broader streaming execution.** Item 35 is
+correctness-verified and not cost-accepted. An unused bare column of a
+derived query that is not flattened is replaced by NULL. A function in
+that select list stays, so `probe(b)` still runs. The remaining columns
+match pinned SQLite 3.53.1. No AOT sample is recorded.
+
+Item 34 is
 correctness-verified and not cost-accepted. A direct single-table `WHERE`
 that is a false literal, or an `AND` of comparisons with an empty numeric
 range, skips the scan. `count(*)` on that filter is 0. An `OR` keeps the

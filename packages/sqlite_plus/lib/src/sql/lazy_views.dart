@@ -225,6 +225,92 @@ extension _DeferredQuerySources on SqliteDatabase {
   bool _windowQuery(SelectStatement query) =>
       _expressions(query).any((expression) => expression.containsWindow);
 
+  /// Replace an unused bare column with NULL. A function stays, because it
+  /// may have a side effect.
+  SelectStatement _pruneUnusedColumns(SelectStatement query,
+      SelectStatement consumer, String alias, List<String> names) {
+    if (query.compounds.isNotEmpty ||
+        query.distinct ||
+        _aggregateQuery(query) ||
+        _windowQuery(query) ||
+        query.items.any((item) => item.expression == null)) {
+      return query;
+    }
+    final used = _consumerColumnNames(consumer, alias, names);
+    if (used == null) return query;
+    final inner = _innerOutputNames(query);
+    final items = [
+      for (final item in query.items)
+        if (item.expression is ColumnExpr &&
+            !used.contains(asciiLower(item.label)) &&
+            !inner.contains(asciiLower(item.label)))
+          SelectItem(Literal(null), item.label,
+              explicitAlias: item.explicitAlias,
+              qualifierOffset: item.qualifierOffset)
+        else
+          item
+    ];
+    return _relationQuery(query, items: items);
+  }
+
+  Set<String>? _consumerColumnNames(
+      SelectStatement consumer, String alias, List<String> names) {
+    if (consumer.items.any((item) => item.expression == null)) return null;
+    final known = {for (final name in names) asciiLower(name)};
+    final used = <String>{};
+    void take(Expr? expression) {
+      if (expression == null) return;
+      if (expression is ColumnExpr) {
+        if (expression.qualifier != null &&
+            asciiLower(expression.qualifier!) == alias) {
+          used.add(asciiLower(
+              expression.name.substring(expression.qualifier!.length + 1)));
+        } else if (expression.qualifier == null &&
+            known.contains(expression.key)) {
+          used.add(expression.key);
+        }
+      }
+      for (final child in expression.children) {
+        take(child);
+      }
+    }
+
+    for (final expression in _expressions(consumer)) {
+      take(expression);
+    }
+    return used;
+  }
+
+  Set<String> _innerOutputNames(SelectStatement query) {
+    final used = <String>{};
+    void take(Expr? expression) {
+      if (expression == null) return;
+      if (expression is ColumnExpr && expression.qualifier == null) {
+        used.add(expression.key);
+      }
+      final ordinal = expressionOrdinal(expression);
+      if (ordinal != null) {
+        final slot = ordinal.toInt() - 1;
+        if (slot >= 0 && slot < query.items.length) {
+          used.add(asciiLower(query.items[slot].label));
+        }
+      }
+      for (final child in expression.children) {
+        take(child);
+      }
+    }
+
+    take(query.where);
+    for (final group in query.groupBy) {
+      take(group);
+    }
+    take(query.having);
+    for (final term in query.order) {
+      take(term.expression);
+    }
+    return used;
+  }
+
   bool _flattenRelation(
       SelectStatement query, SelectStatement consumer, QuerySource source) {
     if (query.sources.isEmpty ||
@@ -410,6 +496,7 @@ extension _DeferredQuerySources on SqliteDatabase {
                 query.order[i].nullsFirst)
         ]);
       }
+      query = _pruneUnusedColumns(query, consumer, alias, relation.names);
       return (
         _DeferredRelationRows(
             () => relation.rows(relation.execute(query, false))),

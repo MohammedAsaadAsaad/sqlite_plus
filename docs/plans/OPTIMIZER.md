@@ -44,7 +44,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 32 | Streaming aggregation | Implemented/unaccepted; count/sum/avg/total/min/max keep a running value; bare columns still retain the group; no AOT sample |
 | 33 | Safe constant-expression simplification | Implemented/unaccepted; pure arithmetic is replaced by its value; functions stay; no AOT sample |
 | 34 | Predicate simplification/contradictions | Implemented/unaccepted; a false direct-table filter skips the scan; count stays 0; functions still run; no AOT sample |
-| 35 | Intermediate projection pruning | Queued |
+| 35 | Intermediate projection pruning | Implemented/unaccepted; an unused bare derived column becomes NULL; functions stay; no AOT sample |
 | 36 | Broader streaming execution | Queued |
 | 37 | Safe per-execution common work reuse | Queued |
 | 38 | Bound planning complexity | Queued |
@@ -451,3 +451,12 @@ pinned SQLite 3.53.1, and the skipped scan reads fewer pages than
 `count(*)`. No fresh AOT sample is recorded.
 
 Next is item 35. No package publication.
+
+## Item 35 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. A derived query that stays as its own input replaces
+an unused bare column with NULL. A function in the same select list stays,
+so `probe(b)` still runs. The kept columns match pinned SQLite 3.53.1. No
+fresh AOT sample is recorded.
+
+Next is item 36. No package publication.
