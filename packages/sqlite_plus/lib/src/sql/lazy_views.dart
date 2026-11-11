@@ -63,12 +63,15 @@ final class _DeferredRelationRows extends ListBase<RowValues> {
 /// substitute expressions or requires a coroutine/materialization boundary.
 final class _QueryRelationRows extends ListBase<RowValues> {
   _QueryRelationRows(this.query, this.names, this.execute,
-      {this.materialized = false, this.cte = false, required this.describe});
+      {this.materialized = false,
+      this.shareUses = true,
+      this.cte = false,
+      required this.describe});
   final SelectStatement query;
   final List<String> names;
   final _QueryExecution Function(SelectStatement, bool) execute;
   final List<CatalogColumn> Function(SelectStatement) describe;
-  final bool materialized, cte;
+  final bool materialized, shareUses, cte;
   late final List<RowValues> values = _DeferredRelationRows(
       () => rows(execute(query, false)).toList(growable: false));
 
@@ -343,7 +346,7 @@ extension _DeferredQuerySources on SqliteDatabase {
                           asciiLower(source.table ?? ''))
                   .length >
               1;
-      if (multiple) return (relation.values, null);
+      if (multiple && relation.shareUses) return (relation.values, null);
       query =
           _pushRelationPredicate(relation, query, consumer, alias, subquery);
       bool usesSourceValue(Expr expression) =>

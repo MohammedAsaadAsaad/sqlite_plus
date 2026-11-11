@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 29 CTE materialization follows its uses
+
+A CTE read more than once runs once. `NOT MATERIALIZED` runs once per use,
+and `MATERIALIZED` runs once before the outer filter. A derived `LIMIT`
+stays inside that query. Rows match pinned SQLite 3.53.1. No AOT sample is
+recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 28 correlated subqueries stay per row
 
 A correlated scalar subquery is not flattened into a join. Three outer rows

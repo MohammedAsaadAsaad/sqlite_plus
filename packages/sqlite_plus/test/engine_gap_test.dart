@@ -720,6 +720,59 @@ void main() {
     ]);
   });
 
+  test('a repeated CTE is shared unless NOT MATERIALIZED', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY)');
+    await db.execute('INSERT INTO t VALUES (1), (2), (3)');
+    var calls = 0;
+    db.functions.registerScalar('probe', 0, (_) {
+      calls++;
+      return 1;
+    });
+    Future<void> once(String sql, int expected) async {
+      calls = 0;
+      await db.query(sql);
+      expect(calls, expected, reason: sql);
+    }
+
+    await once(
+        'WITH c(v) AS (SELECT probe()) SELECT v FROM c UNION ALL SELECT v FROM c',
+        1);
+    await once(
+        'WITH c(v) AS MATERIALIZED (SELECT probe()) SELECT v FROM c WHERE v = 1',
+        1);
+    await once(
+        'WITH c(v) AS NOT MATERIALIZED (SELECT probe()) '
+        'SELECT v FROM c UNION ALL SELECT v FROM c',
+        2);
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY); '
+        'INSERT INTO t VALUES (1), (2), (3);';
+    for (final sql in [
+      'WITH c(v) AS (SELECT id FROM t) SELECT v FROM c WHERE v > 1 ORDER BY v',
+      'WITH c(v) AS MATERIALIZED (SELECT id FROM t) '
+          'SELECT v FROM c WHERE v > 1 ORDER BY v',
+      'WITH c(v) AS NOT MATERIALIZED (SELECT id FROM t) '
+          'SELECT v FROM c UNION ALL SELECT v FROM c ORDER BY v',
+      'SELECT v FROM (SELECT id AS v FROM t LIMIT 1) AS d WHERE v = 2',
+    ]) {
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(sql);
+      final text = native.stdout.toString().trim();
+      final expected = text.isEmpty ? const [] : jsonDecode(text) as List;
+      expect([
+        for (final row in actual.rows)
+          [for (final value in row) value is BigInt ? value.toInt() : value]
+      ], [
+        for (final row in expected) (row as Map).values.toList()
+      ], reason: sql);
+    }
+  });
+
   test('a correlated subquery stays tied to the outer row', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);

@@ -38,7 +38,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 26 | EXISTS early exit | Implemented/unaccepted; uncorrelated single-table EXISTS stops at the first match; no AOT sample |
 | 27 | Safe reuse of uncorrelated subqueries | Implemented/unaccepted; an uncorrelated scalar subquery runs once; correlated counts stay per row; no AOT sample |
 | 28 | Correlated query transformations | Rejected; a correlated subquery stays per outer row and is not flattened into a join |
-| 29 | CTE/derived pushdown and materialization choices | Queued |
+| 29 | CTE/derived pushdown and materialization choices | Implemented/unaccepted; a repeated CTE runs once, NOT MATERIALIZED runs per use, derived LIMIT stays inside; no AOT sample |
 | 30 | Ordered DISTINCT/GROUP BY | Queued |
 | 31 | MIN/MAX/COUNT shortcuts | Queued |
 | 32 | Streaming aggregation | Queued |
@@ -391,3 +391,13 @@ for the current outer row, so three outer rows call the inner probe three
 times. The plain values match pinned SQLite 3.53.1.
 
 Next is item 29. No package publication.
+
+## Item 29 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. A CTE referenced more than once, including the two
+sides of `UNION ALL`, runs once. `NOT MATERIALIZED` runs once per use.
+`MATERIALIZED` runs once and the outer `WHERE` filters afterward. A derived
+table applies its `LIMIT` before the outer `WHERE`. Rows match pinned SQLite
+3.53.1. No fresh AOT sample is recorded.
+
+Next is item 30. No package publication.
