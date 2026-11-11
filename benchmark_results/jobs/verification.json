@@ -1,0 +1,19 @@
+{
+  "jobs_passed": 52,
+  "existing_addons_passed": 459,
+  "combined_regression": "510 passed with51 then-current jobs tests; later full jobs52 passed after package-only cache/Unicode/counter refinements. Core/add-on runtime unchanged.",
+  "final_analysis": "Analyzing sqlite_plus_jobs, jobs_benchmark...\nNo issues found!",
+  "format": "Formatted 12 files (0 changed) in 0.02 seconds.",
+  "example_vm": "Jobs assertions passed: atomic enqueue, deduplication and worker completion.",
+  "example_js_node": "Jobs assertions passed: atomic enqueue, deduplication and worker completion.",
+  "pub_lockfile": "offline --enforce-lockfile passed",
+  "native_reference": "SQLite3.53.1 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+  "durability": "28 phase/journal/persistence combinations + uncertain-commit test; observed storage write/truncate/sync failure points, not actual OS power loss",
+  "open_gates": [
+    "Large queue processing latency",
+    "Independent connection/process/isolate coordination",
+    "ORM/Changes transaction drivers",
+    "Actual browser/device/Windows/macOS and file throughput",
+    "Remote CI and publication"
+  ]
+}

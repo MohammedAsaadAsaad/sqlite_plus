@@ -1,0 +1,476 @@
+[
+  {
+    "label": "before",
+    "args": [
+      "import",
+      1000
+    ],
+    "samples": 3,
+    "timings": {
+      "prepare_us": {
+        "median": 52402,
+        "min": 51361,
+        "max": 53236
+      },
+      "apply_us": {
+        "median": 13971559,
+        "min": 13738985,
+        "max": 15312813
+      }
+    },
+    "rss_range": [
+      62611456,
+      62902272
+    ],
+    "peak_rss_range": [
+      62238720,
+      62730240
+    ]
+  },
+  {
+    "label": "after",
+    "args": [
+      "import",
+      1000
+    ],
+    "samples": 3,
+    "timings": {
+      "prepare_us": {
+        "median": 52516,
+        "min": 49967,
+        "max": 72595
+      },
+      "apply_us": {
+        "median": 119110,
+        "min": 111881,
+        "max": 125859
+      }
+    },
+    "rss_range": [
+      66617344,
+      72040448
+    ],
+    "peak_rss_range": [
+      66289664,
+      71802880
+    ]
+  },
+  {
+    "label": "ordinary-before",
+    "args": [
+      "read",
+      1000
+    ],
+    "samples": 5,
+    "timings": {
+      "duration_us": {
+        "median": 37059,
+        "min": 34967,
+        "max": 40916
+      }
+    },
+    "rss_range": [
+      23543808,
+      48353280
+    ],
+    "peak_rss_range": [
+      23326720,
+      48443392
+    ]
+  },
+  {
+    "label": "ordinary-after",
+    "args": [
+      "read",
+      1000
+    ],
+    "samples": 5,
+    "timings": {
+      "duration_us": {
+        "median": 36758,
+        "min": 34742,
+        "max": 45593
+      }
+    },
+    "rss_range": [
+      23830528,
+      49426432
+    ],
+    "peak_rss_range": [
+      23404544,
+      49209344
+    ]
+  },
+  {
+    "label": "ordinary-before",
+    "args": [
+      "insert",
+      1000
+    ],
+    "samples": 5,
+    "timings": {
+      "duration_us": {
+        "median": 1726,
+        "min": 1567,
+        "max": 2689
+      }
+    },
+    "rss_range": [
+      19898368,
+      20819968
+    ],
+    "peak_rss_range": [
+      19582976,
+      20508672
+    ]
+  },
+  {
+    "label": "ordinary-after",
+    "args": [
+      "insert",
+      1000
+    ],
+    "samples": 5,
+    "timings": {
+      "duration_us": {
+        "median": 1633,
+        "min": 1472,
+        "max": 1725
+      }
+    },
+    "rss_range": [
+      20635648,
+      20865024
+    ],
+    "peak_rss_range": [
+      20393984,
+      20553728
+    ]
+  },
+  {
+    "label": "ordinary-before",
+    "args": [
+      "update",
+      1000
+    ],
+    "samples": 5,
+    "timings": {
+      "duration_us": {
+        "median": 3307,
+        "min": 3265,
+        "max": 4899
+      }
+    },
+    "rss_range": [
+      23896064,
+      48541696
+    ],
+    "peak_rss_range": [
+      23576576,
+      48574464
+    ]
+  },
+  {
+    "label": "ordinary-after",
+    "args": [
+      "update",
+      1000
+    ],
+    "samples": 5,
+    "timings": {
+      "duration_us": {
+        "median": 3569,
+        "min": 3428,
+        "max": 3912
+      }
+    },
+    "rss_range": [
+      24027136,
+      48349184
+    ],
+    "peak_rss_range": [
+      23617536,
+      48533504
+    ]
+  },
+  {
+    "label": "sku-before",
+    "args": [
+      100,
+      "insert"
+    ],
+    "samples": 1,
+    "timings": {
+      "prepare_us": {
+        "median": 12617,
+        "min": 12617,
+        "max": 12617
+      },
+      "apply_us": {
+        "median": 214761,
+        "min": 214761,
+        "max": 214761
+      }
+    },
+    "rss_range": [
+      20897792,
+      20897792
+    ],
+    "peak_rss_range": [
+      20582400,
+      20582400
+    ]
+  },
+  {
+    "label": "sku-after",
+    "args": [
+      100,
+      "insert"
+    ],
+    "samples": 1,
+    "timings": {
+      "prepare_us": {
+        "median": 14086,
+        "min": 14086,
+        "max": 14086
+      },
+      "apply_us": {
+        "median": 14071,
+        "min": 14071,
+        "max": 14071
+      }
+    },
+    "rss_range": [
+      20516864,
+      20516864
+    ],
+    "peak_rss_range": [
+      20254720,
+      20254720
+    ]
+  },
+  {
+    "label": "sku-before",
+    "args": [
+      100,
+      "update"
+    ],
+    "samples": 1,
+    "timings": {
+      "prepare_us": {
+        "median": 8421,
+        "min": 8421,
+        "max": 8421
+      },
+      "apply_us": {
+        "median": 587548,
+        "min": 587548,
+        "max": 587548
+      }
+    },
+    "rss_range": [
+      46718976,
+      46718976
+    ],
+    "peak_rss_range": [
+      46370816,
+      46370816
+    ]
+  },
+  {
+    "label": "sku-after",
+    "args": [
+      100,
+      "update"
+    ],
+    "samples": 1,
+    "timings": {
+      "prepare_us": {
+        "median": 10275,
+        "min": 10275,
+        "max": 10275
+      },
+      "apply_us": {
+        "median": 34059,
+        "min": 34059,
+        "max": 34059
+      }
+    },
+    "rss_range": [
+      21749760,
+      21749760
+    ],
+    "peak_rss_range": [
+      21377024,
+      21377024
+    ]
+  },
+  {
+    "label": "sku-before",
+    "args": [
+      100,
+      "mixed"
+    ],
+    "samples": 1,
+    "timings": {
+      "prepare_us": {
+        "median": 9317,
+        "min": 9317,
+        "max": 9317
+      },
+      "apply_us": {
+        "median": 239012,
+        "min": 239012,
+        "max": 239012
+      }
+    },
+    "rss_range": [
+      46272512,
+      46272512
+    ],
+    "peak_rss_range": [
+      46080000,
+      46080000
+    ]
+  },
+  {
+    "label": "sku-after",
+    "args": [
+      100,
+      "mixed"
+    ],
+    "samples": 1,
+    "timings": {
+      "prepare_us": {
+        "median": 9475,
+        "min": 9475,
+        "max": 9475
+      },
+      "apply_us": {
+        "median": 20031,
+        "min": 20031,
+        "max": 20031
+      }
+    },
+    "rss_range": [
+      39952384,
+      39952384
+    ],
+    "peak_rss_range": [
+      39710720,
+      39710720
+    ]
+  },
+  {
+    "label": "sku-after",
+    "args": [
+      1000,
+      "insert"
+    ],
+    "samples": 3,
+    "timings": {
+      "prepare_us": {
+        "median": 286235,
+        "min": 281171,
+        "max": 316135
+      },
+      "apply_us": {
+        "median": 347903,
+        "min": 333824,
+        "max": 352366
+      }
+    },
+    "rss_range": [
+      63520768,
+      63946752
+    ],
+    "peak_rss_range": [
+      63496192,
+      63582208
+    ]
+  },
+  {
+    "label": "sku-after",
+    "args": [
+      1000,
+      "update"
+    ],
+    "samples": 3,
+    "timings": {
+      "prepare_us": {
+        "median": 287662,
+        "min": 284496,
+        "max": 312534
+      },
+      "apply_us": {
+        "median": 433603,
+        "min": 417416,
+        "max": 442858
+      }
+    },
+    "rss_range": [
+      70918144,
+      71929856
+    ],
+    "peak_rss_range": [
+      71000064,
+      71573504
+    ]
+  },
+  {
+    "label": "sku-after",
+    "args": [
+      1000,
+      "mixed"
+    ],
+    "samples": 3,
+    "timings": {
+      "prepare_us": {
+        "median": 275719,
+        "min": 270965,
+        "max": 281622
+      },
+      "apply_us": {
+        "median": 364794,
+        "min": 357426,
+        "max": 396683
+      }
+    },
+    "rss_range": [
+      67567616,
+      68128768
+    ],
+    "peak_rss_range": [
+      67227648,
+      67788800
+    ]
+  },
+  {
+    "label": "scale-after",
+    "args": [
+      "import",
+      10000
+    ],
+    "samples": 3,
+    "timings": {
+      "prepare_us": {
+        "median": 2114892,
+        "min": 2108076,
+        "max": 2144609
+      },
+      "apply_us": {
+        "median": 3896570,
+        "min": 3844612,
+        "max": 4003997
+      }
+    },
+    "rss_range": [
+      60649472,
+      176758784
+    ],
+    "peak_rss_range": [
+      255066112,
+      272936960
+    ]
+  }
+]

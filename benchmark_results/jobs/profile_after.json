@@ -1,0 +1,131 @@
+{
+  "samples": 955,
+  "scope": "Diagnostic JIT whole20 workflow before final schema-index validation and batch-dedup cache; intermediate profile, top60 global functions, not final AOT timing",
+  "functions": [
+    {
+      "name": "_execute",
+      "inclusive": 331,
+      "exclusive": 0
+    },
+    {
+      "name": "asciiLower",
+      "inclusive": 277,
+      "exclusive": 4
+    },
+    {
+      "name": "_query",
+      "inclusive": 271,
+      "exclusive": 0
+    },
+    {
+      "name": "run",
+      "inclusive": 269,
+      "exclusive": 1
+    },
+    {
+      "name": "run",
+      "inclusive": 268,
+      "exclusive": 0
+    },
+    {
+      "name": "<anonymous closure>",
+      "inclusive": 266,
+      "exclusive": 1
+    },
+    {
+      "name": "_readImage",
+      "inclusive": 263,
+      "exclusive": 0
+    },
+    {
+      "name": "_prepareQuery",
+      "inclusive": 250,
+      "exclusive": 1
+    },
+    {
+      "name": "query",
+      "inclusive": 228,
+      "exclusive": 0
+    },
+    {
+      "name": "<anonymous closure>",
+      "inclusive": 226,
+      "exclusive": 0
+    },
+    {
+      "name": "table",
+      "inclusive": 202,
+      "exclusive": 0
+    },
+    {
+      "name": "parseTable",
+      "inclusive": 198,
+      "exclusive": 6
+    },
+    {
+      "name": "_plan",
+      "inclusive": 157,
+      "exclusive": 0
+    },
+    {
+      "name": "_indexDefinition",
+      "inclusive": 131,
+      "exclusive": 0
+    },
+    {
+      "name": "_row",
+      "inclusive": 122,
+      "exclusive": 2
+    },
+    {
+      "name": "_key",
+      "inclusive": 113,
+      "exclusive": 0
+    },
+    {
+      "name": "_indexKey",
+      "inclusive": 113,
+      "exclusive": 0
+    },
+    {
+      "name": "indexedConflict",
+      "inclusive": 104,
+      "exclusive": 0
+    },
+    {
+      "name": "conflictTree",
+      "inclusive": 95,
+      "exclusive": 0
+    },
+    {
+      "name": "<anonymous closure>",
+      "inclusive": 94,
+      "exclusive": 1
+    },
+    {
+      "name": "handleUpsert",
+      "inclusive": 80,
+      "exclusive": 0
+    },
+    {
+      "name": "evaluate",
+      "inclusive": 72,
+      "exclusive": 0
+    },
+    {
+      "name": "_queryUnlocked",
+      "inclusive": 68,
+      "exclusive": 0
+    },
+    {
+      "name": "evaluateGenerated",
+      "inclusive": 68,
+      "exclusive": 1
+    },
+    {
+      "name": "tokenize",
+      "inclusive": 67,
+      "exclusive": 19
+    }
+  ]
+}

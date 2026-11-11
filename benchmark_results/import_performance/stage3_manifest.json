@@ -1,0 +1,4 @@
+{
+  "description": "Exploratory probes, before allowing FK-enabled databases with no actual FK metadata. Partial run deliberately stopped; authoritative comparison is runs.json.",
+  "image_mutations_sha256": "2a75a7ee3b796412b530c1cb83485b92d037dec2a7fd2bbd16b154d8d1eecc40"
+}

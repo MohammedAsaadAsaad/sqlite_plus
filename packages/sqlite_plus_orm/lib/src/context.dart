@@ -224,11 +224,15 @@ final class DbContext {
   DbContext(OrmConnection connection, this.model,
       {SqlitePlusChanges? changes,
       this.reactiveDebounce = Duration.zero,
-      this.reactiveMaxRows = 10000})
+      this.reactiveMaxRows = 10000,
+      this.preparedQueryCacheSize = 0})
       : connection = changes == null
             ? connection
             : ChangesOrmConnection(connection, changes) {
-    if (reactiveDebounce.isNegative || reactiveMaxRows < 1) {
+    if (reactiveDebounce.isNegative ||
+        reactiveMaxRows < 1 ||
+        preparedQueryCacheSize < 0 ||
+        preparedQueryCacheSize > 128) {
       throw ArgumentError('Invalid reactive limits');
     }
     this.connection.claim(this);
@@ -242,6 +246,49 @@ final class DbContext {
   final DbModel model;
   final Duration reactiveDebounce;
   final int reactiveMaxRows;
+
+  /// Opt-in bounded cache of normal read-command shapes. Zero preserves legacy path.
+  final int preparedQueryCacheSize;
+  Map<String, OrmPreparedCommand>? _preparedCache;
+  Set<_OrmPreparedResource>? _preparedResources;
+  int get preparedQueryCacheEntries => _preparedCache?.length ?? 0;
+  Future<void> clearPreparedQueries() => _run(() => _clearPreparedCache());
+  Future<void> _clearPreparedCache() async {
+    final entries =
+        _preparedCache?.values.toList() ?? const <OrmPreparedCommand>[];
+    _preparedCache?.clear();
+    for (final entry in entries) {
+      await entry.close();
+    }
+  }
+
+  Future<QueryResult> _preparedRows(OrmQueryCommand command) async {
+    final cache = _preparedCache ??= {};
+    var prepared = cache.remove(command.sql);
+    prepared ??= await connection.prepareCommand(command.sql);
+    cache[command.sql] = prepared;
+    while (cache.length > preparedQueryCacheSize) {
+      final old = cache.remove(cache.keys.first)!;
+      await old.close();
+    }
+    try {
+      return await prepared.query(command.parameters);
+    } on UnsupportedError {
+      cache.remove(command.sql);
+      await prepared.close();
+      return connection.query(command.sql, command.parameters);
+    }
+  }
+
+  Future<void> _disposePrepared() async {
+    await _clearPreparedCache();
+    for (final resource
+        in _preparedResources?.toList() ?? const <_OrmPreparedResource>[]) {
+      await resource._dispose();
+    }
+    _preparedResources = null;
+  }
+
   ReactiveRegistry? _reactiveRegistry;
   bool _captureInitialized = false;
   final Map<Object, EntityEntry<dynamic>> _entries = Map.identity();
@@ -1404,6 +1451,9 @@ final class DbContext {
       try {
         _closed = true;
         await _reactiveRegistry?.close();
+        if (_preparedCache != null || _preparedResources != null) {
+          await _disposePrepared();
+        }
         for (final entry in _entries.values.toList()) {
           _detach(entry);
         }

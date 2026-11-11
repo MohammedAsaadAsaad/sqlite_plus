@@ -1,0 +1,17 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "dart": "Dart SDK version: 3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "binary": "/tmp/jobs-benchmark",
+  "binary_sha256": "cfa97603f913d024b9495a4ab9dc76460057d1201a532489ce002621bbce34a1",
+  "source_sha256": {
+    "packages/sqlite_plus_jobs/lib/sqlite_plus_jobs.dart": "d82f27b6cb3b0dc32b5baf6e5fac68ee849093d378baa0532515b95e43f93885",
+    "packages/sqlite_plus_jobs/lib/src/models.dart": "a6223d1f42ef21b2283c62090951a6bbf847d1c83328b64f91f0ef105549a67d",
+    "packages/sqlite_plus_jobs/lib/src/queue.dart": "d1c7ff6de8cd2e238ed19b91804fee5a6ca986462078a665091b89244d59da29",
+    "packages/sqlite_plus_jobs/lib/src/worker.dart": "56007d933dfa8c7d97071d8f2d9cab977242066cfb288f9b1f42f718271b2eba",
+    "tool/jobs_benchmark/main.dart": "e78d5feea820e3b74f2b37fe1f199badbb88b82dc5c7cdcc4fc7c0f560a660a5",
+    "tool/jobs_benchmark/run.py": "957aaa546cfdabd4fbef3da171fd77e6ae37cc784ac37c3ae27df574dd3b5279",
+    "packages/sqlite_plus_jobs/pubspec.yaml": "e62dcad4530932adaee7b0e237de3246ecb841d6a6167f89d0868db36b75897a",
+    "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "5118937b407e2818c4fa48c8367f421abdb894252232bfd1b6b3b4a871b59bd4"
+  },
+  "core_unchanged_from_import_followup": true
+}

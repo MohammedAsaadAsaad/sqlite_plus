@@ -169,10 +169,24 @@ extension DirectSetWrites<T> on DbSet<T> {
 
   /// Input is snapshotted now. All chunks commit or roll back together.
   Future<OrmWriteResult> upsertMany(Iterable<T> entities,
+          {required List<Column<T, dynamic>> conflictOn,
+          required List<Column<T, dynamic>> update,
+          List<Column<T, dynamic>>? returning,
+          int batchSize = 200}) =>
+      _upsertMany(entities,
+          conflictOn: conflictOn,
+          update: update,
+          returning: returning,
+          batchSize: batchSize);
+
+  Future<OrmWriteResult> _upsertMany(Iterable<T> entities,
       {required List<Column<T, dynamic>> conflictOn,
       required List<Column<T, dynamic>> update,
       List<Column<T, dynamic>>? returning,
-      int batchSize = 200}) {
+      int batchSize = 200,
+      List<Map<String, Object?>>? encoded,
+      bool keepEmpty = false,
+      List<String>? expectedCollations}) {
     try {
       _writeType(type);
       if (batchSize < 1 || batchSize > 1000) {
@@ -191,11 +205,12 @@ extension DirectSetWrites<T> on DbSet<T> {
             'Upsert cannot update keys, conflict columns, generated fields or managed versions');
       }
       final input = <Map<String, Object?>>[];
-      for (final entity in entities) {
+      final source = encoded ?? entities.map((entity) => type.encode(entity));
+      for (final values in source) {
         if (input.length == 10000) {
           throw RangeError('At most 10000 upsert inputs per call');
         }
-        final row = _copyOrmRow(type.encode(entity));
+        final row = _copyOrmRow(values);
         if (keys.any((c) => row[c.sqlName] == null)) {
           throw const OrmMappingException(
               'Upsert conflict values cannot be NULL');
@@ -207,6 +222,11 @@ extension DirectSetWrites<T> on DbSet<T> {
       }
       return context._directWrite(() async {
         final collations = await context._uniqueTarget(type, keys);
+        if (expectedCollations != null &&
+            jsonEncode(expectedCollations) != jsonEncode(collations)) {
+          throw const OrmStateException(
+              'Import conflict collation changed; prepare again');
+        }
         if (input.isEmpty) return OrmWriteResult._(0, []);
         if (input.length > 1) {
           final args = <Object?>[];
@@ -245,9 +265,36 @@ extension DirectSetWrites<T> on DbSet<T> {
           for (var i = 0; i < keys.length; i++)
             '${quoteIdentifier(keys[i].sqlName)} COLLATE ${quoteIdentifier(collations[i])}'
         ].join(',');
+        // Only import opts into this scan. Uniform fields avoid a CASE for
+        // every conflict row; mixed fields still resolve current stored values.
+        Map<Column<T, dynamic>, int>? emptyModes;
+        if (keepEmpty) {
+          emptyModes = {};
+          for (final field in fields) {
+            var empty = false, value = false;
+            for (final row in input) {
+              final v = row[field.sqlName];
+              if (v == null || v is String && v.isEmpty) {
+                empty = true;
+              } else {
+                value = true;
+              }
+              if (empty && value) break;
+            }
+            emptyModes[field] = !empty
+                ? 0
+                : value
+                    ? 1
+                    : 2;
+          }
+        }
         final sets = [
           for (final c in fields)
-            '${quoteIdentifier(c.sqlName)}=excluded.${quoteIdentifier(c.sqlName)}',
+            !keepEmpty || emptyModes![c] == 0
+                ? '${quoteIdentifier(c.sqlName)}=excluded.${quoteIdentifier(c.sqlName)}'
+                : emptyModes[c] == 2
+                    ? '${quoteIdentifier(c.sqlName)}=${quoteIdentifier(c.sqlName)}'
+                    : '${quoteIdentifier(c.sqlName)}=CASE WHEN excluded.${quoteIdentifier(c.sqlName)} IS NULL OR (typeof(excluded.${quoteIdentifier(c.sqlName)})=\'text\' AND excluded.${quoteIdentifier(c.sqlName)} COLLATE BINARY=\'\') THEN ${quoteIdentifier(c.sqlName)} ELSE excluded.${quoteIdentifier(c.sqlName)} END',
           if (type.versionColumn != null)
             '${quoteIdentifier(type.versionColumn!.sqlName)}=${quoteIdentifier(type.versionColumn!.sqlName)}+1'
         ];

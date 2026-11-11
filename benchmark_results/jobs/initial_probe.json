@@ -1,0 +1,42 @@
+[
+  {
+    "iteration": 0,
+    "result": {
+      "rows": 100,
+      "mode": "batch",
+      "install_us": 4027,
+      "enqueue_us": 4359869,
+      "duplicate_100_us": 126478,
+      "claim_complete_us": 18320544,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 28672,
+      "enqueued_bytes": 36864,
+      "final_bytes": 36864,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "b54b9b17d0f0f61df62a349d6484cf96b6d4ed85296432ddf72a2ba95d5a9186",
+      "rss": 24645632,
+      "peak_rss": 48087040
+    }
+  },
+  {
+    "iteration": 0,
+    "result": {
+      "rows": 100,
+      "mode": "individual",
+      "install_us": 3242,
+      "enqueue_us": 4186605,
+      "duplicate_100_us": 128106,
+      "claim_complete_us": 18648595,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 28672,
+      "enqueued_bytes": 36864,
+      "final_bytes": 36864,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "b54b9b17d0f0f61df62a349d6484cf96b6d4ed85296432ddf72a2ba95d5a9186",
+      "rss": 25620480,
+      "peak_rss": 47976448
+    }
+  }
+]

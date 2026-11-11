@@ -212,3 +212,82 @@ loan, ordinary primary-keyed tables, no triggers/generated/virtual tables/schema
 merges, implicit key remapping, shared pages, branch registry/rebase, receipt
 pruning or Changes/Sync/Reactive transaction integration. Existing performance and
 release gates remain; package is local, experimental and unpublished.
+
+## Existing-package workflows milestone (2026-11-08)
+
+- [x] Comprehensive scope/API/test plan: docs/plans/PREVIEW_IMPORT_DIAGNOSTICS.md.
+- [x] Callback preview within Branch, reviewed-image acceptance and failure cleanup.
+- [x] ORM input diagnostics, SQL-collation duplicates, empty policies and atomic apply.
+- [x] Complete model/import/preview/accept example, including descriptor origins.
+- [x] Explicit snapshot-only Inspector index experiments and native SQL comparison.
+- [x] Separate opt-in Inspector capture/replay, bounded sensitive artifacts and
+      outcomes/logical-state validation; ordinary records remain redacted.
+- [x] Affected regressions, native encodings, VM/Node examples and CI definitions.
+- [x] AOT source/binary fingerprints, raw runs, normal-write comparison/follow-up.
+
+No new packages or core engine hooks. Import apply at 1000 rows remains expensive
+(~13s on this workload); batch probes/SQL simplification did not fix it. This is
+an explicit performance gate for production bulk use, not a fast-import claim.
+Strict unused-feature zero-regression, actual browser/device and remote CI remain
+unverified. Full scope, deferred features and evidence: the plan and
+benchmark_results/workflows/README.md. Development only; no publication/merge.
+
+
+## Import performance follow-up (local, 2026-11-08)
+
+- [x] Profile the 13s apply bottleneck and preserve successful preparation.
+- [x] SQL-equivalent statement-local conflicts, lazy slots, conservative FK/trigger/index fallbacks.
+- [x] Full core/add-on regressions, pinned native boundaries, VM/JS examples.
+- [x] Fresh-process AOT before/after, SKU/10k scope and ordinary operations.
+- [x] Source/binary fingerprints, raw samples, documentation and targeted CI definitions.
+- [ ] Strict zero-regression ordinary-update gate: follow-up +0.383ms/1000 statements.
+- [ ] File-backed/device/large-scale acceptance; nonlinear 10k growth and peak RSS remain.
+
+See docs/plans/IMPORT_PERFORMANCE.md and benchmark_results/import_performance/README.md.
+
+
+## Embedded jobs milestone (2026-11-08, local)
+
+- [x] Scope/contract/status: docs/plans/JOBS.md.
+- [x] Opt-in storage, bounded JSON, transactional monotonic IDs and queue dedup.
+- [x] Lease fences, expiry/recovery, fixed retry delay, cancellation/retry/prune.
+- [x] Atomic application enqueue and result+ack; explicit runOne worker/example.
+- [x] Functional/fault/native/file/VM+JS verification and existing add-on regression.
+- [x] Reproducible AOT evidence, README, changelog/license and dedicated CI definition.
+- [ ] Large/latency-sensitive production queue performance acceptance.
+- [ ] Independent process/connection/isolate and ORM transaction-driver integration.
+- [ ] Actual browser/device and remote CI; publication remains disabled.
+
+Evidence: benchmark_results/jobs/README.md. Core runtime untouched by this package.
+
+
+## Jobs processing performance follow-up
+
+- [x] Preserve baseline sources/binaries and identify CPU costs.
+- [x] Metadata-only claim selection, guarded rowid candidates and index-column reuse.
+- [x] Repair stale equality-read cache without dropping append-order optimization.
+- [x] Full core/add-on/search regressions, targeted pagination/native/fault and VM/JS checks.
+- [x] Repeated AOT memory/file/depth/ordinary/import comparisons and reproducible source patches.
+- [x] Update README/changelogs/compatibility/log and native CI cases.
+- [ ] Physical-device file throughput, real browsers/devices and independent-owner acceptance.
+- [ ] Release core fixes and raise Jobs dependency floor before independent publication.
+
+See docs/plans/JOBS_PERFORMANCE.md and benchmark_results/jobs_performance/README.md.
+
+- [x] Optional prepared statement syntax reuse and typed ORM parameters/updates.
+  Connection-bound handles, schema invalidation and fresh binding-aware planning;
+  opt-in bounded ORM read cache (default 0), adapter/capture fallback. See
+  `docs/plans/PREPARED.md`, package preparation docs and
+  `benchmark_results/prepared/README.md` for scope, validation and performance.
+
+
+## Optimizer roadmap
+
+- [x] Audit and freeze the current working-source baseline.
+- [x] Initial AOT/result/IO/memory/callback regression matrix and native/VM/JS gates.
+- [x] Bounded Top-K worst-row selection, tested scope and control costs documented.
+- [ ] Rich opt-in runtime diagnostics and remaining optimizer extensions.
+- [ ] Whole-roadmap acceptance and release/device validation.
+
+Detailed 42-item status: docs/plans/OPTIMIZER.md. Initial evidence:
+benchmark_results/optimizer/README.md. No global optimizer-completion claim.

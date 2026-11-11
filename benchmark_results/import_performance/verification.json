@@ -1,0 +1,43 @@
+{
+  "core": {
+    "log_tail": "03:20 +10673 ~1: All tests passed!",
+    "cwd": "packages/sqlite_plus",
+    "passed": 10673,
+    "skipped": 1,
+    "skip": "Optional external SQLCipher CLI"
+  },
+  "addons": {
+    "packages": [
+      "sqlite_plus_orm",
+      "sqlite_plus_branch",
+      "sqlite_plus_inspector",
+      "sqlite_plus_changes",
+      "sqlite_plus_reactive",
+      "sqlite_plus_sync"
+    ],
+    "passed": 459,
+    "log_tail": "02:15 +459: All tests passed!"
+  },
+  "search": {
+    "passed": 86,
+    "note": "Full run before final eligibility widening; FK-disabled behavior unchanged."
+  },
+  "generator": {
+    "passed": 78,
+    "note": "Full run before final eligibility widening; normal dart test invocation."
+  },
+  "native": "Pinned SQLite 3.53.1, UTF-8/UTF-16LE/UTF-16BE, SQL outcomes/counters/returning/rollback plus exported-image integrity. Final tests run FK pragma ON even with no FK definitions. Actual FK violations also tested.",
+  "examples": [
+    "Branch import_preview: Dart VM and compiled JS/Node",
+    "Inspector diagnostics: Dart VM and compiled JS/Node"
+  ],
+  "analysis": "Affected core/ORM/Branch/Inspector and benchmark tools: --fatal-infos, no issues.",
+  "format": "Affected 329 Dart files: 0 changes. Workspace-wide dry run reports seven pre-existing Flutter-example formatting differences and missing Flutter lint include. No unrelated example rewrites.",
+  "unverified": [
+    "Actual browsers/devices",
+    "Remote CI",
+    "Windows/macOS",
+    "File-backed performance",
+    "Large-schema or million-row scalability"
+  ]
+}

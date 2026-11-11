@@ -1,0 +1,132 @@
+{
+  "samples": 723,
+  "note": "Diagnostic JIT whole workflow; top 60 global functions retained by profiler driver, SQL subset below. Not an AOT phase measurement.",
+  "functions": [
+    {
+      "function": "_query",
+      "inclusive": 195,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/database.dart"
+    },
+    {
+      "function": "materialize",
+      "inclusive": 170,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/query_execution.dart"
+    },
+    {
+      "function": "rows",
+      "inclusive": 169,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/database.dart"
+    },
+    {
+      "function": "_execute",
+      "inclusive": 147,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/image_mutations.dart"
+    },
+    {
+      "function": "<anonymous closure>",
+      "inclusive": 98,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/mutable_database.dart"
+    },
+    {
+      "function": "<anonymous closure>",
+      "inclusive": 83,
+      "exclusive": 3,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/database.dart"
+    },
+    {
+      "function": "replace",
+      "inclusive": 82,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/btree/table_image_writer.dart"
+    },
+    {
+      "function": "_same",
+      "inclusive": 75,
+      "exclusive": 7,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/database.dart"
+    },
+    {
+      "function": "main",
+      "inclusive": 68,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/tool/workflows_benchmark/main.dart"
+    },
+    {
+      "function": "handleUpsert",
+      "inclusive": 67,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/image_mutations.dart"
+    },
+    {
+      "function": "_prepareQuery",
+      "inclusive": 67,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/database.dart"
+    },
+    {
+      "function": "compareValues",
+      "inclusive": 62,
+      "exclusive": 7,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/values.dart"
+    },
+    {
+      "function": "SqlParser",
+      "inclusive": 61,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/parser.dart"
+    },
+    {
+      "function": "combine",
+      "inclusive": 50,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/relational.dart"
+    },
+    {
+      "function": "asciiLower",
+      "inclusive": 48,
+      "exclusive": 1,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/values.dart"
+    },
+    {
+      "function": "qualifyRows",
+      "inclusive": 44,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/relational.dart"
+    },
+    {
+      "function": "_iterate",
+      "inclusive": 43,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/lazy_views.dart"
+    },
+    {
+      "function": "_advance",
+      "inclusive": 43,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/lazy_views.dart"
+    },
+    {
+      "function": "<anonymous closure>",
+      "inclusive": 42,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/function_registry.dart"
+    },
+    {
+      "function": "run",
+      "inclusive": 42,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/function_registry.dart"
+    },
+    {
+      "function": "_scan",
+      "inclusive": 42,
+      "exclusive": 0,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/btree/btree_reader.dart"
+    }
+  ]
+}

@@ -611,3 +611,17 @@ await geo.createSpatialTable(
 ```
 
 X is longitude and Y is latitude. `ST_SetSRID` only labels a geometry. `ST_Transform` moves a coordinate between EPSG:4326, EPSG:3857, and WGS84 UTM. A degree is not a metre. This is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification.
+
+### Prepared imports (unreleased workspace)
+
+`DbSet.prepareImport` snapshots mapped entities, explains validation/duplicate
+issues and applies atomically through upsertMany. Explicit duplicate and empty
+value policies use actual SQL collations; plans report input counts, not estimated
+insert/update promises. See [API and limits](doc/IMPORT.md), including the complete
+Branch preview example and the source of handwritten/generated column names.
+
+## Prepared statements
+
+Optional reusable query syntax and typed ORM integration are documented in
+[Prepared statements](doc/PREPARED.md). Existing APIs remain available; the ORM
+automatic cache defaults to disabled.

@@ -1,0 +1,636 @@
+[
+  {
+    "label": "legacy-before",
+    "args": [
+      1000,
+      "batch",
+      10
+    ],
+    "samples": 3,
+    "metrics": {
+      "claim_complete_us": {
+        "median": 4016599,
+        "min": 3961031,
+        "max": 4019109
+      },
+      "rss": {
+        "median": 46858240,
+        "min": 46784512,
+        "max": 47325184
+      },
+      "peak_rss": {
+        "median": 54169600,
+        "min": 54054912,
+        "max": 54222848
+      }
+    }
+  },
+  {
+    "label": "legacy-after",
+    "args": [
+      1000,
+      "batch",
+      10
+    ],
+    "samples": 3,
+    "metrics": {
+      "claim_complete_us": {
+        "median": 34278,
+        "min": 33578,
+        "max": 38524
+      },
+      "rss": {
+        "median": 30937088,
+        "min": 30445568,
+        "max": 31227904
+      },
+      "peak_rss": {
+        "median": 30474240,
+        "min": 30052352,
+        "max": 31006720
+      }
+    }
+  },
+  {
+    "label": "phase-before",
+    "args": [
+      100,
+      100
+    ],
+    "samples": 3,
+    "metrics": {
+      "claim_us": {
+        "median": 2983057,
+        "min": 2946968,
+        "max": 2986404
+      },
+      "complete_us": {
+        "median": 1348948,
+        "min": 1343771,
+        "max": 1361825
+      },
+      "total_us": {
+        "median": 4330897,
+        "min": 4296375,
+        "max": 4345336
+      },
+      "seed_us": {
+        "median": 71015,
+        "min": 69045,
+        "max": 71456
+      },
+      "rss": {
+        "median": 43401216,
+        "min": 43302912,
+        "max": 43941888
+      },
+      "peak_rss": {
+        "median": 47898624,
+        "min": 47509504,
+        "max": 48250880
+      }
+    }
+  },
+  {
+    "label": "phase-after",
+    "args": [
+      100,
+      100
+    ],
+    "samples": 3,
+    "metrics": {
+      "claim_us": {
+        "median": 145654,
+        "min": 145279,
+        "max": 153056
+      },
+      "complete_us": {
+        "median": 126744,
+        "min": 125740,
+        "max": 128413
+      },
+      "total_us": {
+        "median": 272668,
+        "min": 271288,
+        "max": 281777
+      },
+      "seed_us": {
+        "median": 67618,
+        "min": 65759,
+        "max": 72311
+      },
+      "rss": {
+        "median": 16220160,
+        "min": 16191488,
+        "max": 16310272
+      },
+      "peak_rss": {
+        "median": 15859712,
+        "min": 15757312,
+        "max": 16093184
+      }
+    }
+  },
+  {
+    "label": "phase-before",
+    "args": [
+      1000,
+      10
+    ],
+    "samples": 3,
+    "metrics": {
+      "claim_us": {
+        "median": 2885707,
+        "min": 2864343,
+        "max": 2895454
+      },
+      "complete_us": {
+        "median": 1153546,
+        "min": 1130918,
+        "max": 1159288
+      },
+      "total_us": {
+        "median": 4026429,
+        "min": 4017947,
+        "max": 4045054
+      },
+      "seed_us": {
+        "median": 671434,
+        "min": 644297,
+        "max": 722656
+      },
+      "rss": {
+        "median": 47345664,
+        "min": 46985216,
+        "max": 47951872
+      },
+      "peak_rss": {
+        "median": 54083584,
+        "min": 54071296,
+        "max": 54132736
+      }
+    }
+  },
+  {
+    "label": "phase-after",
+    "args": [
+      1000,
+      10
+    ],
+    "samples": 3,
+    "metrics": {
+      "claim_us": {
+        "median": 18368,
+        "min": 18230,
+        "max": 19302
+      },
+      "complete_us": {
+        "median": 13622,
+        "min": 13334,
+        "max": 13686
+      },
+      "total_us": {
+        "median": 32083,
+        "min": 31598,
+        "max": 32953
+      },
+      "seed_us": {
+        "median": 666609,
+        "min": 632748,
+        "max": 703694
+      },
+      "rss": {
+        "median": 30834688,
+        "min": 30695424,
+        "max": 30986240
+      },
+      "peak_rss": {
+        "median": 30531584,
+        "min": 30425088,
+        "max": 30695424
+      }
+    }
+  },
+  {
+    "label": "phase-before",
+    "args": [
+      1000,
+      10,
+      "file"
+    ],
+    "samples": 3,
+    "metrics": {
+      "claim_us": {
+        "median": 3827288,
+        "min": 3801416,
+        "max": 3886082
+      },
+      "complete_us": {
+        "median": 1346036,
+        "min": 1345747,
+        "max": 1375987
+      },
+      "total_us": {
+        "median": 5173096,
+        "min": 5147510,
+        "max": 5262131
+      },
+      "seed_us": {
+        "median": 1499876,
+        "min": 1490252,
+        "max": 1593876
+      },
+      "rss": {
+        "median": 48279552,
+        "min": 47128576,
+        "max": 50659328
+      },
+      "peak_rss": {
+        "median": 53919744,
+        "min": 53669888,
+        "max": 54538240
+      }
+    }
+  },
+  {
+    "label": "phase-after",
+    "args": [
+      1000,
+      10,
+      "file"
+    ],
+    "samples": 3,
+    "metrics": {
+      "claim_us": {
+        "median": 1726337,
+        "min": 1669378,
+        "max": 1746387
+      },
+      "complete_us": {
+        "median": 24774,
+        "min": 23711,
+        "max": 26884
+      },
+      "total_us": {
+        "median": 1753273,
+        "min": 1693134,
+        "max": 1771213
+      },
+      "seed_us": {
+        "median": 1563811,
+        "min": 1503195,
+        "max": 1590096
+      },
+      "rss": {
+        "median": 48848896,
+        "min": 48640000,
+        "max": 48857088
+      },
+      "peak_rss": {
+        "median": 48439296,
+        "min": 48275456,
+        "max": 48513024
+      }
+    }
+  },
+  {
+    "label": "scale-after",
+    "args": [
+      1000,
+      1000
+    ],
+    "samples": 3,
+    "metrics": {
+      "claim_us": {
+        "median": 1791565,
+        "min": 1789534,
+        "max": 1858764
+      },
+      "complete_us": {
+        "median": 1346800,
+        "min": 1342311,
+        "max": 1369442
+      },
+      "total_us": {
+        "median": 3139026,
+        "min": 3136435,
+        "max": 3230860
+      },
+      "seed_us": {
+        "median": 662696,
+        "min": 652552,
+        "max": 667274
+      },
+      "rss": {
+        "median": 31412224,
+        "min": 31158272,
+        "max": 31461376
+      },
+      "peak_rss": {
+        "median": 31096832,
+        "min": 30748672,
+        "max": 31178752
+      }
+    }
+  },
+  {
+    "label": "scale-after",
+    "args": [
+      10000,
+      10
+    ],
+    "samples": 3,
+    "metrics": {
+      "claim_us": {
+        "median": 106109,
+        "min": 104040,
+        "max": 141628
+      },
+      "complete_us": {
+        "median": 75517,
+        "min": 69769,
+        "max": 94209
+      },
+      "total_us": {
+        "median": 179613,
+        "min": 175933,
+        "max": 235893
+      },
+      "seed_us": {
+        "median": 6748639,
+        "min": 6635392,
+        "max": 7040380
+      },
+      "rss": {
+        "median": 81276928,
+        "min": 81092608,
+        "max": 81506304
+      },
+      "peak_rss": {
+        "median": 96628736,
+        "min": 96542720,
+        "max": 96886784
+      }
+    }
+  },
+  {
+    "label": "ordinary-before",
+    "args": [
+      "read",
+      1000
+    ],
+    "samples": 5,
+    "metrics": {
+      "duration_us": {
+        "median": 35841,
+        "min": 34868,
+        "max": 40761
+      },
+      "rss": {
+        "median": 48717824,
+        "min": 23408640,
+        "max": 49623040
+      },
+      "peak_rss": {
+        "median": 48373760,
+        "min": 23019520,
+        "max": 49369088
+      }
+    }
+  },
+  {
+    "label": "ordinary-after",
+    "args": [
+      "read",
+      1000
+    ],
+    "samples": 5,
+    "metrics": {
+      "duration_us": {
+        "median": 35997,
+        "min": 35622,
+        "max": 36293
+      },
+      "rss": {
+        "median": 49180672,
+        "min": 23736320,
+        "max": 49532928
+      },
+      "peak_rss": {
+        "median": 48939008,
+        "min": 23412736,
+        "max": 49127424
+      }
+    }
+  },
+  {
+    "label": "ordinary-before",
+    "args": [
+      "insert",
+      1000
+    ],
+    "samples": 5,
+    "metrics": {
+      "duration_us": {
+        "median": 1656,
+        "min": 1586,
+        "max": 1787
+      },
+      "rss": {
+        "median": 20893696,
+        "min": 20377600,
+        "max": 21024768
+      },
+      "peak_rss": {
+        "median": 20525056,
+        "min": 20205568,
+        "max": 20811776
+      }
+    }
+  },
+  {
+    "label": "ordinary-after",
+    "args": [
+      "insert",
+      1000
+    ],
+    "samples": 5,
+    "metrics": {
+      "duration_us": {
+        "median": 1676,
+        "min": 1562,
+        "max": 2104
+      },
+      "rss": {
+        "median": 20819968,
+        "min": 20746240,
+        "max": 21106688
+      },
+      "peak_rss": {
+        "median": 20574208,
+        "min": 20545536,
+        "max": 20901888
+      }
+    }
+  },
+  {
+    "label": "ordinary-before",
+    "args": [
+      "update",
+      1000
+    ],
+    "samples": 5,
+    "metrics": {
+      "duration_us": {
+        "median": 3466,
+        "min": 3148,
+        "max": 3713
+      },
+      "rss": {
+        "median": 24485888,
+        "min": 23789568,
+        "max": 48308224
+      },
+      "peak_rss": {
+        "median": 23994368,
+        "min": 23416832,
+        "max": 48513024
+      }
+    }
+  },
+  {
+    "label": "ordinary-after",
+    "args": [
+      "update",
+      1000
+    ],
+    "samples": 5,
+    "metrics": {
+      "duration_us": {
+        "median": 3631,
+        "min": 3307,
+        "max": 4984
+      },
+      "rss": {
+        "median": 48111616,
+        "min": 24367104,
+        "max": 48619520
+      },
+      "peak_rss": {
+        "median": 48283648,
+        "min": 24059904,
+        "max": 48824320
+      }
+    }
+  },
+  {
+    "label": "ordinary-before",
+    "args": [
+      "guarded",
+      1000
+    ],
+    "samples": 5,
+    "metrics": {
+      "duration_us": {
+        "median": 13525313,
+        "min": 13128562,
+        "max": 13660733
+      },
+      "rss": {
+        "median": 48848896,
+        "min": 48680960,
+        "max": 53190656
+      },
+      "peak_rss": {
+        "median": 48644096,
+        "min": 48295936,
+        "max": 52715520
+      }
+    }
+  },
+  {
+    "label": "ordinary-after",
+    "args": [
+      "guarded",
+      1000
+    ],
+    "samples": 5,
+    "metrics": {
+      "duration_us": {
+        "median": 179696,
+        "min": 170924,
+        "max": 196372
+      },
+      "rss": {
+        "median": 48640000,
+        "min": 24018944,
+        "max": 48939008
+      },
+      "peak_rss": {
+        "median": 48197632,
+        "min": 23601152,
+        "max": 48553984
+      }
+    }
+  },
+  {
+    "label": "import-before",
+    "args": [
+      "import",
+      1000
+    ],
+    "samples": 3,
+    "metrics": {
+      "prepare_us": {
+        "median": 53604,
+        "min": 53594,
+        "max": 59044
+      },
+      "apply_us": {
+        "median": 132853,
+        "min": 124317,
+        "max": 144434
+      },
+      "rss": {
+        "median": 71868416,
+        "min": 66605056,
+        "max": 72708096
+      },
+      "peak_rss": {
+        "median": 71544832,
+        "min": 66211840,
+        "max": 72413184
+      }
+    }
+  },
+  {
+    "label": "import-after",
+    "args": [
+      "import",
+      1000
+    ],
+    "samples": 3,
+    "metrics": {
+      "prepare_us": {
+        "median": 53558,
+        "min": 50401,
+        "max": 63104
+      },
+      "apply_us": {
+        "median": 118695,
+        "min": 109301,
+        "max": 124576
+      },
+      "rss": {
+        "median": 67018752,
+        "min": 66539520,
+        "max": 71778304
+      },
+      "peak_rss": {
+        "median": 66768896,
+        "min": 66187264,
+        "max": 71516160
+      }
+    }
+  }
+]

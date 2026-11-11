@@ -1,0 +1,52 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "dart": "Dart SDK version: 3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "source_sha256": {
+    "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "e94e51e0f4a9b7599e7b6a3aef08296570cb3b2c8e1f78bbc8dd7a47b97981f7",
+    "packages/sqlite_plus_jobs/lib/src/queue.dart": "26bfdf64bc07a63ceab3508aff95a96d28a92d04a92a5303d081b26f2458f4b0",
+    "packages/sqlite_plus_jobs/lib/src/models.dart": "8dc32b63c1c4cdf65aa5e9fdc3e784d3d80100ab7d6b9aae8436447b26b06d67",
+    "packages/sqlite_plus_jobs/lib/src/worker.dart": "56007d933dfa8c7d97071d8f2d9cab977242066cfb288f9b1f42f718271b2eba",
+    "tool/jobs_benchmark/main.dart": "10686c8f3f1fb2db6b13c533ca85e8da5656b2ab469d9943284bf2deeb2ca3e0",
+    "tool/jobs_performance/processing.dart": "2fdf5eb89b226feacecdfb2a91d1f99008986e9d264ac541be5930b5f74882cc",
+    "tool/jobs_performance/ordinary.dart": "616daf2d2c74661cdd9ffa3b84d01a1ce6b33a9aec6e5908b47cd37be8463066",
+    "tool/jobs_performance/run.py": "ba6cfc3ca895fa9d55d5998b3a9d36623506af1a8ee13fa9e7fbfe5388b4331e",
+    "tool/jobs_performance/prepare_baseline.py": "34dc8d225fe55ad7e7030778b487be4cda3b6e4fcaefe77e38bb1f007a70349b",
+    "tool/workflows_benchmark/main.dart": "1c94f5677a5521944dc7135967cdc2c9bddfffeecdd2999d9b9536a2e51ffe16"
+  },
+  "binaries": {
+    "/tmp/jobs-before-performance": {
+      "sha256": "ca145b41cb399b5d9f8f6d16fb1875015ad88c2ecd0f03fab22eb69780125c16",
+      "bytes": 10277144
+    },
+    "/tmp/jobs-after-performance": {
+      "sha256": "73bc9ca905e8542e70831574d2807e1171be882904f891ee27e724d5a29c115b",
+      "bytes": 10280000
+    },
+    "/tmp/jobs-processing-before": {
+      "sha256": "7f3a379fa00c81b0db698d397a61d8c36bc079d8045c8070e809261a8ec264d1",
+      "bytes": 10381512
+    },
+    "/tmp/jobs-processing-after": {
+      "sha256": "78ed8dcf9e5fabc79eae48508b69088b404329644c53f8267a7b4ae603a8ebd9",
+      "bytes": 10382832
+    },
+    "/tmp/jobs-ordinary-before": {
+      "sha256": "392a6c471171b5d6ff42fbfc741a47c8af23c0784be67af0a19ac2bd4b551375",
+      "bytes": 10169264
+    },
+    "/tmp/jobs-ordinary-after": {
+      "sha256": "471d21f2646e7cb42be517950d20c2ba9aab33c036c0be55e5d09aeeaf680b56",
+      "bytes": 10170344
+    },
+    "/tmp/jobs-workflows-before": {
+      "sha256": "a28812488bce4a8033f90152874b475e2ae4c4da8871cb93290afaa828ae4205",
+      "bytes": 10449472
+    },
+    "/tmp/jobs-workflows-after": {
+      "sha256": "387e135cdc179e4ae713161206752c8a992d26c74f8ec709f4bbf74f186e7ab7",
+      "bytes": 10450480
+    }
+  },
+  "baseline": "Only core image_mutations.dart and jobs queue.dart reversed to preserved pre-milestone versions; all other packages/drivers identical. prepare_baseline.py reconstructs copied baseline packages with exact hashes.",
+  "schema_change": false
+}

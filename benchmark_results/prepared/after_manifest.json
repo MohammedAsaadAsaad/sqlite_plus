@@ -1,0 +1,43 @@
+{
+  "source_sha256": {
+    "packages/sqlite_plus/lib/src/sql/database.dart": "fde8c2ae0e67f68c1dca15cc820f2f9a40bf6136b94b34a22ffbde73fbe29c31",
+    "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "a7e6b45d8861fdebe3eb1f8e079964826cccc7b5dc8c70031c3e343919edca2e",
+    "packages/sqlite_plus/lib/src/sql/mutable_database.dart": "89a5547caf6ad17bc590c11d1eafc3853616bbbcc28ed131acc757e94c3b5288",
+    "packages/sqlite_plus/lib/src/sql/parser.dart": "6f5adb732348f414e96dcd859a2cf5d6a65a14f68108bfd1234f4023acae1b9f",
+    "packages/sqlite_plus/lib/src/sql/prepared_statement.dart": "3c9a89d764de298df73b4f2145639e754723de7efd1d01a3d0d5be70479aa318",
+    "packages/sqlite_plus/lib/src/sql/prepared_syntax.dart": "267d8038421303fd9548a28d8e0a65ef3fa9f8d052feabbe56dd5d8836e44e0f",
+    "packages/sqlite_plus_orm/lib/sqlite_plus_orm.dart": "126cd960058e2b2027a71dda6f88016cbac40c08c45cedc6e3b7bcee462ca68b",
+    "packages/sqlite_plus_orm/lib/src/connection.dart": "ce6207f86c3249dd5413a337d555b24ce6ceb77f28abadadc209e9a3d9fa8141",
+    "packages/sqlite_plus_orm/lib/src/context.dart": "c95dd2ea09677102aa13152380acb889f94375958d5dd72320f36adae9f17e77",
+    "packages/sqlite_plus_orm/lib/src/prepared.dart": "5cf56b0a0eb6bd6a83660f2634b7e4f68784caddeb12add7d2f731c92d956405",
+    "packages/sqlite_plus_orm/lib/src/query.dart": "3102537aead6637aa49a3bf3baae86857be526ee5fdf94f6392d482d41f2b44d"
+  },
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "dart": "Dart SDK version: 3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "binaries": {
+    "prepared-orm-ordinary-before": {
+      "bytes": 10304808,
+      "sha256": "5e9f2150988d610da98ee3737c7f3e1aa81dbf3aa978d2d84cdadf5700893fb2"
+    },
+    "prepared-orm-ordinary-after": {
+      "bytes": 10372488,
+      "sha256": "edaef2355d37e7afb576643c8d6634c7b5981d0d7255409546f5b76307030b2f"
+    },
+    "prepared-ordinary-before": {
+      "bytes": 10170344,
+      "sha256": "def4abbdc7c340a409af7cde359691a6c897ca297a5d5840f95a4ed7cd57c980"
+    },
+    "prepared-benchmark": {
+      "bytes": 10262624,
+      "sha256": "879c092ee451d3e7f0b5013e4a6675f8f1e9a5589292a39e4506ec4c934ad282"
+    },
+    "prepared-ordinary-after": {
+      "bytes": 10170768,
+      "sha256": "6aa5e85e29e9ef2fcc53359c7488641ba68cb7ef686627aeff452908490462b1"
+    },
+    "prepared-syntax": {
+      "bytes": 10233184,
+      "sha256": "b23f008143e755b51aec1310aa38e004760bf031876171d44b41a8e2cb871d38"
+    }
+  }
+}

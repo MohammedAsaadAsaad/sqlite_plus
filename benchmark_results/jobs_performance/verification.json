@@ -1,0 +1,51 @@
+{
+  "full_core": {
+    "passed": 10681,
+    "skipped": 1,
+    "skip": "Optional external SQLCipher CLI",
+    "cwd": "packages/sqlite_plus",
+    "source_sha256": "9bc3b0a1d93f546c83683b8904dfe7167e68639f7e75af93bb2636d429280a48",
+    "log_tail": "04:28 +10681 ~1: All tests passed!"
+  },
+  "final_targeted": {
+    "passed": 77,
+    "note": "After removing only redundant append-order cache reset, covered core point/lease/cache, pagination/native/file and all55 Jobs cases."
+  },
+  "native_expansion": {
+    "passed": 3,
+    "note": "Expanded SET/WHERE subquery comparisons, three encodings, pinned SQLite3.53.1"
+  },
+  "addons": {
+    "passed": 514,
+    "jobs_included": 55,
+    "packages": [
+      "sqlite_plus_jobs",
+      "sqlite_plus_orm",
+      "sqlite_plus_changes",
+      "sqlite_plus_reactive",
+      "sqlite_plus_sync",
+      "sqlite_plus_branch",
+      "sqlite_plus_inspector"
+    ]
+  },
+  "search_passed": 86,
+  "examples": [
+    "Jobs VM",
+    "Jobs compiled JS/Node",
+    "ORM direct writes VM",
+    "ORM direct writes compiled JS/Node"
+  ],
+  "analysis": "Analyzing sqlite_plus, sqlite_plus_jobs, jobs_performance...\nNo issues found!",
+  "format": "Formatted 231 files (0 changed) in 0.65 seconds.",
+  "aot_samples": 76,
+  "file_benchmark_filesystem": "tmpfs, existing rollback-journal fixture; not physical-device throughput/directory-sync acceptance",
+  "schema_migration": false,
+  "not_run": [
+    "Generator suite (unchanged generator source)",
+    "Remote CI",
+    "Actual browsers/devices",
+    "Windows/macOS",
+    "Independent owner/process/isolate acceptance",
+    "Publication"
+  ]
+}

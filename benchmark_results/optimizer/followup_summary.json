@@ -1,0 +1,47 @@
+[
+  {
+    "name": "ordinary-read",
+    "samples_per_variant": 20,
+    "before": {
+      "median_ms": 36.298,
+      "min_ms": 34.043,
+      "max_ms": 41.31
+    },
+    "after": {
+      "median_ms": 36.3425,
+      "min_ms": 34.523,
+      "max_ms": 43.703
+    },
+    "after_over_before": 1.0012259628629676
+  },
+  {
+    "name": "ordinary-update",
+    "samples_per_variant": 20,
+    "before": {
+      "median_ms": 3.443,
+      "min_ms": 3.101,
+      "max_ms": 4.05
+    },
+    "after": {
+      "median_ms": 3.6390000000000002,
+      "min_ms": 3.093,
+      "max_ms": 4.743
+    },
+    "after_over_before": 1.056927098460645
+  },
+  {
+    "name": "almost-full-tiny",
+    "samples_per_variant": 20,
+    "before": {
+      "median_ms": 51.941,
+      "min_ms": 48.862,
+      "max_ms": 59.711
+    },
+    "after": {
+      "median_ms": 52.489000000000004,
+      "min_ms": 50.238,
+      "max_ms": 57.296
+    },
+    "after_over_before": 1.010550432221174
+  }
+]

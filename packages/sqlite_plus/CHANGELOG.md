@@ -1,4 +1,37 @@
+## Unreleased — bounded ORDER BY/LIMIT selection
+
+- Replace repeated linear worst-candidate search with a lazy in-place max-heap
+  for eligible capacity >=32, retaining tie/projection/fallback behavior.
+- No schema/API/dependency change; no reduced-page-read claim. Native/full/VM/JS
+  verification and AOT benefits/control costs: `doc/OPTIMIZER.md`.
+
+## Unreleased — optional prepared statements
+
+- Connection-bound reusable syntax with fresh bindings and schema invalidation.
+- Typed ORM prepared reads/updates and optional bounded cache (default disabled).
+- Existing adapter interception/capture paths retained; unsupported shapes fall back in ORM.
+- See `doc/PREPARED.md` and workspace prepared benchmarks for measured scope.
+
 # Changelog
+
+## Guarded writes and job processing (unreleased)
+
+- Narrow conservative integer rowid AND predicates while rechecking the original
+  WHERE; retain callback/subquery/coercion/generated-column fallbacks.
+- Reuse resolved index-column offsets and skip unchanged shared records during
+  index-preservation checks, retaining value and constraint validation.
+- Fix stale live equality-read indexes after prepared ordinary INSERT, including
+  RETURNING; preserve the existing append-order read cache.
+- No schema/file-format change. Evidence: ../../benchmark_results/jobs_performance/README.md.
+
+## Unreleased — UPSERT/import performance
+
+- Preserve successful row preparation during UPSERT conflict updates; avoid
+  whole-database validation for eligible unchanged unique keys.
+- Use SQL-comparator conflict trees and lazy row slots for ordinary UPSERTs.
+  Retain constraint/trigger/FK and complex-index fallback behavior.
+- No persistent schema or file-format change. Measured scope and limitations:
+  [AOT evidence](../../benchmark_results/import_performance/README.md).
 
 ## 0.1.13
 

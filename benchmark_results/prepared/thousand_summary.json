@@ -1,0 +1,22 @@
+{
+  "ordinary": {
+    "median_execution_ms": 106.886,
+    "mean_per_call_us_from_median_run": 106.886,
+    "range_execution_ms": [
+      102.078,
+      113.644
+    ],
+    "median_preparation_us": 0,
+    "median_loop_ms": 107.579
+  },
+  "prepared": {
+    "median_execution_ms": 102.902,
+    "mean_per_call_us_from_median_run": 102.902,
+    "range_execution_ms": [
+      99.646,
+      105.582
+    ],
+    "median_preparation_us": 191,
+    "median_loop_ms": 103.592
+  }
+}

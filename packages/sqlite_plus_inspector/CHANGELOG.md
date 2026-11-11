@@ -1,3 +1,9 @@
+## Unreleased — explicit diagnostics
+
+- Isolated index candidate advice with measured plans/results/timing/size.
+- Optional bounded raw recording and in-memory replay with logical-state proof.
+- Default redaction/collector paths unchanged; complete VM/JS examples.
+
 # Changelog
 
 ## 0.0.1-dev.1

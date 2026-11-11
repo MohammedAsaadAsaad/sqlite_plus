@@ -1,0 +1,80 @@
+[
+  {
+    "mode": "import",
+    "rows": 100,
+    "prepare_us": 5212,
+    "apply_us": 143396,
+    "base_bytes": 8192,
+    "final_bytes": 8192,
+    "logical_sha256": "92c439a231000866cc5502a2819a26f45d659d52597f25c2f33e2006061c93b7",
+    "image_sha256": "ac6f8c4c5a86f0f39bb4dab8610d176f5785d928c79164d5f8058b86ea470327",
+    "rss": 21303296,
+    "peak_rss": 21147648,
+    "iteration": 0
+  },
+  {
+    "mode": "import",
+    "rows": 1000,
+    "prepare_us": 51836,
+    "apply_us": 12822913,
+    "base_bytes": 28672,
+    "final_bytes": 28672,
+    "logical_sha256": "e2d713a228142dd8ad5faf6ce3750d928a7385d5b028854cd3f6d6fb40c0950a",
+    "image_sha256": "d5dd5c5bef2cb0dbdc46d4dc809c0685198448bba8a3ec3e66410e8ad1bb302c",
+    "rss": 63348736,
+    "peak_rss": 63107072,
+    "iteration": 0
+  },
+  {
+    "mode": "import",
+    "rows": 1000,
+    "prepare_us": 55250,
+    "apply_us": 12905124,
+    "base_bytes": 28672,
+    "final_bytes": 28672,
+    "logical_sha256": "e2d713a228142dd8ad5faf6ce3750d928a7385d5b028854cd3f6d6fb40c0950a",
+    "image_sha256": "d5dd5c5bef2cb0dbdc46d4dc809c0685198448bba8a3ec3e66410e8ad1bb302c",
+    "rss": 62930944,
+    "peak_rss": 62746624,
+    "iteration": 1
+  },
+  {
+    "mode": "import",
+    "rows": 100,
+    "prepare_us": 5621,
+    "apply_us": 154565,
+    "base_bytes": 8192,
+    "final_bytes": 8192,
+    "logical_sha256": "92c439a231000866cc5502a2819a26f45d659d52597f25c2f33e2006061c93b7",
+    "image_sha256": "ac6f8c4c5a86f0f39bb4dab8610d176f5785d928c79164d5f8058b86ea470327",
+    "rss": 21331968,
+    "peak_rss": 21164032,
+    "iteration": 1
+  },
+  {
+    "mode": "import",
+    "rows": 100,
+    "prepare_us": 5391,
+    "apply_us": 145380,
+    "base_bytes": 8192,
+    "final_bytes": 8192,
+    "logical_sha256": "92c439a231000866cc5502a2819a26f45d659d52597f25c2f33e2006061c93b7",
+    "image_sha256": "ac6f8c4c5a86f0f39bb4dab8610d176f5785d928c79164d5f8058b86ea470327",
+    "rss": 20938752,
+    "peak_rss": 20496384,
+    "iteration": 2
+  },
+  {
+    "mode": "import",
+    "rows": 1000,
+    "prepare_us": 53133,
+    "apply_us": 13062582,
+    "base_bytes": 28672,
+    "final_bytes": 28672,
+    "logical_sha256": "e2d713a228142dd8ad5faf6ce3750d928a7385d5b028854cd3f6d6fb40c0950a",
+    "image_sha256": "d5dd5c5bef2cb0dbdc46d4dc809c0685198448bba8a3ec3e66410e8ad1bb302c",
+    "rss": 63156224,
+    "peak_rss": 62787584,
+    "iteration": 2
+  }
+]

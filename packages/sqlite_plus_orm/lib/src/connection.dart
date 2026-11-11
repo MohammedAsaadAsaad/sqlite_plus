@@ -8,6 +8,20 @@ abstract class OrmConnection {
   MutableSqliteDatabase? get engineDatabase => null;
   SqlitePlusChanges? get changeFeed => null;
   bool get usesSaveTransactionDriver => false;
+
+  /// Adapters must opt in explicitly so wrappers never lose capture/inspection.
+  bool get supportsEnginePreparation => false;
+  Future<OrmPreparedCommand> prepareCommand(String sql) async {
+    if (!supportsEnginePreparation) return _FallbackPreparedCommand(this, sql);
+    // Also checks closed/connection lease through the adapter's normal property.
+    inTransaction;
+    try {
+      return _EnginePreparedCommand(this, await engineDatabase!.prepare(sql));
+    } on UnsupportedError {
+      return _FallbackPreparedCommand(this, sql);
+    }
+  }
+
   Future<R> exclusive<R>(Future<R> Function() action,
           {bool schemaChange = false}) =>
       action();
@@ -110,6 +124,8 @@ final class MutableDatabaseConnection extends OrmConnection {
   final MutableSqliteDatabase database;
   @override
   MutableSqliteDatabase get engineDatabase => database;
+  @override
+  bool get supportsEnginePreparation => true;
 
   /// Whether [close] also closes [database].
   final bool closeDatabase;
@@ -187,6 +203,8 @@ final class BrowserDatabaseConnection extends OrmConnection {
   final MutableSqliteDatabase database;
   @override
   MutableSqliteDatabase get engineDatabase => database;
+  @override
+  bool get supportsEnginePreparation => true;
   bool _closed = false;
 
   /// Loads [opened] into a memory database, or creates one when it is empty.
@@ -307,6 +325,18 @@ final class ChangesOrmConnection extends OrmConnection {
           await action();
           onCommitting?.call();
         }, zoneValues: {_writerZone: tx}));
+  }
+
+  @override
+  Future<OrmPreparedCommand> prepareCommand(String sql) async {
+    // Writes must go through ChangeWriter.execute; never execute directly on db.
+    if (SqlTokenizer.tokenize(sql).first.keyword != 'SELECT') {
+      return _FallbackPreparedCommand(this, sql);
+    }
+    Future<R> scope<R>(Future<R> Function() action) =>
+        _writer != null || _raw ? action() : changes.exclusive((_) => action());
+    final command = await scope(() => delegate.prepareCommand(sql));
+    return _ScopedPreparedCommand(command, scope);
   }
 
   @override

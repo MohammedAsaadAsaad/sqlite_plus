@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:collection';
 import 'dart:convert';
 
 import '../btree/btree_reader.dart';
@@ -82,6 +83,7 @@ final class _Table {
   /// flush this before using a stored value.
   Map<int, BigInt>? columnAddends;
   Map<BigInt, TableRow>? rowById;
+  Map<BigInt, int>? upsertSlots;
   Map<int, Map<Object, List<TableRow>>>? valueIndexes;
 
   /// Rowid order for a repeated window read. Cleared when a row is replaced.
@@ -92,6 +94,7 @@ final class _Table {
     residentKeyIds = null;
     residentUniques = null;
     rowById = null;
+    upsertSlots = null;
     valueIndexes = null;
     rowidOrder = null;
   }
@@ -2003,7 +2006,8 @@ final class ImageMutations {
       bool inTransaction = false,
       bool compileOnly = false,
       bool deferTriggerFunctions = false,
-      bool? recursiveTriggers}) async {
+      bool? recursiveTriggers,
+      SqlPreparation? preparation}) async {
     final outer = _executionDepth++ == 0;
     if (outer) wroteRows = false;
     _subqueries.add(null);
@@ -2016,7 +2020,8 @@ final class ImageMutations {
           inTransaction: inTransaction,
           compileOnly: compileOnly,
           deferTriggerFunctions: deferTriggerFunctions,
-          recursiveTriggers: recursiveTriggers);
+          recursiveTriggers: recursiveTriggers,
+          preparation: preparation);
       _counterFrames.last?.finish();
       return result;
     } on SqlTriggerFailure catch (error) {
@@ -2045,9 +2050,10 @@ final class ImageMutations {
       bool inTransaction = false,
       bool compileOnly = false,
       bool deferTriggerFunctions = false,
-      bool? recursiveTriggers}) async {
+      bool? recursiveTriggers,
+      SqlPreparation? preparation}) async {
     if (recursiveTriggers != null) _recursiveTriggers = recursiveTriggers;
-    sql = SqlParser.canonicalSchemaCreation(sql);
+    if (preparation == null) sql = SqlParser.canonicalSchemaCreation(sql);
     if (!compileOnly && _executionDepth == 1) {
       final bulk = _tryBulkIncrement(sql, parameters, foreignKeys: foreignKeys);
       if (bulk != null) return bulk;
@@ -2058,9 +2064,13 @@ final class ImageMutations {
           _tryDirectInsert(sql, parameters, foreignKeys: foreignKeys);
       if (inserted != null) return inserted;
     }
-    final p = SqlParser(sql,
-        deferFunctionResolution: deferTriggerFunctions,
-        deferFunctionValidation: deferTriggerFunctions);
+    final p = preparation == null
+        ? SqlParser(sql,
+            deferFunctionResolution: deferTriggerFunctions,
+            deferFunctionValidation: deferTriggerFunctions)
+        : SqlParser.prepared(preparation,
+            deferFunctionResolution: deferTriggerFunctions,
+            deferFunctionValidation: deferTriggerFunctions);
     final leadingCtes = <String, (List<String>, SelectStatement)>{};
     final cteMaterialization = <String, bool>{};
     if (p.take('WITH')) {
@@ -3550,14 +3560,24 @@ final class ImageMutations {
     // update and delete cost grow with the table.
     BigInt? soleRowid;
     var soleExact = false;
+    final conjunct = !insert &&
+            !table.view &&
+            !schema.withoutRowid &&
+            !schema.virtual &&
+            fromSources == null &&
+            where is BinaryExpr &&
+            where.op == 'AND' &&
+            !schema.columns.any((column) => column.generatedExpression != null)
+        ? _integerRowidConjunct(table, name, alias, where, bound)
+        : null;
     if (!insert &&
         !table.view &&
         !schema.withoutRowid &&
         where != null &&
         fromSources == null &&
-        where is BinaryExpr &&
-        ['=', '=='].contains(where.op)) {
-      final comparison = where;
+        (conjunct != null ||
+            where is BinaryExpr && ['=', '=='].contains(where.op))) {
+      final comparison = conjunct ?? where as BinaryExpr;
       ColumnExpr? column;
       Expr? constant;
       if (comparison.left is ColumnExpr && comparison.right is! ColumnExpr) {
@@ -3773,8 +3793,11 @@ final class ImageMutations {
     String indexCacheId(_Index index) =>
         '${index.name}\u0000${asciiLower(index.table)}\u0000${index.columns.join('\u0000')}\u0000${index.unique}\u0000${index.descending.join(',')}\u0000${index.collations.join('\u0000')}';
 
+    late final residentIds = [
+      for (final index in uniqueIndexes) indexCacheId(index)
+    ];
     void ensureResidentKeys() {
-      final ids = [for (final index in uniqueIndexes) indexCacheId(index)];
+      final ids = residentIds;
       final cachedIds = table.residentKeyIds;
       final cachedRowids = table.residentRowids;
       final same = cachedRowids != null &&
@@ -3805,6 +3828,54 @@ final class ImageMutations {
       table.residentUniques = uniques;
     }
 
+    // Local to one statement: triggers, FKs, generated columns and non-ordinary
+    // unique indexes retain their original lookup/validation paths. Tree keys use
+    // the real SQL comparator, including composite keys, NULLs and NUL/collation
+    // semantics; no string-hash equality approximation is used for conflicts.
+    late final ordinaryUpsertIndexes = _indexes
+        .where((index) => asciiLower(index.table) == asciiLower(name))
+        .every((index) => index.parentKey);
+    late final cacheableUpsert = upserts.isNotEmpty &&
+        ordinaryUpsertIndexes &&
+        (!foreignKeys ||
+            _tables.values.every((t) => t.schema.foreignKeys.isEmpty)) &&
+        !table.view &&
+        !schema.withoutRowid &&
+        !schema.columns.any((c) => c.generatedExpression != null) &&
+        uniqueIndexes.every((index) => index.parentKey) &&
+        !other.any((object) => object.type == 'trigger');
+    Map<_Index, SplayTreeMap<List<Object?>, TableRow>>? conflictTrees;
+    SplayTreeMap<List<Object?>, TableRow> conflictTree(_Index index) {
+      final trees = conflictTrees ??= {};
+      return trees.putIfAbsent(index, () {
+        final tree = SplayTreeMap<List<Object?>, TableRow>(
+            (a, b) => _compare(index, a, b));
+        for (final row in table.rows) {
+          final key = _indexKey(index, table, row);
+          if (key.every((v) => v != null)) tree.putIfAbsent(key, () => row);
+        }
+        return tree;
+      });
+    }
+
+    TableRow? indexedConflict(_Index index, TableRow row) {
+      final key = _indexKey(index, table, row);
+      return key.any((v) => v == null) ? null : conflictTree(index)[key];
+    }
+
+    void rememberUpsert(TableRow next, [TableRow? replacing]) {
+      final trees = conflictTrees;
+      if (trees == null) return;
+      for (final entry in trees.entries) {
+        if (replacing != null) {
+          final oldKey = _indexKey(entry.key, table, replacing);
+          if (oldKey.every((v) => v != null)) entry.value.remove(oldKey);
+        }
+        final newKey = _indexKey(entry.key, table, next);
+        if (newKey.every((v) => v != null)) entry.value[newKey] = next;
+      }
+    }
+
     bool conflictError(SqlConstraintException error, String activePolicy) {
       if (error is SqlDatatypeConstraint) throw error;
       if (activePolicy == 'DEFAULT') activePolicy = error.conflictPolicy;
@@ -3815,6 +3886,10 @@ final class ImageMutations {
       throw error;
     }
 
+    late final rowChecks = <Expr>[
+      ...schema.checks,
+      ...schema.columns.expand((column) => column.checks)
+    ];
     TableRow? prepare(TableRow next, String activePolicy) {
       try {
         var defaulted = false;
@@ -3852,13 +3927,12 @@ final class ImageMutations {
           }
         }
         if (defaulted) next = _physical(table, candidate, next.rowId);
-        final candidateContext = _context(table, next, bound);
-        for (final check in [
-          ...schema.checks,
-          ...schema.columns.expand((c) => c.checks)
-        ]) {
-          if (truth(check.evaluate(candidateContext), encoding) == false) {
-            throw const SqlConstraintException('CHECK constraint failed');
+        if (rowChecks.isNotEmpty) {
+          final candidateContext = _context(table, next, bound);
+          for (final check in rowChecks) {
+            if (truth(check.evaluate(candidateContext), encoding) == false) {
+              throw const SqlConstraintException('CHECK constraint failed');
+            }
           }
         }
 
@@ -3878,6 +3952,41 @@ final class ImageMutations {
         final candidate = prepare(next, activePolicy);
         if (candidate == null) return;
         next = candidate;
+        prepared = true;
+      }
+      if (insert &&
+          replacing == null &&
+          cacheableUpsert &&
+          (activePolicy == 'ABORT' ||
+              activePolicy == 'DEFAULT' &&
+                  schema.primaryPolicy == 'ABORT' &&
+                  schema.autoIndexPolicies.every((p) => p == 'ABORT'))) {
+        ensureResidentKeys();
+        final rowids = table.residentRowids!;
+        if (rowids.contains(next.rowId)) {
+          throw const SqlConstraintException('UNIQUE constraint failed: rowid');
+        }
+        for (final index in uniqueIndexes) {
+          if (indexedConflict(index, next) != null) {
+            throw const SqlConstraintException('UNIQUE constraint failed');
+          }
+        }
+        // Check everything before mutating the resident caches or row list.
+        rowids.add(next.rowId);
+        for (var i = 0; i < uniqueIndexes.length; i++) {
+          final key = keyFor(uniqueIndexes[i], next);
+          if (key != null) table.residentUniques![residentIds[i]]!.add(key);
+        }
+        table.upsertSlots?[next.rowId] = table.rows.length;
+        table.rows.add(next);
+        table.rowById?[next.rowId] = next;
+        table.valueIndexes = null;
+        table.rowidOrder = null;
+        rememberUpsert(next);
+        changes++;
+        _changed(insertedRowid: next.rowId);
+        last = next.rowId;
+        return;
       }
       if (insert &&
           replacing == null &&
@@ -3910,6 +4019,7 @@ final class ImageMutations {
           added.add((i, key));
         }
         table.rows.add(next);
+        table.valueIndexes = null;
         if (singleForeignKeyInsert) {
           _validate(foreignKeys: true);
         }
@@ -3929,8 +4039,25 @@ final class ImageMutations {
           !table.view &&
           (activePolicy == 'ABORT' || activePolicy == 'DEFAULT') &&
           schema.primaryPolicy != 'REPLACE' &&
-          schema.autoIndexPolicies.every((item) => item == 'ABORT')) {
-        final slot = table.rows.indexOf(replacing);
+          schema.autoIndexPolicies.every((item) => item == 'ABORT') &&
+          // UPSERT used to lose the prepared flag, revalidating the whole
+          // database for each conflict row. Reuse same-row validation only if
+          // every unique key and partial-index membership is unchanged. Key
+          // changes retain full validation (including all collation semantics).
+          (upserts.isEmpty ||
+              ordinaryUpsertIndexes &&
+                  uniqueIndexes.every((index) {
+                    final before = _includes(index, table, replacing);
+                    final after = _includes(index, table, next);
+                    return before == after &&
+                        (!before ||
+                            _compare(index, _indexKey(index, table, replacing),
+                                    _indexKey(index, table, next)) ==
+                                0);
+                  }))) {
+        final slot = upserts.isEmpty
+            ? table.rows.indexOf(replacing)
+            : _upsertSlot(table, replacing);
         if (slot >= 0) {
           ensureResidentKeys();
           final ids = table.residentKeyIds!;
@@ -3963,6 +4090,7 @@ final class ImageMutations {
           }
           table.rows[slot] = next;
           table.rowById?[next.rowId] = next;
+          rememberUpsert(next, replacing);
           table.valueIndexes = null;
           table.rowidOrder = null;
           changes++;
@@ -3970,6 +4098,7 @@ final class ImageMutations {
           return;
         }
       }
+      conflictTrees?.clear();
       table.invalidateResidentKeys();
       final old = table.rows.toList();
       if (replacing != null) table.rows.remove(replacing);
@@ -4061,20 +4190,22 @@ final class ImageMutations {
         }
 
         if (clause.target != null) {
-          conflict = table.rows
-              .where((row) => clause.index == null
-                  ? row.rowId == excluded.rowId
-                  : equal(clause.index!, row))
-              .firstOrNull;
+          conflict = clause.index == null
+              ? _rowById(table)[excluded.rowId]
+              : cacheableUpsert
+                  ? indexedConflict(clause.index!, excluded)
+                  : table.rows
+                      .where((row) => equal(clause.index!, row))
+                      .firstOrNull;
         } else {
           for (final index in uniqueIndexes.reversed) {
-            conflict = table.rows.where((row) => equal(index, row)).firstOrNull;
+            conflict = cacheableUpsert
+                ? indexedConflict(index, excluded)
+                : table.rows.where((row) => equal(index, row)).firstOrNull;
             if (conflict != null) break;
           }
           if (conflict == null && !schema.withoutRowid) {
-            conflict = table.rows
-                .where((row) => row.rowId == excluded.rowId)
-                .firstOrNull;
+            conflict = _rowById(table)[excluded.rowId];
           }
         }
         if (conflict == null) continue;
@@ -4997,31 +5128,43 @@ final class ImageMutations {
   bool _indexKeysSame(_Table table, List<TableRow> before, List<TableRow> after,
       List<_Index> indexes) {
     if (before.length != after.length) return false;
+    // Resolve the union once, rather than lowercasing names, allocating sets
+    // and finding the same column offsets for every row and every index.
+    final referenced = <String>{
+      for (final index in indexes) ...index.referencedColumns
+    };
+    final columns = <int>[];
+    final alias = asciiLower(table.schema.rowidAlias ?? '');
+    for (final column in referenced) {
+      if (alias.isNotEmpty && column == alias) {
+        columns.add(-1);
+      } else {
+        final offset = table.schema.columns
+            .indexWhere((c) => asciiLower(c.name) == column);
+        // _columnValue returns null on both rows for unknown columns.
+        if (offset >= 0) columns.add(offset);
+      }
+    }
     final previous = {for (final row in before) row.rowId: row};
     for (final row in after) {
       final old = previous[row.rowId];
       if (old == null) return false;
-      for (final index in indexes) {
-        for (final column in index.referencedColumns) {
-          if (!_sameValue(_columnValue(table, old, column),
-              _columnValue(table, row, column))) {
-            return false;
-          }
-        }
+      if (identical(old, row)) continue;
+      for (final column in columns) {
+        final a = column == -1
+            ? old.rowId
+            : column < old.values.length
+                ? old.values[column]
+                : null;
+        final b = column == -1
+            ? row.rowId
+            : column < row.values.length
+                ? row.values[column]
+                : null;
+        if (!_sameValue(a, b)) return false;
       }
     }
     return true;
-  }
-
-  Object? _columnValue(_Table table, TableRow row, String column) {
-    if (table.schema.rowidAlias != null &&
-        asciiLower(table.schema.rowidAlias!) == column) {
-      return row.rowId;
-    }
-    final index = table.schema.columns
-        .indexWhere((candidate) => asciiLower(candidate.name) == column);
-    if (index < 0 || index >= row.values.length) return null;
-    return row.values[index];
   }
 
   bool _sameRows(List<TableRow> before, List<TableRow> after) {
@@ -6209,6 +6352,84 @@ final class ImageMutations {
       name == 'oid' ||
       name == '_rowid_' ||
       name.isNotEmpty && name == asciiLower(table.schema.rowidAlias ?? '');
+
+  // Only constant integer rowid equalities inside AND may narrow candidates.
+  // Evaluate the ORIGINAL predicate on the candidate; never drop lease guards.
+  // Functions, subqueries, generated values and collations retain full execution
+  // so callbacks, coercions and their evaluation behavior are not approximated.
+  BinaryExpr? _integerRowidConjunct(_Table table, String name, String alias,
+      Expr predicate, List<Object?> bound) {
+    bool safe(Expr e) {
+      if (e is Literal || e is ParameterExpr || e is ColumnExpr) return true;
+      return e is BinaryExpr &&
+          const {'AND', 'OR', '=', '==', '!=', '<>', '<', '<=', '>', '>='}
+              .contains(e.op) &&
+          safe(e.left) &&
+          safe(e.right);
+    }
+
+    if (!safe(predicate)) return null;
+    BinaryExpr? find(Expr e) {
+      if (e is! BinaryExpr) return null;
+      if (e.op == 'AND') return find(e.left) ?? find(e.right);
+      if (e.op != '=' && e.op != '==') return null;
+      final ColumnExpr column;
+      final Expr constant;
+      if (e.left is ColumnExpr) {
+        column = e.left as ColumnExpr;
+        constant = e.right;
+      } else if (e.right is ColumnExpr) {
+        column = e.right as ColumnExpr;
+        constant = e.left;
+      } else {
+        return null;
+      }
+      final parts = column.key.split('.');
+      final field = parts.last;
+      final rowAlias = asciiLower(table.schema.rowidAlias ?? '');
+      final isRowid = field == rowAlias && rowAlias.isNotEmpty ||
+          const {'rowid', 'oid', '_rowid_'}.contains(field) &&
+              !table.schema.columns.any((c) => asciiLower(c.name) == field);
+      final qualified = parts.length == 1 ||
+          parts.length == 2 &&
+              (parts.first == asciiLower(alias) ||
+                  parts.first == asciiLower(name)) ||
+          parts.length == 3 &&
+              parts.first == 'main' &&
+              (parts[1] == asciiLower(alias) || parts[1] == asciiLower(name));
+      if (!isRowid || !qualified) return null;
+      Object? value;
+      if (constant is Literal) {
+        value = constant.value;
+      } else if (constant is ParameterExpr && constant.index < bound.length) {
+        value = bound[constant.index];
+      } else {
+        return null;
+      }
+      if (value is int) value = BigInt.from(value);
+      return value is BigInt &&
+              value >= -(BigInt.one << 63) &&
+              value < BigInt.one << 63
+          ? e
+          : null;
+    }
+
+    return find(predicate);
+  }
+
+  int _upsertSlot(_Table table, TableRow row) {
+    var slots = table.upsertSlots;
+    if (slots == null || slots.length != table.rows.length) {
+      slots = {
+        for (var i = 0; i < table.rows.length; i++) table.rows[i].rowId: i
+      };
+      table.upsertSlots = slots;
+    }
+    final slot = slots[row.rowId];
+    return slot != null && identical(table.rows[slot], row)
+        ? slot
+        : table.rows.indexOf(row);
+  }
 
   Map<BigInt, TableRow> _rowById(_Table table) {
     final cached = table.rowById;
