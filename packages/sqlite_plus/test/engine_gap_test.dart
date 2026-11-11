@@ -720,6 +720,48 @@ void main() {
     ]);
   });
 
+  test('a correlated subquery stays tied to the outer row', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE a(id INTEGER PRIMARY KEY)');
+    await db.execute('CREATE TABLE b(v INT)');
+    await db.execute('INSERT INTO a VALUES (1), (2), (3)');
+    await db.execute('INSERT INTO b VALUES (1), (2), (3)');
+    var calls = 0;
+    db.functions.registerScalar('probe', 0, (_) {
+      calls++;
+      return 1;
+    });
+    const probed =
+        'SELECT a.id AS aid, (SELECT b.v FROM b WHERE b.v = a.id AND probe() = 1) AS v '
+        'FROM a ORDER BY aid';
+    expect((await db.query(probed)).rows, [
+      [BigInt.one, BigInt.one],
+      [BigInt.two, BigInt.two],
+      [BigInt.from(3), BigInt.from(3)]
+    ]);
+    expect(calls, 3);
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const plain =
+        'SELECT a.id AS aid, (SELECT b.v FROM b WHERE b.v = a.id) AS v FROM a ORDER BY aid';
+    const setup = 'CREATE TABLE a(id INTEGER PRIMARY KEY); '
+        'CREATE TABLE b(v INT); '
+        'INSERT INTO a VALUES (1), (2), (3); '
+        'INSERT INTO b VALUES (1), (2), (3);';
+    final native =
+        await Process.run(pinned, ['-json', ':memory:', '$setup $plain;']);
+    expect(native.exitCode, 0, reason: native.stderr.toString());
+    final actual = await db.query(plain);
+    final expected = jsonDecode(native.stdout.toString()) as List;
+    expect([
+      for (final row in actual.rows)
+        [for (final value in row) value is BigInt ? value.toInt() : value]
+    ], [
+      for (final row in expected) (row as Map).values.toList()
+    ]);
+  });
+
   test('an inner lookup stops after 1024 distinct keys', () async {
     Future<void> check(int rows, String planText) async {
       final db = await MutableSqliteDatabase.create();

@@ -489,6 +489,8 @@ extension _RelationalQueries on SqliteDatabase {
                     [BigInt.one]
                   ]);
       }
+      // A correlated subquery is not flattened into a join. It runs again for
+      // the current outer row, so its result can change from row to row.
       final correlated =
           _mutationCorrelated(query, cache, context.row.keys.toSet());
       if (!correlated && once.containsKey(query)) return once[query]!;

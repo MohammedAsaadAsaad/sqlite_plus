@@ -27,7 +27,12 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 28, correlated query transformations.** Item 27 is
+**Active item: 29, CTE and derived-table materialization.** Item 28 is
+rejected. A correlated subquery is not flattened into a join. It runs again
+for each outer row. Three outer rows call the inner probe three times, and
+the plain scalar values match pinned SQLite 3.53.1.
+
+Item 27 is
 correctness-verified and not cost-accepted. An uncorrelated scalar subquery
 runs once for every outer row. A correlated `count(*)` still changes with
 the outer row and matches pinned SQLite 3.53.1. No AOT sample is recorded.
