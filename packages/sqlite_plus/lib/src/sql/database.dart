@@ -76,7 +76,9 @@ final class QueryResult implements SqlRows {
 final class QueryPlan {
   /// A scan described by [access], optional [rootPage], and optional [rowid].
   const QueryPlan(this.access, this.rootPage, this.rowid,
-      {this.scanSatisfiesOrder = false, this.scanReverse = false})
+      {this.scanSatisfiesOrder = false,
+      this.scanReverse = false,
+      this.orderedPrefix = 0})
       : _index = null,
         covering = false,
         coveredColumns = const [];
@@ -84,7 +86,8 @@ final class QueryPlan {
       {this.covering = false,
       this.coveredColumns = const [],
       this.scanSatisfiesOrder = false,
-      this.scanReverse = false})
+      this.scanReverse = false,
+      this.orderedPrefix = 0})
       : rowid = null;
   final _IndexAccess? _index;
 
@@ -115,6 +118,13 @@ final class QueryPlan {
 
   /// Walk the chosen full scan from its last key back to its first.
   final bool scanReverse;
+
+  /// Leading [SelectStatement.order] terms this scan already groups.
+  ///
+  /// Zero means the scan does not feed a block sort. A positive value shorter
+  /// than the full order sorts each equal-prefix run and leaves the other
+  /// shapes on the existing sort.
+  final int orderedPrefix;
 }
 
 /// One `EXPLAIN QUERY PLAN` row. [id] is the compared opcode address,
@@ -677,24 +687,19 @@ final class SqliteDatabase {
               empty:
                   prefix.any((list) => list.any((bound) => bound.$2 == null)));
           final equalityPrefix = range ? prefix.length - 1 : prefix.length;
+          final indexDefinition = parsed ??
+              IndexDefinition(
+                  entry.name,
+                  table.name,
+                  definition.$5,
+                  [
+                    for (var i = 0; i < definition.$1.length; i++)
+                      IndexTerm(ColumnExpr(definition.$1[i]), definition.$1[i],
+                          definition.$3[i], definition.$2[i])
+                  ],
+                  null);
           final satisfies = _indexScanSatisfiesOrder(
-              statement,
-              table,
-              parsed ??
-                  IndexDefinition(
-                      entry.name,
-                      table.name,
-                      definition.$5,
-                      [
-                        for (var i = 0; i < definition.$1.length; i++)
-                          IndexTerm(
-                              ColumnExpr(definition.$1[i]),
-                              definition.$1[i],
-                              definition.$3[i],
-                              definition.$2[i])
-                      ],
-                      null),
-              equalityPrefix);
+              statement, table, indexDefinition, equalityPrefix);
           final score = prefix.length * 10 + (definition.$5 && !range ? 1 : 0);
           final rangeTerms = range ? prefix.last : <(String, Object?)>[];
           final rangeBounds =
@@ -731,11 +736,16 @@ final class SqliteDatabase {
             ];
             final covered = names.every((name) => name.isNotEmpty) &&
                 _coveredByIndex(statement, table, names);
+            final orderPrefix = satisfies
+                ? 0
+                : _forwardIndexOrderPrefix(
+                    statement, table, indexDefinition, equalityPrefix);
             best = QueryPlan._indexed(entry.rootPage, access,
                 range ? 'secondary-index-range' : 'secondary-index-lookup',
                 covering: covered,
                 coveredColumns: covered ? names : const [],
-                scanSatisfiesOrder: satisfies);
+                scanSatisfiesOrder: satisfies,
+                orderedPrefix: orderPrefix);
           }
         } on Exception {
           diagnostics?.record('secondary-index', 'index-analysis-unavailable',
@@ -1707,6 +1717,7 @@ final class SqliteDatabase {
     final columns = table?.columns ?? <CatalogColumn>[];
     final input = <RowValues>[];
     var scanSatisfiesOrder = false;
+    var orderedPrefix = 0;
     if (table == null) {
       input.add({});
       if (diagnostics != null) {
@@ -1719,8 +1730,9 @@ final class SqliteDatabase {
       diagnostics?.planningClock.start();
       final plan = _plan(statement, table, bound, diagnostics);
       scanSatisfiesOrder = plan.scanSatisfiesOrder;
+      orderedPrefix = plan.orderedPrefix;
       diagnostics?.planningClock.stop();
-      final orderedPrefix =
+      final prefixLimit =
           _orderedPrefixLimit(statement, bound, scanSatisfiesOrder);
       if (diagnostics != null) diagnostics.plan = SqlDiagnosticPlan._(plan);
       final stream = _planRecords(table, plan,
@@ -1731,7 +1743,7 @@ final class SqliteDatabase {
           ftsText: _ftsQueryReadsText(statement, table));
       final stored = table.storageColumns;
       await for (final record in stream) {
-        if (orderedPrefix == 0) break;
+        if (prefixLimit == 0) break;
         if (record.values.length > stored.length) {
           throw const FormatException(
               'More stored columns than catalog columns');
@@ -1763,10 +1775,14 @@ final class SqliteDatabase {
         }
         table.evaluateGenerated(row, _pager.header.textEncoding, lazy: true);
         input.add(row);
-        if (orderedPrefix != null && input.length >= orderedPrefix) break;
+        if (prefixLimit != null && input.length >= prefixLimit) break;
       }
     }
     diagnostics?.loaded = input.length;
+    if (!scanSatisfiesOrder && orderedPrefix > 0 && table != null) {
+      _blockSortRows(input, statement, table, orderedPrefix);
+      scanSatisfiesOrder = true;
+    }
     final scanOrder = scanSatisfiesOrder || table == null
         ? null
         : _physicalScanOrder(statement, table);
@@ -1827,8 +1843,9 @@ final class SqliteDatabase {
       SelectStatement query, CatalogTable table) {
     if (!_queryCanReuseIndexOrder(query)) return null;
     if (!table.withoutRowid) {
-      if (query.order.length != 1) return null;
-      final resolved = _resolvedOrderExpression(query, query.order.single);
+      if (query.order.isEmpty) return null;
+      final first = query.order.first;
+      final resolved = _resolvedOrderExpression(query, first);
       final name = _bareOrderColumn(resolved);
       if (name == null) return null;
       final rowids = {
@@ -1838,18 +1855,22 @@ final class SqliteDatabase {
             key
       };
       if (!rowids.contains(name) ||
-          _orderCollation(query.order.single, resolved!, table) != 'binary') {
+          _orderCollation(first, resolved!, table) != 'binary') {
         return null;
       }
-      return (reverse: query.order.single.descending);
+      // The rowid is unique, so terms after it cannot change the order.
+      return (reverse: first.descending);
     }
     final primary = table.columns
         .where((column) => column.primaryKey > 0)
         .toList()
       ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
-    if (query.order.length > primary.length) return null;
+    final matched = query.order.length > primary.length
+        ? primary.length
+        : query.order.length;
+    if (matched == 0) return null;
     final stored = <bool>[];
-    for (var i = 0; i < query.order.length; i++) {
+    for (var i = 0; i < matched; i++) {
       final resolved = _resolvedOrderExpression(query, query.order[i]);
       final name = _bareOrderColumn(resolved);
       if (name != asciiLower(primary[i].name) ||
@@ -1859,7 +1880,14 @@ final class SqliteDatabase {
       }
       stored.add(table.primaryKeyDescending[i]);
     }
-    return _orderDirection(stored, query.order);
+    if (query.order.length > primary.length && matched != primary.length) {
+      return null;
+    }
+    return _orderDirection(
+        stored,
+        query.order.length > primary.length
+            ? query.order.sublist(0, primary.length)
+            : query.order);
   }
 
   /// Every requested term matches [stored] directions, or every term is flipped.
@@ -1928,6 +1956,77 @@ final class SqliteDatabase {
 
     return matchFrom(equalityPrefix, allowReverse: equalityPrefix == 0) ??
         (equalityPrefix > 0 ? matchFrom(0, allowReverse: false) : null);
+  }
+
+  /// How many leading order terms a forward index scan already groups.
+  ///
+  /// A full match stays on [scanSatisfiesOrder]. A proper prefix feeds the
+  /// block sort. A flipped direction does not, because range seeks stay forward.
+  int _forwardIndexOrderPrefix(SelectStatement query, CatalogTable table,
+      IndexDefinition definition, int equalityPrefix) {
+    if (!_queryCanReuseIndexOrder(query) ||
+        equalityPrefix < 0 ||
+        equalityPrefix > definition.terms.length ||
+        query.order.length <= 1 ||
+        query.order.any((term) {
+          final resolved = _resolvedOrderExpression(query, term);
+          return resolved == null || _bareOrderColumn(resolved) == null;
+        })) {
+      return 0;
+    }
+    var count = 0;
+    for (var i = 0; i < query.order.length; i++) {
+      if (equalityPrefix + i >= definition.terms.length) break;
+      final term = query.order[i];
+      final resolved = _resolvedOrderExpression(query, term);
+      final key = definition.terms[equalityPrefix + i];
+      if (resolved == null ||
+          _bareOrderColumn(resolved) == null ||
+          !_sameIndexOrder(resolved, key) ||
+          _orderCollation(term, resolved, table) != asciiLower(key.collation) ||
+          term.descending != key.descending) {
+        break;
+      }
+      count++;
+    }
+    if (count == 0 || count == query.order.length) return 0;
+    return count;
+  }
+
+  /// Sorts each run that is already equal on the first [prefix] order terms.
+  void _blockSortRows(List<RowValues> rows, SelectStatement query,
+      CatalogTable table, int prefix) {
+    int compareAt(RowValues a, RowValues b, int index) {
+      final term = query.order[index];
+      final resolved = _resolvedOrderExpression(query, term);
+      final name = resolved == null ? null : _bareOrderColumn(resolved);
+      if (name == null) return 0;
+      final comparison = compareValues(a[name], b[name],
+          _pager.header.textEncoding, _orderCollation(term, resolved!, table));
+      return term.descending ? -comparison : comparison;
+    }
+
+    var run = 0;
+    for (var end = 1; end <= rows.length; end++) {
+      final split = end == rows.length ||
+          List.generate(prefix, (index) => index)
+              .any((index) => compareAt(rows[end - 1], rows[end], index) != 0);
+      if (!split) continue;
+      final indexed = [
+        for (var slot = run; slot < end; slot++) (rows[slot], slot)
+      ];
+      indexed.sort((a, b) {
+        for (var index = prefix; index < query.order.length; index++) {
+          final comparison = compareAt(a.$1, b.$1, index);
+          if (comparison != 0) return comparison;
+        }
+        return a.$2.compareTo(b.$2);
+      });
+      for (var slot = 0; slot < indexed.length; slot++) {
+        rows[run + slot] = indexed[slot].$1;
+      }
+      run = end;
+    }
   }
 
   /// A covering secondary index whose forward order is exactly the requested

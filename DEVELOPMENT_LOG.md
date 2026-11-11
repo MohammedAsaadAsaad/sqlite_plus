@@ -1,5 +1,13 @@
 # Development log
 
+## 2026-11-11 — Item 9 unique-prefix order and index block sort
+
+A unique rowid or a complete WITHOUT ROWID primary key satisfies `ORDER BY`
+without sorting the trailing terms. An already chosen forward index scan that
+groups a proper bare-column prefix sorts each equal run by the remaining
+terms. Pinned SQLite 3.53.1 matches the new queries. No AOT cost sample is
+recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 8 accepted for ordered LIMIT without WHERE
 
 An ordered direct scan stops after `OFFSET + LIMIT` when nothing later can

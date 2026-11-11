@@ -27,7 +27,13 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 9, partial/block sorting.** Item 8 is accepted only for a scan
+**Active item: 10, table/index/lookup/sort cost comparison.** Item 9 is
+correctness-verified and not cost-accepted. A unique rowid or full primary key
+makes later `ORDER BY` terms redundant. A chosen index that groups a proper
+bare-column prefix block-sorts each run. Pinned SQLite 3.53.1 matches those
+queries. No AOT sample is recorded yet.
+
+**Item 8 remains accepted for its ordered LIMIT scope.** Item 8 is accepted only for a scan
 that already yields `ORDER BY` and has no `WHERE`, aggregate, window,
 `DISTINCT`, grouping, compound, or CTE. On 10,000 rows, `ORDER BY id DESC
 LIMIT 1` median ratio is 0.011224 with separated ranges. The filtered control
