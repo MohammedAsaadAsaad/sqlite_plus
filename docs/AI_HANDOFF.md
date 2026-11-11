@@ -27,12 +27,19 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 14, IN/OR multiple-seek or union paths.** Item 13 is
-correctness-verified and not cost-accepted. An automatic plan may use a
-partial index when a numeric comparison is stronger than the index predicate.
-`a >= 0`, an equality that fails the predicate, and `COLLATE` stay on the
-table scan. `INDEXED BY` still requires the exact predicate, matching SQLite
-3.53.1. Automatic results match that SQLite. No AOT sample is recorded yet.
+**Active item: 15, WITHOUT ROWID access planning.** Item 14 is
+correctness-verified and not cost-accepted. A rowid table seeks a secondary
+index once per distinct non-null constant in a leading `IN` list or a
+same-column `OR` of equalities. `NOT IN`, NULL-only lists, mixed-column `OR`,
+subqueries, and lists longer than 32 keep the previous path. Pinned SQLite
+3.53.1 matches the comparisons. No AOT sample is recorded yet.
+
+Item 13 is correctness-verified and not cost-accepted. An automatic plan may
+use a partial index when a numeric comparison is stronger than the index
+predicate. `a >= 0`, an equality that fails the predicate, and `COLLATE` stay
+on the table scan. `INDEXED BY` still requires the exact predicate, matching
+SQLite 3.53.1. Automatic results match that SQLite. No AOT sample is recorded
+yet.
 
 Item 12 is correctness-verified and not cost-accepted. Inclusive `BETWEEN` is
 planned as `>=` and `<=` bounds. A composite index can equality-seek its

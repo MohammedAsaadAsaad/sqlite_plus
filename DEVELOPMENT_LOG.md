@@ -1,5 +1,14 @@
 # Development log
 
+## 2026-11-11 — Item 14 constant IN and same-column OR seeks
+
+A rowid table seeks a secondary index once per distinct non-null constant when
+the leading column is constrained by `IN` or by `OR` of equalities. `NOT IN`,
+NULL-only lists, mixed-column `OR`, subqueries, and lists longer than 32 stay
+on the previous path. The residual predicate still runs. Pinned SQLite 3.53.1
+matches the comparisons. No AOT sample is recorded, so this is not a cost
+acceptance.
+
 ## 2026-11-11 — Item 13 stronger numeric partial-index proofs
 
 An automatic plan can use a partial index when a numeric comparison is

@@ -23,7 +23,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 11 | Broader covering-index reads and costing | Implemented/unaccepted; equal-estimate ties prefer order, then covering; no AOT sample |
 | 12 | Composite equality/range/order planning | Implemented/unaccepted; inclusive BETWEEN becomes index bounds; no AOT sample |
 | 13 | Partial/expression index eligibility | Implemented/unaccepted; stronger numeric bounds prove a partial predicate for automatic plans; no AOT sample |
-| 14 | IN/OR multiple-seek/union paths | Queued |
+| 14 | IN/OR multiple-seek/union paths | Implemented/unaccepted; constant IN and same-column OR seek each value; no AOT sample |
 | 15 | WITHOUT ROWID access planning | Queued |
 | 16 | Evaluate intersection and skip-scan | Queued |
 | 17 | Improve STAT1 estimates | Queued |
@@ -249,3 +249,14 @@ proof, so `INDEXED BY partial WHERE a > 1` remains an error, matching SQLite
 recorded.
 
 Next is item 14. No package publication.
+
+## Item 14 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. A rowid table can seek a secondary index once per
+distinct non-null constant in `column IN (...)` or `column = a OR column = b`
+when that column is the index prefix. `NOT IN`, NULL-only lists, mixed-column
+`OR`, subqueries, and lists longer than 32 stay on the previous path. The
+residual filter still applies. Results match pinned SQLite 3.53.1, including
+duplicate `IN` values and an extra `AND`. No fresh AOT sample is recorded.
+
+Next is item 15. No package publication.
