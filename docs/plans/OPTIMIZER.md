@@ -32,7 +32,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 20 | Statistics gathering/loading cost | Implemented/unaccepted; stat text longer than 65536 is ignored; no loading AOT sample |
 | 21 | Broader safe predicate pushdown | Implemented/unaccepted; AND/OR skip the right side once the left side decides; no AOT sample |
 | 22 | Bounded join-order search | Implemented/unaccepted; stat1 reorder covers 2–4 cross joins; 5 stays written order; no AOT sample |
-| 23 | Indexed inner join access | Queued |
+| 23 | Indexed inner join access | Implemented/unaccepted; INNER JOIN equality on a leading index column seeks; OR and LEFT stay scans; no AOT sample |
 | 24 | Evaluate alternative join algorithms | Queued |
 | 25 | Bounded temporary lookup structures | Queued |
 | 26 | EXISTS early exit | Queued |
@@ -336,3 +336,13 @@ Five sources stay in the written order. The four-table result matches pinned
 SQLite 3.53.1. No fresh AOT sample is recorded.
 
 Next is item 23. No package publication.
+
+## Item 23 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. An `INNER JOIN` seeks the inner table when an `AND`-level
+`ON` equality names the leading column of a non-partial index and both sides
+share affinity and collation. `OR`, `LEFT JOIN`, and `NOT INDEXED` stay scans.
+The probe matches pinned SQLite 3.53.1, including NULL keys and an extra `AND`.
+No fresh AOT sample is recorded.
+
+Next is item 24. No package publication.

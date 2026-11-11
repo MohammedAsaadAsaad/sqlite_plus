@@ -1145,11 +1145,39 @@ extension _RelationalQueries on SqliteDatabase {
         }
 
         final matched = <int>{};
+        final indexed = _innerJoinIndex(source, sources);
+        final rightMeta =
+            indexed == null ? null : declared['$alias.${indexed.column}'];
+        final leftMeta = indexed == null ? null : declared[indexed.leftKey];
+        final sameComparison = rightMeta != null &&
+            leftMeta != null &&
+            rightMeta.affinity == leftMeta.affinity &&
+            rightMeta.collation == leftMeta.collation;
+        List<List<RowValues>>? indexGroups;
+        Iterable<RowValues> innerRows(RowValues left) {
+          if (indexed == null ||
+              !sameComparison ||
+              correlatedVirtual ||
+              pragmaSource) {
+            return rightFor(left);
+          }
+          final key = '$alias.${indexed.column}';
+          indexGroups ??= _equalGroups(right.toList(), key, rightMeta);
+          final hits = <RowValues>[];
+          for (final group in indexGroups!) {
+            final probe = merge({...left, ...group.first});
+            if (indexed.equality.evaluate(onContext(probe)) == BigInt.one) {
+              hits.addAll(group);
+            }
+          }
+          return hits;
+        }
+
         Iterable<RowValues> combine() sync* {
           for (final left in leftRows) {
             var found = false;
             var r = -1;
-            for (final rightRow in rightFor(left)) {
+            for (final rightRow in innerRows(left)) {
               r++;
               final combined = merge({...left, ...rightRow});
               if (scanBounds.isNotEmpty &&
