@@ -30,7 +30,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 18 | Evaluate skew-aware/STAT4 samples | Rejected; sqlite_stat4 is stored and ignored, stat1 remains the estimate |
 | 19 | Stale/missing statistics safeguards | Implemented/unaccepted; a recorded table cardinality is not inflated by a sibling index; no AOT sample |
 | 20 | Statistics gathering/loading cost | Implemented/unaccepted; stat text longer than 65536 is ignored; no loading AOT sample |
-| 21 | Broader safe predicate pushdown | Queued |
+| 21 | Broader safe predicate pushdown | Implemented/unaccepted; AND/OR skip the right side once the left side decides; no AOT sample |
 | 22 | Bounded join-order search | Queued |
 | 23 | Indexed inner join access | Queued |
 | 24 | Evaluate alternative join algorithms | Queued |
@@ -318,3 +318,12 @@ test covers a 65537-character value and still returns the matching row. No
 loading-time AOT sample is recorded.
 
 Next is item 21. No package publication.
+
+## Item 21 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. `AND` does not evaluate its right side when the left
+side is false. `OR` does not evaluate its right side when the left side is
+true. NULL on the left still evaluates the right side. Results for constant
+`AND`/`OR` match pinned SQLite 3.53.1. No fresh AOT sample is recorded.
+
+Next is item 22. No package publication.
