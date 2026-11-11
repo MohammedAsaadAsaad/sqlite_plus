@@ -538,6 +538,10 @@ final class SqliteDatabase {
         } else if (expr is BinaryExpr &&
             ['=', '==', '<', '<=', '>', '>='].contains(expr.op)) {
           constraints.add(expr);
+        } else if (expr is BetweenExpr && !expr.negate) {
+          constraints
+            ..add(BinaryExpr('>=', expr.operand, expr.low))
+            ..add(BinaryExpr('<=', expr.operand, expr.high));
         }
       }
 

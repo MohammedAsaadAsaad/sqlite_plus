@@ -21,7 +21,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 9 | Partial/block sorting | Correctness verified for a unique key tail and an index-prefix block sort; cost not yet separated |
 | 10 | Table/index/lookup/sort cost comparison | Implemented/unaccepted; non-covering full-index visits stay on the table scan; no AOT sample |
 | 11 | Broader covering-index reads and costing | Implemented/unaccepted; equal-estimate ties prefer order, then covering; no AOT sample |
-| 12 | Composite equality/range/order planning | Queued |
+| 12 | Composite equality/range/order planning | Implemented/unaccepted; inclusive BETWEEN becomes index bounds; no AOT sample |
 | 13 | Partial/expression index eligibility | Queued |
 | 14 | IN/OR multiple-seek/union paths | Queued |
 | 15 | WITHOUT ROWID access planning | Queued |
@@ -225,3 +225,15 @@ covering index `iab`. `index_order_test` matches pinned SQLite 3.53.1. No
 fresh AOT sample is recorded.
 
 Next is item 12. No package publication.
+
+## Item 12 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. An inclusive `BETWEEN` is planned as `>=` and `<=`
+bounds, so a composite index can equality-seek its prefix and range-seek the
+next column. `NOT BETWEEN` stays a filter. `WHERE a = 1 AND b BETWEEN 'a' AND
+'c' ORDER BY b` uses index `iab` as a range scan that already yields that
+order. `WHERE a BETWEEN 0 AND 2 ORDER BY a` is a range scan on `ia`.
+`index_order_test` matches pinned SQLite 3.53.1, including the `NOT BETWEEN`
+rows. No fresh AOT sample is recorded.
+
+Next is item 13. No package publication.

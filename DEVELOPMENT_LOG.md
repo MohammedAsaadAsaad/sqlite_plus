@@ -1,5 +1,13 @@
 # Development log
 
+## 2026-11-11 — Item 12 composite BETWEEN bounds
+
+An inclusive `BETWEEN` is planned as a pair of `>=` and `<=` bounds. A
+composite index can then equality-seek the leading columns and range-seek the
+next column, including when that range already yields `ORDER BY`. `NOT
+BETWEEN` remains a residual filter. Pinned SQLite 3.53.1 matches the new
+comparisons. No AOT sample is recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 11 covering index wins an equal-estimate tie
 
 When two secondary indexes have the same `sqlite_stat1` estimate, or neither
