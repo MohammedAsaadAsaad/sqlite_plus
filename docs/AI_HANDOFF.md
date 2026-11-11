@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 40, plan cache.** Item 39 is correctness-verified and
+**Active item: 41, diagnostic access paths.** Item 40 is
+correctness-verified and not cost-accepted. A plan is computed from the
+catalog visible to that statement and is not stored. `EXPLAIN QUERY PLAN`
+uses the index before `ANALYZE` and a table scan after it, on the same
+connection. The rows still match pinned SQLite 3.53.1. No cache is enabled.
+No AOT sample is recorded.
+
+Item 39 is correctness-verified and
 not cost-accepted. `WHERE a = ?` still chooses index `ia` after the
 parameter is bound. The rows match `WHERE a = 2` on pinned SQLite 3.53.1.
 No AOT sample is recorded.

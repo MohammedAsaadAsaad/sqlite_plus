@@ -49,7 +49,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 37 | Safe per-execution common work reuse | Implemented/unaccepted; identical uncorrelated scalars are reused; probe stays separate; no AOT sample |
 | 38 | Bound planning complexity | Implemented/unaccepted; IN stays capped at 32 and join reorder at 4 sources; rows match SQLite; no AOT sample |
 | 39 | Prepared statement integration | Implemented/unaccepted; a bound `a = ?` still chooses the index; rows match SQLite; no AOT sample |
-| 40 | Evaluate plan caching, default off | Queued |
+| 40 | Evaluate plan caching, default off | Implemented/unaccepted; plans are not stored; ANALYZE changes the next explain; no AOT sample |
 | 41 | Inspector integration | Queued |
 | 42 | Whole-roadmap regression/release documentation | Queued |
 
@@ -500,3 +500,13 @@ chooses index `ia`, and the rows match `WHERE a = 2` on pinned SQLite
 3.53.1. No fresh AOT sample is recorded.
 
 Next is item 40. No package publication.
+
+## Item 40 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. Each statement is planned from the catalog visible
+at that moment. The plan is not stored. Before `ANALYZE`, `WHERE a = 1`
+uses the index. After `ANALYZE` on the same connection, the next explain
+is a table scan. The rows match pinned SQLite 3.53.1. No plan cache is
+enabled. No fresh AOT sample is recorded.
+
+Next is item 41. No package publication.
