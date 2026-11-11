@@ -253,6 +253,56 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
           reason: query);
     }
   });
+
+  test('constant IN and same-column OR seek the index once per value',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT)');
+    await db.execute('CREATE INDEX ia ON t(a)');
+    await db.execute(
+        'INSERT INTO t(id,a,b) VALUES (1,1,10),(2,1,11),(3,2,12),(4,3,13),(5,NULL,14)');
+    final reader =
+        await SqliteDatabase.openReadOnly(ByteImageStorage(db.exportImage()));
+    addTearDown(reader.close);
+    expect(reader.explain('SELECT id FROM t WHERE a IN (1, 3, 1)').indexName,
+        'ia');
+    expect(reader.explain('SELECT id FROM t WHERE a IN (1, 3, 1)').access,
+        'secondary-index-lookup');
+    expect(reader.explain('SELECT id FROM t WHERE a = 1 OR a = 3').indexName,
+        'ia');
+    expect(reader.explain('SELECT id FROM t WHERE a NOT IN (1, 3)').access,
+        'table-scan');
+    expect(reader.explain('SELECT id FROM t WHERE a IN (NULL)').access,
+        'table-scan');
+    const queries = [
+      'SELECT id FROM t WHERE a IN (1, 3, 1) ORDER BY id',
+      'SELECT id FROM t WHERE a = 1 OR a = 3 ORDER BY id',
+      'SELECT id FROM t WHERE a IN (1, NULL) ORDER BY id',
+      'SELECT id FROM t WHERE a NOT IN (1, 3) ORDER BY id',
+      'SELECT id FROM t WHERE a IN (1, 3) AND b = 11 ORDER BY id',
+      'SELECT id FROM t WHERE a = 2 OR b = 13 ORDER BY id',
+    ];
+    if (cli == null) {
+      expect((await reader.query(queries[0])).rows, [
+        [BigInt.one],
+        [BigInt.two],
+        [BigInt.from(4)]
+      ]);
+      return;
+    }
+    const setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT);'
+        'CREATE INDEX ia ON t(a);'
+        'INSERT INTO t(id,a,b) VALUES (1,1,10),(2,1,11),(3,2,12),(4,3,13),(5,NULL,14);';
+    for (final query in queries) {
+      final native =
+          await Process.run(cli, ['-json', ':memory:', '$setup $query;']);
+      expect(native.exitCode, 0, reason: '$query\n${native.stderr}');
+      expect(_rows(await reader.query(query)),
+          jsonDecode(native.stdout.toString()),
+          reason: query);
+    }
+  });
 }
 
 List<Map<String, Object?>> _rows(QueryResult result) => [

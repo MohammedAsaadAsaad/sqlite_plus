@@ -184,10 +184,13 @@ int _estLog(int rows) => rows <= 10 ? 0 : _sqliteLogEst(rows) - 33;
 
 final class _IndexAccess {
   _IndexAccess(this.name, this.compare,
-      {this.table = false, this.empty = false});
+      {this.table = false, this.empty = false, this.probes});
   final String name;
   final int Function(List<Object?>) compare;
   final bool table, empty;
+
+  /// One equality probe per constant in an `IN` list or same-column `OR`.
+  final List<int Function(List<Object?>)>? probes;
 }
 
 /// M3 read-only single-table SELECT API. Unsupported SQL fails explicitly.
@@ -248,6 +251,109 @@ final class SqliteDatabase {
       return true;
     } on SqlException {
       return false;
+    }
+  }
+
+  /// Distinct non-null constants for `column IN (...)` or `column = a OR
+  /// column = b` on the leading index column. A subquery, column, or `NOT`
+  /// form returns null so the ordinary filter remains responsible.
+  List<Object?>? _constantEqualityProbes(
+      Expr? where, Expr column, String collation, EvalContext context) {
+    final constants =
+        _inConstants(where, column) ?? _orConstants(where, column);
+    if (constants == null || constants.length > 32) return null;
+    final values = <Object?>[];
+    for (final constant in constants) {
+      if (!_planningConstant(constant)) return null;
+      final value =
+          applyAffinity(constant.evaluate(context), column.affinity(context));
+      if (value == null) continue;
+      if (values.any((existing) =>
+          compareValues(existing, value, context.encoding, collation) == 0)) {
+        continue;
+      }
+      values.add(value);
+    }
+    return values.isEmpty ? null : values;
+  }
+
+  List<Expr>? _inConstants(Expr? where, Expr column) {
+    InExpr? found;
+    var duplicate = false;
+    void walk(Expr? expr) {
+      if (duplicate || expr == null) return;
+      if (expr is BinaryExpr && expr.op == 'AND') {
+        walk(expr.left);
+        walk(expr.right);
+        return;
+      }
+      if (expr is InExpr &&
+          !expr.negate &&
+          sameExpression(indexOperand(expr.operand), indexOperand(column))) {
+        if (found != null) duplicate = true;
+        found = expr;
+      }
+    }
+
+    walk(where);
+    return duplicate || found == null ? null : found!.values;
+  }
+
+  List<Expr>? _orConstants(Expr? where, Expr column) {
+    List<Expr>? found;
+    var duplicate = false;
+    void walk(Expr? expr) {
+      if (duplicate || expr == null) return;
+      if (expr is BinaryExpr && expr.op == 'AND') {
+        walk(expr.left);
+        walk(expr.right);
+        return;
+      }
+      if (expr is BinaryExpr && expr.op == 'OR') {
+        final values = _flatOrEquals(expr, column);
+        if (values == null) return;
+        if (found != null) duplicate = true;
+        found = values;
+      }
+    }
+
+    walk(where);
+    return duplicate || found == null ? null : found;
+  }
+
+  List<Expr>? _flatOrEquals(Expr expr, Expr column) {
+    if (expr is BinaryExpr && expr.op == 'OR') {
+      final left = _flatOrEquals(expr.left, column);
+      final right = _flatOrEquals(expr.right, column);
+      if (left == null || right == null) return null;
+      return [...left, ...right];
+    }
+    if (expr is! BinaryExpr || (expr.op != '=' && expr.op != '==')) return null;
+    if (sameExpression(indexOperand(expr.left), indexOperand(column)) &&
+        _planningConstant(expr.right)) {
+      return [expr.right];
+    }
+    if (sameExpression(indexOperand(expr.right), indexOperand(column)) &&
+        _planningConstant(expr.left)) {
+      return [expr.left];
+    }
+    return null;
+  }
+
+  Stream<BtreeRecord> _indexMatches(
+      BtreeReader reader, QueryPlan plan, _IndexAccess access) async* {
+    final probes =
+        access.probes ?? <int Function(List<Object?>)>[access.compare];
+    final seen = <BigInt>{};
+    for (final probe in probes) {
+      await for (final entry in reader.seekIndex(plan.rootPage!, probe,
+          reverse: probes.length == 1 && plan.scanReverse)) {
+        if (probes.length > 1) {
+          final rowid = entry.values.last;
+          if (rowid is! BigInt || !seen.add(rowid)) continue;
+        }
+        yield entry;
+      }
     }
   }
 
@@ -673,24 +779,52 @@ final class SqliteDatabase {
               break;
             }
           }
-          if (prefix.isEmpty) {
+          final probeValues =
+              prefix.isEmpty && !table.withoutRowid && definition.$1.isNotEmpty
+                  ? _constantEqualityProbes(
+                      statement.where,
+                      parsed?.terms.isNotEmpty == true
+                          ? parsed!.terms.first.expression
+                          : ColumnExpr(definition.$1.first),
+                      definition.$3.first,
+                      context)
+                  : null;
+          if (prefix.isEmpty && probeValues == null) {
             diagnostics?.record(
                 'secondary-index', 'no-compatible-leading-prefix',
                 index: entry.name, eligible: false);
             continue;
           }
-          final access = _IndexAccess(entry.name, (values) {
-            if (values.length <= prefix.length) {
+          int equalityProbe(Object? bound, List<Object?> values) {
+            if (values.isEmpty) {
               throw const FormatException('Short secondary index key');
             }
-            for (var i = 0; i < prefix.length; i++) {
-              final c = comparison(values[i], prefix[i], definition.$3[i]);
-              if (c != 0) return definition.$2[i] ? -c : c;
-            }
+            final compared = compareValues(
+                values[0], bound, context.encoding, definition.$3[0]);
+            if (compared != 0) return definition.$2[0] ? -compared : compared;
             return 0;
-          },
-              empty:
-                  prefix.any((list) => list.any((bound) => bound.$2 == null)));
+          }
+
+          final access = probeValues != null
+              ? _IndexAccess(entry.name,
+                  (values) => equalityProbe(probeValues.first, values),
+                  probes: [
+                      for (final bound in probeValues)
+                        (values) => equalityProbe(bound, values)
+                    ])
+              : _IndexAccess(entry.name, (values) {
+                  if (values.length <= prefix.length) {
+                    throw const FormatException('Short secondary index key');
+                  }
+                  for (var i = 0; i < prefix.length; i++) {
+                    final c =
+                        comparison(values[i], prefix[i], definition.$3[i]);
+                    if (c != 0) return definition.$2[i] ? -c : c;
+                  }
+                  return 0;
+                },
+                  empty: prefix
+                      .any((list) => list.any((bound) => bound.$2 == null)));
           final equalityPrefix = range ? prefix.length - 1 : prefix.length;
           final indexDefinition = parsed ??
               IndexDefinition(
@@ -703,9 +837,11 @@ final class SqliteDatabase {
                           definition.$3[i], definition.$2[i])
                   ],
                   null);
-          final satisfies = _indexScanSatisfiesOrder(
-              statement, table, indexDefinition, equalityPrefix);
-          final score = prefix.length * 10 + (definition.$5 && !range ? 1 : 0);
+          final satisfies = probeValues == null &&
+              _indexScanSatisfiesOrder(
+                  statement, table, indexDefinition, equalityPrefix);
+          final score = (probeValues == null ? prefix.length : 1) * 10 +
+              (definition.$5 && !range && probeValues == null ? 1 : 0);
           final rangeTerms = range ? prefix.last : <(String, Object?)>[];
           final rangeBounds =
               (rangeTerms.any((bound) => ['>', '>='].contains(bound.$1))
@@ -714,17 +850,19 @@ final class SqliteDatabase {
                   (rangeTerms.any((bound) => ['<', '<='].contains(bound.$1))
                       ? 1
                       : 0);
-          final estimate = _statistics.estimate(table.name, entry.name,
-              columns: definition.$1.length,
-              equalities: prefix.length - (range ? 1 : 0),
-              rangeBounds: rangeBounds,
-              unique: definition.$5);
+          final estimate = probeValues != null
+              ? probeValues.length.toDouble()
+              : _statistics.estimate(table.name, entry.name,
+                  columns: definition.$1.length,
+                  equalities: prefix.length - (range ? 1 : 0),
+                  rangeBounds: rangeBounds,
+                  unique: definition.$5);
           final names = [
             for (final column in definition.$1) asciiLower(column)
           ];
           final covered = names.every((name) => name.isNotEmpty) &&
               _coveredByIndex(statement, table, names);
-          final orderPrefix = satisfies
+          final orderPrefix = probeValues != null || satisfies
               ? 0
               : _forwardIndexOrderPrefix(
                   statement, table, indexDefinition, equalityPrefix);
@@ -941,8 +1079,7 @@ final class SqliteDatabase {
     }
     if (!table.withoutRowid && plan.covering) {
       final stored = table.storageColumns;
-      await for (final entry in reader.seekIndex(plan.rootPage!, access.compare,
-          reverse: plan.scanReverse)) {
+      await for (final entry in _indexMatches(reader, plan, access)) {
         final rowid = entry.values.last;
         if (rowid is! BigInt) {
           throw const FormatException('Secondary index rowid missing');
@@ -960,8 +1097,7 @@ final class SqliteDatabase {
       return;
     }
     if (!table.withoutRowid) {
-      await for (final entry in reader.seekIndex(plan.rootPage!, access.compare,
-          reverse: plan.scanReverse)) {
+      await for (final entry in _indexMatches(reader, plan, access)) {
         final rowid = entry.values.last;
         if (rowid is! BigInt) {
           throw const FormatException('Secondary index rowid missing');
@@ -997,8 +1133,7 @@ final class SqliteDatabase {
       positions.add(position ?? suffix++);
     }
     final records = await reader.scanIndex(table.rootPage).toList();
-    await for (final indexed in reader.seekIndex(plan.rootPage!, access.compare,
-        reverse: plan.scanReverse)) {
+    await for (final indexed in _indexMatches(reader, plan, access)) {
       if (positions.any((position) => position >= indexed.values.length)) {
         throw const FormatException('Secondary index primary key missing');
       }
