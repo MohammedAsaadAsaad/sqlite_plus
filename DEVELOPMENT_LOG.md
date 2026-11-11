@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 31 primary-key MIN and MAX
+
+`MIN` and `MAX` of an integer primary key read one end of the table when
+there is no filter. `COUNT`, a `WHERE`, and a non-key column still read the
+qualifying rows. Empty results and the filtered minimum match pinned SQLite
+3.53.1. No AOT sample is recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 30 ordered DISTINCT and GROUP BY
 
 `DISTINCT` under an `ORDER BY` that covers the selected list compares each

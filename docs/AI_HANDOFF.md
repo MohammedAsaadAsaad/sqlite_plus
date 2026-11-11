@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 31, MIN/MAX/COUNT shortcuts.** Item 30 is
+**Active item: 32, streaming aggregation.** Item 31 is
+correctness-verified and not cost-accepted. `MIN` and `MAX` of an integer
+primary key, with no `WHERE`, read one end of the table. A filter, another
+column, and `COUNT` still read the qualifying rows. Empty `MIN`/`MAX` is
+NULL and empty `COUNT` is 0. Rows match pinned SQLite 3.53.1. `MAX(id)` on
+4000 rows reads fewer pages than `count(*)`. No AOT sample is recorded.
+
+Item 30 is
 correctness-verified and not cost-accepted. `DISTINCT` whose `ORDER BY`
 prefix is the selected list compares only the previous row. `GROUP BY`
 appends to the current group when the key matches, and sorts only when a

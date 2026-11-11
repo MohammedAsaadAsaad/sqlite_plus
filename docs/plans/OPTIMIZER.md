@@ -40,7 +40,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 28 | Correlated query transformations | Rejected; a correlated subquery stays per outer row and is not flattened into a join |
 | 29 | CTE/derived pushdown and materialization choices | Implemented/unaccepted; a repeated CTE runs once, NOT MATERIALIZED runs per use, derived LIMIT stays inside; no AOT sample |
 | 30 | Ordered DISTINCT/GROUP BY | Implemented/unaccepted; ordered DISTINCT compares the previous row, and GROUP BY sorts only when a group arrives out of order; no AOT sample |
-| 31 | MIN/MAX/COUNT shortcuts | Queued |
+| 31 | MIN/MAX/COUNT shortcuts | Implemented/unaccepted; MIN/MAX of an integer primary key read one end; COUNT and filtered MIN stay full reads; no AOT sample |
 | 32 | Streaming aggregation | Queued |
 | 33 | Safe constant-expression simplification | Queued |
 | 34 | Predicate simplification/contradictions | Queued |
@@ -411,3 +411,13 @@ key arrives before the previous one. NULL and duplicate rows match pinned
 SQLite 3.53.1. No fresh AOT sample is recorded.
 
 Next is item 31. No package publication.
+
+## Item 31 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. `MIN` and `MAX` of an integer primary key with no
+filter read one end of the primary tree. `WHERE`, a non-key column, and
+`COUNT` keep the full read. Empty `MIN`/`MAX` is NULL and empty `COUNT` is
+0. Rows match pinned SQLite 3.53.1. `MAX(id)` touches fewer pages than
+`count(*)` on 4000 rows. No fresh AOT sample is recorded.
+
+Next is item 32. No package publication.
