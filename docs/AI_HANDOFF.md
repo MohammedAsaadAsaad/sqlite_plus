@@ -13,7 +13,7 @@ PR #43 has been merged into `main` as
 `73617cdf23b3f0d76dbf985b7daaa0a1afe6473f`.
 
 **Active continuation:** `feature/optimizer-diagnostics-20261111`, item 3,
-**investigating / not accepted**. Start by inspecting this branch and its PR;
+**implemented / unaccepted; final OFF/ON cost gates pending**. Start by inspecting this branch and its PR;
 main contains the completed previous checkpoint. Avoid simultaneous edits by
 multiple AI clients; inspect the latest handoff/commit before resuming.
 
@@ -81,7 +81,7 @@ The authoritative 42-row state table is [plans/OPTIMIZER.md](plans/OPTIMIZER.md)
 | --- | --- |
 | 1, audit | Complete |
 | 2, source baseline | Complete, reverse reconstruction verified |
-| 3, richer opt-in runtime diagnostics/plan decisions | **Investigating; active branch above; not accepted** |
+| 3, richer opt-in runtime diagnostics/plan decisions | **Implemented/unaccepted; cost gates pending** |
 | 4, regression matrix | Initial matrix complete; must expand for later changes |
 | 5, bounded Top-K | Accepted **for tested scope and documented tradeoff** |
 | 6–41 | Queued; some underlying facilities existed earlier, extensions are not complete |
@@ -192,7 +192,7 @@ there is no dependency on the old `/workspace/toolchains` shell script.
 ```sh
 dart --version
 dart pub get --enforce-lockfile
-python3 tool/verify_optimizer_handoff.py
+python3 tool/verify_optimizer_handoff.py --allow-unaccepted-diagnostics
 bash tool/build_sqlite_reference.sh
 export SQLITE_PLUS_SQLITE3=/tmp/sqlite-build/sqlite3
 ```
@@ -233,10 +233,13 @@ broader platform/package matrix; inspect actual remote status before merge.
 
 ## 6. Rebuild measurements without preserved /tmp artifacts
 
-`python3 tool/verify_optimizer_handoff.py` checks the 42 IDs, measured runtime
+`python3 tool/verify_optimizer_handoff.py --allow-unaccepted-diagnostics` checks the 42 IDs, measured runtime
 hashes, all recorded result/IO/callback gates and reconstructs historical
 optimizer/prepared baselines in temporary copies. It requires Python/patch only.
-Run it BEFORE runtime changes; a future feature needs its own evidence.
+The flag explicitly checks the current unaccepted candidate's baseline chain;
+it does NOT accept item 3. Default verification refuses an unaccepted diagnostic
+checkpoint. Once accepted, default verification also checks the new runtime
+manifest. A later feature needs its own frozen baseline/evidence.
 
 For the optimizer, in a separate worktree/evidence copy (outputs overwrite files):
 
@@ -290,45 +293,74 @@ before an independent dependency-floor decision. Optional ORM cache defaults to
 the capture path, and Branch keeps its existing schema/ownership restrictions.
 Detailed release/device/ownership limits remain in each package README.
 
-## 8. Next concrete work
+## 8. Next concrete work — finish item 3 before item 6
 
-Resume **item 3**: design opt-in diagnostic instrumentation and plan-decision
-reporting. First audit existing QueryPlan/explain and Inspector capabilities;
-do not duplicate them or install unconditional per-row hooks. Define the schema
-for estimated vs actual work, unsupported/partial counters and lifetime/ownership.
-Freeze the new baseline and measure diagnostics disabled AND enabled overhead.
-Keep item 3 investigating/unaccepted until those gates pass. Then tackle item 6,
-index-order exploitation, with range/collation/direction/tie/offset tests and
-actual page-read comparisons. Do not jump to a global plan cache or claim JOIN/
-STAT4/DISTINCT facilities complete just because a bounded sort is faster.
+Runtime implementation and focused/full correctness tests are present, but
+performance/cost acceptance is still pending. Read
+[OPTIMIZER_DIAGNOSTICS.md](plans/OPTIMIZER_DIAGNOSTICS.md).
+
+1. Confirm current source matches the candidate reconstruction:
+   `python3 tool/verify_optimizer_handoff.py --allow-unaccepted-diagnostics`.
+2. Format/analyze packages/tool. Rerun the VM/JS query_profile.dart assertions
+   after brace-only example formatting; rerun relevant tests if source changes.
+3. Build AOT drivers: `python3 tool/optimizer_diagnostics_benchmark/build.py`.
+   This reverses the committed diagnostics patch in copied core/Inspector/ORM
+   libraries, verifies the frozen 056e9644 baseline, compiles before/after and
+   ordinary/ORM/write controls, and recreates input images. No original /tmp
+   directory is needed. Any runtime edit needs a refreshed patch/manifest AND
+   relevant fresh tests/measurements; do not just change historical hashes.
+4. STOP tests/compilers, then run
+   `python3 tool/optimizer_diagnostics_benchmark/run.py`.
+   It compares baseline OFF, new linked OFF and ON across changing bindings,
+   source sizes, index candidates and raw/mutable/Inspector reader adapters.
+5. Add/run the result/IO/counter equivalence summarizer and unused-feature
+   ordinary read/write/ORM controls (these are not yet completed in this partial
+   checkpoint). Measure enabled metadata bounds/process memory and disabled cost.
+   Keep all raw data. Investigate slow controls; no arbitrary percentage budget.
+6. Only after final-source correctness/performance/cost gates pass: mark item 3
+   accepted for its explicit scope; update docs/validation/compatibility/handoff;
+   commit and upload immediately to PR #44 with actual CI state. Then item 6.
 
 ## 9. Paste this to a new AI client
 
-> افتح المستودع MohammedAsaadAsaad/sqlite_plus والفرع
-> feature/optimizer-handoff-20261108، واقرأ AGENTS.md ثم docs/AI_HANDOFF.md
-> وdocs/plans/OPTIMIZER.md قبل التعديل. أكمل خطة الـOptimizer من البند 3؛
-> البند 5 معتمد فقط ضمن النطاق والتكاليف الموثقة، وبقية الخطة ليست مكتملة.
-> لا تعتمد أي تحسين قبل اختبارات صحة ومقارنة SQLite وقياسات AOT للأداء
-> والذاكرة والقراءات والكلفة على المسارات الحالية. احتفظ بالنتائج السلبية
-> والقياسات القديمة، وحدّثني بالتقدم باستمرار. نفّذ ما هو مصرح به دون
-> طلب تأكيدات روتينية، ولا تنشر الحزم أو تدمج main تلقائيًا.
+> Fetch the latest MohammedAsaadAsaad/sqlite_plus main and active branch named
+> at the top of this handoff. Read AGENTS.md, docs/AI_HANDOFF.md and the 42-item
+> ledger before edits. Use the newest checkpoint, not a chat assumption.
+> Complete the active item's remaining correctness/performance/cost gates;
+> item 3 is currently implemented but unaccepted. Preserve default behavior,
+> pure Dart, ORM ownership/Changes/Reactive and all negative evidence. Report
+> progress regularly. After EACH completed item update handoff/ledger/evidence,
+> commit/upload/open or update its PR immediately before moving on. If stopping
+> early, upload an honest partial checkpoint with exact next commands. Do not
+> automatically merge main or publish packages.
 
 ## Active partial checkpoint — item 3 (2026-11-11)
 
-- Confirmed PR #43 merged; new working base is main 056e9644.
-- User's immediate-upload-after-each-item rule is now persisted in AGENTS/handoff.
-- Audited existing QueryPlan, read-only pager page counts and Inspector adapters.
-  Current Inspector already measures wrapper latency/output counts and explicit
-  snapshot plans; richer actual-work and plan-decision data must reuse those.
-- No item-3 production code or performance acceptance yet. Proposed boundary:
-  explicit ordinary read diagnostics with bounded trace metadata, current
-  bindings, source/filter/output work, page counts and clear unsupported/null
-  metrics. No SQL/binding capture by default, global observer registry or
-  unconditional per-row instrumentation on normal queries.
-- Before runtime edits, freeze current source as the new baseline. Then finalize
-  contract, implement a safe explicit diagnostic path, test native/ORM/callback/
-  lifetime/fallback semantics and measure diagnostics OFF vs before plus ON cost.
-- Next commands: inspect database.dart::_plan/_prepareQuery/_evaluate and the
-  Inspector connection/model code; write docs/plans/OPTIMIZER_DIAGNOSTICS.md with
-  counter definitions and limits. Rebuild the pinned native CLI if /tmp was lost.
-- Initial handoff-only checkpoint is deliberately not completion of item 3.
+- Active PR: https://github.com/MohammedAsaadAsaad/sqlite_plus/pull/44 .
+  Initial policy-only checkpoint: aae714e7. Current branch head is authoritative.
+- Added explicit read-only/mutable diagnoseQuery APIs and Inspector profile
+  capability. Candidate metadata is bounded, names clipped, estimates nullable,
+  no SQL/bindings/results in metadata JSON, no retained executable plan closures.
+- Counters distinguish upstream rows loaded, predicate visits/matches, returned
+  rows and pager reads; sort strategy/retained rows are defined. Unmeasured
+  projection/comparison/index-key/allocation counters remain null. Planner
+  reasons describe existing rules/STAT1, not a complete cost model.
+- Mutable diagnosis routes the actual temp/main/attached schema, holds normal
+  connection exclusion through callbacks, rejects cross-schema/unsupported
+  sources and closes the private reader. Inspector delegates rather than
+  silently inspecting main. ORM explicit profile validates lease/closed state.
+- Normal query/evaluation has no unconditional per-row instrumentation; counted
+  iterables are selected only for explicit diagnosis. No global observer/cache.
+- Correctness: 10,718 core passed / optional skip 1; 578 add-ons passed before
+  the final Inspector-only lease/async-error refinement; final complete Inspector
+  suite 55 passed afterward; Search 86. New focused checks include 144 pinned
+  native comparisons, changing bindings, NULL/collation/limits, traces/callbacks,
+  privacy/BLOB copy, Unicode clipping, temp/attached routing, overlap/reentrancy,
+  ORM ownership/Changes capture. See validation.json in the new evidence folder.
+- VM and JS example assertions passed; example brace-only formatting changed
+  afterward, so rerun for final acceptance. Native CLI was rebuilt successfully.
+- AOT cost measurements have NOT been accepted or claimed. Candidate baseline
+  patch and source manifest are committed; reconstruction verifies the chain
+  diagnostics -> Top-K -> prepared without old temporary files.
+- The benchmark build/run scaffold is present; summarizer and unused-feature
+  control run still need completion. Exact continuation commands are in section 8.

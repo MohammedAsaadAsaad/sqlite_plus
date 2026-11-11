@@ -1,0 +1,693 @@
+--- a/packages/sqlite_plus/lib/src/sql/database.dart
++++ b/packages/sqlite_plus/lib/src/sql/database.dart
+@@ -26,6 +26,7 @@
+ part 'dml_subqueries.dart';
+ part 'lazy_views.dart';
+ part 'query_execution.dart';
++part 'query_diagnostics.dart';
+ part 'pragma_tables.dart';
+ 
+ /// Header write version 1 is rollback. Version 2 is wal. Other values throw.
+@@ -440,8 +441,13 @@
+   }
+ 
+   QueryPlan _plan(
+-      SelectStatement statement, CatalogTable? table, List<Object?> bound) {
+-    if (table == null) return const QueryPlan('constant', null, null);
++      SelectStatement statement, CatalogTable? table, List<Object?> bound,
++      [_SqlDiagnosticTrace? diagnostics]) {
++    if (table == null) {
++      diagnostics?.record('constant', 'constant-source',
++          estimate: 1, chosen: true);
++      return const QueryPlan('constant', null, null);
++    }
+     if (table.virtual) return const QueryPlan('virtual-table-scan', null, null);
+     final source = statement.sources.firstOrNull;
+     final forced = source == null ? null : _hintIndex(source, statement.where);
+@@ -492,7 +498,11 @@
+       }
+ 
+       final key = lookup(statement.where);
+-      if (key != null) return QueryPlan('rowid-lookup', table.rootPage, key);
++      if (key != null) {
++        diagnostics?.record('rowid-lookup', 'rowid-equality-priority',
++            estimate: 1, chosen: true);
++        return QueryPlan('rowid-lookup', table.rootPage, key);
++      }
+     }
+     if (!table.withoutRowid) {
+       final constraints = <BinaryExpr>[];
+@@ -583,6 +593,8 @@
+           ...bounds(ColumnExpr(name), 'numeric', 'binary')
+       ];
+       if (rowBounds.isNotEmpty && forced == null) {
++        diagnostics?.record('rowid-range', 'rowid-range-priority',
++            chosen: true);
+         return QueryPlan._indexed(
+             table.rootPage,
+             _IndexAccess('@rowid',
+@@ -591,6 +603,8 @@
+             'rowid-range');
+       }
+       if (notIndexed) {
++        diagnostics?.record('table-scan', 'NOT-INDEXED',
++            estimate: _statistics.rowCount(table.name), chosen: true);
+         return QueryPlan('table-scan', table.rootPage, null);
+       }
+       QueryPlan? best;
+@@ -605,6 +619,9 @@
+               ? null
+               : IndexDefinition.parse(entry.sql!, table);
+           if (!impliesIndexPredicate(statement.where, parsed?.predicate)) {
++            diagnostics?.record(
++                'secondary-index', 'partial-predicate-not-proved',
++                index: entry.name, eligible: false);
+             continue;
+           }
+           final definition = _indexDefinition(entry);
+@@ -622,7 +639,12 @@
+               break;
+             }
+           }
+-          if (prefix.isEmpty) continue;
++          if (prefix.isEmpty) {
++            diagnostics?.record(
++                'secondary-index', 'no-compatible-leading-prefix',
++                index: entry.name, eligible: false);
++            continue;
++          }
+           final access = _IndexAccess(entry.name, (values) {
+             if (values.length <= prefix.length) {
+               throw const FormatException('Short secondary index key');
+@@ -649,6 +671,12 @@
+               equalities: prefix.length - (range ? 1 : 0),
+               rangeBounds: rangeBounds,
+               unique: definition.$5);
++          final ordinal = diagnostics?.record(
++              range ? 'secondary-index-range' : 'secondary-index-lookup',
++              estimate == null ? 'prefix-heuristic' : 'STAT1-assisted-estimate',
++              index: entry.name,
++              estimate: estimate,
++              score: score);
+           if (best == null ||
+               estimate != null &&
+                   bestEstimate != null &&
+@@ -657,6 +685,7 @@
+                       estimate == null ||
+                       bestEstimate == null) &&
+                   score > bestScore) {
++            diagnostics?.select(ordinal!, estimate);
+             bestScore = score;
+             bestEstimate = estimate;
+             final names = [
+@@ -669,15 +698,22 @@
+                 covering: covered, coveredColumns: covered ? names : const []);
+           }
+         } on Exception {
++          diagnostics?.record('secondary-index', 'index-analysis-unavailable',
++              index: entry.name, eligible: false);
+           continue;
+         }
+       }
+       if (best != null) return best;
+     }
+     if (forced != null) {
++      diagnostics?.record('secondary-index-scan', 'INDEXED-BY-scan',
++          index: forced.name, chosen: true);
+       return QueryPlan._indexed(forced.rootPage,
+           _IndexAccess(forced.name, (_) => 0), 'secondary-index-scan');
+     }
++    diagnostics?.record(table.withoutRowid ? 'index-tree-scan' : 'table-scan',
++        'no-eligible-narrowing-access',
++        estimate: _statistics.rowCount(table.name), chosen: true);
+     return QueryPlan(table.withoutRowid ? 'index-tree-scan' : 'table-scan',
+         table.rootPage, null);
+   }
+@@ -1563,7 +1599,9 @@
+           });
+ 
+   Future<_QueryExecution> _prepareQuery(String sql, List<Object?> parameters,
+-      [EvalContext? outer, SelectStatement? preparedSyntax]) async {
++      [EvalContext? outer,
++      SelectStatement? preparedSyntax,
++      _SqlDiagnosticTrace? diagnostics]) async {
+     if (_closed) throw StateError('Database is closed');
+     final statement = preparedSyntax ?? SqlParser(sql).select();
+     if (parameters.length != statement.parameterCount) {
+@@ -1619,8 +1657,17 @@
+     final input = <RowValues>[];
+     if (table == null) {
+       input.add({});
++      if (diagnostics != null) {
++        diagnostics.record('constant', 'constant-source',
++            estimate: 1, chosen: true);
++        diagnostics.plan =
++            SqlDiagnosticPlan._(const QueryPlan('constant', null, null));
++      }
+     } else {
+-      final plan = _plan(statement, table, bound);
++      diagnostics?.planningClock.start();
++      final plan = _plan(statement, table, bound, diagnostics);
++      diagnostics?.planningClock.stop();
++      if (diagnostics != null) diagnostics.plan = SqlDiagnosticPlan._(plan);
+       final stream = _planRecords(table, plan,
+           where: statement.where,
+           parameters: bound,
+@@ -1662,11 +1709,12 @@
+         input.add(row);
+       }
+     }
++    diagnostics?.loaded = input.length;
+     final scanOrder =
+         table == null ? null : _physicalScanOrder(statement, table);
+     if (scanOrder != null) _sortPhysicalRows(input, scanOrder);
+     return _evaluate(statement, bound, table, input,
+-        inputOrdered: scanOrder != null);
++        inputOrdered: scanOrder != null, diagnostics: diagnostics);
+   }
+ 
+   /// A primary B-tree can supply these orders before projection callbacks.
+@@ -1789,7 +1837,8 @@
+       bool inTrigger = false,
+       bool inputOrdered = false,
+       bool deferredProjection = false,
+-      bool omitProjection = false}) {
++      bool omitProjection = false,
++      _SqlDiagnosticTrace? diagnostics}) {
+     final order =
+         inputOrdered || omitProjection ? const <OrderTerm>[] : statement.order;
+     final distinct = !omitProjection && statement.distinct;
+@@ -1956,8 +2005,19 @@
+               .any((term) => term.expression.containsWindow);
+       final limit = count(statement.limit);
+       final offset = count(statement.offset) ?? 0;
++      if (diagnostics != null) {
++        diagnostics.hasOrder = order.isNotEmpty;
++        diagnostics.inputOrdered = inputOrdered && statement.order.isNotEmpty;
++        diagnostics.distinct = distinct;
++        diagnostics.bounded = statement.limit != null &&
++            !distinct &&
++            !statement.subqueryFirstRowOnly;
++        diagnostics.limit = limit;
++        diagnostics.offset = offset;
++      }
+       if (limit == 0) return;
+-      final selected = input.where((row) {
++      final source = diagnostics == null ? input : diagnostics.source(input);
++      final selected = source.where((row) {
+         final ctx =
+             EvalContext(row, affinities, bound, _pager.header.textEncoding)
+               ..inTrigger = inTrigger
+@@ -1968,7 +2028,9 @@
+             truth(statement.where!.evaluate(ctx), _pager.header.textEncoding) ==
+                 true;
+       });
+-      final filtered = windowed && !aggregate ? selected.toList() : selected;
++      final matching =
++          diagnostics == null ? selected : diagnostics.matches(selected);
++      final filtered = windowed && !aggregate ? matching.toList() : matching;
+       final groups = <(List<Object?>, Iterable<RowValues>)>[];
+       if (aggregate && groupBy.isEmpty) {
+         groups.add(([], filtered));
+--- a/packages/sqlite_plus/lib/src/sql/mutable_database.dart
++++ b/packages/sqlite_plus/lib/src/sql/mutable_database.dart
+@@ -22,6 +22,7 @@
+ import 'virtual_table.dart';
+ 
+ part 'prepared_statement.dart';
++part 'query_diagnostics_mutable.dart';
+ 
+ final _crossQueryKey = Object();
+ 
+--- /dev/null
++++ b/packages/sqlite_plus/lib/src/sql/query_diagnostics.dart
+@@ -0,0 +1,287 @@
++part of 'database.dart';
++
++/// Bounds retained diagnostic metadata, not SQL input/result allocations.
++final class SqlDiagnosticOptions {
++  const SqlDiagnosticOptions({this.maxCandidates = 64});
++  final int maxCandidates;
++}
++
++String _diagnosticName(String value) =>
++    String.fromCharCodes(value.runes.take(128));
++
++/// One actually enumerated planner alternative. Missing estimates stay null.
++final class SqlPlanDecision {
++  SqlPlanDecision._(this.ordinal, String? indexName, this.access, this.eligible,
++      this.reason, this.estimatedRows, this.prefixScore)
++      : indexName = indexName == null ? null : _diagnosticName(indexName);
++  final int ordinal;
++  final String? indexName;
++  final String access, reason;
++  final bool eligible;
++  final double? estimatedRows;
++  final int? prefixScore;
++  Map<String, Object?> toJson() => {
++        'ordinal': ordinal,
++        'indexName': indexName,
++        'access': access,
++        'eligible': eligible,
++        'reason': reason,
++        'estimatedRows': estimatedRows,
++        'prefixScore': prefixScore,
++      };
++}
++
++/// Immutable plan metadata, deliberately without executable closures/bindings.
++final class SqlDiagnosticPlan {
++  SqlDiagnosticPlan._(QueryPlan plan)
++      : access = plan.access,
++        indexName =
++            plan.indexName == null ? null : _diagnosticName(plan.indexName!),
++        rootPage = plan.rootPage,
++        covering = plan.covering;
++  final String access;
++  final String? indexName;
++  final int? rootPage;
++  final bool covering;
++  Map<String, Object?> toJson() => {
++        'access': access,
++        'indexName': indexName,
++        'rootPage': rootPage,
++        'covering': covering,
++      };
++}
++
++/// Explicit query result and bounded measurements. JSON excludes result data,
++/// SQL text, bindings and point-lookup values. Loan the reader exclusively while
++/// measuring: page reads are a connection-wide pager delta. Source preparation
++/// includes planning, reads and evaluator metadata; planningTime is its measured
++/// planner-only subset. parseAndSupportValidationTime is not full SQL validation.
++final class SqlQueryDiagnostics {
++  SqlQueryDiagnostics._(
++      this.result,
++      _SqlDiagnosticTrace trace,
++      this.parseAndSupportValidationTime,
++      this.sourcePreparationTime,
++      this.evaluationTime,
++      this.totalTime,
++      this.pageReads)
++      : plan = trace.plan!,
++        decisions = List.unmodifiable(trace.decisions),
++        enumeratedCandidates = trace.enumerated,
++        selectedOrdinal = trace.selected,
++        estimatedRows = trace.selectedEstimate,
++        planningTime = trace.planningClock.elapsed,
++        rowsLoaded = trace.loaded,
++        rowsVisited = trace.visited,
++        rowsMatched = trace.matched,
++        sortStrategy = trace.sortStrategy,
++        peakSortRows = trace.peakSortRows;
++  final QueryResult result;
++  final SqlDiagnosticPlan plan;
++  final List<SqlPlanDecision> decisions;
++  final int enumeratedCandidates;
++  final int? selectedOrdinal;
++  final double? estimatedRows;
++  final Duration parseAndSupportValidationTime,
++      planningTime,
++      sourcePreparationTime,
++      evaluationTime,
++      totalTime;
++  final int pageReads, rowsLoaded, rowsVisited, rowsMatched;
++  final String sortStrategy;
++  final int? peakSortRows;
++  bool get decisionsTruncated => enumeratedCandidates > decisions.length;
++  bool get selectedDecisionCaptured =>
++      decisions.any((d) => d.ordinal == selectedOrdinal);
++  Map<String, Object?> toJson() => {
++        'version': 1,
++        'plan': plan.toJson(),
++        'decisions': decisions.map((d) => d.toJson()).toList(),
++        'enumeratedCandidates': enumeratedCandidates,
++        'decisionsTruncated': decisionsTruncated,
++        'selectedOrdinal': selectedOrdinal,
++        'selectedDecisionCaptured': selectedDecisionCaptured,
++        'estimatedRows': estimatedRows,
++        'parseAndSupportValidationUs':
++            parseAndSupportValidationTime.inMicroseconds,
++        'planningUs': planningTime.inMicroseconds,
++        'sourcePreparationUs': sourcePreparationTime.inMicroseconds,
++        'evaluationUs': evaluationTime.inMicroseconds,
++        'totalUs': totalTime.inMicroseconds,
++        'pageReads': pageReads,
++        'rowsLoaded': rowsLoaded,
++        'rowsVisited': rowsVisited,
++        'rowsMatched': rowsMatched,
++        'rowsReturned': result.rows.length,
++        'sortStrategy': sortStrategy,
++        'peakSortRows': peakSortRows,
++        'requiresExclusiveReader': true,
++        'indexKeysExamined': null,
++        'sortComparisons': null,
++        'projectionCalls': null,
++        'allocatedBytes': null,
++        'scope': 'ordinary-single-source',
++        'estimationModel': 'existing-rules-and-optional-STAT1',
++      };
++}
++
++final class _SqlDiagnosticTrace {
++  _SqlDiagnosticTrace(this.capacity);
++  final int capacity;
++  final decisions = <SqlPlanDecision>[];
++  final planningClock = Stopwatch();
++  int enumerated = 0, loaded = 0, visited = 0, matched = 0;
++  int? selected;
++  double? selectedEstimate;
++  SqlDiagnosticPlan? plan;
++  bool hasOrder = false,
++      inputOrdered = false,
++      distinct = false,
++      bounded = false;
++  int? limit;
++  int offset = 0;
++  int record(String access, String reason,
++      {String? index,
++      bool eligible = true,
++      double? estimate,
++      int? score,
++      bool chosen = false}) {
++    final ordinal = enumerated++;
++    if (decisions.length < capacity) {
++      decisions.add(SqlPlanDecision._(
++          ordinal, index, access, eligible, reason, estimate, score));
++    }
++    if (chosen) select(ordinal, estimate);
++    return ordinal;
++  }
++
++  void select(int ordinal, double? estimate) {
++    selected = ordinal;
++    selectedEstimate = estimate;
++  }
++
++  Iterable<RowValues> source(Iterable<RowValues> input) sync* {
++    for (final row in input) {
++      visited++;
++      yield row;
++    }
++  }
++
++  Iterable<RowValues> matches(Iterable<RowValues> input) sync* {
++    for (final row in input) {
++      matched++;
++      yield row;
++    }
++  }
++
++  String get sortStrategy {
++    if (!hasOrder) return inputOrdered ? 'input-order' : 'none';
++    if (limit == 0) return 'none';
++    if (distinct) return 'full-sort-distinct';
++    final k = limit;
++    if (!bounded || k == null || k < 0) return 'full-sort';
++    final capacity = k + (offset > 0 ? offset : 0);
++    if (matched <= capacity) return 'retained-sort';
++    return capacity >= 32 ? 'bounded-heap' : 'bounded-linear';
++  }
++
++  int? get peakSortRows {
++    if (distinct) return null;
++    if (!hasOrder || limit == 0) return 0;
++    final k = limit;
++    if (!bounded || k == null || k < 0) return matched;
++    final capacity = k + (offset > 0 ? offset : 0);
++    return matched < capacity ? matched : capacity;
++  }
++}
++
++bool _unsupportedDiagnosticExpression(Expr expression) {
++  if (expression is SubqueryExpr ||
++      expression is InSelectExpr ||
++      expression.containsAggregate ||
++      expression.containsWindow) {
++    return true;
++  }
++  // Empty IN has no children for evaluation purposes; still inspect its operand
++  // when deciding the supported diagnostic boundary.
++  if (expression is InExpr) {
++    return _unsupportedDiagnosticExpression(expression.operand) ||
++        expression.values.any(_unsupportedDiagnosticExpression);
++  }
++  return expression.children.any(_unsupportedDiagnosticExpression);
++}
++
++extension SqlReadDiagnostics on SqliteDatabase {
++  /// Executes once with explicit bounded diagnostics. Unsupported shapes reject
++  /// before SQL callbacks. Normal query/prepare paths retain their SQL coverage.
++  Future<SqlQueryDiagnostics> diagnoseQuery(String sql,
++      {List<Object?> parameters = const [],
++      SqlDiagnosticOptions options = const SqlDiagnosticOptions()}) {
++    try {
++      if (options.maxCandidates < 0 || options.maxCandidates > 256) {
++        throw ArgumentError('maxCandidates must be 0..256');
++      }
++      if (sql.length > 65536) {
++        throw UnsupportedError('Diagnostic SQL exceeds 65536 code units');
++      }
++      final bound = List<Object?>.unmodifiable(parameters.map(sqlValue));
++      return functions.run(() async {
++        if (_closed) throw StateError('Database is closed');
++        final total = Stopwatch()..start();
++        final parse = Stopwatch()..start();
++        final parser = SqlParser(sql);
++        if (parser.current.keyword != 'SELECT') {
++          throw UnsupportedError('Diagnosis supports ordinary SELECT only');
++        }
++        final statement = parser.select();
++        if (bound.length != statement.parameterCount) {
++          throw const SqlException('Incorrect parameter count');
++        }
++        final expressions = [
++          ...statement.items.map((i) => i.expression).whereType<Expr>(),
++          ...statement.order.map((o) => o.expression),
++          if (statement.where != null) statement.where!,
++          if (statement.limit != null) statement.limit!,
++          if (statement.offset != null) statement.offset!,
++        ];
++        if (_needsRelational(statement) ||
++            statement.valuesQuery ||
++            statement.groupBy.isNotEmpty ||
++            statement.having != null ||
++            statement.windowDefinitions.isNotEmpty ||
++            expressions.any(_unsupportedDiagnosticExpression)) {
++          throw UnsupportedError('Diagnosis requires a simple scalar SELECT');
++        }
++        final table =
++            statement.table == null ? null : catalog.table(statement.table!);
++        if (table != null &&
++            (table.virtual ||
++                table.columns.any((c) => c.generatedExpression != null))) {
++          throw UnsupportedError(
++              'Diagnosis requires an ordinary non-generated source');
++        }
++        parse.stop();
++        final trace = _SqlDiagnosticTrace(options.maxCandidates);
++        final pagesBefore = pagesRead;
++        final preparation = Stopwatch()..start();
++        final execution =
++            await _prepareQuery(sql, bound, null, statement, trace);
++        preparation.stop();
++        final evaluation = Stopwatch()..start();
++        final result = execution.materialize();
++        evaluation.stop();
++        total.stop();
++        return SqlQueryDiagnostics._(
++            result,
++            trace,
++            parse.elapsed,
++            preparation.elapsed,
++            evaluation.elapsed,
++            total.elapsed,
++            pagesRead - pagesBefore);
++      });
++    } catch (error, stack) {
++      return Future.error(error, stack);
++    }
++  }
++}
+--- /dev/null
++++ b/packages/sqlite_plus/lib/src/sql/query_diagnostics_mutable.dart
+@@ -0,0 +1,39 @@
++part of 'mutable_database.dart';
++
++extension SqlMutableReadDiagnostics on MutableSqliteDatabase {
++  /// Explicit diagnosis on a private image of the single routed schema.
++  /// Holds the normal connection exclusion while SQL callbacks execute, so
++  /// temp shadowing/schema routing and reentrant-write rejection are preserved.
++  /// Routing/image preparation/opening are outside the inner reader timings.
++  Future<SqlQueryDiagnostics> diagnoseQuery(String sql,
++      {List<Object?> parameters = const [],
++      SqlDiagnosticOptions options = const SqlDiagnosticOptions()}) {
++    try {
++      if (options.maxCandidates < 0 || options.maxCandidates > 256) {
++        throw ArgumentError('maxCandidates must be 0..256');
++      }
++      if (sql.length > 65536) {
++        throw UnsupportedError('Diagnostic SQL exceeds 65536 code units');
++      }
++      final bound = List<Object?>.unmodifiable(parameters.map(sqlValue));
++      return _exclusive(() async {
++        final route = routeQuery(sql, await _schemaCatalog());
++        if (route.cross || route.schema == null) {
++          throw UnsupportedError('Diagnosis requires one routed schema');
++        }
++        if (route.schema == 'main') _materializeMain();
++        final reader = await SqliteDatabase.openReadOnly(
++            ByteImageStorage(_imageFor(route.schema!)),
++            functions: functions);
++        try {
++          return await reader.diagnoseQuery(route.sql,
++              parameters: bound, options: options);
++        } finally {
++          await reader.close();
++        }
++      });
++    } catch (error, stack) {
++      return Future.error(error, stack);
++    }
++  }
++}
+--- a/packages/sqlite_plus_inspector/lib/sqlite_plus_inspector_orm.dart
++++ b/packages/sqlite_plus_inspector/lib/sqlite_plus_inspector_orm.dart
+@@ -78,6 +78,29 @@
+         }
+         return inspectDatabasePlan(database, sql, parameters);
+       });
++
++  /// Explicit routed snapshot diagnosis while the owning context is idle. This is not
++  /// automatic ORM instrumentation and never replaces the adapter query path.
++  Future<SqlQueryDiagnostics> profile(String sql,
++          {List<Object?> parameters = const [],
++          SqlDiagnosticOptions options = const SqlDiagnosticOptions()}) async =>
++      await delegate.exclusive(() {
++        final database = delegate.engineDatabase;
++        if (database == null) {
++          throw UnsupportedError(
++              'No engine diagnostic capability on this ORM connection');
++        }
++        // Borrowed engine access must not bypass the adapter lease/closed check.
++        delegate.inTransaction;
++        return inspector.measure(
++            sql,
++            parameters,
++            InspectorOperation.query,
++            () => inspectDatabaseQuery(database, sql,
++                parameters: parameters, options: options),
++            connection: identity,
++            rows: (r) => r.result.rows.length);
++      });
+   @override
+   Future<void> close() => delegate.close();
+ }
+--- a/packages/sqlite_plus_inspector/lib/src/connections.dart
++++ b/packages/sqlite_plus_inspector/lib/src/connections.dart
+@@ -6,6 +6,8 @@
+     String, List<Object?>);
+ typedef InspectorPlanRunner = Future<InspectorPlan> Function(
+     String, List<Object?>);
++typedef InspectorDiagnosticRunner = Future<SqlQueryDiagnostics> Function(
++    String, List<Object?>, SqlDiagnosticOptions);
+ 
+ void _selectOnly(String sql) {
+   final head = SqlTokenizer.tokenize(sql).firstOrNull?.keyword;
+@@ -19,6 +21,24 @@
+     MutableSqliteDatabase database, String sql,
+     [List<Object?> parameters = const []]) async {
+   _selectOnly(sql);
++  return _inspectSnapshot(
++      database, (reader) => InspectorPlan._(reader.explain(sql, parameters)));
++}
++
++/// Explicit private-image diagnosis of one routed schema. Routing/image/open
++/// preparation are outside the core report timing, but inside profile()'s
++/// inspector record. The source connection stays exclusively loaned during SQL
++/// callbacks; ordinary query() is never replaced by this diagnostic operation.
++Future<SqlQueryDiagnostics> inspectDatabaseQuery(
++    MutableSqliteDatabase database, String sql,
++    {List<Object?> parameters = const [],
++    SqlDiagnosticOptions options = const SqlDiagnosticOptions()}) async {
++  _selectOnly(sql);
++  return database.diagnoseQuery(sql, parameters: parameters, options: options);
++}
++
++Future<T> _inspectSnapshot<T>(MutableSqliteDatabase database,
++    FutureOr<T> Function(SqliteDatabase) read) async {
+   final image = database.exportImage();
+   final storage = MemoryStorageBackend();
+   await storage.write(0, image);
+@@ -27,7 +47,7 @@
+     reader = await SqliteDatabase.openReadOnly(storage,
+         functions: database.functions);
+     reader.doubleQuotedStrings = database.doubleQuotedStrings;
+-    return InspectorPlan._(reader.explain(sql, parameters));
++    return await read(reader);
+   } finally {
+     if (reader != null) {
+       await reader.close();
+@@ -46,12 +66,14 @@
+       Future<void> Function()? close,
+       bool Function()? inTransaction,
+       InspectorPlanRunner? plan,
++      InspectorDiagnosticRunner? diagnostic,
+       String label = 'database'})
+       : _query = query,
+         _execute = execute,
+         _close = close,
+         _inTransaction = inTransaction,
+         _plan = plan,
++        _diagnostic = diagnostic,
+         identity = inspector.connection(label);
+   factory InspectedConnection.mutable(
+           MutableSqliteDatabase database, SqlInspector inspector,
+@@ -63,6 +85,9 @@
+           close: database.close,
+           inTransaction: () => database.inTransaction,
+           plan: (sql, args) => inspectDatabasePlan(database, sql, args),
++          diagnostic: (sql, args, options) => inspectDatabaseQuery(
++              database, sql,
++              parameters: args, options: options),
+           label: label);
+   factory InspectedConnection.readOnly(
+           SqliteDatabase database, SqlInspector inspector,
+@@ -75,6 +100,8 @@
+             _selectOnly(sql);
+             return InspectorPlan._(database.explain(sql, args));
+           },
++          diagnostic: (sql, args, options) =>
++              database.diagnoseQuery(sql, parameters: args, options: options),
+           label: label);
+   final SqlInspector inspector;
+   final InspectorConnection identity;
+@@ -83,6 +110,7 @@
+   final Future<void> Function()? _close;
+   final bool Function()? _inTransaction;
+   final InspectorPlanRunner? _plan;
++  final InspectorDiagnosticRunner? _diagnostic;
+   bool get inTransaction => _inTransaction?.call() ?? false;
+   Future<QueryResult> query(String sql,
+           [List<Object?> parameters = const []]) =>
+@@ -110,6 +138,20 @@
+           UnsupportedError('No plan capability on this adapter'));
+     }
+     return plan(sql, parameters);
++  }
++
++  /// Explicit diagnostic capability; normal query() never enables it.
++  Future<SqlQueryDiagnostics> profile(String sql,
++      {List<Object?> parameters = const [],
++      SqlDiagnosticOptions options = const SqlDiagnosticOptions()}) {
++    final diagnostic = _diagnostic;
++    if (diagnostic == null) {
++      return Future.error(
++          UnsupportedError('No diagnostic capability on this adapter'));
++    }
++    return inspector.measure(sql, parameters, InspectorOperation.query,
++        () => diagnostic(sql, parameters, options),
++        connection: identity, rows: (r) => r.result.rows.length);
+   }
+ 
+   Future<SqlPage<Map<String, Object?>>> page(

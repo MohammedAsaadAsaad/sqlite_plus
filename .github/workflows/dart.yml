@@ -297,6 +297,7 @@ jobs:
           dart run example/main.dart
           dart run example/orm.dart
           dart run example/diagnostics.dart
+          dart run example/query_profile.dart
       - name: Compile and run JavaScript assertions
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -306,6 +307,8 @@ jobs:
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/inspector_orm.js
           dart compile js example/diagnostics.dart -o /tmp/inspector_diagnostics.js
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/inspector_diagnostics.js
+          dart compile js example/query_profile.dart -o /tmp/inspector_query_profile.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/inspector_query_profile.js
 
   direct_writes:
     name: ORM direct updates and upserts

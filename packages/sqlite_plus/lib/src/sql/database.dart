@@ -26,6 +26,7 @@ part 'join_groups.dart';
 part 'dml_subqueries.dart';
 part 'lazy_views.dart';
 part 'query_execution.dart';
+part 'query_diagnostics.dart';
 part 'pragma_tables.dart';
 
 /// Header write version 1 is rollback. Version 2 is wal. Other values throw.
@@ -440,8 +441,13 @@ final class SqliteDatabase {
   }
 
   QueryPlan _plan(
-      SelectStatement statement, CatalogTable? table, List<Object?> bound) {
-    if (table == null) return const QueryPlan('constant', null, null);
+      SelectStatement statement, CatalogTable? table, List<Object?> bound,
+      [_SqlDiagnosticTrace? diagnostics]) {
+    if (table == null) {
+      diagnostics?.record('constant', 'constant-source',
+          estimate: 1, chosen: true);
+      return const QueryPlan('constant', null, null);
+    }
     if (table.virtual) return const QueryPlan('virtual-table-scan', null, null);
     final source = statement.sources.firstOrNull;
     final forced = source == null ? null : _hintIndex(source, statement.where);
@@ -492,7 +498,11 @@ final class SqliteDatabase {
       }
 
       final key = lookup(statement.where);
-      if (key != null) return QueryPlan('rowid-lookup', table.rootPage, key);
+      if (key != null) {
+        diagnostics?.record('rowid-lookup', 'rowid-equality-priority',
+            estimate: 1, chosen: true);
+        return QueryPlan('rowid-lookup', table.rootPage, key);
+      }
     }
     if (!table.withoutRowid) {
       final constraints = <BinaryExpr>[];
@@ -583,6 +593,8 @@ final class SqliteDatabase {
           ...bounds(ColumnExpr(name), 'numeric', 'binary')
       ];
       if (rowBounds.isNotEmpty && forced == null) {
+        diagnostics?.record('rowid-range', 'rowid-range-priority',
+            chosen: true);
         return QueryPlan._indexed(
             table.rootPage,
             _IndexAccess('@rowid',
@@ -591,6 +603,8 @@ final class SqliteDatabase {
             'rowid-range');
       }
       if (notIndexed) {
+        diagnostics?.record('table-scan', 'NOT-INDEXED',
+            estimate: _statistics.rowCount(table.name), chosen: true);
         return QueryPlan('table-scan', table.rootPage, null);
       }
       QueryPlan? best;
@@ -605,6 +619,9 @@ final class SqliteDatabase {
               ? null
               : IndexDefinition.parse(entry.sql!, table);
           if (!impliesIndexPredicate(statement.where, parsed?.predicate)) {
+            diagnostics?.record(
+                'secondary-index', 'partial-predicate-not-proved',
+                index: entry.name, eligible: false);
             continue;
           }
           final definition = _indexDefinition(entry);
@@ -622,7 +639,12 @@ final class SqliteDatabase {
               break;
             }
           }
-          if (prefix.isEmpty) continue;
+          if (prefix.isEmpty) {
+            diagnostics?.record(
+                'secondary-index', 'no-compatible-leading-prefix',
+                index: entry.name, eligible: false);
+            continue;
+          }
           final access = _IndexAccess(entry.name, (values) {
             if (values.length <= prefix.length) {
               throw const FormatException('Short secondary index key');
@@ -649,6 +671,12 @@ final class SqliteDatabase {
               equalities: prefix.length - (range ? 1 : 0),
               rangeBounds: rangeBounds,
               unique: definition.$5);
+          final ordinal = diagnostics?.record(
+              range ? 'secondary-index-range' : 'secondary-index-lookup',
+              estimate == null ? 'prefix-heuristic' : 'STAT1-assisted-estimate',
+              index: entry.name,
+              estimate: estimate,
+              score: score);
           if (best == null ||
               estimate != null &&
                   bestEstimate != null &&
@@ -657,6 +685,7 @@ final class SqliteDatabase {
                       estimate == null ||
                       bestEstimate == null) &&
                   score > bestScore) {
+            diagnostics?.select(ordinal!, estimate);
             bestScore = score;
             bestEstimate = estimate;
             final names = [
@@ -669,15 +698,22 @@ final class SqliteDatabase {
                 covering: covered, coveredColumns: covered ? names : const []);
           }
         } on Exception {
+          diagnostics?.record('secondary-index', 'index-analysis-unavailable',
+              index: entry.name, eligible: false);
           continue;
         }
       }
       if (best != null) return best;
     }
     if (forced != null) {
+      diagnostics?.record('secondary-index-scan', 'INDEXED-BY-scan',
+          index: forced.name, chosen: true);
       return QueryPlan._indexed(forced.rootPage,
           _IndexAccess(forced.name, (_) => 0), 'secondary-index-scan');
     }
+    diagnostics?.record(table.withoutRowid ? 'index-tree-scan' : 'table-scan',
+        'no-eligible-narrowing-access',
+        estimate: _statistics.rowCount(table.name), chosen: true);
     return QueryPlan(table.withoutRowid ? 'index-tree-scan' : 'table-scan',
         table.rootPage, null);
   }
@@ -1563,7 +1599,9 @@ final class SqliteDatabase {
           });
 
   Future<_QueryExecution> _prepareQuery(String sql, List<Object?> parameters,
-      [EvalContext? outer, SelectStatement? preparedSyntax]) async {
+      [EvalContext? outer,
+      SelectStatement? preparedSyntax,
+      _SqlDiagnosticTrace? diagnostics]) async {
     if (_closed) throw StateError('Database is closed');
     final statement = preparedSyntax ?? SqlParser(sql).select();
     if (parameters.length != statement.parameterCount) {
@@ -1619,8 +1657,17 @@ final class SqliteDatabase {
     final input = <RowValues>[];
     if (table == null) {
       input.add({});
+      if (diagnostics != null) {
+        diagnostics.record('constant', 'constant-source',
+            estimate: 1, chosen: true);
+        diagnostics.plan =
+            SqlDiagnosticPlan._(const QueryPlan('constant', null, null));
+      }
     } else {
-      final plan = _plan(statement, table, bound);
+      diagnostics?.planningClock.start();
+      final plan = _plan(statement, table, bound, diagnostics);
+      diagnostics?.planningClock.stop();
+      if (diagnostics != null) diagnostics.plan = SqlDiagnosticPlan._(plan);
       final stream = _planRecords(table, plan,
           where: statement.where,
           parameters: bound,
@@ -1662,11 +1709,12 @@ final class SqliteDatabase {
         input.add(row);
       }
     }
+    diagnostics?.loaded = input.length;
     final scanOrder =
         table == null ? null : _physicalScanOrder(statement, table);
     if (scanOrder != null) _sortPhysicalRows(input, scanOrder);
     return _evaluate(statement, bound, table, input,
-        inputOrdered: scanOrder != null);
+        inputOrdered: scanOrder != null, diagnostics: diagnostics);
   }
 
   /// A primary B-tree can supply these orders before projection callbacks.
@@ -1789,7 +1837,8 @@ final class SqliteDatabase {
       bool inTrigger = false,
       bool inputOrdered = false,
       bool deferredProjection = false,
-      bool omitProjection = false}) {
+      bool omitProjection = false,
+      _SqlDiagnosticTrace? diagnostics}) {
     final order =
         inputOrdered || omitProjection ? const <OrderTerm>[] : statement.order;
     final distinct = !omitProjection && statement.distinct;
@@ -1956,8 +2005,19 @@ final class SqliteDatabase {
               .any((term) => term.expression.containsWindow);
       final limit = count(statement.limit);
       final offset = count(statement.offset) ?? 0;
+      if (diagnostics != null) {
+        diagnostics.hasOrder = order.isNotEmpty;
+        diagnostics.inputOrdered = inputOrdered && statement.order.isNotEmpty;
+        diagnostics.distinct = distinct;
+        diagnostics.bounded = statement.limit != null &&
+            !distinct &&
+            !statement.subqueryFirstRowOnly;
+        diagnostics.limit = limit;
+        diagnostics.offset = offset;
+      }
       if (limit == 0) return;
-      final selected = input.where((row) {
+      final source = diagnostics == null ? input : diagnostics.source(input);
+      final selected = source.where((row) {
         final ctx =
             EvalContext(row, affinities, bound, _pager.header.textEncoding)
               ..inTrigger = inTrigger
@@ -1968,7 +2028,9 @@ final class SqliteDatabase {
             truth(statement.where!.evaluate(ctx), _pager.header.textEncoding) ==
                 true;
       });
-      final filtered = windowed && !aggregate ? selected.toList() : selected;
+      final matching =
+          diagnostics == null ? selected : diagnostics.matches(selected);
+      final filtered = windowed && !aggregate ? matching.toList() : matching;
       final groups = <(List<Object?>, Iterable<RowValues>)>[];
       if (aggregate && groupBy.isEmpty) {
         groups.add(([], filtered));

@@ -12,7 +12,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | --- | --- | --- |
 | 1 | Audit existing planning/execution paths | Complete; see AUDIT.md |
 | 2 | Preserve source baseline and reproducible workloads | Complete; reverse fixture verified |
-| 3 | Opt-in diagnostic instrumentation and plan decisions | Investigating on feature/optimizer-diagnostics-20261111; not accepted |
+| 3 | Opt-in diagnostic instrumentation and plan decisions | Implemented/unaccepted on PR #44; final OFF/ON cost gates pending |
 | 4 | Performance regression matrix | Initial matrix complete; expand per future item |
 | 5 | Bounded Top-K selection | Accepted for tested scope; measured control costs documented |
 | 6 | Use index ordering to avoid sorting | Queued |
@@ -117,3 +117,12 @@ for its documented scope/costs. The user requires immediate GitHub upload and
 handoff/ledger updates after EVERY completed item, before starting the next.
 Partial checkpoints must identify incomplete work and never imply acceptance.
 See docs/AI_HANDOFF.md for the active branch and exact next steps.
+
+## Item 3 implementation checkpoint (unaccepted)
+
+Explicit core/Inspector diagnosis and semantic/routing/ownership tests are now
+implemented. See docs/plans/OPTIMIZER_DIAGNOSTICS.md and docs/AI_HANDOFF.md.
+Core 10,718 passed / optional skip 1; add-ons 578, final Inspector-only refinement
+55, Search 86; 144 native comparisons. Candidate baseline patch/source hashes are
+portable. No OFF/ON AOT acceptance yet; complete the diagnostic matrix, controls,
+VM/JS final rerun and documentation before accepting. PR #44 remains draft.

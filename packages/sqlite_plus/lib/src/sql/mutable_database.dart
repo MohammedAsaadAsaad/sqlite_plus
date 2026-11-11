@@ -22,6 +22,7 @@ import 'function_registry.dart';
 import 'virtual_table.dart';
 
 part 'prepared_statement.dart';
+part 'query_diagnostics_mutable.dart';
 
 final _crossQueryKey = Object();
 

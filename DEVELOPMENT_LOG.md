@@ -1,5 +1,19 @@
 # Development log
 
+## 2026-11-11 — Item 3 implementation checkpoint, not yet accepted
+
+Implemented explicit bounded core query diagnosis and Inspector profile APIs,
+existing planner candidate reasons/estimates and actual loaded/visited/matched/
+returned/page counters. Reuse evaluator/planner, no normal per-row observer;
+metadata JSON omits data/SQL/bindings and unsupported counters are null.
+Mutable routing/private-reader exclusion preserves temp/attached semantics and
+nested-write rejection. ORM profile validates lease/close and preserves capture.
+Core 10,718 passed / skip 1, add-ons 578 then final Inspector 55 after its own
+lifetime refinement, Search 86; 144 pinned native comparisons; VM/JS assertions.
+AOT OFF/ON cost acceptance is pending. Preserve before/source manifests, reverse
+patch and benchmark scaffolding; handoff has exact unfinished commands. Upload
+this explicit partial state on PR #44 rather than losing work on interruption.
+
 ## 2026-11-11 — Resume optimizer item 3 with immediate checkpoint policy
 
 User confirmed PR #43 merged (main 056e9644) and requested a reusable client
