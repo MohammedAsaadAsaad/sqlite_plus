@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 33 pure arithmetic folds
+
+A select item, `WHERE`, or `HAVING` with no column, parameter, or function
+becomes its value. `probe()+1` still calls the probe. The arithmetic matches
+pinned SQLite 3.53.1. No AOT sample is recorded, so this is not a cost
+acceptance.
+
 ## 2026-11-11 — Item 32 aggregates keep a running value
 
 `count`, `sum`, `avg`, `total`, `min`, and `max` update a running value.
