@@ -1,3 +1,10 @@
+## Unreleased — explicit runtime profile
+
+- Add opt-in profile on engine-backed read-only/mutable/ORM connections.
+- Respect schema routing, ownership/lease state and existing observation capture.
+- Return bounded real engine diagnostics; unsupported custom adapters reject.
+- Full local tests, VM/JS and measured enabled/disabled costs in workspace evidence.
+
 ## Unreleased — explicit diagnostics
 
 - Isolated index candidate advice with measured plans/results/timing/size.

@@ -1,0 +1,83 @@
+[
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "pairs": 20,
+    "cpu": 0,
+    "before": {
+      "samples": 20,
+      "median_ms": 211.69150000000002,
+      "min_ms": 197.81,
+      "max_ms": 254.166
+    },
+    "after": {
+      "samples": 20,
+      "median_ms": 202.297,
+      "min_ms": 195.065,
+      "max_ms": 235.7
+    },
+    "median_paired_ratio": 0.9728789450966246
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "pairs": 20,
+    "cpu": 0,
+    "before": {
+      "samples": 20,
+      "median_ms": 144.0795,
+      "min_ms": 123.89,
+      "max_ms": 204.529
+    },
+    "after": {
+      "samples": 20,
+      "median_ms": 133.4325,
+      "min_ms": 125.074,
+      "max_ms": 159.827
+    },
+    "median_paired_ratio": 0.9356443213779652
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "pairs": 20,
+    "cpu": 0,
+    "before": {
+      "samples": 20,
+      "median_ms": 93.168,
+      "min_ms": 82.187,
+      "max_ms": 111.227
+    },
+    "after": {
+      "samples": 20,
+      "median_ms": 97.8555,
+      "min_ms": 85.656,
+      "max_ms": 117.932
+    },
+    "median_paired_ratio": 1.0107643488775122
+  }
+]

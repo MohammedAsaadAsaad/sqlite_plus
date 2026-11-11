@@ -229,7 +229,11 @@ extension SqlReadDiagnostics on SqliteDatabase {
       if (sql.length > 65536) {
         throw UnsupportedError('Diagnostic SQL exceeds 65536 code units');
       }
-      final bound = List<Object?>.unmodifiable(parameters.map(sqlValue));
+      // _prepareQuery snapshots values synchronously before its first await.
+      // Parsing/support checks below do not invoke callbacks or yield. Reuse
+      // that snapshot boundary rather than copying every BLOB twice here.
+      // If an await/callback is added before _prepareQuery, restore isolation.
+      final bound = parameters;
       return functions.run(() async {
         if (_closed) throw StateError('Database is closed');
         final total = Stopwatch()..start();

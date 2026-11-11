@@ -157,6 +157,18 @@ void main() {
     final pending = reader.diagnoseQuery('SELECT ?', parameters: [bytes]);
     bytes[0] = 9;
     expect((await pending).result.rows.single.single, [1]);
+    final arguments = <Object?>[1];
+    final tablePending = reader.diagnoseQuery('SELECT id FROM t WHERE id=?',
+        parameters: arguments);
+    arguments[0] = 99;
+    expect((await tablePending).result.rows.single.single, BigInt.one);
+    final mutableBytes = Uint8List.fromList([2]);
+    final mutableArguments = <Object?>[mutableBytes];
+    final mutablePending =
+        source.diagnoseQuery('SELECT ?', parameters: mutableArguments);
+    mutableBytes[0] = 8;
+    mutableArguments[0] = Uint8List.fromList([9]);
+    expect((await mutablePending).result.rows.single.single, [2]);
     await expectLater(
         reader.diagnoseQuery('SELECT ?'), throwsA(isA<SqlException>()));
     await expectLater(

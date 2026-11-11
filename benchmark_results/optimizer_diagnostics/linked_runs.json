@@ -1,0 +1,3602 @@
+[
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 0,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 253440,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32735232,
+      "peak_rss": 32567296
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 0,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 235700,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32522240,
+      "peak_rss": 32399360
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 1,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 201808,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32595968,
+      "peak_rss": 32485376
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 1,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 216873,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32673792,
+      "peak_rss": 32509952
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 2,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 222463,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32727040,
+      "peak_rss": 32624640
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 2,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 221367,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32915456,
+      "peak_rss": 32735232
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 3,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 222499,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32505856,
+      "peak_rss": 32399360
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 3,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 254166,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32681984,
+      "peak_rss": 32505856
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 4,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 229863,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32657408,
+      "peak_rss": 32538624
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 4,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 219597,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32464896,
+      "peak_rss": 32354304
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 5,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 197552,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32661504,
+      "peak_rss": 32485376
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 5,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 198610,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32833536,
+      "peak_rss": 32657408
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 6,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 206660,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32772096,
+      "peak_rss": 32653312
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 6,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 201687,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 33132544,
+      "peak_rss": 32989184
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 7,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 199116,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32751616,
+      "peak_rss": 32645120
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 7,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 209387,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32509952,
+      "peak_rss": 32407552
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 8,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 197810,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32538624,
+      "peak_rss": 32428032
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 8,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 198904,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32755712,
+      "peak_rss": 32641024
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 9,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 202786,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32542720,
+      "peak_rss": 32358400
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 9,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 208641,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32739328,
+      "peak_rss": 32559104
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 10,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 201450,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32669696,
+      "peak_rss": 32559104
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 10,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 201697,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32677888,
+      "peak_rss": 32505856
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 11,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 195065,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32645120,
+      "peak_rss": 32534528
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 11,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 200309,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32714752,
+      "peak_rss": 32595968
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 12,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 205668,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32657408,
+      "peak_rss": 32489472
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 12,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 226171,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32702464,
+      "peak_rss": 32571392
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 13,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 207339,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32772096,
+      "peak_rss": 32583680
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 13,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 202087,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32694272,
+      "peak_rss": 32591872
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 14,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 220517,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32649216,
+      "peak_rss": 32468992
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 14,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 199597,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32702464,
+      "peak_rss": 32591872
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 15,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 197860,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32669696,
+      "peak_rss": 32497664
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 15,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 214578,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32661504,
+      "peak_rss": 32485376
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 16,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 200931,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32813056,
+      "peak_rss": 32702464
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 16,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 221198,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32960512,
+      "peak_rss": 32763904
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 17,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 204243,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32751616,
+      "peak_rss": 32636928
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 17,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 218085,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32763904,
+      "peak_rss": 32661504
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 18,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 213996,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32866304,
+      "peak_rss": 32677888
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 18,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 209614,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32751616,
+      "peak_rss": 32641024
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 19,
+    "label": "after",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 199168,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32858112,
+      "peak_rss": 32686080
+    }
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 19,
+    "label": "before",
+    "result": {
+      "mode": "scan",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 20,
+      "max_candidates": 64,
+      "duration_us": 219024,
+      "hash": "52788a453a93201658a947af14751f2b4616ff2233b84cbbcc6233891b4fabfa",
+      "result_rows": 9981,
+      "page_reads": 160,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 32722944,
+      "peak_rss": 32505856
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 0,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 134224,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15388672,
+      "peak_rss": 15110144
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 0,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 131943,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15417344,
+      "peak_rss": 15142912
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 1,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 125208,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15380480,
+      "peak_rss": 15159296
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 1,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 125198,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15310848,
+      "peak_rss": 15028224
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 2,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 123890,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15474688,
+      "peak_rss": 15196160
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 2,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 125074,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15548416,
+      "peak_rss": 15269888
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 3,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 159827,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15351808,
+      "peak_rss": 15130624
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 3,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 151213,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15544320,
+      "peak_rss": 15384576
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 4,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 133008,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15478784,
+      "peak_rss": 15196160
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 4,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 135745,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15503360,
+      "peak_rss": 15400960
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 5,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 129986,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15355904,
+      "peak_rss": 15151104
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 5,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 131519,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15470592,
+      "peak_rss": 15200256
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 6,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 131174,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15437824,
+      "peak_rss": 15159296
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 6,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 136993,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15527936,
+      "peak_rss": 15241216
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 7,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 136690,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15282176,
+      "peak_rss": 15007744
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 7,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 162598,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15515648,
+      "peak_rss": 15241216
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 8,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 151916,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15405056,
+      "peak_rss": 15302656
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 8,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 137907,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15237120,
+      "peak_rss": 14954496
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 9,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 127632,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15405056,
+      "peak_rss": 15118336
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 9,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 137829,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15360000,
+      "peak_rss": 15151104
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 10,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 139544,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15474688,
+      "peak_rss": 15257600
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 10,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 125887,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15515648,
+      "peak_rss": 15241216
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 11,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 137030,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15462400,
+      "peak_rss": 15294464
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 11,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 145917,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15466496,
+      "peak_rss": 15196160
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 12,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 150300,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15450112,
+      "peak_rss": 15233024
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 12,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 132749,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15314944,
+      "peak_rss": 15138816
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 13,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 132893,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15478784,
+      "peak_rss": 15269888
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 13,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 182291,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15446016,
+      "peak_rss": 15273984
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 14,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 204529,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 16011264,
+      "peak_rss": 15826944
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 14,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 144903,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15478784,
+      "peak_rss": 15298560
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 15,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 134098,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15556608,
+      "peak_rss": 15335424
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 15,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 147356,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15339520,
+      "peak_rss": 15142912
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 16,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 143717,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15413248,
+      "peak_rss": 15130624
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 16,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 133972,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15486976,
+      "peak_rss": 15273984
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 17,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 132131,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15392768,
+      "peak_rss": 15171584
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 17,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 129771,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15572992,
+      "peak_rss": 15470592
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 18,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 144442,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15409152,
+      "peak_rss": 15204352
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 18,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 131134,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15413248,
+      "peak_rss": 15306752
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 19,
+    "label": "after",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 148988,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15392768,
+      "peak_rss": 15208448
+    }
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "cpu": 0,
+    "trial": 19,
+    "label": "before",
+    "result": {
+      "mode": "index",
+      "adapter": "reader",
+      "enabled": false,
+      "repeats": 30,
+      "max_candidates": 0,
+      "duration_us": 153580,
+      "hash": "a74ca27245a70b8c0853f50538b028595b1c2999720a0954167edd646fcfa989",
+      "result_rows": 960,
+      "page_reads": 64,
+      "last_report": null,
+      "image_bytes": 565248,
+      "rss": 15384576,
+      "peak_rss": 15208448
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 0,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 91767,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12623872,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 0,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 117932,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12562432,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 1,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 112423,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12693504,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 1,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 84881,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12599296,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 2,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 96651,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12648448,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 2,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 97861,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12599296,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 3,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 106974,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12505088,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 3,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 111227,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12734464,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 4,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 101771,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12660736,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 4,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 97540,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12603392,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 5,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 117007,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12632064,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 5,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 93676,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12685312,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 6,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 92592,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12541952,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 6,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 91960,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12681216,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 7,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 108319,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12656640,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 7,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 100260,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12718080,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 8,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 102757,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12640256,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 8,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 97850,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12722176,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 9,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 106686,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12857344,
+      "peak_rss": 12763136
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 9,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 85154,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12619776,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 10,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 103931,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12591104,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 10,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 99366,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12734464,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 11,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 85801,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12619776,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 11,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 88868,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12615680,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 12,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 87571,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12496896,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 12,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 110197,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12738560,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 13,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 94850,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12652544,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 13,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 97557,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12738560,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 14,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 88211,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12742656,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 14,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 85656,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12554240,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 15,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 86353,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12746752,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 15,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 82187,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12578816,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 16,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 86132,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12615680,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 16,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 86908,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12775424,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 17,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 95350,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12488704,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 17,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 97443,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12726272,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 18,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 96034,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12619776,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 18,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 99273,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12668928,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 19,
+    "label": "after",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 94971,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12464128,
+      "peak_rss": 12623872
+    }
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "1000",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "cpu": 0,
+    "trial": 19,
+    "label": "before",
+    "result": {
+      "mode": "point",
+      "adapter": "inspected",
+      "enabled": false,
+      "repeats": 1000,
+      "max_candidates": 64,
+      "duration_us": 92660,
+      "hash": "22ea18e994d5a2eb371a5f09c16052f4f20012cc897d8f4470fbc9e650df17a7",
+      "result_rows": 1000,
+      "page_reads": 2000,
+      "last_report": null,
+      "image_bytes": 36864,
+      "rss": 12623872,
+      "peak_rss": 12623872
+    }
+  }
+]

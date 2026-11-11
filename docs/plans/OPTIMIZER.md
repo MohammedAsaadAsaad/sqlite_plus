@@ -12,7 +12,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | --- | --- | --- |
 | 1 | Audit existing planning/execution paths | Complete; see AUDIT.md |
 | 2 | Preserve source baseline and reproducible workloads | Complete; reverse fixture verified |
-| 3 | Opt-in diagnostic instrumentation and plan decisions | Implemented/unaccepted on PR #44; final OFF/ON cost gates pending |
+| 3 | Opt-in diagnostic instrumentation and plan decisions | Accepted tested local scope/control tradeoff on PR #44; see diagnostics evidence |
 | 4 | Performance regression matrix | Initial matrix complete; expand per future item |
 | 5 | Bounded Top-K selection | Accepted for tested scope; measured control costs documented |
 | 6 | Use index ordering to avoid sorting | Queued |
@@ -92,7 +92,7 @@ as complete facilities or mark their extensions accepted without measurements.
   1k/10k/100k rows, ordered/reverse/tie-heavy data, stable files, callback traces,
   comparison/visit counts, RSS, IO and ordinary read/write/ORM regressions.
 - Tiny/almost-full K cases were added before acceptance. Nothing is accepted based on
-  provisional headline speedups. Rich runtime diagnostics (item 3) remain queued;
+  provisional headline speedups. Rich runtime diagnostics (item3) are accepted separately below;
   current measurement wrappers have no new production instrumentation hook.
 
 ## Initial milestone outcome
@@ -106,23 +106,26 @@ as complete facilities or mark their extensions accepted without measurements.
 - Keep all control costs visible: short ordinary UPDATE median +5.7%; combined
   amplified long probe +1.9%, overlapping ranges. Do not claim zero overhead.
 - Rejected an isolated classless representation after worse control performance.
-- Rich runtime diagnostics (3), index ordering (6) and all later extensions are
+- Index ordering (6) and later extensions remain
   NOT implemented/accepted by this milestone. Roadmap-wide/release acceptance
   remains queued. No push, publication or merge performed.
 
 ## Continuation policy, 2026-11-11
 
-PR #43 merged into main 056e9644. Item 3 is active; item 5 remains accepted only
+PR #43 merged into main 056e9644. Item3 is accepted below; item5 remains accepted only
 for its documented scope/costs. The user requires immediate GitHub upload and
 handoff/ledger updates after EVERY completed item, before starting the next.
 Partial checkpoints must identify incomplete work and never imply acceptance.
 See docs/AI_HANDOFF.md for the active branch and exact next steps.
 
-## Item 3 implementation checkpoint (unaccepted)
+## Item3 accepted local checkpoint
 
-Explicit core/Inspector diagnosis and semantic/routing/ownership tests are now
-implemented. See docs/plans/OPTIMIZER_DIAGNOSTICS.md and docs/AI_HANDOFF.md.
-Core 10,718 passed / optional skip 1; add-ons 578, final Inspector-only refinement
-55, Search 86; 144 native comparisons. Candidate baseline patch/source hashes are
-portable. No OFF/ON AOT acceptance yet; complete the diagnostic matrix, controls,
-VM/JS final rerun and documentation before accepting. PR #44 remains draft.
+Explicit core/Inspector diagnosis, bounded decisions/actual counters, routing,
+privacy/ownership and pre-await binding isolation are verified. Final core10719
+(optional skip1), Inspector55, focused/native14 (144 result comparisons), VM/JS,
+packages/tool analysis/format pass. Expanded OFF/ON and unused-control AOT data
+and direct BLOB copy comparisons are retained. Inspector point OFF median paired
+ratio1.0108 is a documented tradeoff; no zero-overhead or release claim.
+See benchmark_results/optimizer_diagnostics/README.md and docs/AI_HANDOFF.md.
+Initial negative evidence is archived. Next item6 remains queued until this
+completed checkpoint is uploaded; no main merge or package publication.

@@ -1,6 +1,8 @@
+diff --git a/packages/sqlite_plus/lib/src/sql/database.dart b/packages/sqlite_plus/lib/src/sql/database.dart
+index 9dce5d2..aed2005 100644
 --- a/packages/sqlite_plus/lib/src/sql/database.dart
 +++ b/packages/sqlite_plus/lib/src/sql/database.dart
-@@ -26,6 +26,7 @@
+@@ -26,6 +26,7 @@ part 'join_groups.dart';
  part 'dml_subqueries.dart';
  part 'lazy_views.dart';
  part 'query_execution.dart';
@@ -8,7 +10,7 @@
  part 'pragma_tables.dart';
  
  /// Header write version 1 is rollback. Version 2 is wal. Other values throw.
-@@ -440,8 +441,13 @@
+@@ -440,8 +441,13 @@ final class SqliteDatabase {
    }
  
    QueryPlan _plan(
@@ -24,7 +26,7 @@
      if (table.virtual) return const QueryPlan('virtual-table-scan', null, null);
      final source = statement.sources.firstOrNull;
      final forced = source == null ? null : _hintIndex(source, statement.where);
-@@ -492,7 +498,11 @@
+@@ -492,7 +498,11 @@ final class SqliteDatabase {
        }
  
        final key = lookup(statement.where);
@@ -37,7 +39,7 @@
      }
      if (!table.withoutRowid) {
        final constraints = <BinaryExpr>[];
-@@ -583,6 +593,8 @@
+@@ -583,6 +593,8 @@ final class SqliteDatabase {
            ...bounds(ColumnExpr(name), 'numeric', 'binary')
        ];
        if (rowBounds.isNotEmpty && forced == null) {
@@ -46,7 +48,7 @@
          return QueryPlan._indexed(
              table.rootPage,
              _IndexAccess('@rowid',
-@@ -591,6 +603,8 @@
+@@ -591,6 +603,8 @@ final class SqliteDatabase {
              'rowid-range');
        }
        if (notIndexed) {
@@ -55,7 +57,7 @@
          return QueryPlan('table-scan', table.rootPage, null);
        }
        QueryPlan? best;
-@@ -605,6 +619,9 @@
+@@ -605,6 +619,9 @@ final class SqliteDatabase {
                ? null
                : IndexDefinition.parse(entry.sql!, table);
            if (!impliesIndexPredicate(statement.where, parsed?.predicate)) {
@@ -65,7 +67,7 @@
              continue;
            }
            final definition = _indexDefinition(entry);
-@@ -622,7 +639,12 @@
+@@ -622,7 +639,12 @@ final class SqliteDatabase {
                break;
              }
            }
@@ -79,7 +81,7 @@
            final access = _IndexAccess(entry.name, (values) {
              if (values.length <= prefix.length) {
                throw const FormatException('Short secondary index key');
-@@ -649,6 +671,12 @@
+@@ -649,6 +671,12 @@ final class SqliteDatabase {
                equalities: prefix.length - (range ? 1 : 0),
                rangeBounds: rangeBounds,
                unique: definition.$5);
@@ -92,7 +94,7 @@
            if (best == null ||
                estimate != null &&
                    bestEstimate != null &&
-@@ -657,6 +685,7 @@
+@@ -657,6 +685,7 @@ final class SqliteDatabase {
                        estimate == null ||
                        bestEstimate == null) &&
                    score > bestScore) {
@@ -100,7 +102,7 @@
              bestScore = score;
              bestEstimate = estimate;
              final names = [
-@@ -669,15 +698,22 @@
+@@ -669,15 +698,22 @@ final class SqliteDatabase {
                  covering: covered, coveredColumns: covered ? names : const []);
            }
          } on Exception {
@@ -123,7 +125,7 @@
      return QueryPlan(table.withoutRowid ? 'index-tree-scan' : 'table-scan',
          table.rootPage, null);
    }
-@@ -1563,7 +1599,9 @@
+@@ -1563,7 +1599,9 @@ final class SqliteDatabase {
            });
  
    Future<_QueryExecution> _prepareQuery(String sql, List<Object?> parameters,
@@ -134,7 +136,7 @@
      if (_closed) throw StateError('Database is closed');
      final statement = preparedSyntax ?? SqlParser(sql).select();
      if (parameters.length != statement.parameterCount) {
-@@ -1619,8 +1657,17 @@
+@@ -1619,8 +1657,17 @@ final class SqliteDatabase {
      final input = <RowValues>[];
      if (table == null) {
        input.add({});
@@ -153,7 +155,7 @@
        final stream = _planRecords(table, plan,
            where: statement.where,
            parameters: bound,
-@@ -1662,11 +1709,12 @@
+@@ -1662,11 +1709,12 @@ final class SqliteDatabase {
          input.add(row);
        }
      }
@@ -167,7 +169,7 @@
    }
  
    /// A primary B-tree can supply these orders before projection callbacks.
-@@ -1789,7 +1837,8 @@
+@@ -1789,7 +1837,8 @@ final class SqliteDatabase {
        bool inTrigger = false,
        bool inputOrdered = false,
        bool deferredProjection = false,
@@ -177,7 +179,7 @@
      final order =
          inputOrdered || omitProjection ? const <OrderTerm>[] : statement.order;
      final distinct = !omitProjection && statement.distinct;
-@@ -1956,8 +2005,19 @@
+@@ -1956,8 +2005,19 @@ final class SqliteDatabase {
                .any((term) => term.expression.containsWindow);
        final limit = count(statement.limit);
        final offset = count(statement.offset) ?? 0;
@@ -198,7 +200,7 @@
          final ctx =
              EvalContext(row, affinities, bound, _pager.header.textEncoding)
                ..inTrigger = inTrigger
-@@ -1968,7 +2028,9 @@
+@@ -1968,7 +2028,9 @@ final class SqliteDatabase {
              truth(statement.where!.evaluate(ctx), _pager.header.textEncoding) ==
                  true;
        });
@@ -209,9 +211,11 @@
        final groups = <(List<Object?>, Iterable<RowValues>)>[];
        if (aggregate && groupBy.isEmpty) {
          groups.add(([], filtered));
+diff --git a/packages/sqlite_plus/lib/src/sql/mutable_database.dart b/packages/sqlite_plus/lib/src/sql/mutable_database.dart
+index e61921f..0e23977 100644
 --- a/packages/sqlite_plus/lib/src/sql/mutable_database.dart
 +++ b/packages/sqlite_plus/lib/src/sql/mutable_database.dart
-@@ -22,6 +22,7 @@
+@@ -22,6 +22,7 @@ import 'function_registry.dart';
  import 'virtual_table.dart';
  
  part 'prepared_statement.dart';
@@ -219,9 +223,12 @@
  
  final _crossQueryKey = Object();
  
+diff --git a/packages/sqlite_plus/lib/src/sql/query_diagnostics.dart b/packages/sqlite_plus/lib/src/sql/query_diagnostics.dart
+new file mode 100644
+index 0000000..e90d647
 --- /dev/null
 +++ b/packages/sqlite_plus/lib/src/sql/query_diagnostics.dart
-@@ -0,0 +1,292 @@
+@@ -0,0 +1,296 @@
 +part of 'database.dart';
 +
 +/// Bounds retained diagnostic metadata, not SQL input/result allocations.
@@ -453,7 +460,11 @@
 +      if (sql.length > 65536) {
 +        throw UnsupportedError('Diagnostic SQL exceeds 65536 code units');
 +      }
-+      final bound = List<Object?>.unmodifiable(parameters.map(sqlValue));
++      // _prepareQuery snapshots values synchronously before its first await.
++      // Parsing/support checks below do not invoke callbacks or yield. Reuse
++      // that snapshot boundary rather than copying every BLOB twice here.
++      // If an await/callback is added before _prepareQuery, restore isolation.
++      final bound = parameters;
 +      return functions.run(() async {
 +        if (_closed) throw StateError('Database is closed');
 +        final total = Stopwatch()..start();
@@ -514,6 +525,9 @@
 +    }
 +  }
 +}
+diff --git a/packages/sqlite_plus/lib/src/sql/query_diagnostics_mutable.dart b/packages/sqlite_plus/lib/src/sql/query_diagnostics_mutable.dart
+new file mode 100644
+index 0000000..c838a3b
 --- /dev/null
 +++ b/packages/sqlite_plus/lib/src/sql/query_diagnostics_mutable.dart
 @@ -0,0 +1,39 @@
@@ -556,9 +570,11 @@
 +    }
 +  }
 +}
+diff --git a/packages/sqlite_plus_inspector/lib/sqlite_plus_inspector_orm.dart b/packages/sqlite_plus_inspector/lib/sqlite_plus_inspector_orm.dart
+index 4696c3f..772a632 100644
 --- a/packages/sqlite_plus_inspector/lib/sqlite_plus_inspector_orm.dart
 +++ b/packages/sqlite_plus_inspector/lib/sqlite_plus_inspector_orm.dart
-@@ -78,6 +78,29 @@
+@@ -78,6 +78,29 @@ final class InspectedOrmConnection extends OrmConnection {
          }
          return inspectDatabasePlan(database, sql, parameters);
        });
@@ -588,9 +604,11 @@
    @override
    Future<void> close() => delegate.close();
  }
+diff --git a/packages/sqlite_plus_inspector/lib/src/connections.dart b/packages/sqlite_plus_inspector/lib/src/connections.dart
+index 42a42ea..132249d 100644
 --- a/packages/sqlite_plus_inspector/lib/src/connections.dart
 +++ b/packages/sqlite_plus_inspector/lib/src/connections.dart
-@@ -6,6 +6,8 @@
+@@ -6,6 +6,8 @@ typedef InspectorExecuteRunner = Future<MutationResult> Function(
      String, List<Object?>);
  typedef InspectorPlanRunner = Future<InspectorPlan> Function(
      String, List<Object?>);
@@ -599,7 +617,7 @@
  
  void _selectOnly(String sql) {
    final head = SqlTokenizer.tokenize(sql).firstOrNull?.keyword;
-@@ -19,6 +21,24 @@
+@@ -19,6 +21,24 @@ Future<InspectorPlan> inspectDatabasePlan(
      MutableSqliteDatabase database, String sql,
      [List<Object?> parameters = const []]) async {
    _selectOnly(sql);
@@ -624,7 +642,7 @@
    final image = database.exportImage();
    final storage = MemoryStorageBackend();
    await storage.write(0, image);
-@@ -27,7 +47,7 @@
+@@ -27,7 +47,7 @@ Future<InspectorPlan> inspectDatabasePlan(
      reader = await SqliteDatabase.openReadOnly(storage,
          functions: database.functions);
      reader.doubleQuotedStrings = database.doubleQuotedStrings;
@@ -633,7 +651,7 @@
    } finally {
      if (reader != null) {
        await reader.close();
-@@ -46,12 +66,14 @@
+@@ -46,12 +66,14 @@ final class InspectedConnection {
        Future<void> Function()? close,
        bool Function()? inTransaction,
        InspectorPlanRunner? plan,
@@ -648,7 +666,7 @@
          identity = inspector.connection(label);
    factory InspectedConnection.mutable(
            MutableSqliteDatabase database, SqlInspector inspector,
-@@ -63,6 +85,9 @@
+@@ -63,6 +85,9 @@ final class InspectedConnection {
            close: database.close,
            inTransaction: () => database.inTransaction,
            plan: (sql, args) => inspectDatabasePlan(database, sql, args),
@@ -658,7 +676,7 @@
            label: label);
    factory InspectedConnection.readOnly(
            SqliteDatabase database, SqlInspector inspector,
-@@ -75,6 +100,8 @@
+@@ -75,6 +100,8 @@ final class InspectedConnection {
              _selectOnly(sql);
              return InspectorPlan._(database.explain(sql, args));
            },
@@ -667,7 +685,7 @@
            label: label);
    final SqlInspector inspector;
    final InspectorConnection identity;
-@@ -83,6 +110,7 @@
+@@ -83,6 +110,7 @@ final class InspectedConnection {
    final Future<void> Function()? _close;
    final bool Function()? _inTransaction;
    final InspectorPlanRunner? _plan;
@@ -675,12 +693,10 @@
    bool get inTransaction => _inTransaction?.call() ?? false;
    Future<QueryResult> query(String sql,
            [List<Object?> parameters = const []]) =>
-@@ -110,6 +138,20 @@
-           UnsupportedError('No plan capability on this adapter'));
-     }
+@@ -112,6 +140,20 @@ final class InspectedConnection {
      return plan(sql, parameters);
-+  }
-+
+   }
+ 
 +  /// Explicit diagnostic capability; normal query() never enables it.
 +  Future<SqlQueryDiagnostics> profile(String sql,
 +      {List<Object?> parameters = const [],
@@ -693,6 +709,8 @@
 +    return inspector.measure(sql, parameters, InspectorOperation.query,
 +        () => diagnostic(sql, parameters, options),
 +        connection: identity, rows: (r) => r.result.rows.length);
-   }
- 
++  }
++
    Future<SqlPage<Map<String, Object?>>> page(
+           {required String table,
+           required List<String> keyColumns,

@@ -1,5 +1,5 @@
 {
-  "stage": "candidate; measurements complete, unresolved OFF cost signals; NOT accepted",
+  "stage": "accepted tested local scope with documented Inspector OFF control tradeoff; not release acceptance",
   "source_sha256": {
     "packages/sqlite_plus/lib/sqlite_plus.dart": "45e6b1f110c2617650b516a9f112f4ada5ad4ce881bea8a365a25ebf1692990b",
     "packages/sqlite_plus/lib/sqlite_plus_io.dart": "ed9f0a52d3c60e9fdd76ffcc2308dbec40d7c53019e985f3fd3de5cff29555d1",
@@ -78,7 +78,7 @@
     "packages/sqlite_plus/lib/src/sql/prepared_syntax.dart": "267d8038421303fd9548a28d8e0a65ef3fa9f8d052feabbe56dd5d8836e44e0f",
     "packages/sqlite_plus/lib/src/sql/query_diagnostics_mutable.dart": "873770d8868aa0aa186821a77cab2a803f0d1f70b99f0549a45adcf3ffae0602",
     "packages/sqlite_plus/lib/src/sql/bounded_sort_heap.dart": "1d780b710f3474c022734ceed976c1d6b84fc3aed2b26f51579e2e393102408b",
-    "packages/sqlite_plus/lib/src/sql/query_diagnostics.dart": "d16090f7834e88fe73aa8eaf8045ce2957ba7c12ba0f15841e2f7db5aadbe5d3",
+    "packages/sqlite_plus/lib/src/sql/query_diagnostics.dart": "b0526a6d0b16eb24dd5af27eb5dffcf9b8d8400be289f8c3682f5bd9e86500fd",
     "packages/sqlite_plus/lib/src/storage/browser_byte_store.dart": "c64e8ae856e9c8c11829e50dcfb86164be2c0613e9c2a5350a567a3dd6361210",
     "packages/sqlite_plus/lib/src/storage/browser_storage.dart": "f91c03d7fc3da3a24aaf0c07c0e95d3ab9147770f4c248e2a8982828e292dc62",
     "packages/sqlite_plus/lib/src/storage/browser_storage_backend.dart": "93e0695a453324e50037deec9d357abaa4a8e34222a53ea63260d064a32b0262",
@@ -124,7 +124,8 @@
     "packages/sqlite_plus_orm/lib/src/prepared.dart": "5cf56b0a0eb6bd6a83660f2634b7e4f68784caddeb12add7d2f731c92d956405"
   },
   "binary_sha256": {
-    "/tmp/diagnostic-blob-after": "9340a68b1eb1998512d13e0c3560ff406e98500496e2197ec71389f6b2e25c21",
+    "/tmp/diagnostic-blob-initial": "9340a68b1eb1998512d13e0c3560ff406e98500496e2197ec71389f6b2e25c21",
+    "/tmp/diagnostic-blob-after": "f2468dd9fd6d212c46d56927ef12e81c73b897838f33fd740d232699346d5dcf",
     "/tmp/diagnostic-blob-before": "d23e5d3fbdce48620c8d80fea63df050f609a55cfd700d9366c1237f1d0458dd",
     "/tmp/diagnostic-update-after": "637bcd66eafd06b60ec49d4382c7108c5ac59c258e7f61b29c3340cb2a540f6f",
     "/tmp/diagnostic-orm-after": "4ce33267ec4bc49338b28a28c9ae0f77a506aec1598ac3edd05878469e10cb94",
@@ -132,15 +133,20 @@
     "/tmp/diagnostic-update-before": "72a02025a3601616b516af0058e4f866cdc43dcb10dde2b3c21224ef2852191a",
     "/tmp/diagnostic-orm-before": "b7dca0d47740b6126c8941592536b4a67b6106eaf1195501d5aa05a6c700a626",
     "/tmp/diagnostic-ordinary-before": "0d7340c7e395a33f5e8fa4afb0efe43b954d06fd7181d6607ee754a6991513b7",
-    "/tmp/diagnostic-after": "4c3084342759793a48e9a6b8543c49ab4dd00ba3925793cd5654c50ee10f3326",
+    "/tmp/diagnostic-after": "4071a5a5238a66c08fccf15013351cc59cebfdc2ffd4123e37b04c2850fe0176",
     "/tmp/diagnostic-before": "38a1cf7139d4fd6675bd41d210cfaecf37dd3842f5ecb117201c8890eb437de2"
   },
   "driver_sha256": {
+    "tool/optimizer_diagnostics_benchmark/build_initial_blob.py": "ab8f5101dc2f8b120e91b538b01199b38eb41f89606960b8b623012d135c0436",
     "tool/optimizer_diagnostics_benchmark/summarize.py": "afd7a976a0717d60548cdf10b4c59f707705ce6736a3af61df2cbdc1ac56ad14",
+    "tool/optimizer_diagnostics_benchmark/extended_controls.py": "523f0252e9172e8a9dffbdba14fe923665ad47e0118f0ca7ff190b54eabc0e9a",
+    "tool/optimizer_diagnostics_benchmark/copy_comparison.py": "9c2e5c9273edc8a2dff23b4379e2f3b0a226006bd65cc3e28af83a71f51677e6",
     "tool/optimizer_diagnostics_benchmark/workload.dart": "a486a761e037a111de24b970e915fb04076145c27a89108e766ee108573fff90",
     "tool/optimizer_diagnostics_benchmark/followup.py": "16aa8c164f0aedfec80169a45a8db9337b44908e99f094a4f0c3c7890fba2714",
     "tool/optimizer_diagnostics_benchmark/blob_after.dart": "ccd3afc20b1b33e2c633b5f6e86108b345888d46010d0955bdb5a9adde916984",
     "tool/optimizer_diagnostics_benchmark/build.py": "0e2f9b063ef3b5c149d83c99078b1c05b7a8ac8eaaa09856671f0c14dc42bdee",
+    "tool/optimizer_diagnostics_benchmark/linked_controls.py": "7d9904e034043feaae5c5e6d837ebbbe2ac90883da004ec974d2d87d51cf6299",
+    "tool/optimizer_diagnostics_benchmark/affinity_controls.py": "cba405f34c7aa6ac5437c93ae783e0cce85077fc29faafd74b9bc27823ab4de9",
     "tool/optimizer_diagnostics_benchmark/run.py": "adbcb4e59967e1d8b78ff1b0333910c93675f064de505cd33da22361740e00b4",
     "tool/optimizer_diagnostics_benchmark/blob_before.dart": "d99d550a2040c6651f6f46fd9784f56122a9fc6b9026668d4790e82d86791be0",
     "tool/optimizer_diagnostics_benchmark/after.dart": "b7c2c0c7c147daaf2f5aa875a15c2733256cd4ef4dc078a126a9b8089fbdc897",
@@ -148,5 +154,10 @@
     "tool/optimizer_diagnostics_benchmark/blob_workload.dart": "3ca782bab0bece8cbd589ac63cbe5011b451b1e10039802bc248584e7bb5caff",
     "tool/optimizer_diagnostics_benchmark/blob_run.py": "8c4ccd745245531f355a931edc38a876d6eaedab8c42b4c9e47c30d4d0546e01",
     "tool/optimizer_diagnostics_benchmark/unused_controls.py": "a0672a9b596f1b7d9847d57665bfc9f296d976d22125e0574af9eaf1cba61870"
+  },
+  "source_mapping": {
+    "before": "before_manifest.json",
+    "after": "this manifest",
+    "blob-initial": "initial_candidate/after_manifest.json"
   }
 }

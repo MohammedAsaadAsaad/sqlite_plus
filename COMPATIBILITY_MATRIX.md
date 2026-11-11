@@ -737,3 +737,19 @@ projection decisions verified; no access-plan/schema/page-read reduction claim.
 assertions; repeated AOT/control/memory/IO costs and limits:
 [initial optimizer evidence](benchmark_results/optimizer/README.md).
 This is one measured milestone; the 42-item roadmap is not complete.
+
+## Explicit query diagnostics (2026-11-11, measured local scope)
+
+Read-only/mutable diagnoseQuery and Inspector/ORM profile support ordinary scalar
+single-source/constant SELECT with filter/order/limit/optional DISTINCT. Reuse
+actual planner/evaluator once; unsupported relational/aggregate/window/virtual/
+generated sources reject before callbacks. Mutable temp/attached routing and
+connection exclusion, ORM leases, metadata privacy and bounded traces are tested.
+No schema/file-format change, permanent observer or normal per-row counter.
+Final core10719/optional skip1, Inspector55, 144 pinned result comparisons and
+VM/JS assertions pass. Actual counters distinguish loaded/visited/matched/returned;
+unavailable keys/projection/comparison/allocation metrics are null. Phase timing
+limits, enabled cost, source/binary evidence and disabled Inspector control
+tradeoff (paired ratio1.0108) are documented in
+benchmark_results/optimizer_diagnostics/README.md. Not zero-overhead, device/
+file-durability, complete optimizer or release certification; CI remains separate.

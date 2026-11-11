@@ -1,35 +1,36 @@
-# AI handoff — sqlite_plus optimizer and pending workspace integration
+# AI handoff — sqlite_plus optimizer continuation
 
 Checkpoint: 2026-11-11. This document is the continuation entry point; no prior
 chat, original execution machine, credentials or preserved `/tmp` directory is
 required. Read the current GitHub branch/PR and CI before making new claims.
 
-## Latest cost checkpoint — investigate before acceptance
+## Latest completed item — 3, explicit diagnostics
 
-Item 3 remains **unaccepted**. The first AOT matrix (165 processes), unused
-controls and expanded follow-up are committed under
-`benchmark_results/optimizer_diagnostics/`; read its README and all raw JSON.
-After 20 samples per variant, unused-read median is **+5.81%**, mutable-point
-**+8.44%**; point-reader **-0.54%**, 100k-sort **+0.12%**. Overlapping ranges
-are not evidence of no regression. No item 6 work is authorized until item 3's
-acceptance gates are resolved. Do not rewrite this evidence as passed.
+**Accepted for tested local scope and documented control tradeoff**, not a release
+or whole-roadmap acceptance. Read
+[diagnostic evidence](../benchmark_results/optimizer_diagnostics/README.md) and
+its validation/source/binary manifests. Initial negative results remain archived
+under `initial_candidate/`; no zero-overhead guarantee is made. Inspector's
+longer linked-OFF control has median paired ratio 1.0108 (ratio of medians1.0503).
 
-The diagnostic support-expression guard now uses a linear iterative walk;
-69 focused/native/Inspector tests and the VM/JS example passed afterward.
-The full core 10,718 pass preceded this diagnostic-only guard refinement.
-The benchmark driver now times APIs consistently and serializes metadata after
-timing. Current source hashes/reverse patch match the linear guard candidate.
+Final-source core **10,719 passed / optional skip1**, Inspector55, focused/native14
+(144 native result comparisons), VM/JS assertion example, packages/tool fatal-info
+analysis and 548-file format all pass. Prior add-ons578/Search86 remain identified
+as prior checks. Expanded OFF controls, enabled costs, trace bounds, privacy and
+actual-row/page equivalence are recorded. Direct 20-pair BLOB comparison gives
+median paired final/initial ratios0.3617 reader /0.6215 mutable. Unused ordinary,
+ORM and update AOT binaries remain byte-identical to the initial candidate.
 
-Next: inspect `blob_summary.json`; investigate the remaining OFF signals using
-isolated same-source AOT controls. Any common evaluator change requires full
-core/add-on regressions, refreshed reverse patches/source hashes, and final-source
-AOT measurements. Archive this candidate's evidence before replacing it. Consider
-whether optional counted iterable types affect AOT specialization, and whether
-redundant BLOB binding snapshots can safely be reduced; these are hypotheses,
-not approved or implemented fixes. Preserve pre-await snapshot/lifetime tests.
-Then update `validation.json`, all roadmap/docs, handoff, and upload the completed
-item immediately to PR #44 before starting item 6. Keep draft/unaccepted if costs
-remain unresolved. Reproduction commands are in the evidence README.
+Read-only diagnosis relies on _prepareQuery's synchronous pre-await copy; parsing
+and support checks before it must remain callback-free/synchronous. Mutable's
+pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
+this boundary. Current reverse patch reconstructs the frozen baseline without
+old /tmp files; default portable verifier passes for the accepted source.
+
+**Next: item6 — index-order reuse.** First inspect PR #44's current head/CI and
+resolve any relevant CI failure. This completed item must be uploaded with this
+handoff before starting item6. Do not auto-merge main or publish packages.
+The reusable Arabic prompt is [AI_CONTINUATION_PROMPT.md](AI_CONTINUATION_PROMPT.md).
 
 ## 1. Get the actual work
 
@@ -40,7 +41,7 @@ PR #43 has been merged into `main` as
 `73617cdf23b3f0d76dbf985b7daaa0a1afe6473f`.
 
 **Active continuation:** `feature/optimizer-diagnostics-20261111`, item 3,
-**implemented / unaccepted; final OFF/ON cost gates pending**. Start by inspecting this branch and its PR;
+**item3 accepted for measured local scope; next item6 queued**. Start by inspecting this branch and its PR;
 main contains the completed previous checkpoint. Avoid simultaneous edits by
 multiple AI clients; inspect the latest handoff/commit before resuming.
 
@@ -108,7 +109,7 @@ The authoritative 42-row state table is [plans/OPTIMIZER.md](plans/OPTIMIZER.md)
 | --- | --- |
 | 1, audit | Complete |
 | 2, source baseline | Complete, reverse reconstruction verified |
-| 3, richer opt-in runtime diagnostics/plan decisions | **Implemented/unaccepted; cost gates pending** |
+| 3, richer opt-in runtime diagnostics/plan decisions | **Accepted for tested scope and documented control tradeoff** |
 | 4, regression matrix | Initial matrix complete; must expand for later changes |
 | 5, bounded Top-K | Accepted **for tested scope and documented tradeoff** |
 | 6–41 | Queued; some underlying facilities existed earlier, extensions are not complete |
@@ -219,7 +220,7 @@ there is no dependency on the old `/workspace/toolchains` shell script.
 ```sh
 dart --version
 dart pub get --enforce-lockfile
-python3 tool/verify_optimizer_handoff.py --allow-unaccepted-diagnostics
+python3 tool/verify_optimizer_handoff.py
 bash tool/build_sqlite_reference.sh
 export SQLITE_PLUS_SQLITE3=/tmp/sqlite-build/sqlite3
 ```
@@ -260,13 +261,15 @@ broader platform/package matrix; inspect actual remote status before merge.
 
 ## 6. Rebuild measurements without preserved /tmp artifacts
 
-`python3 tool/verify_optimizer_handoff.py --allow-unaccepted-diagnostics` checks the 42 IDs, measured runtime
+`python3 tool/verify_optimizer_handoff.py` checks the 42 IDs, measured runtime
 hashes, all recorded result/IO/callback gates and reconstructs historical
 optimizer/prepared baselines in temporary copies. It requires Python/patch only.
-The flag explicitly checks the current unaccepted candidate's baseline chain;
-it does NOT accept item 3. Default verification refuses an unaccepted diagnostic
-checkpoint. Once accepted, default verification also checks the new runtime
-manifest. A later feature needs its own frozen baseline/evidence.
+Default verification checks the accepted current runtime manifest and the
+historical baseline/result chain. It does not rerun diagnostic timings; the
+diagnostic summarizer and recorded control assertions supply those separate
+gates. The optional --allow-unaccepted-diagnostics flag only permits baseline
+reconstruction for a future partial candidate; it never means acceptance. A
+later feature needs its own frozen baseline/evidence.
 
 For the optimizer, in a separate worktree/evidence copy (outputs overwrite files):
 
@@ -320,33 +323,29 @@ before an independent dependency-floor decision. Optional ORM cache defaults to
 the capture path, and Branch keeps its existing schema/ownership restrictions.
 Detailed release/device/ownership limits remain in each package README.
 
-## 8. Next concrete work — finish item 3 before item 6
+## 8. Next concrete work — item6, after uploading item3
 
-Runtime implementation and focused/full correctness tests are present, but
-performance/cost acceptance is still pending. Read
-[OPTIMIZER_DIAGNOSTICS.md](plans/OPTIMIZER_DIAGNOSTICS.md).
+1. Inspect the latest branch/main/PR and CI; avoid simultaneous client edits.
+   Run `python3 tool/verify_optimizer_handoff.py` before changing runtime.
+2. Read stable item6 in [OPTIMIZER.md](plans/OPTIMIZER.md), the existing planner
+   audit and source. Item6 is queued, not implemented by the diagnostic work.
+3. Specify supported index-order reuse, tie/NULL/collation/direction/partial/
+   expression-index and fallback cases before implementation. Preserve existing
+   projection decisions, LIMIT/OFFSET membership and bindings; do not assume an
+   index satisfies ordering solely because it shares a column name.
+4. Freeze the accepted item3 source as the new baseline; keep earlier reverse
+   patches/manifests/raw results unchanged. Add positive/negative/boundary tests,
+   pinned SQLite differential coverage and relevant complete regression suites.
+5. Build sequential fresh-process AOT benchmarks for positive and negative
+   controls (small/large data, LIMITs, missing indexes, fallback paths, ORM/write
+   controls, result/page/size/memory costs). Investigate regressions and record
+   tradeoffs; no fixed unapproved percentage budget or headline-only acceptance.
+6. Update validation/ledger/compatibility/log/handoff, commit and upload item6
+   immediately with actual CI state before moving to item7. Partial work must
+   be labelled unaccepted with exact next commands. No merge/publication.
 
-1. Confirm current source matches the candidate reconstruction:
-   `python3 tool/verify_optimizer_handoff.py --allow-unaccepted-diagnostics`.
-2. Format/analyze packages/tool. Rerun the VM/JS query_profile.dart assertions
-   after brace-only example formatting; rerun relevant tests if source changes.
-3. Build AOT drivers: `python3 tool/optimizer_diagnostics_benchmark/build.py`.
-   This reverses the committed diagnostics patch in copied core/Inspector/ORM
-   libraries, verifies the frozen 056e9644 baseline, compiles before/after and
-   ordinary/ORM/write controls, and recreates input images. No original /tmp
-   directory is needed. Any runtime edit needs a refreshed patch/manifest AND
-   relevant fresh tests/measurements; do not just change historical hashes.
-4. STOP tests/compilers, then run
-   `python3 tool/optimizer_diagnostics_benchmark/run.py`.
-   It compares baseline OFF, new linked OFF and ON across changing bindings,
-   source sizes, index candidates and raw/mutable/Inspector reader adapters.
-5. Add/run the result/IO/counter equivalence summarizer and unused-feature
-   ordinary read/write/ORM controls (these are not yet completed in this partial
-   checkpoint). Measure enabled metadata bounds/process memory and disabled cost.
-   Keep all raw data. Investigate slow controls; no arbitrary percentage budget.
-6. Only after final-source correctness/performance/cost gates pass: mark item 3
-   accepted for its explicit scope; update docs/validation/compatibility/handoff;
-   commit and upload immediately to PR #44 with actual CI state. Then item 6.
+To repeat item3 evidence, use its README commands; stop tests/compilers before
+timing, archive results before regeneration, and preserve affinity distinctions.
 
 ## 9. Paste this to a new AI client
 
@@ -354,14 +353,14 @@ performance/cost acceptance is still pending. Read
 > at the top of this handoff. Read AGENTS.md, docs/AI_HANDOFF.md and the 42-item
 > ledger before edits. Use the newest checkpoint, not a chat assumption.
 > Complete the active item's remaining correctness/performance/cost gates;
-> item 3 is currently implemented but unaccepted. Preserve default behavior,
+> item3 is accepted for its documented tested scope; item6 is next. Preserve default behavior,
 > pure Dart, ORM ownership/Changes/Reactive and all negative evidence. Report
 > progress regularly. After EACH completed item update handoff/ledger/evidence,
 > commit/upload/open or update its PR immediately before moving on. If stopping
 > early, upload an honest partial checkpoint with exact next commands. Do not
 > automatically merge main or publish packages.
 
-## Active partial checkpoint — item 3 (2026-11-11)
+## Completed checkpoint — item3 (2026-11-11)
 
 - Active PR: https://github.com/MohammedAsaadAsaad/sqlite_plus/pull/44 .
   Initial policy-only checkpoint: aae714e7. Current branch head is authoritative.
@@ -378,16 +377,19 @@ performance/cost acceptance is still pending. Read
   silently inspecting main. ORM explicit profile validates lease/closed state.
 - Normal query/evaluation has no unconditional per-row instrumentation; counted
   iterables are selected only for explicit diagnosis. No global observer/cache.
-- Correctness: 10,718 core passed / optional skip 1; 578 add-ons passed before
+- Correctness: final-source 10,719 core passed / optional skip1; 578 add-ons passed before
   the final Inspector-only lease/async-error refinement; final complete Inspector
   suite 55 passed afterward; Search 86. New focused checks include 144 pinned
   native comparisons, changing bindings, NULL/collation/limits, traces/callbacks,
   privacy/BLOB copy, Unicode clipping, temp/attached routing, overlap/reentrancy,
   ORM ownership/Changes capture. See validation.json in the new evidence folder.
-- VM and JS example assertions passed; example brace-only formatting changed
-  afterward, so rerun for final acceptance. Native CLI was rebuilt successfully.
-- AOT cost measurements have NOT been accepted or claimed. Candidate baseline
-  patch and source manifest are committed; reconstruction verifies the chain
-  diagnostics -> Top-K -> prepared without old temporary files.
-- The benchmark build/run scaffold is present; summarizer and unused-feature
-  control run still need completion. Exact continuation commands are in section 8.
+- VM and compiled JS/Node assertions passed on the copy-reduction candidate.
+  Node requires globalThis.self=globalThis; a silent Node exit is not a pass.
+  Native CLI was rebuilt successfully.
+- AOT/cost acceptance is limited to the tested scope and documented Inspector
+  control tradeoff. All negative initial results and final repeated data remain.
+  Source/binary/driver hashes, reverse patch and portable verifier preserve the
+  diagnostics -> Top-K -> prepared chain without old temporary files.
+- Final primary/follow-up/pinned/extended/linked/BLOB controls and direct paired
+  copy-reduction experiments are complete. See the evidence README and
+  validation.json. CI is not presumed green; inspect the latest PR head.

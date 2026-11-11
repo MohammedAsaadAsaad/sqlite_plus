@@ -13,27 +13,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 43.773,
-        "min_ms": 39.375,
-        "max_ms": 53.406,
+        "median_ms": 46.512,
+        "min_ms": 45.275,
+        "max_ms": 57.179,
         "median_rss": 12992512,
-        "median_peak_rss": 12746752
+        "median_peak_rss": 12718080
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 46.874,
-        "min_ms": 45.7,
-        "max_ms": 55.293,
-        "median_rss": 13066240,
-        "median_peak_rss": 12693504
+        "median_ms": 43.365,
+        "min_ms": 41.275,
+        "max_ms": 59.097,
+        "median_rss": 13123584,
+        "median_peak_rss": 12828672
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 54.194,
-        "min_ms": 47.728,
-        "max_ms": 55.779,
-        "median_rss": 12738560,
-        "median_peak_rss": 12386304
+        "median_ms": 52.277,
+        "min_ms": 47.516,
+        "max_ms": 60.015,
+        "median_rss": 13156352,
+        "median_peak_rss": 12845056
       }
     },
     "last_report": {
@@ -62,9 +62,9 @@
       "estimatedRows": 1.0,
       "parseAndSupportValidationUs": 12,
       "planningUs": 0,
-      "sourcePreparationUs": 59,
+      "sourcePreparationUs": 74,
       "evaluationUs": 4,
-      "totalUs": 76,
+      "totalUs": 92,
       "pageReads": 2,
       "rowsLoaded": 1,
       "rowsVisited": 1,
@@ -81,8 +81,8 @@
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
     "metadata_json_bytes": 880,
-    "linked_off_over_before": 1.0708427569506316,
-    "on_over_linked_off": 1.156163331484405
+    "linked_off_over_before": 0.9323400412796699,
+    "on_over_linked_off": 1.205511357085207
   },
   {
     "case": 1,
@@ -98,27 +98,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 215.449,
-        "min_ms": 195.602,
-        "max_ms": 228.317,
-        "median_rss": 33210368,
-        "median_peak_rss": 32866304
+        "median_ms": 196.642,
+        "min_ms": 189.957,
+        "max_ms": 220.905,
+        "median_rss": 33120256,
+        "median_peak_rss": 32763904
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 205.635,
-        "min_ms": 189.412,
-        "max_ms": 256.904,
-        "median_rss": 33308672,
-        "median_peak_rss": 32935936
+        "median_ms": 212.073,
+        "min_ms": 195.839,
+        "max_ms": 360.579,
+        "median_rss": 33210368,
+        "median_peak_rss": 32796672
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 197.018,
-        "min_ms": 190.877,
-        "max_ms": 203.058,
-        "median_rss": 33144832,
-        "median_peak_rss": 32808960
+        "median_ms": 211.221,
+        "min_ms": 205.775,
+        "max_ms": 300.561,
+        "median_rss": 33271808,
+        "median_peak_rss": 32972800
       }
     },
     "last_report": {
@@ -145,11 +145,11 @@
       "selectedOrdinal": 0,
       "selectedDecisionCaptured": true,
       "estimatedRows": null,
-      "parseAndSupportValidationUs": 48,
-      "planningUs": 13,
-      "sourcePreparationUs": 6090,
-      "evaluationUs": 4018,
-      "totalUs": 10157,
+      "parseAndSupportValidationUs": 36,
+      "planningUs": 11,
+      "sourcePreparationUs": 5537,
+      "evaluationUs": 3629,
+      "totalUs": 9203,
       "pageReads": 8,
       "rowsLoaded": 1000,
       "rowsVisited": 1000,
@@ -165,9 +165,9 @@
       "scope": "ordinary-single-source",
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
-    "metadata_json_bytes": 902,
-    "linked_off_over_before": 0.9544486166099633,
-    "on_over_linked_off": 0.958095654922557
+    "metadata_json_bytes": 901,
+    "linked_off_over_before": 1.0784725541847622,
+    "on_over_linked_off": 0.995982515454584
   },
   {
     "case": 2,
@@ -183,27 +183,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 342.676,
-        "min_ms": 301.273,
-        "max_ms": 361.879,
-        "median_rss": 45416448,
-        "median_peak_rss": 45768704
+        "median_ms": 312.689,
+        "min_ms": 285.683,
+        "max_ms": 334.105,
+        "median_rss": 45395968,
+        "median_peak_rss": 45633536
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 341.602,
-        "min_ms": 306.928,
-        "max_ms": 383.547,
-        "median_rss": 45453312,
-        "median_peak_rss": 45682688
+        "median_ms": 315.278,
+        "min_ms": 286.15,
+        "max_ms": 370.334,
+        "median_rss": 45338624,
+        "median_peak_rss": 45637632
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 306.978,
-        "min_ms": 280.51,
-        "max_ms": 348.214,
-        "median_rss": 45359104,
-        "median_peak_rss": 45707264
+        "median_ms": 346.498,
+        "min_ms": 292.296,
+        "max_ms": 392.04,
+        "median_rss": 45449216,
+        "median_peak_rss": 45649920
       }
     },
     "last_report": {
@@ -230,11 +230,11 @@
       "selectedOrdinal": 0,
       "selectedDecisionCaptured": true,
       "estimatedRows": null,
-      "parseAndSupportValidationUs": 46,
-      "planningUs": 5,
-      "sourcePreparationUs": 5427,
-      "evaluationUs": 8,
-      "totalUs": 5482,
+      "parseAndSupportValidationUs": 45,
+      "planningUs": 6,
+      "sourcePreparationUs": 5224,
+      "evaluationUs": 14,
+      "totalUs": 5285,
       "pageReads": 8,
       "rowsLoaded": 1000,
       "rowsVisited": 1,
@@ -250,9 +250,9 @@
       "scope": "ordinary-single-source",
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
-    "metadata_json_bytes": 890,
-    "linked_off_over_before": 0.9968658441209772,
-    "on_over_linked_off": 0.8986422796119462
+    "metadata_json_bytes": 891,
+    "linked_off_over_before": 1.0082797923815676,
+    "on_over_linked_off": 1.0990237187498018
   },
   {
     "case": 3,
@@ -268,27 +268,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 429.342,
-        "min_ms": 402.089,
-        "max_ms": 456.067,
-        "median_rss": 65368064,
-        "median_peak_rss": 65007616
+        "median_ms": 417.703,
+        "min_ms": 396.575,
+        "max_ms": 535.496,
+        "median_rss": 65282048,
+        "median_peak_rss": 64946176
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 434.057,
-        "min_ms": 380.075,
-        "max_ms": 477.546,
-        "median_rss": 65351680,
-        "median_peak_rss": 64966656
+        "median_ms": 418.701,
+        "min_ms": 371.923,
+        "max_ms": 506.632,
+        "median_rss": 65531904,
+        "median_peak_rss": 65114112
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 381.314,
-        "min_ms": 368.276,
-        "max_ms": 554.948,
-        "median_rss": 65355776,
-        "median_peak_rss": 64966656
+        "median_ms": 402.259,
+        "min_ms": 384.284,
+        "max_ms": 466.307,
+        "median_rss": 65564672,
+        "median_peak_rss": 65110016
       }
     },
     "last_report": {
@@ -316,10 +316,10 @@
       "selectedDecisionCaptured": true,
       "estimatedRows": null,
       "parseAndSupportValidationUs": 74,
-      "planningUs": 15,
-      "sourcePreparationUs": 59144,
-      "evaluationUs": 66626,
-      "totalUs": 125847,
+      "planningUs": 39,
+      "sourcePreparationUs": 58859,
+      "evaluationUs": 74262,
+      "totalUs": 133199,
       "pageReads": 72,
       "rowsLoaded": 10000,
       "rowsVisited": 10000,
@@ -336,8 +336,8 @@
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
     "metadata_json_bytes": 920,
-    "linked_off_over_before": 1.0109819211723987,
-    "on_over_linked_off": 0.8784883091391223
+    "linked_off_over_before": 1.0023892574388982,
+    "on_over_linked_off": 0.9607309273204506
   },
   {
     "case": 4,
@@ -353,27 +353,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 1315.716,
-        "min_ms": 1221.466,
-        "max_ms": 1581.27,
-        "median_rss": 115884032,
-        "median_peak_rss": 115462144
+        "median_ms": 1400.138,
+        "min_ms": 1215.693,
+        "max_ms": 1955.317,
+        "median_rss": 115679232,
+        "median_peak_rss": 115486720
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 1400.294,
-        "min_ms": 1224.586,
-        "max_ms": 1424.874,
-        "median_rss": 116101120,
-        "median_peak_rss": 115785728
+        "median_ms": 1364.612,
+        "min_ms": 1296.244,
+        "max_ms": 1470.67,
+        "median_rss": 115834880,
+        "median_peak_rss": 115396608
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 1319.421,
-        "min_ms": 1231.002,
-        "max_ms": 1400.045,
-        "median_rss": 115793920,
-        "median_peak_rss": 115511296
+        "median_ms": 1260.149,
+        "min_ms": 1178.362,
+        "max_ms": 1597.755,
+        "median_rss": 115929088,
+        "median_peak_rss": 115609600
       }
     },
     "last_report": {
@@ -400,11 +400,11 @@
       "selectedOrdinal": 0,
       "selectedDecisionCaptured": true,
       "estimatedRows": null,
-      "parseAndSupportValidationUs": 110,
-      "planningUs": 24,
-      "sourcePreparationUs": 744896,
-      "evaluationUs": 574375,
-      "totalUs": 1319384,
+      "parseAndSupportValidationUs": 111,
+      "planningUs": 23,
+      "sourcePreparationUs": 627267,
+      "evaluationUs": 682028,
+      "totalUs": 1309408,
       "pageReads": 745,
       "rowsLoaded": 100000,
       "rowsVisited": 100000,
@@ -421,8 +421,8 @@
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
     "metadata_json_bytes": 927,
-    "linked_off_over_before": 1.064282869555436,
-    "on_over_linked_off": 0.9422456998316068
+    "linked_off_over_before": 0.9746267867881596,
+    "on_over_linked_off": 0.9234485699964531
   },
   {
     "case": 5,
@@ -438,27 +438,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 135.125,
-        "min_ms": 127.358,
-        "max_ms": 145.994,
-        "median_rss": 16203776,
-        "median_peak_rss": 15761408
+        "median_ms": 154.622,
+        "min_ms": 147.299,
+        "max_ms": 200.868,
+        "median_rss": 16117760,
+        "median_peak_rss": 15859712
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 137.978,
-        "min_ms": 126.928,
-        "max_ms": 148.341,
-        "median_rss": 16265216,
-        "median_peak_rss": 15876096
+        "median_ms": 140.011,
+        "min_ms": 138.659,
+        "max_ms": 190.916,
+        "median_rss": 16203776,
+        "median_peak_rss": 15753216
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 142.235,
-        "min_ms": 139.726,
-        "max_ms": 173.048,
-        "median_rss": 16138240,
-        "median_peak_rss": 15724544
+        "median_ms": 151.545,
+        "min_ms": 137.383,
+        "max_ms": 166.207,
+        "median_rss": 16105472,
+        "median_peak_rss": 15785984
       }
     },
     "last_report": {
@@ -764,11 +764,11 @@
       "selectedOrdinal": 0,
       "selectedDecisionCaptured": true,
       "estimatedRows": 35.75,
-      "parseAndSupportValidationUs": 127,
-      "planningUs": 2443,
-      "sourcePreparationUs": 3448,
-      "evaluationUs": 810,
-      "totalUs": 4387,
+      "parseAndSupportValidationUs": 124,
+      "planningUs": 2664,
+      "sourcePreparationUs": 3794,
+      "evaluationUs": 765,
+      "totalUs": 4684,
       "pageReads": 2,
       "rowsLoaded": 72,
       "rowsVisited": 72,
@@ -785,8 +785,8 @@
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
     "metadata_json_bytes": 6274,
-    "linked_off_over_before": 1.0211137835337651,
-    "on_over_linked_off": 1.03085274464045
+    "linked_off_over_before": 0.9055050380928974,
+    "on_over_linked_off": 1.0823792416310147
   },
   {
     "case": 6,
@@ -802,27 +802,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 143.945,
-        "min_ms": 133.255,
-        "max_ms": 174.784,
-        "median_rss": 16187392,
-        "median_peak_rss": 15810560
+        "median_ms": 133.393,
+        "min_ms": 131.764,
+        "max_ms": 148.306,
+        "median_rss": 16220160,
+        "median_peak_rss": 15896576
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 139.272,
-        "min_ms": 131.754,
-        "max_ms": 169.232,
-        "median_rss": 16310272,
-        "median_peak_rss": 15912960
+        "median_ms": 145.086,
+        "min_ms": 127.96,
+        "max_ms": 216.71,
+        "median_rss": 16355328,
+        "median_peak_rss": 16019456
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 148.745,
-        "min_ms": 142.593,
-        "max_ms": 158.529,
-        "median_rss": 16031744,
-        "median_peak_rss": 15622144
+        "median_ms": 150.138,
+        "min_ms": 133.97,
+        "max_ms": 160.909,
+        "median_rss": 16207872,
+        "median_peak_rss": 15843328
       }
     },
     "last_report": {
@@ -839,11 +839,11 @@
       "selectedOrdinal": 0,
       "selectedDecisionCaptured": false,
       "estimatedRows": 35.75,
-      "parseAndSupportValidationUs": 122,
-      "planningUs": 2815,
-      "sourcePreparationUs": 3746,
-      "evaluationUs": 792,
-      "totalUs": 4661,
+      "parseAndSupportValidationUs": 118,
+      "planningUs": 2777,
+      "sourcePreparationUs": 3774,
+      "evaluationUs": 803,
+      "totalUs": 4697,
       "pageReads": 2,
       "rowsLoaded": 72,
       "rowsVisited": 72,
@@ -860,8 +860,8 @@
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
     "metadata_json_bytes": 760,
-    "linked_off_over_before": 0.9675362117475425,
-    "on_over_linked_off": 1.068017979206158
+    "linked_off_over_before": 1.0876582729228672,
+    "on_over_linked_off": 1.0348207270170795
   },
   {
     "case": 7,
@@ -877,27 +877,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 3.97,
-        "min_ms": 3.634,
-        "max_ms": 4.765,
-        "median_rss": 13201408,
-        "median_peak_rss": 12902400
+        "median_ms": 4.683,
+        "min_ms": 3.847,
+        "max_ms": 5.346,
+        "median_rss": 13287424,
+        "median_peak_rss": 12992512
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 4.525,
-        "min_ms": 3.803,
-        "max_ms": 5.803,
-        "median_rss": 12836864,
-        "median_peak_rss": 12455936
+        "median_ms": 3.927,
+        "min_ms": 3.358,
+        "max_ms": 4.421,
+        "median_rss": 12832768,
+        "median_peak_rss": 12562432
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 5.232,
-        "min_ms": 4.841,
-        "max_ms": 7.136,
-        "median_rss": 12935168,
-        "median_peak_rss": 12660736
+        "median_ms": 5.233,
+        "min_ms": 4.269,
+        "max_ms": 7.933,
+        "median_rss": 13381632,
+        "median_peak_rss": 13053952
       }
     },
     "last_report": {
@@ -924,11 +924,11 @@
       "selectedOrdinal": 0,
       "selectedDecisionCaptured": true,
       "estimatedRows": 1.0,
-      "parseAndSupportValidationUs": 16,
+      "parseAndSupportValidationUs": 12,
       "planningUs": 0,
-      "sourcePreparationUs": 76,
-      "evaluationUs": 6,
-      "totalUs": 98,
+      "sourcePreparationUs": 57,
+      "evaluationUs": 4,
+      "totalUs": 74,
       "pageReads": 2,
       "rowsLoaded": 1,
       "rowsVisited": 1,
@@ -945,8 +945,8 @@
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
     "metadata_json_bytes": 880,
-    "linked_off_over_before": 1.1397984886649875,
-    "on_over_linked_off": 1.1562430939226518
+    "linked_off_over_before": 0.8385650224215248,
+    "on_over_linked_off": 1.3325693913929206
   },
   {
     "case": 8,
@@ -962,27 +962,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 105.94,
-        "min_ms": 99.98,
-        "max_ms": 112.606,
-        "median_rss": 26984448,
-        "median_peak_rss": 26607616
+        "median_ms": 99.552,
+        "min_ms": 95.438,
+        "max_ms": 111.699,
+        "median_rss": 26329088,
+        "median_peak_rss": 26099712
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 98.811,
-        "min_ms": 94.672,
-        "max_ms": 121.341,
-        "median_rss": 26505216,
-        "median_peak_rss": 25980928
+        "median_ms": 102.319,
+        "min_ms": 95.087,
+        "max_ms": 106.124,
+        "median_rss": 26488832,
+        "median_peak_rss": 26025984
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 100.764,
-        "min_ms": 95.11,
-        "max_ms": 119.931,
-        "median_rss": 26374144,
-        "median_peak_rss": 26152960
+        "median_ms": 95.552,
+        "min_ms": 93.098,
+        "max_ms": 177.797,
+        "median_rss": 26394624,
+        "median_peak_rss": 26066944
       }
     },
     "last_report": {
@@ -1009,11 +1009,11 @@
       "selectedOrdinal": 0,
       "selectedDecisionCaptured": true,
       "estimatedRows": null,
-      "parseAndSupportValidationUs": 37,
-      "planningUs": 14,
-      "sourcePreparationUs": 5980,
-      "evaluationUs": 5534,
-      "totalUs": 11553,
+      "parseAndSupportValidationUs": 111,
+      "planningUs": 16,
+      "sourcePreparationUs": 6274,
+      "evaluationUs": 4482,
+      "totalUs": 10870,
       "pageReads": 8,
       "rowsLoaded": 1000,
       "rowsVisited": 1000,
@@ -1030,8 +1030,8 @@
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
     "metadata_json_bytes": 901,
-    "linked_off_over_before": 0.9327071927506136,
-    "on_over_linked_off": 1.0197650059203933
+    "linked_off_over_before": 1.027794519447123,
+    "on_over_linked_off": 0.9338637007789365
   },
   {
     "case": 9,
@@ -1047,27 +1047,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 11.36,
-        "min_ms": 10.604,
-        "max_ms": 13.322,
-        "median_rss": 13119488,
-        "median_peak_rss": 12779520
+        "median_ms": 10.011,
+        "min_ms": 9.434,
+        "max_ms": 11.412,
+        "median_rss": 13152256,
+        "median_peak_rss": 12849152
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 11.283,
-        "min_ms": 9.818,
-        "max_ms": 13.265,
-        "median_rss": 13172736,
-        "median_peak_rss": 12886016
+        "median_ms": 10.848,
+        "min_ms": 10.371,
+        "max_ms": 11.662,
+        "median_rss": 13193216,
+        "median_peak_rss": 12791808
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 14.88,
-        "min_ms": 10.351,
-        "max_ms": 15.608,
-        "median_rss": 13127680,
-        "median_peak_rss": 12636160
+        "median_ms": 14.391,
+        "min_ms": 10.449,
+        "max_ms": 16.088,
+        "median_rss": 12849152,
+        "median_peak_rss": 12558336
       }
     },
     "last_report": {
@@ -1094,11 +1094,11 @@
       "selectedOrdinal": 0,
       "selectedDecisionCaptured": true,
       "estimatedRows": 1.0,
-      "parseAndSupportValidationUs": 13,
+      "parseAndSupportValidationUs": 14,
       "planningUs": 0,
-      "sourcePreparationUs": 74,
-      "evaluationUs": 5,
-      "totalUs": 93,
+      "sourcePreparationUs": 58,
+      "evaluationUs": 4,
+      "totalUs": 78,
       "pageReads": 2,
       "rowsLoaded": 1,
       "rowsVisited": 1,
@@ -1115,8 +1115,8 @@
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
     "metadata_json_bytes": 880,
-    "linked_off_over_before": 0.9932218309859155,
-    "on_over_linked_off": 1.3187981919702207
+    "linked_off_over_before": 1.083608031165718,
+    "on_over_linked_off": 1.3266039823008848
   },
   {
     "case": 10,
@@ -1132,27 +1132,27 @@
     "variants": {
       "baseline-off": {
         "samples": 5,
-        "median_ms": 98.431,
-        "min_ms": 93.25,
-        "max_ms": 127.615,
-        "median_rss": 15466496,
-        "median_peak_rss": 15048704
+        "median_ms": 95.824,
+        "min_ms": 87.753,
+        "max_ms": 161.318,
+        "median_rss": 15306752,
+        "median_peak_rss": 14917632
       },
       "linked-off": {
         "samples": 5,
-        "median_ms": 94.148,
-        "min_ms": 85.827,
-        "max_ms": 105.799,
-        "median_rss": 15425536,
-        "median_peak_rss": 14999552
+        "median_ms": 99.047,
+        "min_ms": 89.802,
+        "max_ms": 100.592,
+        "median_rss": 15175680,
+        "median_peak_rss": 14827520
       },
       "diagnostic-on": {
         "samples": 5,
-        "median_ms": 98.811,
-        "min_ms": 97.365,
-        "max_ms": 108.223,
-        "median_rss": 15507456,
-        "median_peak_rss": 15114240
+        "median_ms": 93.338,
+        "min_ms": 88.142,
+        "max_ms": 95.553,
+        "median_rss": 15368192,
+        "median_peak_rss": 14929920
       }
     },
     "last_report": {
@@ -1458,11 +1458,11 @@
       "selectedOrdinal": 0,
       "selectedDecisionCaptured": true,
       "estimatedRows": 35.75,
-      "parseAndSupportValidationUs": 108,
-      "planningUs": 2987,
-      "sourcePreparationUs": 4021,
-      "evaluationUs": 824,
-      "totalUs": 4954,
+      "parseAndSupportValidationUs": 89,
+      "planningUs": 2440,
+      "sourcePreparationUs": 3249,
+      "evaluationUs": 792,
+      "totalUs": 4131,
       "pageReads": 2,
       "rowsLoaded": 71,
       "rowsVisited": 71,
@@ -1478,8 +1478,8 @@
       "scope": "ordinary-single-source",
       "estimationModel": "existing-rules-and-optional-STAT1"
     },
-    "metadata_json_bytes": 6274,
-    "linked_off_over_before": 0.9564872855096463,
-    "on_over_linked_off": 1.049528402090326
+    "metadata_json_bytes": 6273,
+    "linked_off_over_before": 1.0336345800634497,
+    "on_over_linked_off": 0.9423606974466667
   }
 ]

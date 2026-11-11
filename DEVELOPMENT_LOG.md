@@ -1,5 +1,34 @@
 # Development log
 
+## 2026-11-11 — Item3 measured local acceptance and immediate upload
+
+Completed final-source core10719/optional skip1, Inspector55, focused/native14
+(144 pinned result comparisons), VM/JS assertion example, packages/tool fatal-info
+analysis and format548/zero changes. Preserved earlier checks as earlier checks.
+Final primary165 samples and expanded paired OFF/write/ORM/linked controls
+investigate the initial higher medians; initial evidence remains archived.
+Accepted the explicit developer feature for this scope with the Inspector point
+OFF tradeoff: paired ratio1.0108, independent-median ratio1.0503. No zero-cost or
+optimizer-speedup claim. Direct 20-pair BLOB ON comparison after removing one
+redundant snapshot gives final/initial paired ratios0.3617/0.6215; retained mutable
+routing copy and mutation/lifetime tests. Unused binaries remain byte-identical.
+Updated stable ledger, compatibility, handoff and reusable Arabic prompt. Upload
+this completed checkpoint immediately to PR #44 before starting queued item6.
+Remote CI is separate; no automatic main merge or package publication.
+
+## 2026-11-11 — Diagnostics cost investigation and binding-copy reduction
+
+Uploaded initial cost checkpoint d334f39 on draft PR #44. Preserved all raw
+OFF/ON, unused-control, follow-up, affinity and BLOB results. Unpinned short
+controls had higher medians; the separate pinned 30-pair investigation did not
+reproduce those increases. Neither overlap nor affinity establishes zero cost.
+Removed one redundant snapshot on explicit read-only diagnosis, relying on
+_prepareQuery's existing synchronous pre-await copy; retained mutable's snapshot
+before schema routing. Added list/BLOB mutation isolation assertions. Unused
+ordinary/ORM/update binaries remain SHA-256 identical. Final-source core/cost
+validation is in progress; item 3 is not yet accepted. Arabic continuation prompt
+now lives in docs/AI_CONTINUATION_PROMPT.md.
+
 ## 2026-11-11 — Item 3 implementation checkpoint, not yet accepted
 
 Implemented explicit bounded core query diagnosis and Inspector profile APIs,

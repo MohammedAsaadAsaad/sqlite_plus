@@ -1,6 +1,6 @@
 # Optimizer item 3 — explicit bounded diagnostics
 
-Status: implementation contract, unaccepted. Base runtime: main 056e9644
+Status: accepted for tested local scope and documented control tradeoff. Base runtime: main 056e9644
 (PR #43 merge), frozen in benchmark_results/optimizer_diagnostics/before_manifest.json.
 Active branch/PR and continuation policy: docs/AI_HANDOFF.md, PR #44.
 
@@ -65,3 +65,20 @@ this routing/lifetime boundary; Inspector delegates explicitly and reports the
 outer snapshot overhead separately via its normal operation record. Read-only
 report page counters assume an exclusively loaned reader. No callback sandbox
 or control of arbitrary external user-function side effects is promised.
+
+## Completed evidence and limits (2026-11-11)
+
+See benchmark_results/optimizer_diagnostics/README.md, validation.json, raw JSON
+and source/binary manifests. Final core10719/optional skip1, Inspector55,
+focused/native14 and VM/JS assertions pass. OFF cost investigation includes
+unpinned follow-up, pinned ordinary/ORM/write/linked controls, not just overlapping
+ranges. The Inspector point1000 control retains median paired OFF ratio1.0108
+and independent-median ratio1.0503; accepted scope documents this tradeoff rather
+than claiming zero overhead. Enabled diagnostic costs remain explicit.
+
+Removed one redundant read-only binding snapshot; _prepareQuery copies before
+its first await, with no prior async boundary/user callback in diagnosis.
+Mutable's outer routing snapshot remains. Mutation tests protect both.
+Direct alternating 20-pair 1MiB BLOB controls show median paired final/initial
+ratios0.3617/0.6215 for read-only/mutable ON. Unknown allocation/keys/projection/
+comparison counters stay null. No full optimizer cost model or release claim.
