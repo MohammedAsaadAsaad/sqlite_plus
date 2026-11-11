@@ -1,5 +1,11 @@
 # Development log
 
+## 2026-11-11 — Item 38 search bounds stay capped
+
+An `IN` list of 32 constants uses the index. A list of 33 does not, and its
+rows match pinned SQLite 3.53.1. Join reordering stays at four sources.
+No AOT sample is recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 37 identical subqueries share one result
 
 Two identical uncorrelated scalar subqueries share one result when they

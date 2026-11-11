@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 38, search bounds.** Item 37 is
+**Active item: 39, parameter-aware plans.** Item 38 is
+correctness-verified and not cost-accepted. An `IN` list of 32 constants
+uses the index. A list of 33 does not, and its rows match pinned SQLite
+3.53.1. Four comma-joined tables with statistics are ordered from the
+smallest. Five stay in the written order. The caps are unchanged. No AOT
+sample is recorded.
+
+Item 37 is
 correctness-verified and not cost-accepted. Two identical uncorrelated
 scalar subqueries share one result when they contain no user function and
 no non-deterministic built-in. `probe(), probe()` still runs twice, and two

@@ -1272,6 +1272,57 @@ void main() {
     }
   });
 
+  test('IN lists above 32 and five-table joins keep their bounds', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT)');
+    await db.execute('CREATE INDEX ia ON t(a)');
+    await db.execute(
+        'INSERT INTO t VALUES ${[for (var i = 1; i <= 40; i++) '($i, $i)'].join(',')}');
+    String list(int n) => [for (var i = 1; i <= n; i++) '$i'].join(',');
+    final seek = await db.query(
+        'EXPLAIN QUERY PLAN SELECT id FROM t WHERE a IN (${list(32)})');
+    expect(seek.rows.single[3].toString(), contains('INDEX ia'));
+    final wide = await db.query(
+        'EXPLAIN QUERY PLAN SELECT id FROM t WHERE a IN (${list(33)})');
+    expect(wide.rows.single[3].toString(), isNot(contains('INDEX ia')));
+    await db.execute('CREATE TABLE a(v INT)');
+    await db.execute('CREATE TABLE b(v INT)');
+    await db.execute('CREATE TABLE c(v INT)');
+    await db.execute('CREATE TABLE d(v INT)');
+    await db.execute('CREATE TABLE e(v INT)');
+    await db.execute('INSERT INTO a VALUES (1),(2),(3),(4),(5)');
+    await db.execute('INSERT INTO b VALUES (1),(2),(3),(4)');
+    await db.execute('INSERT INTO c VALUES (1),(2),(3)');
+    await db.execute('INSERT INTO d VALUES (1)');
+    await db.execute('INSERT INTO e VALUES (1),(2)');
+    await db.execute('ANALYZE');
+    final four = await db
+        .query('EXPLAIN QUERY PLAN SELECT * FROM a, b, c, d ORDER BY a.v');
+    expect(four.rows.first[3].toString(), 'SCAN d');
+    final five = await db
+        .query('EXPLAIN QUERY PLAN SELECT * FROM a, b, c, d, e ORDER BY a.v');
+    expect([for (final row in five.rows) row[3].toString()],
+        ['SCAN a', 'SCAN b', 'SCAN c', 'SCAN d', 'SCAN e']);
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    final setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, a INT); '
+        'CREATE INDEX ia ON t(a); '
+        'INSERT INTO t VALUES ${[for (var i = 1; i <= 40; i++) '($i, $i)'].join(',')};';
+    final sql = 'SELECT id FROM t WHERE a IN (${list(33)}) ORDER BY id';
+    final native =
+        await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+    expect(native.exitCode, 0, reason: native.stderr.toString());
+    final actual = await db.query(sql);
+    expect([
+      for (final row in actual.rows)
+        [for (final value in row) value is BigInt ? value.toInt() : value]
+    ], [
+      for (final row in jsonDecode(native.stdout.toString()) as List)
+        (row as Map).values.toList()
+    ]);
+  });
+
   test('malformed UTF-8 and UTF-16 records are rejected', () {
     expect(
         () =>
