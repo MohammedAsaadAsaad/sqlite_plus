@@ -426,7 +426,10 @@ final class SqliteDatabase {
     return true;
   }
 
-  List<List<RowValues>> _equalGroups(
+  /// Distinct inner keys kept for one join probe. Past this, the join scans.
+  static const _maxJoinLookupKeys = 1024;
+
+  List<List<RowValues>>? _equalGroups(
       List<RowValues> rows, String key, CatalogColumn column) {
     final groups = <List<RowValues>>[];
     final representatives = <Object?>[];
@@ -447,6 +450,7 @@ final class SqliteDatabase {
         }
       }
       if (!placed) {
+        if (groups.length >= _maxJoinLookupKeys) return null;
         representatives.add(value);
         groups.add([row]);
       }
@@ -1268,6 +1272,8 @@ final class SqliteDatabase {
           continue;
         }
       }
+      final entries = _statistics.indexEntries(table.name, entry.name);
+      if (entries != null && entries > _maxJoinLookupKeys) continue;
       return (
         index: entry.name,
         column: found.column,
