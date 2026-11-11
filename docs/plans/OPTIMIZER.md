@@ -51,7 +51,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 39 | Prepared statement integration | Implemented/unaccepted; a bound `a = ?` still chooses the index; rows match SQLite; no AOT sample |
 | 40 | Evaluate plan caching, default off | Implemented/unaccepted; plans are not stored; ANALYZE changes the next explain; no AOT sample |
 | 41 | Inspector integration | Implemented/unaccepted; diagnoseQuery shows an index seek, one-end MIN/MAX, and an inner-join SEARCH; item 3 manifests unchanged; no AOT sample |
-| 42 | Whole-roadmap regression/release documentation | Queued |
+| 42 | Whole-roadmap regression/release documentation | Closed as documentation; not a release acceptance and not a compatibility-matrix claim |
 
 ## Acceptance per item
 
@@ -520,3 +520,28 @@ join that calls a function still rejects before the callback. Item 3's
 accepted manifests are unchanged. No fresh AOT sample is recorded.
 
 Next is item 42. No package publication.
+
+## Item 42 closeout, 2026-11-11
+
+This closes the 42-item ledger. It is not a release acceptance, and
+`COMPATIBILITY_MATRIX.md` is unchanged.
+
+Accepted only in the scope already recorded:
+
+- Item 3, opt-in diagnostics, on the archived local measurement.
+- Item 5, bounded Top-K, for its tested scope.
+- Item 8, early stop, only for an ordered `LIMIT`/`OFFSET` with no `WHERE`.
+
+Implemented and checked against pinned SQLite 3.53.1, without a separated
+AOT cost acceptance: items 6, 7, 9, 10, 11, 12, 13, 14, 15, 17, 19, 20, 21,
+22, 23, 25, 26, 27, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, and 41.
+Items 6 and 7 have archived AOT samples whose ranges overlap, so those
+samples are not an acceptance. Items 9 through 15, 17, 19 through 23, 25
+through 27, and 29 through 41 have no new cost-acceptance sample.
+
+Rejected: item 16 (skip-scan and index intersection), item 18 (`sqlite_stat4`
+stays unused), item 24 (no hash join), and item 28 (a correlated subquery
+is not flattened).
+
+Items 1, 2, and 4 stay at their earlier complete/initial-matrix notes.
+No package is published.

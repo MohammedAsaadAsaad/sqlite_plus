@@ -1,5 +1,13 @@
 # Development log
 
+## 2026-11-11 — Item 42 closes the optimizer ledger
+
+The 42-item ledger is closed at the statuses in `docs/plans/OPTIMIZER.md`.
+Items 3, 5, and 8 stay accepted only in their recorded scopes. Items 6, 7,
+9–15, 17, 19–23, 25–27, and 29–41 are not cost-accepted. Items 16, 18, 24,
+and 28 stay rejected. This is not a release acceptance, and the
+compatibility matrix is unchanged. No package is published.
+
 ## 2026-11-11 — Item 41 diagnosis shows the later access paths
 
 `diagnoseQuery` reports an index seek, a one-end primary-key `MAX`, and
