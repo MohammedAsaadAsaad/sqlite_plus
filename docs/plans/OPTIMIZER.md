@@ -29,7 +29,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 17 | Improve STAT1 estimates | Implemented/unaccepted; a range estimate is at least the next equality average; no AOT sample |
 | 18 | Evaluate skew-aware/STAT4 samples | Rejected; sqlite_stat4 is stored and ignored, stat1 remains the estimate |
 | 19 | Stale/missing statistics safeguards | Implemented/unaccepted; a recorded table cardinality is not inflated by a sibling index; no AOT sample |
-| 20 | Statistics gathering/loading cost | Queued |
+| 20 | Statistics gathering/loading cost | Implemented/unaccepted; stat text longer than 65536 is ignored; no loading AOT sample |
 | 21 | Broader safe predicate pushdown | Queued |
 | 22 | Bounded join-order search | Queued |
 | 23 | Indexed inner join access | Queued |
@@ -309,3 +309,12 @@ the table cardinality, so `WHERE b=999` keeps that index beside a sibling stat
 of `999999 1`. Rows match `NOT INDEXED`. No fresh AOT sample is recorded.
 
 Next is item 20. No package publication.
+
+## Item 20 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. Loading `sqlite_stat1` ignores a stat string longer
+than 65536 characters and falls back to the prefix heuristic. The invalid-stat
+test covers a 65537-character value and still returns the matching row. No
+loading-time AOT sample is recorded.
+
+Next is item 21. No package publication.
