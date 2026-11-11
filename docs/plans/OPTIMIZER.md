@@ -19,7 +19,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 7 | Reverse index scans | Implemented/unaccepted; full-scan reverse matches SQLite 3.53.1; AOT ranges overlap |
 | 8 | Safe early termination | Accepted for ordered LIMIT/OFFSET with no WHERE; filtered control median 1.0146 overlaps |
 | 9 | Partial/block sorting | Correctness verified for a unique key tail and an index-prefix block sort; cost not yet separated |
-| 10 | Table/index/lookup/sort cost comparison | Queued |
+| 10 | Table/index/lookup/sort cost comparison | Implemented/unaccepted; non-covering full-index visits stay on the table scan; no AOT sample |
 | 11 | Broader covering-index reads and costing | Queued |
 | 12 | Composite equality/range/order planning | Queued |
 | 13 | Partial/expression index eligibility | Queued |
@@ -199,3 +199,16 @@ DESC`, `ORDER BY id, a DESC` on a WITHOUT ROWID key, and `INDEXED BY iab WHERE
 a = 1 ORDER BY b, id`. No fresh AOT sample is recorded for this shape yet.
 
 Next is item 10. No package publication.
+
+## Item 10 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. When `sqlite_stat1` estimates that a non-covering
+secondary index visits at least as many rows as the table, and that index does
+not already satisfy `ORDER BY` or a block-sort prefix, the planner keeps the
+table scan. A zero index cardinality is not used as the population, so a stale
+`0 0` stat still falls through the existing estimate. `INDEXED BY`, covering
+plans, and order-providing indexes stay. `planner_statistics_test` matches
+`NOT INDEXED` and pinned SQLite 3.53.1 for `WHERE b = 1` after the selective
+stat is set to `1000 1000`. No fresh AOT sample is recorded.
+
+Next is item 11. No package publication.

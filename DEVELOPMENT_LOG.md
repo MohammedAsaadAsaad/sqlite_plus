@@ -1,5 +1,14 @@
 # Development log
 
+## 2026-11-11 — Item 10 table scan beats a non-selective index lookup
+
+When `sqlite_stat1` says a non-covering index visits at least every table row,
+and that index does not already provide `ORDER BY`, the planner keeps the
+table scan. Covering plans, `INDEXED BY`, and order-providing indexes are
+unchanged. A zero index cardinality is not used as the population. Results for
+the forced non-selective probe match `NOT INDEXED` and pinned SQLite 3.53.1.
+No AOT sample is recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 9 unique-prefix order and index block sort
 
 A unique rowid or a complete WITHOUT ROWID primary key satisfies `ORDER BY`

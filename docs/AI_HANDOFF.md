@@ -27,11 +27,19 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 10, table/index/lookup/sort cost comparison.** Item 9 is
-correctness-verified and not cost-accepted. A unique rowid or full primary key
-makes later `ORDER BY` terms redundant. A chosen index that groups a proper
-bare-column prefix block-sorts each run. Pinned SQLite 3.53.1 matches those
-queries. No AOT sample is recorded yet.
+**Active item: 11, broader covering-index reads and costing.** Item 10 is
+correctness-verified and not cost-accepted. A non-covering secondary index
+whose `sqlite_stat1` estimate visits at least as many rows as the table, and
+which does not already supply `ORDER BY`, loses to the table scan. Covering
+plans, `INDEXED BY`, and order-providing indexes stay. A zero index cardinality
+is not treated as the population. Pinned SQLite 3.53.1 matches
+`WHERE b = 1` after that stat is forced to `1000 1000`. No AOT sample is
+recorded yet.
+
+Item 9 is correctness-verified and not cost-accepted. A unique rowid or full
+primary key makes later `ORDER BY` terms redundant. A chosen index that groups
+a proper bare-column prefix block-sorts each run. Pinned SQLite 3.53.1 matches
+those queries. No AOT sample is recorded yet.
 
 **Item 8 remains accepted for its ordered LIMIT scope.** Item 8 is accepted only for a scan
 that already yields `ORDER BY` and has no `WHERE`, aggregate, window,
