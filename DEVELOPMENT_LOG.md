@@ -1,5 +1,11 @@
 # Development log
 
+## 2026-11-11 — Item 27 uncorrelated subqueries run once
+
+A scalar subquery with no outer column is executed once and reused. A
+correlated `count(*)` still follows each outer row and matches pinned
+SQLite 3.53.1. No AOT sample is recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 26 EXISTS stops at the first match
 
 An uncorrelated `EXISTS` on one ordinary table stops reading when a row

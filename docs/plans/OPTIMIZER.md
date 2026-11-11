@@ -36,7 +36,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 24 | Evaluate alternative join algorithms | Rejected; nested-loop order matches SQLite 3.53.1, so a hash join is not used |
 | 25 | Bounded temporary lookup structures | Implemented/unaccepted; inner-join lookup keeps at most 1024 distinct keys; no AOT sample |
 | 26 | EXISTS early exit | Implemented/unaccepted; uncorrelated single-table EXISTS stops at the first match; no AOT sample |
-| 27 | Safe reuse of uncorrelated subqueries | Queued |
+| 27 | Safe reuse of uncorrelated subqueries | Implemented/unaccepted; an uncorrelated scalar subquery runs once; correlated counts stay per row; no AOT sample |
 | 28 | Correlated query transformations | Queued |
 | 29 | CTE/derived pushdown and materialization choices | Queued |
 | 30 | Ordered DISTINCT/GROUP BY | Queued |
@@ -375,3 +375,11 @@ rows, the stopped read uses fewer pages than `count(*)`, and the correlated
 rows match pinned SQLite 3.53.1. No fresh AOT sample is recorded.
 
 Next is item 27. No package publication.
+
+## Item 27 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. An uncorrelated scalar subquery is executed once and
+reused for every outer row. A correlated `count(*)` still follows the outer
+row and matches pinned SQLite 3.53.1. No fresh AOT sample is recorded.
+
+Next is item 28. No package publication.

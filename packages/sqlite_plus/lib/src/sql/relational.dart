@@ -472,6 +472,8 @@ extension _RelationalQueries on SqliteDatabase {
             EvalContext? context) =>
         _relational(query, bound, scope, context,
             mutationSubqueries: mutationSubqueries, mutationCtes: mutationCtes);
+    // An uncorrelated subquery is run once per statement. A correlated one
+    // stays tied to the current outer row.
     final once = <SelectStatement, SqlRows>{};
     SqlRows subquery(SelectStatement query, EvalContext context) {
       if (mutationSubqueries != null) {

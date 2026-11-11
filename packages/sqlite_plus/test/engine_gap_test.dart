@@ -675,6 +675,51 @@ void main() {
     ]);
   });
 
+  test('an uncorrelated scalar subquery runs once', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE a(id INTEGER PRIMARY KEY)');
+    await db.execute('CREATE TABLE b(v INT)');
+    await db.execute('INSERT INTO a VALUES (1), (2), (3), (4)');
+    await db.execute('INSERT INTO b VALUES (1), (2)');
+    var calls = 0;
+    db.functions.registerScalar('probe', 0, (_) {
+      calls++;
+      return 10;
+    });
+    final reused =
+        await db.query('SELECT id, (SELECT probe()) AS p FROM a ORDER BY id');
+    expect(calls, 1);
+    expect(reused.rows, [
+      [BigInt.one, BigInt.from(10)],
+      [BigInt.two, BigInt.from(10)],
+      [BigInt.from(3), BigInt.from(10)],
+      [BigInt.from(4), BigInt.from(10)]
+    ]);
+    calls = 0;
+    const correlated =
+        'SELECT a.id AS aid, (SELECT count(*) FROM b WHERE b.v = a.id) AS n '
+        'FROM a ORDER BY aid';
+    final actual = await db.query(correlated);
+    expect(calls, 0);
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const setup = 'CREATE TABLE a(id INTEGER PRIMARY KEY); '
+        'CREATE TABLE b(v INT); '
+        'INSERT INTO a VALUES (1), (2), (3), (4); '
+        'INSERT INTO b VALUES (1), (2);';
+    final native =
+        await Process.run(pinned, ['-json', ':memory:', '$setup $correlated;']);
+    expect(native.exitCode, 0, reason: native.stderr.toString());
+    final expected = jsonDecode(native.stdout.toString()) as List;
+    expect([
+      for (final row in actual.rows)
+        [for (final value in row) value is BigInt ? value.toInt() : value]
+    ], [
+      for (final row in expected) (row as Map).values.toList()
+    ]);
+  });
+
   test('an inner lookup stops after 1024 distinct keys', () async {
     Future<void> check(int rows, String planText) async {
       final db = await MutableSqliteDatabase.create();
