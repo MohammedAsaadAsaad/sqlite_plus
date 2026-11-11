@@ -635,7 +635,7 @@ final class SqliteDatabase {
             scanSatisfiesOrder: _queryCanReuseIndexOrder(statement));
       }
     }
-    if (!table.withoutRowid) {
+    {
       final constraints = <BinaryExpr>[];
       void collect(Expr? expr) {
         if (expr is BinaryExpr && expr.op == 'AND') {
@@ -727,7 +727,7 @@ final class SqliteDatabase {
         for (final name in rowidNames)
           ...bounds(ColumnExpr(name), 'numeric', 'binary')
       ];
-      if (rowBounds.isNotEmpty && forced == null) {
+      if (rowBounds.isNotEmpty && forced == null && !table.withoutRowid) {
         diagnostics?.record('rowid-range', 'rowid-range-priority',
             chosen: true);
         return QueryPlan._indexed(
@@ -738,7 +738,7 @@ final class SqliteDatabase {
             'rowid-range',
             scanSatisfiesOrder: _primaryScanSatisfiesOrder(statement, table));
       }
-      if (notIndexed) {
+      if (notIndexed && !table.withoutRowid) {
         diagnostics?.record('table-scan', 'NOT-INDEXED',
             estimate: _statistics.rowCount(table.name), chosen: true);
         final delivery = _primaryFullScanDelivery(statement, table);
@@ -750,10 +750,12 @@ final class SqliteDatabase {
       var bestScore = -1;
       double? bestEstimate;
       for (final entry in catalog.entries.where((e) =>
+          !notIndexed &&
           e.type == 'index' &&
           asciiLower(e.tableName) == asciiLower(table.name) &&
           (forced == null || asciiLower(e.name) == asciiLower(forced.name)))) {
         try {
+          if (table.withoutRowid && entry.rootPage == table.rootPage) continue;
           final parsed = entry.sql == null
               ? null
               : IndexDefinition.parse(entry.sql!, table);

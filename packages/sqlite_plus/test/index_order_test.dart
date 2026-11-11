@@ -303,6 +303,51 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
           reason: query);
     }
   });
+
+  test('a WITHOUT ROWID secondary index supports equality and range', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute(
+        'CREATE TABLE t(id INT PRIMARY KEY, a INT, b INT) WITHOUT ROWID');
+    await db.execute('CREATE INDEX ia ON t(a)');
+    await db.execute(
+        'INSERT INTO t(id,a,b) VALUES (1,10,100),(2,20,200),(3,10,300)');
+    final reader =
+        await SqliteDatabase.openReadOnly(ByteImageStorage(db.exportImage()));
+    addTearDown(reader.close);
+    expect(reader.explain('SELECT id FROM t WHERE a = 10').indexName, 'ia');
+    expect(reader.explain('SELECT id FROM t WHERE a = 10').access,
+        'secondary-index-lookup');
+    expect(reader.explain('SELECT id FROM t WHERE a > 10 AND a < 30').access,
+        'secondary-index-range');
+    expect(reader.explain('SELECT id FROM t NOT INDEXED WHERE a = 10').access,
+        'index-tree-scan');
+    const queries = [
+      'SELECT id, b FROM t WHERE a = 10 ORDER BY id',
+      'SELECT id FROM t WHERE a > 10 AND a < 30 ORDER BY id',
+      'SELECT id FROM t WHERE id = 2',
+      'SELECT id FROM t NOT INDEXED WHERE a = 10 ORDER BY id',
+    ];
+    if (cli == null) {
+      expect((await reader.query(queries[0])).rows, [
+        [BigInt.one, BigInt.from(100)],
+        [BigInt.from(3), BigInt.from(300)]
+      ]);
+      return;
+    }
+    const setup =
+        'CREATE TABLE t(id INT PRIMARY KEY, a INT, b INT) WITHOUT ROWID;'
+        'CREATE INDEX ia ON t(a);'
+        'INSERT INTO t(id,a,b) VALUES (1,10,100),(2,20,200),(3,10,300);';
+    for (final query in queries) {
+      final native =
+          await Process.run(cli, ['-json', ':memory:', '$setup $query;']);
+      expect(native.exitCode, 0, reason: '$query\n${native.stderr}');
+      expect(_rows(await reader.query(query)),
+          jsonDecode(native.stdout.toString()),
+          reason: query);
+    }
+  });
 }
 
 List<Map<String, Object?>> _rows(QueryResult result) => [
