@@ -27,7 +27,12 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 27, safe reuse of uncorrelated subqueries.** Item 26 is
+**Active item: 28, correlated query transformations.** Item 27 is
+correctness-verified and not cost-accepted. An uncorrelated scalar subquery
+runs once for every outer row. A correlated `count(*)` still changes with
+the outer row and matches pinned SQLite 3.53.1. No AOT sample is recorded.
+
+Item 26 is
 correctness-verified and not cost-accepted. An uncorrelated `EXISTS` on one
 ordinary table stops the scan at the first match. Aggregates, correlation,
 and a second use of the same table stay on the full load. A 4000-row probe
