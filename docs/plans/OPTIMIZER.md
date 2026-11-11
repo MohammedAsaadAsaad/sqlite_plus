@@ -31,7 +31,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 19 | Stale/missing statistics safeguards | Implemented/unaccepted; a recorded table cardinality is not inflated by a sibling index; no AOT sample |
 | 20 | Statistics gathering/loading cost | Implemented/unaccepted; stat text longer than 65536 is ignored; no loading AOT sample |
 | 21 | Broader safe predicate pushdown | Implemented/unaccepted; AND/OR skip the right side once the left side decides; no AOT sample |
-| 22 | Bounded join-order search | Queued |
+| 22 | Bounded join-order search | Implemented/unaccepted; stat1 reorder covers 2–4 cross joins; 5 stays written order; no AOT sample |
 | 23 | Indexed inner join access | Queued |
 | 24 | Evaluate alternative join algorithms | Queued |
 | 25 | Bounded temporary lookup structures | Queued |
@@ -327,3 +327,12 @@ true. NULL on the left still evaluates the right side. Results for constant
 `AND`/`OR` match pinned SQLite 3.53.1. No fresh AOT sample is recorded.
 
 Next is item 22. No package publication.
+
+## Item 22 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. Comma joins of two, three, or four simple sources with
+`ORDER BY` and `sqlite_stat1` row counts are ordered from the smallest table.
+Five sources stay in the written order. The four-table result matches pinned
+SQLite 3.53.1. No fresh AOT sample is recorded.
+
+Next is item 23. No package publication.

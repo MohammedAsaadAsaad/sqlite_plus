@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 22 join reorder bound is four sources
+
+Simple comma joins of two to four sources, with `ORDER BY` and
+`sqlite_stat1` counts, run the smallest table first. A fifth source stays in
+the written order. The four-table rows match pinned SQLite 3.53.1. No AOT
+sample is recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 21 AND and OR short-circuit
 
 `AND` skips its right side when the left side is false. `OR` skips its right

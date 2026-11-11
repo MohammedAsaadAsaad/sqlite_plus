@@ -359,6 +359,48 @@ void main() {
     expect(plan.rows.single[3].toString(), isNot(contains('stat4')));
   });
 
+  test('four comma joins reorder by sqlite_stat1 row counts', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE a(v)');
+    await db.execute('CREATE TABLE b(v)');
+    await db.execute('CREATE TABLE c(v)');
+    await db.execute('CREATE TABLE d(v)');
+    await db.execute("INSERT INTO a VALUES('a')");
+    await db.execute("INSERT INTO b VALUES('b1'),('b2')");
+    await db.execute("INSERT INTO c VALUES('c1'),('c2'),('c3')");
+    await db.execute(
+        "INSERT INTO d VALUES('d1'),('d2'),('d3'),('d4'),('d5'),('d6'),('d7'),('d8')");
+    await db.execute('ANALYZE');
+    const query = 'SELECT a.v AS av, b.v AS bv, c.v AS cv, d.v AS dv '
+        'FROM d, c, b, a ORDER BY av, bv, cv, dv LIMIT 2';
+    final plan = await db.query('EXPLAIN QUERY PLAN $query');
+    expect(plan.rows.first[3].toString(), contains('a'));
+    expect(plan.rows.last[3].toString(), contains('d'));
+    final five = await db.query(
+        'EXPLAIN QUERY PLAN SELECT a.v FROM d, c, b, a, a AS extra ORDER BY a.v');
+    expect(five.rows.first[3].toString(), contains('d'));
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const setup = "CREATE TABLE a(v); CREATE TABLE b(v); CREATE TABLE c(v); "
+        "CREATE TABLE d(v); INSERT INTO a VALUES('a'); "
+        "INSERT INTO b VALUES('b1'),('b2'); "
+        "INSERT INTO c VALUES('c1'),('c2'),('c3'); "
+        "INSERT INTO d VALUES('d1'),('d2'),('d3'),('d4'),('d5'),('d6'),('d7'),('d8');";
+    final native =
+        await Process.run(pinned, ['-json', ':memory:', '$setup $query;']);
+    expect(native.exitCode, 0, reason: native.stderr.toString());
+    final actual = await db.query(query);
+    final expected = jsonDecode(native.stdout.toString()) as List;
+    expect(actual.rows.length, expected.length);
+    for (var i = 0; i < actual.rows.length; i++) {
+      expect([
+        for (final value in actual.rows[i])
+          value is BigInt ? value.toInt() : value
+      ], (expected[i] as Map).values.toList());
+    }
+  });
+
   test('two comma joins reorder by sqlite_stat1 row counts', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
