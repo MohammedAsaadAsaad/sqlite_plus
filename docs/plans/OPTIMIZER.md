@@ -26,7 +26,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 14 | IN/OR multiple-seek/union paths | Implemented/unaccepted; constant IN and same-column OR seek each value; no AOT sample |
 | 15 | WITHOUT ROWID access planning | Implemented/unaccepted; secondary equality and range seeks; primary tree is not pretended to be a seek; no AOT sample |
 | 16 | Evaluate intersection and skip-scan | Rejected; a non-leading column stays a table scan, and two indexes are not intersected |
-| 17 | Improve STAT1 estimates | Queued |
+| 17 | Improve STAT1 estimates | Implemented/unaccepted; a range estimate is at least the next equality average; no AOT sample |
 | 18 | Evaluate skew-aware/STAT4 samples | Queued |
 | 19 | Stale/missing statistics safeguards | Queued |
 | 20 | Statistics gathering/loading cost | Queued |
@@ -281,3 +281,13 @@ this planner does not read `sqlite_stat4` samples. A query with both `ia` and
 pinned SQLite 3.53.1. No AOT sample is recorded.
 
 Next is item 17. No package publication.
+
+## Item 17 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. A `sqlite_stat1` range estimate stays at least as large
+as the average for equality on the next index column. With `broad` forced to
+`1000 900 800` and `selective` forced to `1000 400`, `WHERE a>0 AND b=1`
+chooses `selective`. Rows match `NOT INDEXED` and pinned SQLite 3.53.1. No
+fresh AOT sample is recorded.
+
+Next is item 18. No package publication.

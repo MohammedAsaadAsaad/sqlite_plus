@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 17 STAT1 range floor
+
+A range constraint is estimated at least as large as equality on that next
+index column. A flat fourfold reduction can no longer undercut the recorded
+average. The probe matches `NOT INDEXED` and pinned SQLite 3.53.1. No AOT
+sample is recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 16 skip-scan and intersection rejected
 
 An index is not skip-scanned when its leading column is unconstrained, and

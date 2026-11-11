@@ -246,6 +246,35 @@ void main() {
         SqliteDatabase.openReadOnly(storage), throwsA(isA<FormatException>()));
   });
 
+  test('a range estimate stays at least the next equality average', () async {
+    final db = await database();
+    await db.execute('ANALYZE');
+    await db.execute(
+        "UPDATE sqlite_stat1 SET stat='1000 900 800' WHERE idx='broad'");
+    await db.execute(
+        "UPDATE sqlite_stat1 SET stat='1000 400' WHERE idx='selective'");
+    const probe = 'SELECT payload FROM items WHERE a>0 AND b=1';
+    final (reader, _) = await open(db);
+    expect(reader.explain(probe).indexName, 'selective');
+    final scanned = await reader
+        .query('SELECT payload FROM items NOT INDEXED WHERE a>0 AND b=1');
+    expect((await reader.query(probe)).rows, scanned.rows);
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (File(pinned).existsSync()) {
+      const setup = 'CREATE TABLE items(id INTEGER PRIMARY KEY,a INT,b INT,'
+          'c INT,payload TEXT);'
+          'INSERT INTO items WITH RECURSIVE n(x) AS('
+          'VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<1000) '
+          "SELECT x,x%2,x,x%5,'payload-'||x FROM n;";
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $probe;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      expect([
+        for (final row in scanned.rows) {'payload': row[0]}
+      ], jsonDecode(native.stdout.toString()));
+    }
+  });
+
   test('a non-covering index that visits every row loses to the table scan',
       () async {
     final db = await database();
