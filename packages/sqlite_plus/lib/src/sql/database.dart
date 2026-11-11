@@ -2061,12 +2061,16 @@ final class SqliteDatabase {
       final prefixLimit =
           _orderedPrefixLimit(statement, bound, scanSatisfiesOrder);
       if (diagnostics != null) diagnostics.plan = SqlDiagnosticPlan._(plan);
-      final stream = _planRecords(table, plan,
-          where: statement.where,
-          parameters: bound,
-          allowUnqualified: true,
-          alias: statement.sources.singleOrNull?.alias,
-          ftsText: _ftsQueryReadsText(statement, table));
+      final primaryExtreme = _primaryKeyExtreme(statement, table);
+      final stream = primaryExtreme == null
+          ? _planRecords(table, plan,
+              where: statement.where,
+              parameters: bound,
+              allowUnqualified: true,
+              alias: statement.sources.singleOrNull?.alias,
+              ftsText: _ftsQueryReadsText(statement, table))
+          : BtreeReader(_pager)
+              .scanTable(table.rootPage, reverse: primaryExtreme);
       final stored = table.storageColumns;
       await for (final record in stream) {
         if (prefixLimit == 0) break;
@@ -2101,7 +2105,10 @@ final class SqliteDatabase {
         }
         table.evaluateGenerated(row, _pager.header.textEncoding, lazy: true);
         input.add(row);
-        if (prefixLimit != null && input.length >= prefixLimit) break;
+        if (primaryExtreme != null ||
+            prefixLimit != null && input.length >= prefixLimit) {
+          break;
+        }
       }
     }
     diagnostics?.loaded = input.length;
@@ -2116,6 +2123,46 @@ final class SqliteDatabase {
     return _evaluate(statement, bound, table, input,
         inputOrdered: scanSatisfiesOrder || scanOrder != null,
         diagnostics: diagnostics);
+  }
+
+  /// True when [statement] is `MAX` of the integer primary key, false for `MIN`.
+  ///
+  /// Null keeps the ordinary scan. A `WHERE`, another selected expression, or
+  /// a non-key column still reads every row. `COUNT` is not answered from
+  /// statistics.
+  bool? _primaryKeyExtreme(SelectStatement statement, CatalogTable table) {
+    if (table.withoutRowid ||
+        statement.where != null ||
+        statement.distinct ||
+        statement.groupBy.isNotEmpty ||
+        statement.having != null ||
+        statement.order.isNotEmpty ||
+        statement.compounds.isNotEmpty ||
+        statement.ctes.isNotEmpty ||
+        statement.limit != null ||
+        statement.offset != null ||
+        statement.sources.length != 1 ||
+        statement.items.length != 1) {
+      return null;
+    }
+    final expression = statement.items.single.expression;
+    if (expression is! FunctionExpr ||
+        expression.distinct ||
+        expression.star ||
+        expression.filter != null ||
+        expression.arguments.length != 1) {
+      return null;
+    }
+    if (expression.key != 'min' && expression.key != 'max') return null;
+    final argument = expression.arguments.single;
+    if (argument is! ColumnExpr || argument.qualifier != null) return null;
+    final name = asciiLower(argument.name);
+    final alias =
+        table.rowidAlias == null ? null : asciiLower(table.rowidAlias!);
+    if (name != alias && !const {'rowid', 'oid', '_rowid_'}.contains(name)) {
+      return null;
+    }
+    return expression.key == 'max';
   }
 
   /// Rows to read before [statement]'s `LIMIT`/`OFFSET` when [ordered] is true.

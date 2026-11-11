@@ -720,6 +720,58 @@ void main() {
     ]);
   });
 
+  test('MIN and MAX of an integer primary key read one end', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, b INT)');
+    await db.execute('CREATE TABLE empty(id INTEGER PRIMARY KEY)');
+    final values = [for (var i = 1; i <= 4000; i++) '($i, ${i % 7})'].join(',');
+    await db.execute('INSERT INTO t(id, b) VALUES $values');
+    await db.execute('DELETE FROM t WHERE id = 1');
+    final image = db.exportImage();
+    final stopped = await SqliteDatabase.openReadOnly(ByteImageStorage(image));
+    addTearDown(stopped.close);
+    final before = stopped.pagesRead;
+    expect((await stopped.query('SELECT MAX(id) FROM t')).rows, [
+      [BigInt.from(4000)]
+    ]);
+    final extremePages = stopped.pagesRead - before;
+    final full = await SqliteDatabase.openReadOnly(ByteImageStorage(image));
+    addTearDown(full.close);
+    final beforeFull = full.pagesRead;
+    await full.query('SELECT count(*) FROM t');
+    expect(extremePages, lessThan(full.pagesRead - beforeFull));
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    final setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, b INT); '
+        'CREATE TABLE empty(id INTEGER PRIMARY KEY); '
+        'INSERT INTO t(id, b) VALUES $values; '
+        'DELETE FROM t WHERE id = 1;';
+    for (final sql in [
+      'SELECT MIN(id) FROM t',
+      'SELECT MAX(id) FROM t',
+      'SELECT MIN(id) FROM empty',
+      'SELECT MAX(id) FROM empty',
+      'SELECT MIN(id) FROM t WHERE id > 10',
+      'SELECT MIN(b) FROM t',
+      'SELECT count(*) FROM t',
+      'SELECT count(*) FROM empty',
+    ]) {
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(sql);
+      final text = native.stdout.toString().trim();
+      final expected = text.isEmpty ? const [] : jsonDecode(text) as List;
+      expect([
+        for (final row in actual.rows)
+          [for (final value in row) value is BigInt ? value.toInt() : value]
+      ], [
+        for (final row in expected) (row as Map).values.toList()
+      ], reason: sql);
+    }
+  });
+
   test('ordered DISTINCT and GROUP BY keep SQLite rows', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
