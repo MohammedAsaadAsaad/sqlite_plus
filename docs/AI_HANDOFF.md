@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 42, roadmap closeout.** Item 41 is correctness-verified
+**The 42-item ledger is closed at the statuses in `docs/plans/OPTIMIZER.md`.**
+This is not a release acceptance and not a compatibility-matrix claim.
+Items 3, 5, and 8 are accepted only in the scopes already recorded. Items
+6, 7, 9–15, 17, 19–23, 25–27, and 29–41 are correctness-checked and not
+cost-accepted. Items 16, 18, 24, and 28 are rejected. No package is
+published.
+
+Item 41 is correctness-verified
 and not cost-accepted. `diagnoseQuery` reports an index seek, a one-end
 `MAX` of the integer primary key, and `SEARCH` for a plain inner join.
 Joins that call a function, and attached-schema joins, still reject before
