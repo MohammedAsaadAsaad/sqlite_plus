@@ -602,6 +602,7 @@ final class SqliteDatabase {
     }
   }
 
+  /// Plans this statement from the catalog visible now. The result is not stored.
   QueryPlan _plan(
       SelectStatement statement, CatalogTable? table, List<Object?> bound,
       [_SqlDiagnosticTrace? diagnostics]) {

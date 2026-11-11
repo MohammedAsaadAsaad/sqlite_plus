@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 40 plans are not cached
+
+Each statement is planned from the current catalog. `ANALYZE` changes the
+next `EXPLAIN QUERY PLAN` on the same connection. No plan cache is enabled.
+Rows match pinned SQLite 3.53.1. No AOT sample is recorded, so this is not
+a cost acceptance.
+
 ## 2026-11-11 — Item 39 bound parameters keep the index
 
 `WHERE a = ?` chooses the index after the parameter is bound. The rows

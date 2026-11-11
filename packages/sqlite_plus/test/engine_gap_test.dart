@@ -1272,6 +1272,46 @@ void main() {
     }
   });
 
+  test('a later ANALYZE changes the next plan', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT)');
+    await db.execute('CREATE INDEX ia ON t(a)');
+    await db.execute('INSERT INTO t VALUES ${[
+      for (var i = 1; i <= 20; i++) '($i, 1, $i)'
+    ].join(',')}');
+    const sql = 'SELECT b FROM t WHERE a = 1';
+    final before = await db.query('EXPLAIN QUERY PLAN $sql');
+    expect(before.rows.single[3].toString(), contains('INDEX ia'));
+    await db.execute('ANALYZE');
+    final after = await db.query('EXPLAIN QUERY PLAN $sql');
+    expect(after.rows.single[3].toString(), contains('SCAN t'));
+    expect(after.rows.single[3].toString(),
+        isNot(before.rows.single[3].toString()));
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    final setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT); '
+        'CREATE INDEX ia ON t(a); '
+        'INSERT INTO t VALUES ${[
+      for (var i = 1; i <= 20; i++) '($i, 1, $i)'
+    ].join(',')}; '
+        'ANALYZE;';
+    final native = await Process.run(pinned, [
+      '-json',
+      ':memory:',
+      '$setup SELECT b FROM t WHERE a = 1 ORDER BY b;'
+    ]);
+    expect(native.exitCode, 0, reason: native.stderr.toString());
+    final actual = await db.query('$sql ORDER BY b');
+    expect([
+      for (final row in actual.rows)
+        [for (final value in row) value is BigInt ? value.toInt() : value]
+    ], [
+      for (final row in jsonDecode(native.stdout.toString()) as List)
+        (row as Map).values.toList()
+    ]);
+  });
+
   test('a bound parameter still uses the index', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
