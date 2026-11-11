@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 20 stat text is bounded at load
+
+A `sqlite_stat1` string longer than 65536 characters is ignored and the
+planner uses the prefix heuristic. The invalid-stat test covers that value
+and still returns the matching row. No loading-time AOT sample is recorded,
+so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 19 table cardinality is not inflated
 
 A `sqlite_stat1` table row stays the population for a non-matching index.
