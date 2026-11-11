@@ -1,5 +1,14 @@
 # Development log
 
+## 2026-11-11 — Item 13 stronger numeric partial-index proofs
+
+An automatic plan can use a partial index when a numeric comparison is
+stronger than the index predicate. `a > 1`, `a >= 1`, and `a = 3` prove
+`WHERE a > 0`. `a >= 0`, `a = 0`, and a `COLLATE` term do not. `INDEXED BY`
+keeps the exact-predicate rule, so SQLite 3.53.1 still rejects
+`INDEXED BY partial WHERE a > 1`. Automatic query results match that SQLite.
+No AOT sample is recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 12 composite BETWEEN bounds
 
 An inclusive `BETWEEN` is planned as a pair of `>=` and `<=` bounds. A

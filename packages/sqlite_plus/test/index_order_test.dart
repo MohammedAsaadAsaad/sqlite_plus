@@ -205,6 +205,54 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
     expect(filtered.rowsLoaded, greaterThan(1));
     expect(filtered.result.rows.single.single, BigInt.from(3));
   });
+
+  test('a stronger numeric bound proves a partial index predicate', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT)');
+    await db.execute('CREATE INDEX partial ON t(a) WHERE a > 0');
+    await db.execute(
+        'INSERT INTO t(id,a) VALUES (1,NULL),(2,1),(3,-2),(4,0),(6,3)');
+    final reader =
+        await SqliteDatabase.openReadOnly(ByteImageStorage(db.exportImage()));
+    addTearDown(reader.close);
+    expect(reader.explain('SELECT id FROM t WHERE a > 1').indexName, 'partial');
+    expect(reader.explain('SELECT id FROM t WHERE a = 3').indexName, 'partial');
+    expect(reader.explain('SELECT id FROM t WHERE a >= 1 ORDER BY a').indexName,
+        'partial');
+    expect(
+        reader.explain('SELECT id FROM t WHERE a >= 0').access, 'table-scan');
+    expect(reader.explain('SELECT id FROM t WHERE a = 0').access, 'table-scan');
+    expect(reader.explain('SELECT id FROM t WHERE a > 1 COLLATE binary').access,
+        'table-scan');
+    await expectLater(
+        reader.query('SELECT id FROM t INDEXED BY partial WHERE a > 1'),
+        throwsA(isA<SqlException>()));
+    const queries = [
+      'SELECT id FROM t WHERE a > 1',
+      'SELECT id FROM t WHERE a = 3',
+      'SELECT id FROM t WHERE a >= 1 ORDER BY a, id',
+      'SELECT id FROM t WHERE a >= 0 ORDER BY id',
+      'SELECT id FROM t WHERE a = 0',
+    ];
+    if (cli == null) {
+      expect((await reader.query(queries[0])).rows, [
+        [BigInt.from(6)]
+      ]);
+      return;
+    }
+    const setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, a INT);'
+        'CREATE INDEX partial ON t(a) WHERE a > 0;'
+        'INSERT INTO t(id,a) VALUES (1,NULL),(2,1),(3,-2),(4,0),(6,3);';
+    for (final query in queries) {
+      final native =
+          await Process.run(cli, ['-json', ':memory:', '$setup $query;']);
+      expect(native.exitCode, 0, reason: '$query\n${native.stderr}');
+      expect(_rows(await reader.query(query)),
+          jsonDecode(native.stdout.toString()),
+          reason: query);
+    }
+  });
 }
 
 List<Map<String, Object?>> _rows(QueryResult result) => [
