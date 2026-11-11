@@ -1272,6 +1272,45 @@ void main() {
     }
   });
 
+  test('diagnosis shows an index seek, a join search, and one-end MIN',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT)');
+    await db.execute('CREATE INDEX ia ON t(a)');
+    await db.execute('CREATE TABLE u(id INTEGER PRIMARY KEY, k INT)');
+    await db.execute('CREATE INDEX uk ON u(k)');
+    await db.execute('INSERT INTO t VALUES (1, 10), (2, 20)');
+    await db.execute('INSERT INTO u VALUES (1, 10), (2, 10)');
+    final reader =
+        await SqliteDatabase.openReadOnly(ByteImageStorage(db.exportImage()));
+    addTearDown(reader.close);
+    final seek = await reader.diagnoseQuery('SELECT id FROM t WHERE a = 10');
+    expect(seek.plan.access, 'secondary-index-lookup');
+    expect(seek.plan.indexName, 'ia');
+    expect(seek.result.rows, [
+      [BigInt.one]
+    ]);
+    final extreme = await reader.diagnoseQuery('SELECT MAX(id) FROM t');
+    expect(
+        extreme.decisions.any((decision) =>
+            decision.access == 'primary-key-extreme' &&
+            decision.reason == 'max'),
+        isTrue);
+    expect(extreme.result.rows, [
+      [BigInt.two]
+    ]);
+    final join = await reader
+        .diagnoseQuery('SELECT t.id AS tid FROM t INNER JOIN u ON t.a = u.k');
+    expect(join.plan.access, 'inner-join-search');
+    expect(
+        join.decisions.any((decision) =>
+            decision.access == 'inner-join-search' &&
+            decision.reason.contains('SEARCH u')),
+        isTrue);
+    expect(join.result.rows.length, 2);
+  });
+
   test('a later ANALYZE changes the next plan', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);

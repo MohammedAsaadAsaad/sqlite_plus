@@ -2068,6 +2068,11 @@ final class SqliteDatabase {
               : null;
       if (diagnostics != null) diagnostics.plan = SqlDiagnosticPlan._(plan);
       final primaryExtreme = _primaryKeyExtreme(statement, table);
+      if (primaryExtreme != null) {
+        diagnostics?.record(
+            'primary-key-extreme', primaryExtreme ? 'max' : 'min',
+            chosen: true);
+      }
       if (_whereIsFalse(statement.where)) {
         // A proved false filter yields no rows. Aggregates still run on
         // the empty input below, so count(*) stays 0.

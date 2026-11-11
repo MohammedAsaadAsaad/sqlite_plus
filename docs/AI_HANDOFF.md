@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 41, diagnostic access paths.** Item 40 is
+**Active item: 42, roadmap closeout.** Item 41 is correctness-verified
+and not cost-accepted. `diagnoseQuery` reports an index seek, a one-end
+`MAX` of the integer primary key, and `SEARCH` for a plain inner join.
+Joins that call a function, and attached-schema joins, still reject before
+the callback. Item 3's accepted manifests are unchanged. No AOT sample is
+recorded.
+
+Item 40 is
 correctness-verified and not cost-accepted. A plan is computed from the
 catalog visible to that statement and is not stored. `EXPLAIN QUERY PLAN`
 uses the index before `ANALYZE` and a table scan after it, on the same
