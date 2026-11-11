@@ -1,5 +1,13 @@
 # Development log
 
+## 2026-11-11 — Item 26 EXISTS stops at the first match
+
+An uncorrelated `EXISTS` on one ordinary table stops reading when a row
+matches. Aggregates, correlated predicates, and a second use of the table
+still read the whole table. A 4000-row probe runs once, and the correlated
+rows match pinned SQLite 3.53.1. No AOT sample is recorded, so this is not a
+cost acceptance.
+
 ## 2026-11-11 — Item 25 join lookup is capped
 
 An inner-join probe keeps at most 1024 distinct keys. A larger

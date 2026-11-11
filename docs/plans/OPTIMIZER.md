@@ -35,7 +35,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 23 | Indexed inner join access | Implemented/unaccepted; INNER JOIN equality on a leading index column seeks; OR and LEFT stay scans; no AOT sample |
 | 24 | Evaluate alternative join algorithms | Rejected; nested-loop order matches SQLite 3.53.1, so a hash join is not used |
 | 25 | Bounded temporary lookup structures | Implemented/unaccepted; inner-join lookup keeps at most 1024 distinct keys; no AOT sample |
-| 26 | EXISTS early exit | Queued |
+| 26 | EXISTS early exit | Implemented/unaccepted; uncorrelated single-table EXISTS stops at the first match; no AOT sample |
 | 27 | Safe reuse of uncorrelated subqueries | Queued |
 | 28 | Correlated query transformations | Queued |
 | 29 | CTE/derived pushdown and materialization choices | Queued |
@@ -364,3 +364,14 @@ build that passes the cap also scans. 1024 keys still seek. Both sizes
 match pinned SQLite 3.53.1. No fresh AOT sample is recorded.
 
 Next is item 26. No package publication.
+
+## Item 26 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. An uncorrelated `EXISTS` over one ordinary table, with
+no aggregate, window, `ORDER BY`, compound, or nested query, stops reading at
+the first match. A second use of that table, a correlated predicate, and
+`EXISTS (SELECT count(*))` keep the full load. The probe runs once on 4000
+rows, the stopped read uses fewer pages than `count(*)`, and the correlated
+rows match pinned SQLite 3.53.1. No fresh AOT sample is recorded.
+
+Next is item 27. No package publication.
