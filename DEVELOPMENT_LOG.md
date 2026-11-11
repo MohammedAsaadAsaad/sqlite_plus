@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 32 aggregates keep a running value
+
+`count`, `sum`, `avg`, `total`, `min`, and `max` update a running value.
+Rows of a group stay stored when a bare column, `HAVING`, or window needs
+them. `sum(probe(b))` still runs once per row, and the results match pinned
+SQLite 3.53.1. No AOT sample is recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 31 primary-key MIN and MAX
 
 `MIN` and `MAX` of an integer primary key read one end of the table when
