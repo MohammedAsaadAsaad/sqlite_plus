@@ -27,7 +27,13 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 17, STAT1 estimate improvements.** Item 16 is rejected.
+**Active item: 18, skew-aware STAT4 samples.** Item 17 is
+correctness-verified and not cost-accepted. A range estimate stays at least
+as large as the next column's equality average, so a non-selective range does
+not look cheaper than a tighter equality. Pinned SQLite 3.53.1 matches the
+probe. No AOT sample is recorded.
+
+Item 16 is rejected.
 Skip-scan is not used when the leading index column is unconstrained, and two
 indexes are not intersected. The residual predicate on one index matches
 pinned SQLite 3.53.1. No AOT sample is recorded.

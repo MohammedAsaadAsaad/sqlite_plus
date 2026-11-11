@@ -134,9 +134,16 @@ final class PlannerStatistics {
     }
     // One fourfold reduction per distinct lower/upper bound. STAT1 contains no
     // histogram from which to infer the actual distribution within a range.
+    // A range still visits at least as many rows as equality on that same
+    // next column, so the average in the following stat slot is a floor.
+    final rangeFloor =
+        matching && rangeBounds > 0 && equalities + 1 < statistic.rows.length
+            ? statistic.rows[equalities + 1]
+            : null;
     for (var i = 0; i < rangeBounds; i++) {
       rows /= 4;
     }
+    if (rangeFloor != null && rows < rangeFloor) rows = rangeFloor;
     return rows < 1 ? 1 : rows;
   }
 }
