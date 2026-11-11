@@ -27,11 +27,15 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 16, intersection and skip-scan evaluation.** Item 15 is
-correctness-verified and not cost-accepted. A `WITHOUT ROWID` table can seek
-a secondary index for an equality or range prefix. The primary tree is not
-reported as that seek. `NOT INDEXED` stays an `index-tree-scan`. Pinned
-SQLite 3.53.1 matches the comparisons. No AOT sample is recorded yet.
+**Active item: 17, STAT1 estimate improvements.** Item 16 is rejected.
+Skip-scan is not used when the leading index column is unconstrained, and two
+indexes are not intersected. The residual predicate on one index matches
+pinned SQLite 3.53.1. No AOT sample is recorded.
+
+Item 15 is correctness-verified and not cost-accepted. A `WITHOUT ROWID`
+table can seek a secondary index for an equality or range prefix. The primary
+tree is not reported as that seek. `NOT INDEXED` stays an `index-tree-scan`.
+Pinned SQLite 3.53.1 matches the comparisons. No AOT sample is recorded yet.
 
 Item 14 is correctness-verified and not cost-accepted. A rowid table seeks a
 secondary index once per distinct non-null constant in a leading `IN` list or

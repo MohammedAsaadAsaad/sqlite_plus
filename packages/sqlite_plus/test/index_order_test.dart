@@ -348,6 +348,62 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
           reason: query);
     }
   });
+
+  test('an unconstrained leading column is not skip-scanned', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT)');
+    await db.execute('CREATE INDEX iab ON t(a, b)');
+    await db.execute('CREATE INDEX ia ON t(a)');
+    await db.execute('CREATE INDEX ib ON t(b)');
+    await db.execute(
+        'INSERT INTO t(id,a,b) VALUES (1,1,2),(2,3,2),(3,1,4),(4,1,2)');
+    final reader =
+        await SqliteDatabase.openReadOnly(ByteImageStorage(db.exportImage()));
+    addTearDown(reader.close);
+    expect(reader.explain('SELECT id FROM t WHERE b = 2').indexName, 'ib');
+    final gap = await MutableSqliteDatabase.create();
+    addTearDown(gap.close);
+    await gap.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT)');
+    await gap.execute('CREATE INDEX iab ON t(a, b)');
+    await gap.execute('INSERT INTO t(id,a,b) VALUES (1,1,2),(2,3,2),(3,1,4)');
+    final gapReader =
+        await SqliteDatabase.openReadOnly(ByteImageStorage(gap.exportImage()));
+    addTearDown(gapReader.close);
+    expect(
+        gapReader.explain('SELECT id FROM t WHERE b = 2').access, 'table-scan');
+    const queries = [
+      'SELECT id FROM t WHERE b = 2 ORDER BY id',
+      'SELECT id FROM t WHERE a = 1 AND b = 2 ORDER BY id',
+    ];
+    if (cli == null) return;
+    const setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT);'
+        'CREATE INDEX iab ON t(a, b);'
+        'CREATE INDEX ia ON t(a);'
+        'CREATE INDEX ib ON t(b);'
+        'INSERT INTO t(id,a,b) VALUES (1,1,2),(2,3,2),(3,1,4),(4,1,2);';
+    for (final query in queries) {
+      final native =
+          await Process.run(cli, ['-json', ':memory:', '$setup $query;']);
+      expect(native.exitCode, 0, reason: '$query\n${native.stderr}');
+      expect(_rows(await reader.query(query)),
+          jsonDecode(native.stdout.toString()),
+          reason: query);
+    }
+    const gapSetup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT);'
+        'CREATE INDEX iab ON t(a, b);'
+        'INSERT INTO t(id,a,b) VALUES (1,1,2),(2,3,2),(3,1,4);';
+    final native = await Process.run(cli, [
+      '-json',
+      ':memory:',
+      '${gapSetup}SELECT id FROM t WHERE b = 2 ORDER BY id;'
+    ]);
+    expect(native.exitCode, 0, reason: native.stderr.toString());
+    expect(
+        _rows(
+            await gapReader.query('SELECT id FROM t WHERE b = 2 ORDER BY id')),
+        jsonDecode(native.stdout.toString()));
+  });
 }
 
 List<Map<String, Object?>> _rows(QueryResult result) => [

@@ -25,7 +25,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 13 | Partial/expression index eligibility | Implemented/unaccepted; stronger numeric bounds prove a partial predicate for automatic plans; no AOT sample |
 | 14 | IN/OR multiple-seek/union paths | Implemented/unaccepted; constant IN and same-column OR seek each value; no AOT sample |
 | 15 | WITHOUT ROWID access planning | Implemented/unaccepted; secondary equality and range seeks; primary tree is not pretended to be a seek; no AOT sample |
-| 16 | Evaluate intersection and skip-scan | Queued |
+| 16 | Evaluate intersection and skip-scan | Rejected; a non-leading column stays a table scan, and two indexes are not intersected |
 | 17 | Improve STAT1 estimates | Queued |
 | 18 | Evaluate skew-aware/STAT4 samples | Queued |
 | 19 | Stale/missing statistics safeguards | Queued |
@@ -271,3 +271,13 @@ INDEXED` remains an `index-tree-scan`. `WHERE a = 10`, `a > 10 AND a < 30`,
 is recorded.
 
 Next is item 16. No package publication.
+
+## Item 16 rejected, 2026-11-11
+
+Skip-scan and index intersection are not implemented. An index on `(a, b)` is
+not used for `WHERE b = 2`, because the leading column is unconstrained and
+this planner does not read `sqlite_stat4` samples. A query with both `ia` and
+`ib` still uses one index and the residual predicate. Both shapes match
+pinned SQLite 3.53.1. No AOT sample is recorded.
+
+Next is item 17. No package publication.
