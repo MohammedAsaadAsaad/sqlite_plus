@@ -747,14 +747,23 @@ final class SqliteDatabase {
               index: entry.name,
               estimate: estimate,
               score: score);
-          if (best == null ||
+          final onlyOneEstimate =
+              best != null && (estimate == null) != (bestEstimate == null);
+          final sameEstimate = best != null && estimate == bestEstimate;
+          final prefer = best == null ||
               estimate != null &&
                   bestEstimate != null &&
                   estimate < bestEstimate ||
-              (estimate == bestEstimate ||
-                      estimate == null ||
-                      bestEstimate == null) &&
-                  score > bestScore) {
+              onlyOneEstimate && score > bestScore ||
+              sameEstimate &&
+                  (satisfies != best.scanSatisfiesOrder
+                      ? satisfies
+                      : covered != best.covering
+                          ? covered
+                          : orderPrefix != best.orderedPrefix
+                              ? orderPrefix > best.orderedPrefix
+                              : score > bestScore);
+          if (prefer) {
             diagnostics?.select(ordinal!, estimate);
             bestScore = score;
             bestEstimate = estimate;

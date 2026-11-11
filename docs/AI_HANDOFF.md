@@ -27,12 +27,19 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 11, broader covering-index reads and costing.** Item 10 is
-correctness-verified and not cost-accepted. A non-covering secondary index
-whose `sqlite_stat1` estimate visits at least as many rows as the table, and
-which does not already supply `ORDER BY`, loses to the table scan. Covering
-plans, `INDEXED BY`, and order-providing indexes stay. A zero index cardinality
-is not treated as the population. Pinned SQLite 3.53.1 matches
+**Active item: 12, composite equality/range/order planning.** Item 11 is
+correctness-verified and not cost-accepted. Equal `sqlite_stat1` estimates,
+including indexes with no statistics, prefer an index that already yields
+`ORDER BY`, then a covering index, then a longer ordered prefix, then the
+previous score. A lower estimate still wins. `SELECT a, b FROM t WHERE a = 1`
+and the same query with `ORDER BY b` use covering index `iab`. Pinned SQLite
+3.53.1 matches those queries. No AOT sample is recorded yet.
+
+Item 10 is correctness-verified and not cost-accepted. A non-covering secondary
+index whose `sqlite_stat1` estimate visits at least as many rows as the table,
+and which does not already supply `ORDER BY`, loses to the table scan.
+Covering plans, `INDEXED BY`, and order-providing indexes stay. A zero index
+cardinality is not treated as the population. Pinned SQLite 3.53.1 matches
 `WHERE b = 1` after that stat is forced to `1000 1000`. No AOT sample is
 recorded yet.
 
