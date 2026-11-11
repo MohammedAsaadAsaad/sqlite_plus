@@ -28,7 +28,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 16 | Evaluate intersection and skip-scan | Rejected; a non-leading column stays a table scan, and two indexes are not intersected |
 | 17 | Improve STAT1 estimates | Implemented/unaccepted; a range estimate is at least the next equality average; no AOT sample |
 | 18 | Evaluate skew-aware/STAT4 samples | Rejected; sqlite_stat4 is stored and ignored, stat1 remains the estimate |
-| 19 | Stale/missing statistics safeguards | Queued |
+| 19 | Stale/missing statistics safeguards | Implemented/unaccepted; a recorded table cardinality is not inflated by a sibling index; no AOT sample |
 | 20 | Statistics gathering/loading cost | Queued |
 | 21 | Broader safe predicate pushdown | Queued |
 | 22 | Bounded join-order search | Queued |
@@ -300,3 +300,12 @@ table has one row does not change the stat1 join order or its page reads.
 is claimed.
 
 Next is item 19. No package publication.
+
+## Item 19 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. When `sqlite_stat1` has a table row, another index's
+cardinality does not replace it. A wrong-width stat on `selective` still uses
+the table cardinality, so `WHERE b=999` keeps that index beside a sibling stat
+of `999999 1`. Rows match `NOT INDEXED`. No fresh AOT sample is recorded.
+
+Next is item 20. No package publication.

@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 19 table cardinality is not inflated
+
+A `sqlite_stat1` table row stays the population for a non-matching index.
+A sibling index with a larger cardinality does not replace it. `WHERE b=999`
+keeps the selective index and matches `NOT INDEXED`. No AOT sample is
+recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 18 STAT4 samples rejected
 
 `sqlite_stat4` can be stored. Its samples are not planning inputs. A

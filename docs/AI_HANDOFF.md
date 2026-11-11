@@ -27,7 +27,12 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 19, stale and missing statistics safeguards.** Item 18 is
+**Active item: 20, statistics gathering and loading cost.** Item 19 is
+correctness-verified and not cost-accepted. A recorded table cardinality is
+not replaced by a larger sibling index. A wrong-width stat still plans from
+the table cardinality. Rows match `NOT INDEXED`. No AOT sample is recorded.
+
+Item 18 is
 rejected. `sqlite_stat4` is stored and ignored. `sqlite_stat1` remains the
 only estimate. Existing tests cover a contradictory sample and unchanged page
 reads.

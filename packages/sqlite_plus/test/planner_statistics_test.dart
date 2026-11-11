@@ -246,6 +246,26 @@ void main() {
         SqliteDatabase.openReadOnly(storage), throwsA(isA<FormatException>()));
   });
 
+  test('a sibling index cannot inflate a recorded table cardinality', () async {
+    final db = await database();
+    await db.execute('ANALYZE');
+    await db.execute(
+        "INSERT INTO sqlite_stat1(tbl,idx,stat) VALUES('items',NULL,'1000')");
+    await db
+        .execute("UPDATE sqlite_stat1 SET stat='999999 1' WHERE idx='broad'");
+    await db
+        .execute("UPDATE sqlite_stat1 SET stat='1000' WHERE idx='selective'");
+    const probe = 'SELECT payload FROM items WHERE b=999';
+    final (reader, _) = await open(db);
+    expect(reader.explain(probe).indexName, 'selective');
+    final scanned =
+        await reader.query('SELECT payload FROM items NOT INDEXED WHERE b=999');
+    expect((await reader.query(probe)).rows, scanned.rows);
+    expect(scanned.rows, [
+      ['payload-999']
+    ]);
+  });
+
   test('a range estimate stays at least the next equality average', () async {
     final db = await database();
     await db.execute('ANALYZE');

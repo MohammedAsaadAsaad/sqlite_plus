@@ -115,10 +115,14 @@ final class PlannerStatistics {
     final matching = statistic != null &&
         statistic.table == table &&
         statistic.rows.length == columns + 1;
+    // A recorded table cardinality wins. A sibling index cannot inflate it.
+    // Sibling cardinalities are only a stand-in when the table row is absent.
     double? total = _tables[table];
-    for (final index
-        in _indexes.values.where((index) => index.table == table)) {
-      if (total == null || index.rows.first > total) total = index.rows.first;
+    if (total == null) {
+      for (final index
+          in _indexes.values.where((index) => index.table == table)) {
+        if (total == null || index.rows.first > total) total = index.rows.first;
+      }
     }
     if (total == null) return null;
     var rows = matching ? statistic.rows.first : total;
