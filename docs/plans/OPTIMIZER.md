@@ -46,7 +46,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 34 | Predicate simplification/contradictions | Implemented/unaccepted; a false direct-table filter skips the scan; count stays 0; functions still run; no AOT sample |
 | 35 | Intermediate projection pruning | Implemented/unaccepted; an unused bare derived column becomes NULL; functions stay; no AOT sample |
 | 36 | Broader streaming execution | Implemented/unaccepted; an unordered table scan stops after LIMIT; a filter still scans; no AOT sample |
-| 37 | Safe per-execution common work reuse | Queued |
+| 37 | Safe per-execution common work reuse | Implemented/unaccepted; identical uncorrelated scalars are reused; probe stays separate; no AOT sample |
 | 38 | Bound planning complexity | Queued |
 | 39 | Prepared statement integration | Queued |
 | 40 | Evaluate plan caching, default off | Queued |
@@ -471,3 +471,14 @@ than `count(*)`. The btree scan remains an asynchronous loop. No fresh AOT
 sample is recorded.
 
 Next is item 37. No package publication.
+
+## Item 37 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. Two identical uncorrelated scalar subqueries share
+one result when the text has no user function and no non-deterministic
+built-in. `SELECT probe(), probe()` calls the probe twice. Two subqueries
+that call `probe()` also stay separate. Two `count(*)` subqueries of the
+same table read fewer pages than counts of two different tables. The value
+matches pinned SQLite 3.53.1. No fresh AOT sample is recorded.
+
+Next is item 38. No package publication.

@@ -27,7 +27,15 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 37, per-execution common work.** Item 36 is
+**Active item: 38, search bounds.** Item 37 is
+correctness-verified and not cost-accepted. Two identical uncorrelated
+scalar subqueries share one result when they contain no user function and
+no non-deterministic built-in. `probe(), probe()` still runs twice, and two
+`probe()` subqueries still run separately. The shared `count(*)` reads
+fewer pages than two different tables. Results match pinned SQLite 3.53.1.
+No AOT sample is recorded.
+
+Item 36 is
 correctness-verified and not cost-accepted. A direct table scan with
 `LIMIT` and no `WHERE`, `ORDER BY`, aggregate, or window stops after
 `OFFSET + LIMIT`. A filtered `LIMIT` still reads the matching rows. The

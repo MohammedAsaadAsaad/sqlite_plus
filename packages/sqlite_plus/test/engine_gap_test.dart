@@ -811,6 +811,74 @@ void main() {
     }
   });
 
+  test('identical scalar subqueries are reused and probe stays separate',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY)');
+    await db.execute('INSERT INTO t VALUES (1), (2), (3)');
+    var calls = 0;
+    db.functions.registerScalar('probe', 0, (_) {
+      calls++;
+      return 7;
+    });
+    expect(
+        (await db.query(
+                'SELECT (SELECT count(*) FROM t) AS a, (SELECT count(*) FROM t) AS b'))
+            .rows,
+        [
+          [BigInt.from(3), BigInt.from(3)]
+        ]);
+    calls = 0;
+    await db.query('SELECT probe(), probe()');
+    expect(calls, 2);
+    calls = 0;
+    expect(
+        (await db.query(
+                'SELECT (SELECT probe() FROM t LIMIT 1) AS a, (SELECT probe() FROM t LIMIT 1) AS b'))
+            .rows,
+        [
+          [BigInt.from(7), BigInt.from(7)]
+        ]);
+    expect(calls, 2);
+    final values = [for (var i = 1; i <= 4000; i++) '($i)'].join(',');
+    await db.execute('CREATE TABLE wide(id INTEGER PRIMARY KEY)');
+    await db.execute('INSERT INTO wide VALUES $values');
+    await db.execute('CREATE TABLE other(id INTEGER PRIMARY KEY)');
+    await db.execute('INSERT INTO other VALUES $values');
+    final image = db.exportImage();
+    final same = await SqliteDatabase.openReadOnly(ByteImageStorage(image));
+    addTearDown(same.close);
+    final beforeSame = same.pagesRead;
+    await same.query(
+        'SELECT (SELECT count(*) FROM wide) AS a, (SELECT count(*) FROM wide) AS b');
+    final samePages = same.pagesRead - beforeSame;
+    final different =
+        await SqliteDatabase.openReadOnly(ByteImageStorage(image));
+    addTearDown(different.close);
+    final beforeDifferent = different.pagesRead;
+    await different.query(
+        'SELECT (SELECT count(*) FROM wide) AS a, (SELECT count(*) FROM other) AS b');
+    expect(samePages, lessThan(different.pagesRead - beforeDifferent));
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY); '
+        'INSERT INTO t VALUES (1), (2), (3);';
+    const sql =
+        'SELECT (SELECT count(*) FROM t) AS a, (SELECT count(*) FROM t) AS b';
+    final native =
+        await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+    expect(native.exitCode, 0, reason: native.stderr.toString());
+    final actual = await db.query(sql);
+    expect([
+      for (final row in actual.rows)
+        [for (final value in row) value is BigInt ? value.toInt() : value]
+    ], [
+      for (final row in jsonDecode(native.stdout.toString()) as List)
+        (row as Map).values.toList()
+    ]);
+  });
+
   test('unordered LIMIT stops a table scan', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
