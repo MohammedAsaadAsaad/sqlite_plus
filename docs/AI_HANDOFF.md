@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 29, CTE and derived-table materialization.** Item 28 is
+**Active item: 30, ordered DISTINCT and GROUP BY.** Item 29 is
+correctness-verified and not cost-accepted. A CTE read more than once runs
+once, including across `UNION ALL`. `NOT MATERIALIZED` runs once per use.
+`MATERIALIZED` runs once before the outer filter. A derived table keeps its
+`LIMIT` before the outer `WHERE`. Rows match pinned SQLite 3.53.1. No AOT
+sample is recorded.
+
+Item 28 is
 rejected. A correlated subquery is not flattened into a join. It runs again
 for each outer row. Three outer rows call the inner probe three times, and
 the plain scalar values match pinned SQLite 3.53.1.

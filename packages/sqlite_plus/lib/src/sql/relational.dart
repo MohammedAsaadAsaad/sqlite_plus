@@ -49,6 +49,30 @@ extension _RelationalQueries on SqliteDatabase {
       expr is ColumnExpr && expr.name.contains('.') ||
       expr.children.any(_qualified);
 
+  /// How many times [name] is read by [statement], excluding its own CTE body.
+  int _cteUses(SelectStatement statement, String name) {
+    var count = 0;
+    void walk(SelectStatement query) {
+      for (final source in query.leafSources) {
+        if (source.schema == null && asciiLower(source.table ?? '') == name) {
+          count++;
+        }
+        if (source.query != null) walk(source.query!);
+      }
+      for (final part in query.compounds) {
+        walk(part.$2);
+      }
+      for (final expr in _expressions(query)) {
+        for (final nested in _nested(expr)) {
+          walk(nested);
+        }
+      }
+    }
+
+    walk(statement);
+    return count;
+  }
+
   /// Uncorrelated `EXISTS` with one ordinary table and no later-row dependency.
   ///
   /// An aggregate, window, `ORDER BY`, compound, or nested query can change
@@ -592,7 +616,10 @@ extension _RelationalQueries on SqliteDatabase {
                       mutationCtes: mutationCtes,
                       deferredProjection: deferred),
                   materialized: s.cteMaterialization[name] == true ||
-                      (mutationCtes?.containsKey(query) ?? false),
+                      (mutationCtes?.containsKey(query) ?? false) ||
+                      s.cteMaterialization[name] != false &&
+                          _cteUses(s, name) > 1,
+                  shareUses: s.cteMaterialization[name] != false,
                   cte: true,
                   describe: (query) =>
                       _pragmaColumnMetadata(query, scope, outerMetadata))
