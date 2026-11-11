@@ -30,6 +30,16 @@ old /tmp files; default portable verifier passes for the accepted source.
 **Next: item6 — index-order reuse.** First inspect PR #44's current head/CI and
 resolve any relevant CI failure. This completed item must be uploaded with this
 handoff before starting item6. Do not auto-merge main or publish packages.
+
+## CI inspection, 2026-11-11
+
+PR #44 at `a4fc3a9` was inspected before item 6. `packages/sqlite_plus_orm/example/prepared.dart`
+failed `dart analyze --fatal-infos` on five `curly_braces_in_flow_control_structures`
+infos. Those `if` bodies are now blocks, and the example analysis is clean.
+Windows `sqlite_plus` failed one `app_database_test` with socket errno 10013, and
+Windows Branches failed a draft lock with errno 33. The same ORM and Branches
+jobs already fail on main `056e964`. Those two Windows results are environment
+failures, not an item 3 product regression. Item 3's local acceptance is unchanged.
 The reusable Arabic prompt is [AI_CONTINUATION_PROMPT.md](AI_CONTINUATION_PROMPT.md).
 
 ## 1. Get the actual work

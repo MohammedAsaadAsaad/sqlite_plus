@@ -42,10 +42,13 @@ Future<void> main() async {
         .where(price.gteParameter(minimum))
         .asNoTracking()
         .prepare();
-    if (!read.usesEnginePreparation)
+    if (!read.usesEnginePreparation) {
       throw StateError('Expected direct engine preparation');
-    if ((await read.toList(parameters: {minimum: 15})).single.name != 'Coffee')
+    }
+    if ((await read.toList(parameters: {minimum: 15})).single.name !=
+        'Coffee') {
       throw StateError('Read');
+    }
     final key = QueryParameter<BigInt>('id'),
         amount = QueryParameter<int>('price');
     final update = await products.query
@@ -53,16 +56,20 @@ Future<void> main() async {
         .prepareUpdate({price: amount}, returning: [id, price]);
     if ((await update.execute(parameters: {key: BigInt.one, amount: 25}))
             .affectedRows !=
-        1) throw StateError('Update');
-    if ((await read.toList(parameters: {minimum: 15})).length != 2)
+        1) {
+      throw StateError('Update');
+    }
+    if ((await read.toList(parameters: {minimum: 15})).length != 2) {
       throw StateError('Fresh rows');
+    }
     await read.close();
     await update.close();
     // Existing query APIs also reuse eligible command shapes when opted in.
     await products.query.where(price.gte(10)).toList();
     await products.query.where(price.gte(20)).toList();
-    if (context.preparedQueryCacheEntries != 1)
+    if (context.preparedQueryCacheEntries != 1) {
       throw StateError('Bounded cache');
+    }
     print(
         'Prepared ORM assertions passed: typed bindings, current rows, updates, cache and lifetime.');
   } finally {
