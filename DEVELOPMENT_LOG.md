@@ -1,5 +1,10 @@
 # Development log
 
+## 2026-11-11 — Item 24 hash join rejected
+
+Joins stay nested loops. An indexed inner probe and a comma join without
+`ORDER BY` keep SQLite's row order on pinned 3.53.1. A hash join is not used.
+
 ## 2026-11-11 — Item 23 indexed inner join
 
 An `INNER JOIN` probes a leading index column when `ON` is an equality on
