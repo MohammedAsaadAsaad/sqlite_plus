@@ -811,6 +811,48 @@ void main() {
     }
   });
 
+  test('an unused derived column can be dropped and a function stays',
+      () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT)');
+    final values =
+        [for (var i = 1; i <= 8; i++) '($i, $i, ${i * 10})'].join(',');
+    await db.execute('INSERT INTO t VALUES $values');
+    var calls = 0;
+    db.functions.registerScalar('probe', 1, (args) {
+      calls++;
+      return args[0];
+    });
+    final probed = await db.query(
+        'SELECT a FROM (SELECT probe(b) AS p, a, b FROM t LIMIT 5) d WHERE a > 0 ORDER BY a');
+    expect(calls, 5);
+    expect(probed.rows, [
+      for (var i = 1; i <= 5; i++) [BigInt.from(i)]
+    ]);
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    final setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT); '
+        'INSERT INTO t VALUES $values;';
+    for (final sql in [
+      'SELECT a FROM (SELECT a, b FROM t LIMIT 5) d WHERE a > 2 ORDER BY a',
+      'SELECT a FROM (SELECT a, b FROM t LIMIT 5) d WHERE a > 0 ORDER BY a',
+    ]) {
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(sql);
+      final text = native.stdout.toString().trim();
+      final expected = text.isEmpty ? const [] : jsonDecode(text) as List;
+      expect([
+        for (final row in actual.rows)
+          [for (final value in row) value is BigInt ? value.toInt() : value]
+      ], [
+        for (final row in expected) (row as Map).values.toList()
+      ], reason: sql);
+    }
+  });
+
   test('a contradictory filter matches SQLite without a scan', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
