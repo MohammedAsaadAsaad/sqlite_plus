@@ -255,3 +255,14 @@ index on main. The optional `sqlite_plus_inspector_replay.dart` library delibera
 records raw SQL/bindings and database images, then replays only in fresh memory.
 Ordinary logs stay redacted. See [APIs, privacy, bounds and limitations](doc/DIAGNOSTICS.md)
 and the [complete runnable example](example/diagnostics.dart).
+
+### Explicit runtime profile (unreleased)
+
+Use `await connection.profile(sql, parameters: values)` on engine-backed
+read-only/mutable or ORM inspection connections to obtain one execution's normal
+result plus bounded real planner decisions/actual row and page counters.
+Normal `.query` never turns this on. Unsupported shapes/custom adapters reject;
+ORM lease/close state and mutable routing/exclusion remain enforced. See the
+[complete assertion example](example/query_profile.dart), engine diagnostic scope
+and workspace `benchmark_results/optimizer_diagnostics/README.md` for measured
+ON costs and OFF control tradeoffs; no zero-overhead guarantee is made.

@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-11",
+  "accepted": true,
+  "status": "accepted for scalar ordinary-source/constant SELECT diagnostics and documented measured control tradeoff",
+  "release_ready": false,
+  "checks": [
+    {
+      "suite": "core_full_final_source",
+      "passed": 10719,
+      "optional_skips": 1,
+      "result": "05:23 +10719 ~1: All tests passed!"
+    },
+    {
+      "suite": "inspector_full_final_source",
+      "passed": 55
+    },
+    {
+      "suite": "focused_core_and_native_final_source",
+      "passed": 14
+    },
+    {
+      "suite": "addons_full_prior_to_diagnostic_only_refinements",
+      "passed": 578
+    },
+    {
+      "suite": "search_full_prior_to_diagnostic_only_refinements",
+      "passed": 86
+    }
+  ],
+  "native_result_comparisons": 144,
+  "vm_js_example": "explicit assertions passed on final source; Node globalThis.self shim required",
+  "analysis": "packages/tool fatal-info passed",
+  "format": "548 files, zero changes",
+  "cost_gates": {
+    "primary_equivalence": "165 samples; identical results/rows/images/available pages; trace/counter/privacy gates passed",
+    "unused_binary_identity": "ordinary/ORM/update final binaries match initial candidate SHA-256",
+    "expanded_controls": "see followup/affinity/extended/linked raw files; methodologies kept separate",
+    "enabled_blob_copy": "20 pinned pairs per adapter; median paired ratios 0.361658 reader, 0.621529 mutable",
+    "known_control_tradeoff": "Inspector point1000 OFF median paired ratio 1.010764; ratio of medians 1.0503123390005151; not a zero-overhead guarantee"
+  },
+  "ci": "Inspect current PR #44 head; remote CI not claimed passed",
+  "note": "Item3 local measured scope only. Item6 and remaining roadmap/release gates not complete."
+}

@@ -1,0 +1,1485 @@
+[
+  {
+    "case": 0,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "500",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 43.773,
+        "min_ms": 39.375,
+        "max_ms": 53.406,
+        "median_rss": 12992512,
+        "median_peak_rss": 12746752
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 46.874,
+        "min_ms": 45.7,
+        "max_ms": 55.293,
+        "median_rss": 13066240,
+        "median_peak_rss": 12693504
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 54.194,
+        "min_ms": 47.728,
+        "max_ms": 55.779,
+        "median_rss": 12738560,
+        "median_peak_rss": 12386304
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "rowid-lookup",
+        "indexName": null,
+        "rootPage": 2,
+        "covering": false
+      },
+      "decisions": [
+        {
+          "ordinal": 0,
+          "indexName": null,
+          "access": "rowid-lookup",
+          "eligible": true,
+          "reason": "rowid-equality-priority",
+          "estimatedRows": 1.0,
+          "prefixScore": null
+        }
+      ],
+      "enumeratedCandidates": 1,
+      "decisionsTruncated": false,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": true,
+      "estimatedRows": 1.0,
+      "parseAndSupportValidationUs": 12,
+      "planningUs": 0,
+      "sourcePreparationUs": 59,
+      "evaluationUs": 4,
+      "totalUs": 76,
+      "pageReads": 2,
+      "rowsLoaded": 1,
+      "rowsVisited": 1,
+      "rowsMatched": 1,
+      "rowsReturned": 1,
+      "sortStrategy": "none",
+      "peakSortRows": 0,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 880,
+    "linked_off_over_before": 1.0708427569506316,
+    "on_over_linked_off": 1.156163331484405
+  },
+  {
+    "case": 1,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 215.449,
+        "min_ms": 195.602,
+        "max_ms": 228.317,
+        "median_rss": 33210368,
+        "median_peak_rss": 32866304
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 205.635,
+        "min_ms": 189.412,
+        "max_ms": 256.904,
+        "median_rss": 33308672,
+        "median_peak_rss": 32935936
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 197.018,
+        "min_ms": 190.877,
+        "max_ms": 203.058,
+        "median_rss": 33144832,
+        "median_peak_rss": 32808960
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "table-scan",
+        "indexName": null,
+        "rootPage": 2,
+        "covering": false
+      },
+      "decisions": [
+        {
+          "ordinal": 0,
+          "indexName": null,
+          "access": "table-scan",
+          "eligible": true,
+          "reason": "no-eligible-narrowing-access",
+          "estimatedRows": null,
+          "prefixScore": null
+        }
+      ],
+      "enumeratedCandidates": 1,
+      "decisionsTruncated": false,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": true,
+      "estimatedRows": null,
+      "parseAndSupportValidationUs": 48,
+      "planningUs": 13,
+      "sourcePreparationUs": 6090,
+      "evaluationUs": 4018,
+      "totalUs": 10157,
+      "pageReads": 8,
+      "rowsLoaded": 1000,
+      "rowsVisited": 1000,
+      "rowsMatched": 499,
+      "rowsReturned": 499,
+      "sortStrategy": "none",
+      "peakSortRows": 0,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 902,
+    "linked_off_over_before": 0.9544486166099633,
+    "on_over_linked_off": 0.958095654922557
+  },
+  {
+    "case": 2,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "early",
+      "off",
+      "50",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 342.676,
+        "min_ms": 301.273,
+        "max_ms": 361.879,
+        "median_rss": 45416448,
+        "median_peak_rss": 45768704
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 341.602,
+        "min_ms": 306.928,
+        "max_ms": 383.547,
+        "median_rss": 45453312,
+        "median_peak_rss": 45682688
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 306.978,
+        "min_ms": 280.51,
+        "max_ms": 348.214,
+        "median_rss": 45359104,
+        "median_peak_rss": 45707264
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "table-scan",
+        "indexName": null,
+        "rootPage": 2,
+        "covering": false
+      },
+      "decisions": [
+        {
+          "ordinal": 0,
+          "indexName": null,
+          "access": "table-scan",
+          "eligible": true,
+          "reason": "no-eligible-narrowing-access",
+          "estimatedRows": null,
+          "prefixScore": null
+        }
+      ],
+      "enumeratedCandidates": 1,
+      "decisionsTruncated": false,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": true,
+      "estimatedRows": null,
+      "parseAndSupportValidationUs": 46,
+      "planningUs": 5,
+      "sourcePreparationUs": 5427,
+      "evaluationUs": 8,
+      "totalUs": 5482,
+      "pageReads": 8,
+      "rowsLoaded": 1000,
+      "rowsVisited": 1,
+      "rowsMatched": 1,
+      "rowsReturned": 1,
+      "sortStrategy": "none",
+      "peakSortRows": 0,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 890,
+    "linked_off_over_before": 0.9968658441209772,
+    "on_over_linked_off": 0.8986422796119462
+  },
+  {
+    "case": 3,
+    "args": [
+      "/tmp/diagnostic-10000-0.db",
+      "sort",
+      "off",
+      "3",
+      "64",
+      "10000",
+      "reader"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 429.342,
+        "min_ms": 402.089,
+        "max_ms": 456.067,
+        "median_rss": 65368064,
+        "median_peak_rss": 65007616
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 434.057,
+        "min_ms": 380.075,
+        "max_ms": 477.546,
+        "median_rss": 65351680,
+        "median_peak_rss": 64966656
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 381.314,
+        "min_ms": 368.276,
+        "max_ms": 554.948,
+        "median_rss": 65355776,
+        "median_peak_rss": 64966656
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "table-scan",
+        "indexName": null,
+        "rootPage": 2,
+        "covering": false
+      },
+      "decisions": [
+        {
+          "ordinal": 0,
+          "indexName": null,
+          "access": "table-scan",
+          "eligible": true,
+          "reason": "no-eligible-narrowing-access",
+          "estimatedRows": null,
+          "prefixScore": null
+        }
+      ],
+      "enumeratedCandidates": 1,
+      "decisionsTruncated": false,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": true,
+      "estimatedRows": null,
+      "parseAndSupportValidationUs": 74,
+      "planningUs": 15,
+      "sourcePreparationUs": 59144,
+      "evaluationUs": 66626,
+      "totalUs": 125847,
+      "pageReads": 72,
+      "rowsLoaded": 10000,
+      "rowsVisited": 10000,
+      "rowsMatched": 10000,
+      "rowsReturned": 100,
+      "sortStrategy": "bounded-heap",
+      "peakSortRows": 100,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 920,
+    "linked_off_over_before": 1.0109819211723987,
+    "on_over_linked_off": 0.8784883091391223
+  },
+  {
+    "case": 4,
+    "args": [
+      "/tmp/diagnostic-100000-0.db",
+      "sort",
+      "off",
+      "1",
+      "64",
+      "100000",
+      "reader"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 1315.716,
+        "min_ms": 1221.466,
+        "max_ms": 1581.27,
+        "median_rss": 115884032,
+        "median_peak_rss": 115462144
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 1400.294,
+        "min_ms": 1224.586,
+        "max_ms": 1424.874,
+        "median_rss": 116101120,
+        "median_peak_rss": 115785728
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 1319.421,
+        "min_ms": 1231.002,
+        "max_ms": 1400.045,
+        "median_rss": 115793920,
+        "median_peak_rss": 115511296
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "table-scan",
+        "indexName": null,
+        "rootPage": 2,
+        "covering": false
+      },
+      "decisions": [
+        {
+          "ordinal": 0,
+          "indexName": null,
+          "access": "table-scan",
+          "eligible": true,
+          "reason": "no-eligible-narrowing-access",
+          "estimatedRows": null,
+          "prefixScore": null
+        }
+      ],
+      "enumeratedCandidates": 1,
+      "decisionsTruncated": false,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": true,
+      "estimatedRows": null,
+      "parseAndSupportValidationUs": 110,
+      "planningUs": 24,
+      "sourcePreparationUs": 744896,
+      "evaluationUs": 574375,
+      "totalUs": 1319384,
+      "pageReads": 745,
+      "rowsLoaded": 100000,
+      "rowsVisited": 100000,
+      "rowsMatched": 100000,
+      "rowsReturned": 100,
+      "sortStrategy": "bounded-heap",
+      "peakSortRows": 100,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 927,
+    "linked_off_over_before": 1.064282869555436,
+    "on_over_linked_off": 0.9422456998316068
+  },
+  {
+    "case": 5,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "64",
+      "1000",
+      "reader"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 135.125,
+        "min_ms": 127.358,
+        "max_ms": 145.994,
+        "median_rss": 16203776,
+        "median_peak_rss": 15761408
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 137.978,
+        "min_ms": 126.928,
+        "max_ms": 148.341,
+        "median_rss": 16265216,
+        "median_peak_rss": 15876096
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 142.235,
+        "min_ms": 139.726,
+        "max_ms": 173.048,
+        "median_rss": 16138240,
+        "median_peak_rss": 15724544
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "secondary-index-range",
+        "indexName": "idx_0",
+        "rootPage": 4,
+        "covering": true
+      },
+      "decisions": [
+        {
+          "ordinal": 0,
+          "indexName": "idx_0",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 1,
+          "indexName": "idx_1",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 2,
+          "indexName": "idx_2",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 3,
+          "indexName": "idx_3",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 4,
+          "indexName": "idx_4",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 5,
+          "indexName": "idx_5",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 6,
+          "indexName": "idx_6",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 7,
+          "indexName": "idx_7",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 8,
+          "indexName": "idx_8",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 9,
+          "indexName": "idx_9",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 10,
+          "indexName": "idx_10",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 11,
+          "indexName": "idx_11",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 12,
+          "indexName": "idx_12",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 13,
+          "indexName": "idx_13",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 14,
+          "indexName": "idx_14",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 15,
+          "indexName": "idx_15",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 16,
+          "indexName": "idx_16",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 17,
+          "indexName": "idx_17",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 18,
+          "indexName": "idx_18",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 19,
+          "indexName": "idx_19",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 20,
+          "indexName": "idx_20",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 21,
+          "indexName": "idx_21",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 22,
+          "indexName": "idx_22",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 23,
+          "indexName": "idx_23",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 24,
+          "indexName": "idx_24",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 25,
+          "indexName": "idx_25",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 26,
+          "indexName": "idx_26",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 27,
+          "indexName": "idx_27",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 28,
+          "indexName": "idx_28",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 29,
+          "indexName": "idx_29",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 30,
+          "indexName": "idx_30",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 31,
+          "indexName": "idx_31",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        }
+      ],
+      "enumeratedCandidates": 32,
+      "decisionsTruncated": false,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": true,
+      "estimatedRows": 35.75,
+      "parseAndSupportValidationUs": 127,
+      "planningUs": 2443,
+      "sourcePreparationUs": 3448,
+      "evaluationUs": 810,
+      "totalUs": 4387,
+      "pageReads": 2,
+      "rowsLoaded": 72,
+      "rowsVisited": 72,
+      "rowsMatched": 72,
+      "rowsReturned": 32,
+      "sortStrategy": "bounded-heap",
+      "peakSortRows": 32,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 6274,
+    "linked_off_over_before": 1.0211137835337651,
+    "on_over_linked_off": 1.03085274464045
+  },
+  {
+    "case": 6,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "30",
+      "0",
+      "1000",
+      "reader"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 143.945,
+        "min_ms": 133.255,
+        "max_ms": 174.784,
+        "median_rss": 16187392,
+        "median_peak_rss": 15810560
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 139.272,
+        "min_ms": 131.754,
+        "max_ms": 169.232,
+        "median_rss": 16310272,
+        "median_peak_rss": 15912960
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 148.745,
+        "min_ms": 142.593,
+        "max_ms": 158.529,
+        "median_rss": 16031744,
+        "median_peak_rss": 15622144
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "secondary-index-range",
+        "indexName": "idx_0",
+        "rootPage": 4,
+        "covering": true
+      },
+      "decisions": [],
+      "enumeratedCandidates": 32,
+      "decisionsTruncated": true,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": false,
+      "estimatedRows": 35.75,
+      "parseAndSupportValidationUs": 122,
+      "planningUs": 2815,
+      "sourcePreparationUs": 3746,
+      "evaluationUs": 792,
+      "totalUs": 4661,
+      "pageReads": 2,
+      "rowsLoaded": 72,
+      "rowsVisited": 72,
+      "rowsMatched": 72,
+      "rowsReturned": 32,
+      "sortStrategy": "bounded-heap",
+      "peakSortRows": 32,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 760,
+    "linked_off_over_before": 0.9675362117475425,
+    "on_over_linked_off": 1.068017979206158
+  },
+  {
+    "case": 7,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "30",
+      "64",
+      "1000",
+      "mutable"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 3.97,
+        "min_ms": 3.634,
+        "max_ms": 4.765,
+        "median_rss": 13201408,
+        "median_peak_rss": 12902400
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 4.525,
+        "min_ms": 3.803,
+        "max_ms": 5.803,
+        "median_rss": 12836864,
+        "median_peak_rss": 12455936
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 5.232,
+        "min_ms": 4.841,
+        "max_ms": 7.136,
+        "median_rss": 12935168,
+        "median_peak_rss": 12660736
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "rowid-lookup",
+        "indexName": null,
+        "rootPage": 2,
+        "covering": false
+      },
+      "decisions": [
+        {
+          "ordinal": 0,
+          "indexName": null,
+          "access": "rowid-lookup",
+          "eligible": true,
+          "reason": "rowid-equality-priority",
+          "estimatedRows": 1.0,
+          "prefixScore": null
+        }
+      ],
+      "enumeratedCandidates": 1,
+      "decisionsTruncated": false,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": true,
+      "estimatedRows": 1.0,
+      "parseAndSupportValidationUs": 16,
+      "planningUs": 0,
+      "sourcePreparationUs": 76,
+      "evaluationUs": 6,
+      "totalUs": 98,
+      "pageReads": 2,
+      "rowsLoaded": 1,
+      "rowsVisited": 1,
+      "rowsMatched": 1,
+      "rowsReturned": 1,
+      "sortStrategy": "none",
+      "peakSortRows": 0,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 880,
+    "linked_off_over_before": 1.1397984886649875,
+    "on_over_linked_off": 1.1562430939226518
+  },
+  {
+    "case": 8,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "scan",
+      "off",
+      "10",
+      "64",
+      "1000",
+      "mutable"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 105.94,
+        "min_ms": 99.98,
+        "max_ms": 112.606,
+        "median_rss": 26984448,
+        "median_peak_rss": 26607616
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 98.811,
+        "min_ms": 94.672,
+        "max_ms": 121.341,
+        "median_rss": 26505216,
+        "median_peak_rss": 25980928
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 100.764,
+        "min_ms": 95.11,
+        "max_ms": 119.931,
+        "median_rss": 26374144,
+        "median_peak_rss": 26152960
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "table-scan",
+        "indexName": null,
+        "rootPage": 2,
+        "covering": false
+      },
+      "decisions": [
+        {
+          "ordinal": 0,
+          "indexName": null,
+          "access": "table-scan",
+          "eligible": true,
+          "reason": "no-eligible-narrowing-access",
+          "estimatedRows": null,
+          "prefixScore": null
+        }
+      ],
+      "enumeratedCandidates": 1,
+      "decisionsTruncated": false,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": true,
+      "estimatedRows": null,
+      "parseAndSupportValidationUs": 37,
+      "planningUs": 14,
+      "sourcePreparationUs": 5980,
+      "evaluationUs": 5534,
+      "totalUs": 11553,
+      "pageReads": 8,
+      "rowsLoaded": 1000,
+      "rowsVisited": 1000,
+      "rowsMatched": 500,
+      "rowsReturned": 500,
+      "sortStrategy": "none",
+      "peakSortRows": 0,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 901,
+    "linked_off_over_before": 0.9327071927506136,
+    "on_over_linked_off": 1.0197650059203933
+  },
+  {
+    "case": 9,
+    "args": [
+      "/tmp/diagnostic-1000-0.db",
+      "point",
+      "off",
+      "100",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 11.36,
+        "min_ms": 10.604,
+        "max_ms": 13.322,
+        "median_rss": 13119488,
+        "median_peak_rss": 12779520
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 11.283,
+        "min_ms": 9.818,
+        "max_ms": 13.265,
+        "median_rss": 13172736,
+        "median_peak_rss": 12886016
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 14.88,
+        "min_ms": 10.351,
+        "max_ms": 15.608,
+        "median_rss": 13127680,
+        "median_peak_rss": 12636160
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "rowid-lookup",
+        "indexName": null,
+        "rootPage": 2,
+        "covering": false
+      },
+      "decisions": [
+        {
+          "ordinal": 0,
+          "indexName": null,
+          "access": "rowid-lookup",
+          "eligible": true,
+          "reason": "rowid-equality-priority",
+          "estimatedRows": 1.0,
+          "prefixScore": null
+        }
+      ],
+      "enumeratedCandidates": 1,
+      "decisionsTruncated": false,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": true,
+      "estimatedRows": 1.0,
+      "parseAndSupportValidationUs": 13,
+      "planningUs": 0,
+      "sourcePreparationUs": 74,
+      "evaluationUs": 5,
+      "totalUs": 93,
+      "pageReads": 2,
+      "rowsLoaded": 1,
+      "rowsVisited": 1,
+      "rowsMatched": 1,
+      "rowsReturned": 1,
+      "sortStrategy": "none",
+      "peakSortRows": 0,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 880,
+    "linked_off_over_before": 0.9932218309859155,
+    "on_over_linked_off": 1.3187981919702207
+  },
+  {
+    "case": 10,
+    "args": [
+      "/tmp/diagnostic-1000-32.db",
+      "index",
+      "off",
+      "20",
+      "64",
+      "1000",
+      "inspected"
+    ],
+    "variants": {
+      "baseline-off": {
+        "samples": 5,
+        "median_ms": 98.431,
+        "min_ms": 93.25,
+        "max_ms": 127.615,
+        "median_rss": 15466496,
+        "median_peak_rss": 15048704
+      },
+      "linked-off": {
+        "samples": 5,
+        "median_ms": 94.148,
+        "min_ms": 85.827,
+        "max_ms": 105.799,
+        "median_rss": 15425536,
+        "median_peak_rss": 14999552
+      },
+      "diagnostic-on": {
+        "samples": 5,
+        "median_ms": 98.811,
+        "min_ms": 97.365,
+        "max_ms": 108.223,
+        "median_rss": 15507456,
+        "median_peak_rss": 15114240
+      }
+    },
+    "last_report": {
+      "version": 1,
+      "plan": {
+        "access": "secondary-index-range",
+        "indexName": "idx_0",
+        "rootPage": 4,
+        "covering": true
+      },
+      "decisions": [
+        {
+          "ordinal": 0,
+          "indexName": "idx_0",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 1,
+          "indexName": "idx_1",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 2,
+          "indexName": "idx_2",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 3,
+          "indexName": "idx_3",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 4,
+          "indexName": "idx_4",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 5,
+          "indexName": "idx_5",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 6,
+          "indexName": "idx_6",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 7,
+          "indexName": "idx_7",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 8,
+          "indexName": "idx_8",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 9,
+          "indexName": "idx_9",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 10,
+          "indexName": "idx_10",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 11,
+          "indexName": "idx_11",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 12,
+          "indexName": "idx_12",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 13,
+          "indexName": "idx_13",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 14,
+          "indexName": "idx_14",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 15,
+          "indexName": "idx_15",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 16,
+          "indexName": "idx_16",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 17,
+          "indexName": "idx_17",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 18,
+          "indexName": "idx_18",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 19,
+          "indexName": "idx_19",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 20,
+          "indexName": "idx_20",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 21,
+          "indexName": "idx_21",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 22,
+          "indexName": "idx_22",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 23,
+          "indexName": "idx_23",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 24,
+          "indexName": "idx_24",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 25,
+          "indexName": "idx_25",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 26,
+          "indexName": "idx_26",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 27,
+          "indexName": "idx_27",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 28,
+          "indexName": "idx_28",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 29,
+          "indexName": "idx_29",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 30,
+          "indexName": "idx_30",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        },
+        {
+          "ordinal": 31,
+          "indexName": "idx_31",
+          "access": "secondary-index-range",
+          "eligible": true,
+          "reason": "STAT1-assisted-estimate",
+          "estimatedRows": 35.75,
+          "prefixScore": 20
+        }
+      ],
+      "enumeratedCandidates": 32,
+      "decisionsTruncated": false,
+      "selectedOrdinal": 0,
+      "selectedDecisionCaptured": true,
+      "estimatedRows": 35.75,
+      "parseAndSupportValidationUs": 108,
+      "planningUs": 2987,
+      "sourcePreparationUs": 4021,
+      "evaluationUs": 824,
+      "totalUs": 4954,
+      "pageReads": 2,
+      "rowsLoaded": 71,
+      "rowsVisited": 71,
+      "rowsMatched": 71,
+      "rowsReturned": 32,
+      "sortStrategy": "bounded-heap",
+      "peakSortRows": 32,
+      "requiresExclusiveReader": true,
+      "indexKeysExamined": null,
+      "sortComparisons": null,
+      "projectionCalls": null,
+      "allocatedBytes": null,
+      "scope": "ordinary-single-source",
+      "estimationModel": "existing-rules-and-optional-STAT1"
+    },
+    "metadata_json_bytes": 6274,
+    "linked_off_over_before": 0.9564872855096463,
+    "on_over_linked_off": 1.049528402090326
+  }
+]

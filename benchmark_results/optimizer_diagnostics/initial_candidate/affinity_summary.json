@@ -1,0 +1,38 @@
+[
+  {
+    "name": "unused-read",
+    "cpu": 0,
+    "affinity": "separate pinned investigation; not pooled",
+    "before": {
+      "samples": 30,
+      "median_ms": 37.124,
+      "min_ms": 34.054,
+      "max_ms": 43.954
+    },
+    "after": {
+      "samples": 30,
+      "median_ms": 37.338,
+      "min_ms": 34.145,
+      "max_ms": 54.955
+    },
+    "median_paired_ratio": 0.9965488323065443
+  },
+  {
+    "name": "mutable-point-1000",
+    "cpu": 0,
+    "affinity": "separate pinned investigation; not pooled",
+    "before": {
+      "samples": 30,
+      "median_ms": 101.51249999999999,
+      "min_ms": 83.932,
+      "max_ms": 139.386
+    },
+    "after": {
+      "samples": 30,
+      "median_ms": 98.79249999999999,
+      "min_ms": 84.019,
+      "max_ms": 146.128
+    },
+    "median_paired_ratio": 0.9823494346066048
+  }
+]

@@ -78,6 +78,29 @@ final class InspectedOrmConnection extends OrmConnection {
         }
         return inspectDatabasePlan(database, sql, parameters);
       });
+
+  /// Explicit routed snapshot diagnosis while the owning context is idle. This is not
+  /// automatic ORM instrumentation and never replaces the adapter query path.
+  Future<SqlQueryDiagnostics> profile(String sql,
+          {List<Object?> parameters = const [],
+          SqlDiagnosticOptions options = const SqlDiagnosticOptions()}) async =>
+      await delegate.exclusive(() {
+        final database = delegate.engineDatabase;
+        if (database == null) {
+          throw UnsupportedError(
+              'No engine diagnostic capability on this ORM connection');
+        }
+        // Borrowed engine access must not bypass the adapter lease/closed check.
+        delegate.inTransaction;
+        return inspector.measure(
+            sql,
+            parameters,
+            InspectorOperation.query,
+            () => inspectDatabaseQuery(database, sql,
+                parameters: parameters, options: options),
+            connection: identity,
+            rows: (r) => r.result.rows.length);
+      });
   @override
   Future<void> close() => delegate.close();
 }

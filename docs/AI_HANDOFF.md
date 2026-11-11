@@ -1,31 +1,105 @@
-# AI handoff — sqlite_plus optimizer and pending workspace integration
+# AI handoff — sqlite_plus optimizer continuation
 
-Checkpoint: 2026-11-08. This document is the continuation entry point; no prior
+Checkpoint: 2026-11-11. This document is the continuation entry point; no prior
 chat, original execution machine, credentials or preserved `/tmp` directory is
 required. Read the current GitHub branch/PR and CI before making new claims.
+
+## Latest completed item — 3, explicit diagnostics
+
+**Accepted for tested local scope and documented control tradeoff**, not a release
+or whole-roadmap acceptance. Read
+[diagnostic evidence](../benchmark_results/optimizer_diagnostics/README.md) and
+its validation/source/binary manifests. Initial negative results remain archived
+under `initial_candidate/`; no zero-overhead guarantee is made. Inspector's
+longer linked-OFF control has median paired ratio 1.0108 (ratio of medians1.0503).
+
+Final-source core **10,719 passed / optional skip1**, Inspector55, focused/native14
+(144 native result comparisons), VM/JS assertion example, packages/tool fatal-info
+analysis and 548-file format all pass. Prior add-ons578/Search86 remain identified
+as prior checks. Expanded OFF controls, enabled costs, trace bounds, privacy and
+actual-row/page equivalence are recorded. Direct 20-pair BLOB comparison gives
+median paired final/initial ratios0.3617 reader /0.6215 mutable. Unused ordinary,
+ORM and update AOT binaries remain byte-identical to the initial candidate.
+
+Read-only diagnosis relies on _prepareQuery's synchronous pre-await copy; parsing
+and support checks before it must remain callback-free/synchronous. Mutable's
+pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
+this boundary. Current reverse patch reconstructs the frozen baseline without
+old /tmp files; default portable verifier passes for the accepted source.
+
+**Active item: 6, index-order reuse. Partial and unaccepted.** The direct
+single-table reader can keep a forward primary or index order and can scan a
+covering index when the primary tree does not already supply that order.
+Descending reversal, aliases, qualified names, non-covering order-only scans,
+and unproved partial or expression indexes still sort. Preliminary 20,000-row
+AOT medians: covering index order 0.752 with non-overlapping ranges; rowid
+0.962; plain sort 0.988; non-covering order 1.035; 200 updates 1.041. The last
+three ranges overlap, which is not a zero-cost result. Evidence:
+`benchmark_results/optimizer_index_order/`. Do not start item 7, merge main, or
+publish packages.
+
+Repeat, from a clean checkout of this item's branch:
+
+`python3 tool/verify_optimizer_handoff.py` now fails on
+`packages/sqlite_plus/lib/src/sql/database.dart` because this item edits that
+file. Leave the item 3 source manifest unchanged. Re-run the verifier on
+`8ae5144` to confirm the accepted diagnostic source.
+
+```sh
+git fetch origin
+git switch feature/optimizer-index-order-20261111
+git worktree add --detach /tmp/opt-item3-verify 8ae5144
+python3 /tmp/opt-item3-verify/tool/verify_optimizer_handoff.py
+git worktree remove /tmp/opt-item3-verify
+# Rebuild /tmp/sqlite-build/sqlite3 only if the pinned 3.53.1 binary is absent.
+cd packages/sqlite_plus && dart test
+cd ../..
+# Rebuild both AOT probes against the item 3 baseline and this tree, then:
+python3 tool/optimizer_benchmark/index_order_cost.py \
+  /tmp/index-order-baseline.exe /tmp/index-order-candidate.exe \
+  20000 8 benchmark_results/optimizer_index_order/preliminary.json
+```
+
+Archive `preliminary.json` before replacing it. Acceptance still needs wider row
+counts and a decision on the update and non-covering medians.
+
+## CI inspection, 2026-11-11
+
+PR #44 at `a4fc3a9` was inspected before item 6. `packages/sqlite_plus_orm/example/prepared.dart`
+failed `dart analyze --fatal-infos` on five `curly_braces_in_flow_control_structures`
+infos. Those `if` bodies are now blocks, and the example analysis is clean.
+Windows `sqlite_plus` failed one `app_database_test` with socket errno 10013, and
+Windows Branches failed a draft lock with errno 33. The same ORM and Branches
+jobs already fail on main `056e964`. Those two Windows results are environment
+failures, not an item 3 product regression. Item 3's local acceptance is unchanged.
+The reusable Arabic prompt is [AI_CONTINUATION_PROMPT.md](AI_CONTINUATION_PROMPT.md).
 
 ## 1. Get the actual work
 
 Repository: https://github.com/MohammedAsaadAsaad/sqlite_plus
 
-Continuation branch: **feature/optimizer-handoff-20261108**. The changes in this
-checkpoint are on that branch, not necessarily on main. The upload is based on
-remote main `da665d7b621557fa2ab1c0ceb6f13c534bb7e56c`. Its tree matched the local
-starting tree `3ccfb572e819821e9c51d5bd150516859716d647`; existing upstream package
-versions were preserved. No publication or automatic merge is authorized by this
-handoff. The user explicitly authorized synchronizing ALL pending local work.
+PR #43 has been merged into `main` as
+`056e9644fafb94de180dc6b761545be31e4a83f3`. The original upload commit was
+`73617cdf23b3f0d76dbf985b7daaa0a1afe6473f`.
+
+**Active continuation:** `feature/optimizer-diagnostics-20261111`, item 3,
+**item3 accepted for measured local scope; next item6 queued**. Start by inspecting this branch and its PR;
+main contains the completed previous checkpoint. Avoid simultaneous edits by
+multiple AI clients; inspect the latest handoff/commit before resuming.
 
 ```sh
 git clone https://github.com/MohammedAsaadAsaad/sqlite_plus.git
 cd sqlite_plus
-git switch --track origin/feature/optimizer-handoff-20261108
+git fetch origin
+git switch --track origin/feature/optimizer-diagnostics-20261111
 git status --short
 git rev-parse HEAD
 ```
 
-If already merged, inspect main and the merge commit, then continue from the
-actual latest integration state. Make a separate working branch for the next
-milestone; do not force-push or discard another contributor's work.
+If this active branch is already merged, read the newest main handoff instead.
+Make a separate working branch for the next milestone; do not force-push or
+discard another contributor's work. Package publication and automatic main
+merges remain outside the authorized scope.
 
 Read, in order:
 
@@ -44,6 +118,13 @@ an item before sufficient performance AND cost tests, and report progress
 regularly. The user subsequently acknowledged the initial measured result and
 asked to preserve all work and continuation instructions on GitHub.
 
+- **New user requirement (2026-11-11): upload every completed item immediately.**
+  Update this handoff and the stable-ID ledger, commit code/tests/raw evidence,
+  push the checkpoint and open/update its review PR before starting the next
+  item. Report actual CI status. Do not wait to accumulate several milestones.
+  When interrupted mid-item, upload an explicitly partial checkpoint with
+  completed checks, unresolved work and the exact next commands; never label
+  incomplete work accepted. Routine checkpoint uploads are authorized.
 - Work autonomously on the approved roadmap, one reviewable milestone at a time.
   Routine implementation/testing does not need repeated permission questions.
 - Give concise progress updates while working, normally at least once per minute:
@@ -70,7 +151,7 @@ The authoritative 42-row state table is [plans/OPTIMIZER.md](plans/OPTIMIZER.md)
 | --- | --- |
 | 1, audit | Complete |
 | 2, source baseline | Complete, reverse reconstruction verified |
-| 3, richer opt-in runtime diagnostics/plan decisions | **Queued; next milestone** |
+| 3, richer opt-in runtime diagnostics/plan decisions | **Accepted for tested scope and documented control tradeoff** |
 | 4, regression matrix | Initial matrix complete; must expand for later changes |
 | 5, bounded Top-K | Accepted **for tested scope and documented tradeoff** |
 | 6–41 | Queued; some underlying facilities existed earlier, extensions are not complete |
@@ -225,7 +306,12 @@ broader platform/package matrix; inspect actual remote status before merge.
 `python3 tool/verify_optimizer_handoff.py` checks the 42 IDs, measured runtime
 hashes, all recorded result/IO/callback gates and reconstructs historical
 optimizer/prepared baselines in temporary copies. It requires Python/patch only.
-Run it BEFORE runtime changes; a future feature needs its own evidence.
+Default verification checks the accepted current runtime manifest and the
+historical baseline/result chain. It does not rerun diagnostic timings; the
+diagnostic summarizer and recorded control assertions supply those separate
+gates. The optional --allow-unaccepted-diagnostics flag only permits baseline
+reconstruction for a future partial candidate; it never means acceptance. A
+later feature needs its own frozen baseline/evidence.
 
 For the optimizer, in a separate worktree/evidence copy (outputs overwrite files):
 
@@ -279,25 +365,73 @@ before an independent dependency-floor decision. Optional ORM cache defaults to
 the capture path, and Branch keeps its existing schema/ownership restrictions.
 Detailed release/device/ownership limits remain in each package README.
 
-## 8. Next concrete work
+## 8. Next concrete work — item6, after uploading item3
 
-Start **item 3**: design opt-in diagnostic instrumentation and plan-decision
-reporting. First audit existing QueryPlan/explain and Inspector capabilities;
-do not duplicate them or install unconditional per-row hooks. Define the schema
-for estimated vs actual work, unsupported/partial counters and lifetime/ownership.
-Freeze the new baseline and measure diagnostics disabled AND enabled overhead.
-Keep item 3 investigating/unaccepted until those gates pass. Then tackle item 6,
-index-order exploitation, with range/collation/direction/tie/offset tests and
-actual page-read comparisons. Do not jump to a global plan cache or claim JOIN/
-STAT4/DISTINCT facilities complete just because a bounded sort is faster.
+1. Inspect the latest branch/main/PR and CI; avoid simultaneous client edits.
+   Run `python3 tool/verify_optimizer_handoff.py` before changing runtime.
+2. Read stable item6 in [OPTIMIZER.md](plans/OPTIMIZER.md), the existing planner
+   audit and source. Item6 is queued, not implemented by the diagnostic work.
+3. Specify supported index-order reuse, tie/NULL/collation/direction/partial/
+   expression-index and fallback cases before implementation. Preserve existing
+   projection decisions, LIMIT/OFFSET membership and bindings; do not assume an
+   index satisfies ordering solely because it shares a column name.
+4. Freeze the accepted item3 source as the new baseline; keep earlier reverse
+   patches/manifests/raw results unchanged. Add positive/negative/boundary tests,
+   pinned SQLite differential coverage and relevant complete regression suites.
+5. Build sequential fresh-process AOT benchmarks for positive and negative
+   controls (small/large data, LIMITs, missing indexes, fallback paths, ORM/write
+   controls, result/page/size/memory costs). Investigate regressions and record
+   tradeoffs; no fixed unapproved percentage budget or headline-only acceptance.
+6. Update validation/ledger/compatibility/log/handoff, commit and upload item6
+   immediately with actual CI state before moving to item7. Partial work must
+   be labelled unaccepted with exact next commands. No merge/publication.
+
+To repeat item3 evidence, use its README commands; stop tests/compilers before
+timing, archive results before regeneration, and preserve affinity distinctions.
 
 ## 9. Paste this to a new AI client
 
-> افتح المستودع MohammedAsaadAsaad/sqlite_plus والفرع
-> feature/optimizer-handoff-20261108، واقرأ AGENTS.md ثم docs/AI_HANDOFF.md
-> وdocs/plans/OPTIMIZER.md قبل التعديل. أكمل خطة الـOptimizer من البند 3؛
-> البند 5 معتمد فقط ضمن النطاق والتكاليف الموثقة، وبقية الخطة ليست مكتملة.
-> لا تعتمد أي تحسين قبل اختبارات صحة ومقارنة SQLite وقياسات AOT للأداء
-> والذاكرة والقراءات والكلفة على المسارات الحالية. احتفظ بالنتائج السلبية
-> والقياسات القديمة، وحدّثني بالتقدم باستمرار. نفّذ ما هو مصرح به دون
-> طلب تأكيدات روتينية، ولا تنشر الحزم أو تدمج main تلقائيًا.
+> Fetch the latest MohammedAsaadAsaad/sqlite_plus main and active branch named
+> at the top of this handoff. Read AGENTS.md, docs/AI_HANDOFF.md and the 42-item
+> ledger before edits. Use the newest checkpoint, not a chat assumption.
+> Complete the active item's remaining correctness/performance/cost gates;
+> item3 is accepted for its documented tested scope; item6 is next. Preserve default behavior,
+> pure Dart, ORM ownership/Changes/Reactive and all negative evidence. Report
+> progress regularly. After EACH completed item update handoff/ledger/evidence,
+> commit/upload/open or update its PR immediately before moving on. If stopping
+> early, upload an honest partial checkpoint with exact next commands. Do not
+> automatically merge main or publish packages.
+
+## Completed checkpoint — item3 (2026-11-11)
+
+- Active PR: https://github.com/MohammedAsaadAsaad/sqlite_plus/pull/44 .
+  Initial policy-only checkpoint: aae714e7. Current branch head is authoritative.
+- Added explicit read-only/mutable diagnoseQuery APIs and Inspector profile
+  capability. Candidate metadata is bounded, names clipped, estimates nullable,
+  no SQL/bindings/results in metadata JSON, no retained executable plan closures.
+- Counters distinguish upstream rows loaded, predicate visits/matches, returned
+  rows and pager reads; sort strategy/retained rows are defined. Unmeasured
+  projection/comparison/index-key/allocation counters remain null. Planner
+  reasons describe existing rules/STAT1, not a complete cost model.
+- Mutable diagnosis routes the actual temp/main/attached schema, holds normal
+  connection exclusion through callbacks, rejects cross-schema/unsupported
+  sources and closes the private reader. Inspector delegates rather than
+  silently inspecting main. ORM explicit profile validates lease/closed state.
+- Normal query/evaluation has no unconditional per-row instrumentation; counted
+  iterables are selected only for explicit diagnosis. No global observer/cache.
+- Correctness: final-source 10,719 core passed / optional skip1; 578 add-ons passed before
+  the final Inspector-only lease/async-error refinement; final complete Inspector
+  suite 55 passed afterward; Search 86. New focused checks include 144 pinned
+  native comparisons, changing bindings, NULL/collation/limits, traces/callbacks,
+  privacy/BLOB copy, Unicode clipping, temp/attached routing, overlap/reentrancy,
+  ORM ownership/Changes capture. See validation.json in the new evidence folder.
+- VM and compiled JS/Node assertions passed on the copy-reduction candidate.
+  Node requires globalThis.self=globalThis; a silent Node exit is not a pass.
+  Native CLI was rebuilt successfully.
+- AOT/cost acceptance is limited to the tested scope and documented Inspector
+  control tradeoff. All negative initial results and final repeated data remain.
+  Source/binary/driver hashes, reverse patch and portable verifier preserve the
+  diagnostics -> Top-K -> prepared chain without old temporary files.
+- Final primary/follow-up/pinned/extended/linked/BLOB controls and direct paired
+  copy-reduction experiments are complete. See the evidence README and
+  validation.json. CI is not presumed green; inspect the latest PR head.

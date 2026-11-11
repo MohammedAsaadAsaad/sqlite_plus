@@ -1,0 +1,1122 @@
+[
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 0,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 24310,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 45240320
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 0,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 5769,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31203328
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 1,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4728,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31035392
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 1,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 12902,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 45699072
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 2,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 15711,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 46964736
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 2,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4326,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31154176
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 3,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4374,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31330304
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 3,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 17037,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 48398336
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 4,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 16285,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 49500160
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 4,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 5376,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31027200
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 5,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4588,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31023104
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 5,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 14675,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 50364416
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 6,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 14731,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 51597312
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 6,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 6623,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31014912
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 7,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 5094,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31014912
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 7,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 12118,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52699136
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 8,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 17028,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52576256
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 8,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4560,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31096832
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 9,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 5390,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31096832
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 9,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 16111,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52731904
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 10,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 14321,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 51531776
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 10,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 6230,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31096832
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 11,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4377,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31117312
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 11,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 12499,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52461568
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 12,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 16991,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 49594368
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 12,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4798,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31031296
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 13,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4485,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 30965760
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 13,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 10825,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52752384
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 14,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 10904,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52707328
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 14,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4751,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31080448
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 15,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4222,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31150080
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 15,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 10176,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52764672
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 16,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 13204,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 50896896
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 16,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4712,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 30846976
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 17,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4726,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 30896128
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 17,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 10219,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52817920
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 18,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 10372,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52686848
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 18,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4201,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31080448
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 19,
+    "label": "after",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 4795,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 31137792
+    }
+  },
+  {
+    "adapter": "reader",
+    "cpu": 0,
+    "trial": 19,
+    "label": "initial",
+    "result": {
+      "adapter": "reader",
+      "enabled": true,
+      "duration_us": 11790,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 50704384
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 0,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 22194,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 55156736
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 0,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 11190,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53616640
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 1,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 10503,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53665792
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 1,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 18752,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 54161408
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 2,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 16755,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52740096
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 2,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 10199,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53518336
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 3,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 11595,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53649408
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 3,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 26780,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 51523584
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 4,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 20213,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 51961856
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 4,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 11403,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53551104
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 5,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 9775,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53735424
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 5,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 21541,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 45416448
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 6,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 17544,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 54444032
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 6,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 10411,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53497856
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 7,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 10683,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53641216
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 7,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 16841,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 50868224
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 8,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 18759,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 59383808
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 8,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 11942,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53493760
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 9,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 11903,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53452800
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 9,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 19629,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 60624896
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 10,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 18910,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 59285504
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 10,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 13413,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53604352
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 11,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 15482,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53563392
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 11,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 17997,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 66596864
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 12,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 17682,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 56778752
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 12,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 11842,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53391360
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 13,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 11790,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 51970048
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 13,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 17709,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 52473856
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 14,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 22095,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 50704384
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 14,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 14999,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 49700864
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 15,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 12895,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53563392
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 15,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 18409,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 59453440
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 16,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 18039,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 50417664
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 16,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 12118,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53596160
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 17,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 13335,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 44687360
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 17,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 18314,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 60788736
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 18,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 19998,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 59531264
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 18,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 10659,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53477376
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 19,
+    "label": "after",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 10397,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 53661696
+    }
+  },
+  {
+    "adapter": "mutable",
+    "cpu": 0,
+    "trial": 19,
+    "label": "initial",
+    "result": {
+      "adapter": "mutable",
+      "enabled": true,
+      "duration_us": 17689,
+      "calls": 20,
+      "blob_bytes": 1048576,
+      "peak_rss": 54161408
+    }
+  }
+]

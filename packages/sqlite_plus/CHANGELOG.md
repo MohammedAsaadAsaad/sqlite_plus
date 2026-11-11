@@ -1,3 +1,11 @@
+## Unreleased — explicit bounded query diagnostics
+
+- Add opt-in read-only/mutable diagnoseQuery for supported scalar SELECTs.
+- Bounded planner decisions, existing estimates and actual row/page/sort metrics;
+  unavailable counters remain null and metadata excludes SQL/bindings/results.
+- Preserve routing/exclusion; reduce redundant diagnostic BLOB copies with
+  pre-await isolation tests. Measured scope/costs: workspace diagnostics evidence.
+
 ## Unreleased — bounded ORDER BY/LIMIT selection
 
 - Replace repeated linear worst-candidate search with a lazy in-place max-heap

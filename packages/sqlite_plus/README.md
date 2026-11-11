@@ -580,3 +580,16 @@ automatic cache defaults to disabled.
 Eligible `ORDER BY … LIMIT` selection now uses a bounded heap automatically.
 See [scope and measured costs](doc/OPTIMIZER.md); the full optimizer roadmap
 remains in progress.
+
+### Explicit query diagnostics (unreleased)
+
+`db.diagnoseQuery('SELECT name FROM products WHERE id=?', parameters: [42])`
+returns `.result` plus bounded planner decisions, timings and actual row/page
+counts. It executes once and supports scalar ordinary single-source/constant
+SELECT; unsupported shapes reject. Normal query calls never enable profiling.
+Metadata `.toJson()` excludes SQL, parameters and result values; unavailable
+counters remain null. Loan a read-only reader exclusively while diagnosing.
+Mutable diagnosis preserves temp/attached routing through a private reader.
+Inspector's explicit `.profile` also supports ORM ownership rules. Tested scope,
+nonzero enabled costs and disabled-control tradeoffs are documented in the
+workspace `benchmark_results/optimizer_diagnostics/README.md`.

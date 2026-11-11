@@ -291,3 +291,15 @@ See docs/plans/JOBS_PERFORMANCE.md and benchmark_results/jobs_performance/README
 
 Detailed 42-item status: docs/plans/OPTIMIZER.md. Initial evidence:
 benchmark_results/optimizer/README.md. No global optimizer-completion claim.
+
+## Optimizer continuation — 2026-11-11
+
+- [x] Stable item3: explicit bounded diagnostics/plan decisions accepted for
+  tested local scope and documented Inspector OFF control tradeoff. Final-source
+  correctness, source/binary baselines, raw AOT controls and copy-reduction
+  evidence: benchmark_results/optimizer_diagnostics/README.md.
+- [ ] Stable item6: index-order reuse, after item3 checkpoint upload. Preserve
+  stable 42-item IDs and per-item correctness/performance/cost gates.
+- [ ] Remaining optimizer/release work: authoritative docs/plans/OPTIMIZER.md.
+
+No automatic main merge/publication; docs/AI_HANDOFF.md is the continuation entry.

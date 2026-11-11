@@ -1,0 +1,30 @@
+[
+  {
+    "path": "/tmp/diagnostic-1000-0.db",
+    "rows": 1000,
+    "indexes": 0,
+    "bytes": 36864,
+    "sha256": "a76ee360ff5b3046bd3cafa0b465ebc98fe476230a784b79dba0e29c25ad5dcd"
+  },
+  {
+    "path": "/tmp/diagnostic-10000-0.db",
+    "rows": 10000,
+    "indexes": 0,
+    "bytes": 299008,
+    "sha256": "d7e83f3708fd80e141a11afece097c38ebc308373295413b5259f3f2b3b901c0"
+  },
+  {
+    "path": "/tmp/diagnostic-100000-0.db",
+    "rows": 100000,
+    "indexes": 0,
+    "bytes": 3055616,
+    "sha256": "fc3a30b5d278d3d7bea206b70ae4b94f49fd8afed70b6004c03552c5bbccf08d"
+  },
+  {
+    "path": "/tmp/diagnostic-1000-32.db",
+    "rows": 1000,
+    "indexes": 32,
+    "bytes": 565248,
+    "sha256": "5606f1e118485f9375b228ad667f00528d4402fc9813ba2ac401c1524317d68c"
+  }
+]

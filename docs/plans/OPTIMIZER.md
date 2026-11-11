@@ -12,10 +12,10 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | --- | --- | --- |
 | 1 | Audit existing planning/execution paths | Complete; see AUDIT.md |
 | 2 | Preserve source baseline and reproducible workloads | Complete; reverse fixture verified |
-| 3 | Opt-in diagnostic instrumentation and plan decisions | Queued |
+| 3 | Opt-in diagnostic instrumentation and plan decisions | Accepted tested local scope/control tradeoff on PR #44; see diagnostics evidence |
 | 4 | Performance regression matrix | Initial matrix complete; expand per future item |
 | 5 | Bounded Top-K selection | Accepted for tested scope; measured control costs documented |
-| 6 | Use index ordering to avoid sorting | Queued |
+| 6 | Use index ordering to avoid sorting | Implemented/unaccepted; direct-path forward order only; preliminary AOT recorded |
 | 7 | Reverse index scans | Queued |
 | 8 | Safe early termination | Queued |
 | 9 | Partial/block sorting | Queued |
@@ -92,7 +92,7 @@ as complete facilities or mark their extensions accepted without measurements.
   1k/10k/100k rows, ordered/reverse/tie-heavy data, stable files, callback traces,
   comparison/visit counts, RSS, IO and ordinary read/write/ORM regressions.
 - Tiny/almost-full K cases were added before acceptance. Nothing is accepted based on
-  provisional headline speedups. Rich runtime diagnostics (item 3) remain queued;
+  provisional headline speedups. Rich runtime diagnostics (item3) are accepted separately below;
   current measurement wrappers have no new production instrumentation hook.
 
 ## Initial milestone outcome
@@ -106,6 +106,56 @@ as complete facilities or mark their extensions accepted without measurements.
 - Keep all control costs visible: short ordinary UPDATE median +5.7%; combined
   amplified long probe +1.9%, overlapping ranges. Do not claim zero overhead.
 - Rejected an isolated classless representation after worse control performance.
-- Rich runtime diagnostics (3), index ordering (6) and all later extensions are
+- Index ordering (6) and later extensions remain
   NOT implemented/accepted by this milestone. Roadmap-wide/release acceptance
   remains queued. No push, publication or merge performed.
+
+## Continuation policy, 2026-11-11
+
+PR #43 merged into main 056e9644. Item3 is accepted below; item5 remains accepted only
+for its documented scope/costs. The user requires immediate GitHub upload and
+handoff/ledger updates after EVERY completed item, before starting the next.
+Partial checkpoints must identify incomplete work and never imply acceptance.
+See docs/AI_HANDOFF.md for the active branch and exact next steps.
+
+## Item3 accepted local checkpoint
+
+Explicit core/Inspector diagnosis, bounded decisions/actual counters, routing,
+privacy/ownership and pre-await binding isolation are verified. Final core10719
+(optional skip1), Inspector55, focused/native14 (144 result comparisons), VM/JS,
+packages/tool analysis/format pass. Expanded OFF/ON and unused-control AOT data
+and direct BLOB copy comparisons are retained. Inspector point OFF median paired
+ratio1.0108 is a documented tradeoff; no zero-overhead or release claim.
+See benchmark_results/optimizer_diagnostics/README.md and docs/AI_HANDOFF.md.
+Initial negative evidence is archived. Next item6 remains queued until this
+completed checkpoint is uploaded; no main merge or package publication.
+
+## Item 6 partial checkpoint, 2026-11-11
+
+Not accepted. A direct single-table forward scan may skip the later sort when
+the primary tree or the chosen index already yields the requested order. A
+covering secondary index may be selected for `ORDER BY` only when the primary
+scan does not already provide that order. Descending reversal, qualified or
+aliased sources, non-covering order-only scans, expression indexes, and partial
+indexes whose predicate is not proved stay on the existing sort.
+
+Correctness on this machine: `packages/sqlite_plus` `dart test` passed 10,629
+with 30 skips. The 21 failures were `ProcessException` for a missing
+`/tmp/sqlite-build/sqlite3` before that binary was built. After building SQLite
+3.53.1, source id
+`2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`,
+`index_order_test` and the pinned native suites named in the evidence README
+passed. `dart analyze --fatal-infos` was clean for `packages/sqlite_plus` and
+the ORM example.
+
+Preliminary AOT, Dart 3.13.7, Linux x64, 20,000 rows, 8 alternating fresh-process
+pairs, one query after the insert. Checksums matched inside each mode. Covering
+`ORDER BY a` median ratio 0.752 and the sample ranges do not overlap. `ORDER BY
+id` ratio 0.962, unordered `ORDER BY b` ratio 0.988, non-covering `ORDER BY a, b`
+ratio 1.035, and 200 updates ratio 1.041. The last three ranges overlap. Overlap
+is not a zero-cost result. Raw rows:
+`benchmark_results/optimizer_index_order/preliminary.json`.
+
+Do not start item 7. Repeat the probe at more sizes, then decide whether the
+update and non-covering medians are noise or a planning cost that must be
+removed. No main merge and no package publication.

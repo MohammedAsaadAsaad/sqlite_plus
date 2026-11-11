@@ -1,5 +1,71 @@
 # Development log
 
+## 2026-11-11 — Item 6 partial, unaccepted index-order checkpoint
+
+Direct single-table forward scans can skip a later sort when the chosen tree
+already yields `ORDER BY`. A covering index can be selected for that order when
+the primary scan does not. Descending reversal, aliases, qualified names,
+non-covering order-only scans, and unproved partial or expression indexes still
+sort. `index_order_test` matches pinned SQLite 3.53.1. Preliminary 20,000-row
+AOT median ratios: covering order 0.752 (ranges do not overlap), rowid 0.962,
+plain sort 0.988, non-covering order 1.035, 200 updates 1.041. The last three
+ranges overlap and are not a zero-cost result. This is not an acceptance and
+not a compatibility-matrix claim. Raw rows stay in
+`benchmark_results/optimizer_index_order/preliminary.json`.
+
+## 2026-11-11 — Item3 measured local acceptance and immediate upload
+
+Completed final-source core10719/optional skip1, Inspector55, focused/native14
+(144 pinned result comparisons), VM/JS assertion example, packages/tool fatal-info
+analysis and format548/zero changes. Preserved earlier checks as earlier checks.
+Final primary165 samples and expanded paired OFF/write/ORM/linked controls
+investigate the initial higher medians; initial evidence remains archived.
+Accepted the explicit developer feature for this scope with the Inspector point
+OFF tradeoff: paired ratio1.0108, independent-median ratio1.0503. No zero-cost or
+optimizer-speedup claim. Direct 20-pair BLOB ON comparison after removing one
+redundant snapshot gives final/initial paired ratios0.3617/0.6215; retained mutable
+routing copy and mutation/lifetime tests. Unused binaries remain byte-identical.
+Updated stable ledger, compatibility, handoff and reusable Arabic prompt. Upload
+this completed checkpoint immediately to PR #44 before starting queued item6.
+Remote CI is separate; no automatic main merge or package publication.
+
+## 2026-11-11 — Diagnostics cost investigation and binding-copy reduction
+
+Uploaded initial cost checkpoint d334f39 on draft PR #44. Preserved all raw
+OFF/ON, unused-control, follow-up, affinity and BLOB results. Unpinned short
+controls had higher medians; the separate pinned 30-pair investigation did not
+reproduce those increases. Neither overlap nor affinity establishes zero cost.
+Removed one redundant snapshot on explicit read-only diagnosis, relying on
+_prepareQuery's existing synchronous pre-await copy; retained mutable's snapshot
+before schema routing. Added list/BLOB mutation isolation assertions. Unused
+ordinary/ORM/update binaries remain SHA-256 identical. Final-source core/cost
+validation is in progress; item 3 is not yet accepted. Arabic continuation prompt
+now lives in docs/AI_CONTINUATION_PROMPT.md.
+
+## 2026-11-11 — Item 3 implementation checkpoint, not yet accepted
+
+Implemented explicit bounded core query diagnosis and Inspector profile APIs,
+existing planner candidate reasons/estimates and actual loaded/visited/matched/
+returned/page counters. Reuse evaluator/planner, no normal per-row observer;
+metadata JSON omits data/SQL/bindings and unsupported counters are null.
+Mutable routing/private-reader exclusion preserves temp/attached semantics and
+nested-write rejection. ORM profile validates lease/close and preserves capture.
+Core 10,718 passed / skip 1, add-ons 578 then final Inspector 55 after its own
+lifetime refinement, Search 86; 144 pinned native comparisons; VM/JS assertions.
+AOT OFF/ON cost acceptance is pending. Preserve before/source manifests, reverse
+patch and benchmark scaffolding; handoff has exact unfinished commands. Upload
+this explicit partial state on PR #44 rather than losing work on interruption.
+
+## 2026-11-11 — Resume optimizer item 3 with immediate checkpoint policy
+
+User confirmed PR #43 merged (main 056e9644) and requested a reusable client
+prompt, continued implementation and immediate upload/handoff updates after
+every completed item. Persisted the policy, active branch and partial state.
+Item 3 is investigating, not accepted; no runtime change in this checkpoint.
+Next: explicit diagnostic counter/plan-decision contract and frozen baseline,
+then implementation, correctness and OFF/ON performance/cost gates. No automatic
+merge or package publication.
+
 ## 2026-11-08 — GitHub synchronization and cross-client continuation checkpoint
 
 - User authorized synchronizing all pending local changes to GitHub, including

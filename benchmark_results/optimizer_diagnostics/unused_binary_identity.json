@@ -1,0 +1,17 @@
+{
+  "ordinary": {
+    "sha256": "5462df945b778dea007e11b8fa441c3c26c1632fba3a4428f1120f4677ea8d9c",
+    "bytes": 10171800,
+    "identical_to_initial_candidate": true
+  },
+  "orm": {
+    "sha256": "4ce33267ec4bc49338b28a28c9ae0f77a506aec1598ac3edd05878469e10cb94",
+    "bytes": 10373600,
+    "identical_to_initial_candidate": true
+  },
+  "update": {
+    "sha256": "637bcd66eafd06b60ec49d4382c7108c5ac59c258e7f61b29c3340cb2a540f6f",
+    "bytes": 10148848,
+    "identical_to_initial_candidate": true
+  }
+}

@@ -6,6 +6,8 @@ typedef InspectorExecuteRunner = Future<MutationResult> Function(
     String, List<Object?>);
 typedef InspectorPlanRunner = Future<InspectorPlan> Function(
     String, List<Object?>);
+typedef InspectorDiagnosticRunner = Future<SqlQueryDiagnostics> Function(
+    String, List<Object?>, SqlDiagnosticOptions);
 
 void _selectOnly(String sql) {
   final head = SqlTokenizer.tokenize(sql).firstOrNull?.keyword;
@@ -19,6 +21,24 @@ Future<InspectorPlan> inspectDatabasePlan(
     MutableSqliteDatabase database, String sql,
     [List<Object?> parameters = const []]) async {
   _selectOnly(sql);
+  return _inspectSnapshot(
+      database, (reader) => InspectorPlan._(reader.explain(sql, parameters)));
+}
+
+/// Explicit private-image diagnosis of one routed schema. Routing/image/open
+/// preparation are outside the core report timing, but inside profile()'s
+/// inspector record. The source connection stays exclusively loaned during SQL
+/// callbacks; ordinary query() is never replaced by this diagnostic operation.
+Future<SqlQueryDiagnostics> inspectDatabaseQuery(
+    MutableSqliteDatabase database, String sql,
+    {List<Object?> parameters = const [],
+    SqlDiagnosticOptions options = const SqlDiagnosticOptions()}) async {
+  _selectOnly(sql);
+  return database.diagnoseQuery(sql, parameters: parameters, options: options);
+}
+
+Future<T> _inspectSnapshot<T>(MutableSqliteDatabase database,
+    FutureOr<T> Function(SqliteDatabase) read) async {
   final image = database.exportImage();
   final storage = MemoryStorageBackend();
   await storage.write(0, image);
@@ -27,7 +47,7 @@ Future<InspectorPlan> inspectDatabasePlan(
     reader = await SqliteDatabase.openReadOnly(storage,
         functions: database.functions);
     reader.doubleQuotedStrings = database.doubleQuotedStrings;
-    return InspectorPlan._(reader.explain(sql, parameters));
+    return await read(reader);
   } finally {
     if (reader != null) {
       await reader.close();
@@ -46,12 +66,14 @@ final class InspectedConnection {
       Future<void> Function()? close,
       bool Function()? inTransaction,
       InspectorPlanRunner? plan,
+      InspectorDiagnosticRunner? diagnostic,
       String label = 'database'})
       : _query = query,
         _execute = execute,
         _close = close,
         _inTransaction = inTransaction,
         _plan = plan,
+        _diagnostic = diagnostic,
         identity = inspector.connection(label);
   factory InspectedConnection.mutable(
           MutableSqliteDatabase database, SqlInspector inspector,
@@ -63,6 +85,9 @@ final class InspectedConnection {
           close: database.close,
           inTransaction: () => database.inTransaction,
           plan: (sql, args) => inspectDatabasePlan(database, sql, args),
+          diagnostic: (sql, args, options) => inspectDatabaseQuery(
+              database, sql,
+              parameters: args, options: options),
           label: label);
   factory InspectedConnection.readOnly(
           SqliteDatabase database, SqlInspector inspector,
@@ -75,6 +100,8 @@ final class InspectedConnection {
             _selectOnly(sql);
             return InspectorPlan._(database.explain(sql, args));
           },
+          diagnostic: (sql, args, options) =>
+              database.diagnoseQuery(sql, parameters: args, options: options),
           label: label);
   final SqlInspector inspector;
   final InspectorConnection identity;
@@ -83,6 +110,7 @@ final class InspectedConnection {
   final Future<void> Function()? _close;
   final bool Function()? _inTransaction;
   final InspectorPlanRunner? _plan;
+  final InspectorDiagnosticRunner? _diagnostic;
   bool get inTransaction => _inTransaction?.call() ?? false;
   Future<QueryResult> query(String sql,
           [List<Object?> parameters = const []]) =>
@@ -110,6 +138,20 @@ final class InspectedConnection {
           UnsupportedError('No plan capability on this adapter'));
     }
     return plan(sql, parameters);
+  }
+
+  /// Explicit diagnostic capability; normal query() never enables it.
+  Future<SqlQueryDiagnostics> profile(String sql,
+      {List<Object?> parameters = const [],
+      SqlDiagnosticOptions options = const SqlDiagnosticOptions()}) {
+    final diagnostic = _diagnostic;
+    if (diagnostic == null) {
+      return Future.error(
+          UnsupportedError('No diagnostic capability on this adapter'));
+    }
+    return inspector.measure(sql, parameters, InspectorOperation.query,
+        () => diagnostic(sql, parameters, options),
+        connection: identity, rows: (r) => r.result.rows.length);
   }
 
   Future<SqlPage<Map<String, Object?>>> page(
