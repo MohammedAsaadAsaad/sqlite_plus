@@ -720,6 +720,39 @@ void main() {
     ]);
   });
 
+  test('ordered DISTINCT and GROUP BY keep SQLite rows', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(a INT, b INT)');
+    await db.execute('CREATE INDEX ia ON t(a, b)');
+    await db.execute(
+        'INSERT INTO t VALUES (1, 1), (1, 1), (NULL, 1), (NULL, NULL), (2, 1), (1, 2)');
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const setup = 'CREATE TABLE t(a INT, b INT); '
+        'CREATE INDEX ia ON t(a, b); '
+        'INSERT INTO t VALUES (1, 1), (1, 1), (NULL, 1), (NULL, NULL), (2, 1), (1, 2);';
+    for (final sql in [
+      'SELECT DISTINCT a FROM t ORDER BY a',
+      'SELECT DISTINCT a, b FROM t ORDER BY a, b',
+      'SELECT a, count(*) AS n FROM t GROUP BY a ORDER BY a',
+      'SELECT a, b, count(*) AS n FROM t GROUP BY a, b ORDER BY a, b',
+    ]) {
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(sql);
+      final text = native.stdout.toString().trim();
+      final expected = text.isEmpty ? const [] : jsonDecode(text) as List;
+      expect([
+        for (final row in actual.rows)
+          [for (final value in row) value is BigInt ? value.toInt() : value]
+      ], [
+        for (final row in expected) (row as Map).values.toList()
+      ], reason: sql);
+    }
+  });
+
   test('a repeated CTE is shared unless NOT MATERIALIZED', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);

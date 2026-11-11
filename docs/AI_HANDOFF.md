@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 30, ordered DISTINCT and GROUP BY.** Item 29 is
+**Active item: 31, MIN/MAX/COUNT shortcuts.** Item 30 is
+correctness-verified and not cost-accepted. `DISTINCT` whose `ORDER BY`
+prefix is the selected list compares only the previous row. `GROUP BY`
+appends to the current group when the key matches, and sorts only when a
+later group arrives out of order. NULL and duplicate rows match pinned
+SQLite 3.53.1. No AOT sample is recorded.
+
+Item 29 is
 correctness-verified and not cost-accepted. A CTE read more than once runs
 once, including across `UNION ALL`. `NOT MATERIALIZED` runs once per use.
 `MATERIALIZED` runs once before the outer filter. A derived table keeps its
