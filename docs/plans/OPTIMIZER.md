@@ -48,7 +48,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 36 | Broader streaming execution | Implemented/unaccepted; an unordered table scan stops after LIMIT; a filter still scans; no AOT sample |
 | 37 | Safe per-execution common work reuse | Implemented/unaccepted; identical uncorrelated scalars are reused; probe stays separate; no AOT sample |
 | 38 | Bound planning complexity | Implemented/unaccepted; IN stays capped at 32 and join reorder at 4 sources; rows match SQLite; no AOT sample |
-| 39 | Prepared statement integration | Queued |
+| 39 | Prepared statement integration | Implemented/unaccepted; a bound `a = ?` still chooses the index; rows match SQLite; no AOT sample |
 | 40 | Evaluate plan caching, default off | Queued |
 | 41 | Inspector integration | Queued |
 | 42 | Whole-roadmap regression/release documentation | Queued |
@@ -492,3 +492,11 @@ with statistics start at the smallest table. Five stay in written order.
 No fresh AOT sample is recorded.
 
 Next is item 39. No package publication.
+
+## Item 39 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. Planning sees the bound parameter. `WHERE a = ?`
+chooses index `ia`, and the rows match `WHERE a = 2` on pinned SQLite
+3.53.1. No fresh AOT sample is recorded.
+
+Next is item 40. No package publication.

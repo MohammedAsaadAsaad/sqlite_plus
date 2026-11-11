@@ -1,5 +1,11 @@
 # Development log
 
+## 2026-11-11 — Item 39 bound parameters keep the index
+
+`WHERE a = ?` chooses the index after the parameter is bound. The rows
+match pinned SQLite 3.53.1. No AOT sample is recorded, so this is not a
+cost acceptance.
+
 ## 2026-11-11 — Item 38 search bounds stay capped
 
 An `IN` list of 32 constants uses the index. A list of 33 does not, and its

@@ -27,7 +27,12 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 39, parameter-aware plans.** Item 38 is
+**Active item: 40, plan cache.** Item 39 is correctness-verified and
+not cost-accepted. `WHERE a = ?` still chooses index `ia` after the
+parameter is bound. The rows match `WHERE a = 2` on pinned SQLite 3.53.1.
+No AOT sample is recorded.
+
+Item 38 is
 correctness-verified and not cost-accepted. An `IN` list of 32 constants
 uses the index. A list of 33 does not, and its rows match pinned SQLite
 3.53.1. Four comma-joined tables with statistics are ordered from the

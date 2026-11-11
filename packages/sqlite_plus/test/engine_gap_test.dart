@@ -1272,19 +1272,60 @@ void main() {
     }
   });
 
+  test('a bound parameter still uses the index', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT)');
+    await db.execute('CREATE INDEX ia ON t(a)');
+    await db.execute('INSERT INTO t VALUES (1, 1), (2, 2), (3, 2), (4, 4)');
+    final reader =
+        await SqliteDatabase.openReadOnly(ByteImageStorage(db.exportImage()));
+    addTearDown(reader.close);
+    final plan = reader.explain('SELECT id FROM t WHERE a = ?', [BigInt.two]);
+    expect(plan.access, 'secondary-index-lookup');
+    expect(plan.indexName, 'ia');
+    expect(
+        (await reader.query(
+                'SELECT id FROM t WHERE a = ? ORDER BY id', [BigInt.two]))
+            .rows,
+        [
+          [BigInt.two],
+          [BigInt.from(3)]
+        ]);
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, a INT); '
+        'CREATE INDEX ia ON t(a); '
+        'INSERT INTO t VALUES (1, 1), (2, 2), (3, 2), (4, 4);';
+    const sql = 'SELECT id FROM t WHERE a = 2 ORDER BY id';
+    final native =
+        await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+    expect(native.exitCode, 0, reason: native.stderr.toString());
+    final actual = await reader
+        .query('SELECT id FROM t WHERE a = ? ORDER BY id', [BigInt.two]);
+    expect([
+      for (final row in actual.rows)
+        [for (final value in row) value is BigInt ? value.toInt() : value]
+    ], [
+      for (final row in jsonDecode(native.stdout.toString()) as List)
+        (row as Map).values.toList()
+    ]);
+  });
+
   test('IN lists above 32 and five-table joins keep their bounds', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
     await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT)');
     await db.execute('CREATE INDEX ia ON t(a)');
-    await db.execute(
-        'INSERT INTO t VALUES ${[for (var i = 1; i <= 40; i++) '($i, $i)'].join(',')}');
+    await db.execute('INSERT INTO t VALUES ${[
+      for (var i = 1; i <= 40; i++) '($i, $i)'
+    ].join(',')}');
     String list(int n) => [for (var i = 1; i <= n; i++) '$i'].join(',');
-    final seek = await db.query(
-        'EXPLAIN QUERY PLAN SELECT id FROM t WHERE a IN (${list(32)})');
+    final seek = await db
+        .query('EXPLAIN QUERY PLAN SELECT id FROM t WHERE a IN (${list(32)})');
     expect(seek.rows.single[3].toString(), contains('INDEX ia'));
-    final wide = await db.query(
-        'EXPLAIN QUERY PLAN SELECT id FROM t WHERE a IN (${list(33)})');
+    final wide = await db
+        .query('EXPLAIN QUERY PLAN SELECT id FROM t WHERE a IN (${list(33)})');
     expect(wide.rows.single[3].toString(), isNot(contains('INDEX ia')));
     await db.execute('CREATE TABLE a(v INT)');
     await db.execute('CREATE TABLE b(v INT)');
@@ -1308,7 +1349,9 @@ void main() {
     if (!File(pinned).existsSync()) return;
     final setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, a INT); '
         'CREATE INDEX ia ON t(a); '
-        'INSERT INTO t VALUES ${[for (var i = 1; i <= 40; i++) '($i, $i)'].join(',')};';
+        'INSERT INTO t VALUES ${[
+      for (var i = 1; i <= 40; i++) '($i, $i)'
+    ].join(',')};';
     final sql = 'SELECT id FROM t WHERE a IN (${list(33)}) ORDER BY id';
     final native =
         await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
