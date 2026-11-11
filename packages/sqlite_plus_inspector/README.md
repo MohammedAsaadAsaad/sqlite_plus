@@ -246,3 +246,12 @@ Native plan comparison needs the pinned development SQLite CLI on Linux
 No real browser/device, DevTools extension, graphical inspector, network dashboard,
 automatic engine-wide tracing, release publication or production certification
 is provided by this milestone.
+
+## Explicit index advice and diagnostic replay (unreleased workspace)
+
+`adviseIndex` tests one conservative index candidate on an isolated snapshot,
+reporting plans, query samples, build time and added bytes. It never builds an
+index on main. The optional `sqlite_plus_inspector_replay.dart` library deliberately
+records raw SQL/bindings and database images, then replays only in fresh memory.
+Ordinary logs stay redacted. See [APIs, privacy, bounds and limitations](doc/DIAGNOSTICS.md)
+and the [complete runnable example](example/diagnostics.dart).

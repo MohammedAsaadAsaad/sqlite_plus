@@ -1,0 +1,24 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "dart": "Dart SDK version: 3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "binary": "/tmp/jobs-benchmark",
+  "binary_sha256": "cc7cd0e01133fdc061244905ecba79c5b84592195b1fd4130d8052b9460ed49a",
+  "source_sha256": {
+    "packages/sqlite_plus_jobs/lib/sqlite_plus_jobs.dart": "d82f27b6cb3b0dc32b5baf6e5fac68ee849093d378baa0532515b95e43f93885",
+    "packages/sqlite_plus_jobs/lib/src/models.dart": "8dc32b63c1c4cdf65aa5e9fdc3e784d3d80100ab7d6b9aae8436447b26b06d67",
+    "packages/sqlite_plus_jobs/lib/src/queue.dart": "69d36bdbc5702b1b111ed1e99d6bea008c8bb770f8493f902f53aa8db11ccd70",
+    "packages/sqlite_plus_jobs/lib/src/worker.dart": "56007d933dfa8c7d97071d8f2d9cab977242066cfb288f9b1f42f718271b2eba",
+    "tool/jobs_benchmark/main.dart": "10686c8f3f1fb2db6b13c533ca85e8da5656b2ab469d9943284bf2deeb2ca3e0",
+    "tool/jobs_benchmark/run.py": "7c9f0cbf236cca0898b099aef2c819b452a9402d4e77cea55d7b44fabb91802f",
+    "tool/jobs_benchmark/profile.dart": "11fd4d9b86d0a0d36e3c9b8b8a639fdb522b27b4bae2bad1e7c98341bb8cc316",
+    "packages/sqlite_plus_jobs/pubspec.yaml": "e62dcad4530932adaee7b0e237de3246ecb841d6a6167f89d0868db36b75897a",
+    "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "5118937b407e2818c4fa48c8367f421abdb894252232bfd1b6b3b4a871b59bd4"
+  },
+  "core_unchanged_from_import_followup": true,
+  "post_measurement_style_only": {
+    "file": "packages/sqlite_plus_jobs/lib/src/queue.dart",
+    "sha256": "88caa135ba494c40810d67e5cdc6e6b9c2d049f64f9cfe9a507d9f5ff8330486",
+    "patch": "post_measurement_lint.patch",
+    "description": "Two existing single-statement if branches gained braces for lint. Timed binary/source_sha256 remain the measured pre-style snapshot; patch reconstructs final source."
+  }
+}

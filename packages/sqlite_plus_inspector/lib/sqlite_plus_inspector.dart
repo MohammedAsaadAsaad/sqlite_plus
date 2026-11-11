@@ -7,7 +7,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:sqlite_plus/sqlite_plus.dart';
+import 'src/diagnostic_values.dart';
 
 part 'src/models.dart';
 part 'src/collector.dart';
 part 'src/connections.dart';
+part 'src/advisor.dart';

@@ -68,12 +68,22 @@ jobs:
           dart analyze --fatal-infos
           dart test
           dart run bin/main.dart
+      - name: Optimizer VM and JavaScript assertions
+        if: matrix.package == 'sqlite_plus'
+        working-directory: ${{ github.workspace }}
+        run: |
+          dart run tool/optimizer_benchmark/assertions.dart
+          dart compile js tool/optimizer_benchmark/assertions.dart -o /tmp/optimizer_assertions.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/optimizer_assertions.js
       - name: Compile browser storage JavaScript
         if: matrix.package == 'sqlite_plus'
         run: dart compile js tool/browser_storage_compile.dart -o /tmp/sqlite_plus_browser_storage.js
       - name: Compile and run ORM JavaScript smoke
         if: matrix.package == 'sqlite_plus_orm'
         run: |
+          dart run example/prepared.dart
+          dart compile js example/prepared.dart -o /tmp/orm_prepared.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/orm_prepared.js
           dart compile js tool/browser_smoke.dart -o /tmp/sqlite_plus_orm_smoke.js
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/sqlite_plus_orm_smoke.js
   desktop:
@@ -286,6 +296,7 @@ jobs:
           dart test
           dart run example/main.dart
           dart run example/orm.dart
+          dart run example/diagnostics.dart
       - name: Compile and run JavaScript assertions
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -293,6 +304,8 @@ jobs:
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/inspector.js
           dart compile js example/orm.dart -o /tmp/inspector_orm.js
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/inspector_orm.js
+          dart compile js example/diagnostics.dart -o /tmp/inspector_diagnostics.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/inspector_diagnostics.js
 
   direct_writes:
     name: ORM direct updates and upserts
@@ -310,7 +323,7 @@ jobs:
         run: |
           dart analyze --fatal-infos packages/sqlite_plus packages/sqlite_plus_orm
           dart analyze --fatal-infos packages/sqlite_plus_orm/example
-          dart test packages/sqlite_plus_orm/test/direct_writes_test.dart packages/sqlite_plus_orm/test/direct_writes_advanced_test.dart packages/sqlite_plus_orm/test/direct_writes_native_test.dart packages/sqlite_plus/test/utf_collation_native_test.dart
+          dart test packages/sqlite_plus_orm/test/direct_writes_test.dart packages/sqlite_plus_orm/test/direct_writes_advanced_test.dart packages/sqlite_plus_orm/test/direct_writes_native_test.dart packages/sqlite_plus/test/utf_collation_native_test.dart packages/sqlite_plus/test/upsert_resident_test.dart packages/sqlite_plus/test/upsert_resident_native_test.dart packages/sqlite_plus/test/rowid_conjunct_test.dart packages/sqlite_plus/test/rowid_conjunct_native_test.dart
       - name: VM and JavaScript assertions
         run: |
           dart run packages/sqlite_plus_orm/example/direct_writes.dart
@@ -351,6 +364,7 @@ jobs:
           dart run example/main.dart
           dart run example/orm.dart
           dart run example/typed_values.dart
+          dart run example/import_preview.dart
       - name: JavaScript assertion examples
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -360,3 +374,30 @@ jobs:
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/branch_orm.js
           dart compile js example/typed_values.dart -o /tmp/branch_typed.js
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/branch_typed.js
+          dart compile js example/import_preview.dart -o /tmp/branch_import_preview.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/branch_import_preview.js
+
+  jobs:
+    name: Embedded jobs, leases and recovery
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.7
+      - name: Build pinned development SQLite reference
+        run: bash tool/build_sqlite_reference.sh
+      - name: Install workspace dependencies
+        run: dart pub get --enforce-lockfile
+      - name: Format, analyze and test
+        run: |
+          dart format --output=none --set-exit-if-changed packages/sqlite_plus_jobs tool/jobs_benchmark
+          dart analyze --fatal-infos packages/sqlite_plus_jobs tool/jobs_benchmark
+          dart test packages/sqlite_plus_jobs/test
+          dart run packages/sqlite_plus_jobs/example/main.dart
+      - name: JavaScript assertions and AOT smoke
+        run: |
+          dart compile js packages/sqlite_plus_jobs/example/main.dart -o /tmp/jobs.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/jobs.js
+          dart compile exe tool/jobs_benchmark/main.dart -o /tmp/jobs-benchmark
+          /tmp/jobs-benchmark 100 batch

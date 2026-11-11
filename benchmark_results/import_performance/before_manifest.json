@@ -1,0 +1,12 @@
+{
+  "base_commit": "3ccfb572e819821e9c51d5bd150516859716d647",
+  "source_sha256": {
+    "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "96ab3b7f2296e5bd43da546e13ca7528abd2369bc82530fb2da278c245cdf3f0",
+    "packages/sqlite_plus_orm/lib/src/writes.dart": "b2410060715ae1b4f4b8f8bcf4806640fa4a6967556699be2266ce4d3e01cb95",
+    "packages/sqlite_plus_orm/lib/src/import.dart": "26aeeb3787ad3e9b867c05ca8ef50a76130aa89433dbdb0f2ccaea19f7c83ed9",
+    "tool/workflows_benchmark/main.dart": "1c94f5677a5521944dc7135967cdc2c9bddfffeecdd2999d9b9536a2e51ffe16"
+  },
+  "binary_sha256": "fea3de4669bc683f739a91504b673b5f24f122b4e147fc427044cddb9194e79e",
+  "binary": "/tmp/workflows-benchmark",
+  "description": "Full-copy workflows source from preceding local milestone, before core performance edits."
+}

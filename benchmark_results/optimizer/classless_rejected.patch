@@ -1,0 +1,86 @@
+--- a/lib/src/sql/database.dart
++++ b/lib/src/sql/database.dart
+@@ -2176,7 +2176,8 @@
+       }
+ 
+       final output = <(List<Object?>, List<Object?>, int)>[];
+-      BoundedSortHeap<(List<Object?>, List<Object?>, int)>? selection;
++      int Function((List<Object?>, List<Object?>, int),
++          (List<Object?>, List<Object?>, int))? selection;
+       final unsorted = order.isEmpty;
+       final streamLimit = !distinct && unsorted;
+       var emitted = 0;
+@@ -2261,12 +2262,15 @@
+             // the retained set fills; large LIMITs over short inputs pay no
+             // heap construction cost. Sequence preserves the last-worst tie.
+             if (capacity >= 32) {
+-              selection ??= BoundedSortHeap(output, (a, b) {
+-                final keys = compareKeys(a.$2, b.$2);
+-                return keys != 0 ? keys : a.$3.compareTo(b.$3);
+-              });
+-              if (compareKeys(candidateKeys, selection.worst.$2) >= 0) continue;
+-              selection.removeWorst();
++              if (selection == null) {
++                selection = (a, b) {
++                  final keys = compareKeys(a.$2, b.$2);
++                  return keys != 0 ? keys : a.$3.compareTo(b.$3);
++                };
++                sortHeapify(output, selection);
++              }
++              if (compareKeys(candidateKeys, output.first.$2) >= 0) continue;
++              sortHeapRemoveWorst(output, selection);
+             } else {
+               var worst = 0;
+               for (var i = 1; i < output.length; i++) {
+@@ -2329,7 +2333,7 @@
+         if (selection == null) {
+           output.add(entry);
+         } else {
+-          selection.add(entry);
++          sortHeapAdd(output, entry, selection);
+         }
+         if (streamLimit &&
+             limit != null &&
+--- a/lib/src/sql/bounded_sort_heap.dart
++++ b/lib/src/sql/bounded_sort_heap.dart
+@@ -48,3 +48,40 @@
+     entries[slot] = entry;
+   }
+ }
++
++void sortHeapify<T>(List<T> entries, int Function(T, T) compare) {
++  for (var i = entries.length ~/ 2 - 1; i >= 0; i--) {
++    _sortHeapDown(entries, i, compare);
++  }
++}
++T sortHeapRemoveWorst<T>(List<T> entries, int Function(T, T) compare) {
++  final result = entries.first;
++  final last = entries.removeLast();
++  if (entries.isNotEmpty) {
++    entries[0] = last;
++    _sortHeapDown(entries, 0, compare);
++  }
++  return result;
++}
++void sortHeapAdd<T>(List<T> entries, T entry, int Function(T, T) compare) {
++  entries.add(entry);
++  var slot = entries.length - 1;
++  while (slot > 0) {
++    final parent = (slot - 1) ~/ 2;
++    if (compare(entries[parent], entry) >= 0) break;
++    entries[slot] = entries[parent];
++    slot = parent;
++  }
++  entries[slot] = entry;
++}
++void _sortHeapDown<T>(List<T> entries, int slot, int Function(T, T) compare) {
++  final entry = entries[slot];
++  while (slot * 2 + 1 < entries.length) {
++    var child = slot * 2 + 1;
++    if (child + 1 < entries.length && compare(entries[child+1], entries[child]) > 0) child++;
++    if (compare(entry, entries[child]) >= 0) break;
++    entries[slot] = entries[child];
++    slot = child;
++  }
++  entries[slot] = entry;
++}

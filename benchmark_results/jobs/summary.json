@@ -1,0 +1,116 @@
+[
+  {
+    "rows": 100,
+    "mode": "batch",
+    "samples": 3,
+    "processed": 100,
+    "metrics": {
+      "install_us": {
+        "median": 4198,
+        "min": 3756,
+        "max": 5037
+      },
+      "enqueue_us": {
+        "median": 68685,
+        "min": 62137,
+        "max": 75075
+      },
+      "duplicate_100_us": {
+        "median": 114872,
+        "min": 107004,
+        "max": 116851
+      },
+      "claim_complete_us": {
+        "median": 4365792,
+        "min": 4312263,
+        "max": 4373105
+      },
+      "rss": {
+        "median": 43261952,
+        "min": 43216896,
+        "max": 43765760
+      },
+      "peak_rss": {
+        "median": 47730688,
+        "min": 47669248,
+        "max": 48177152
+      }
+    }
+  },
+  {
+    "rows": 100,
+    "mode": "individual",
+    "samples": 3,
+    "processed": 100,
+    "metrics": {
+      "install_us": {
+        "median": 3860,
+        "min": 3816,
+        "max": 4124
+      },
+      "enqueue_us": {
+        "median": 253658,
+        "min": 242393,
+        "max": 279377
+      },
+      "duplicate_100_us": {
+        "median": 114898,
+        "min": 107486,
+        "max": 119074
+      },
+      "claim_complete_us": {
+        "median": 4226151,
+        "min": 4124459,
+        "max": 4289556
+      },
+      "rss": {
+        "median": 44290048,
+        "min": 44249088,
+        "max": 44376064
+      },
+      "peak_rss": {
+        "median": 47923200,
+        "min": 47628288,
+        "max": 48132096
+      }
+    }
+  },
+  {
+    "rows": 1000,
+    "mode": "batch",
+    "samples": 3,
+    "processed": 10,
+    "metrics": {
+      "install_us": {
+        "median": 4285,
+        "min": 4142,
+        "max": 8067
+      },
+      "enqueue_us": {
+        "median": 674666,
+        "min": 655976,
+        "max": 695874
+      },
+      "duplicate_100_us": {
+        "median": 112683,
+        "min": 109165,
+        "max": 114702
+      },
+      "claim_complete_us": {
+        "median": 3937680,
+        "min": 3908927,
+        "max": 3970755
+      },
+      "rss": {
+        "median": 47255552,
+        "min": 46727168,
+        "max": 47300608
+      },
+      "peak_rss": {
+        "median": 53932032,
+        "min": 53862400,
+        "max": 53989376
+      }
+    }
+  }
+]

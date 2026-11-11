@@ -21,6 +21,8 @@ import 'values.dart';
 import 'function_registry.dart';
 import 'virtual_table.dart';
 
+part 'prepared_statement.dart';
+
 final _crossQueryKey = Object();
 
 final class _ConnectionSnapshot {
@@ -254,7 +256,11 @@ final class MutableSqliteDatabase {
     if (reader != null) unawaited(reader.close());
   }
 
-  void _invalidateCatalog() => _catalog = null;
+  int _preparationEpoch = 0;
+  void _invalidateCatalog() {
+    _catalog = null;
+    _preparationEpoch++;
+  }
 
   void _rememberSchema(String sql) {
     final parser = SqlParser(sql);
@@ -346,7 +352,8 @@ final class MutableSqliteDatabase {
   Future<QueryResult> _readImage(String schema, String sql,
       [List<Object?> parameters = const [],
       bool schemaView = false,
-      bool browse = false]) async {
+      bool browse = false,
+      SqlPreparation? preparation]) async {
     if (schema == 'main' &&
         _dirtyMain &&
         (!schemaView || (_liveMain?.schemaChanged ?? false))) {
@@ -356,7 +363,9 @@ final class MutableSqliteDatabase {
       final reader = await _cachedMainReader();
       return browse
           ? reader.browse(sql, parameters)
-          : reader.query(sql, parameters);
+          : preparation == null
+              ? reader.query(sql, parameters)
+              : reader.queryPreparation(preparation, parameters);
     }
     final reader = await SqliteDatabase.openReadOnly(
         ByteImageStorage(_imageFor(schema)),
@@ -364,7 +373,9 @@ final class MutableSqliteDatabase {
     try {
       return browse
           ? await reader.browse(sql, parameters)
-          : await reader.query(sql, parameters);
+          : preparation == null
+              ? await reader.query(sql, parameters)
+              : await reader.queryPreparation(preparation, parameters);
     } finally {
       await reader.close();
     }
@@ -460,13 +471,20 @@ final class MutableSqliteDatabase {
   }
 
   Future<QueryResult> _queryUnlocked(String sql,
-      [List<Object?> parameters = const []]) async {
+      [List<Object?> parameters = const [],
+      SqlPreparedStatement? prepared]) async {
     final live = _liveMain;
-    if (live != null) {
+    if (live != null &&
+        (prepared == null || prepared._route!.schema == 'main')) {
       final fast = parameters.isEmpty
           ? live.tryFastCount(sql) ?? live.tryFastRead(sql, parameters)
           : live.tryFastRead(sql, parameters);
       if (fast != null) return fast;
+    }
+    if (prepared != null) {
+      final route = prepared._route!;
+      return _readImage(route.schema!, route.sql, parameters, false, false,
+          prepared._program);
     }
     final explain = SqlParser(sql);
     if (explain.take('EXPLAIN')) {
@@ -589,7 +607,11 @@ final class MutableSqliteDatabase {
 
   /// Runs one write statement inside the connection lock.
   Future<MutationResult> execute(String sql,
-      [List<Object?> parameters = const []]) async {
+          [List<Object?> parameters = const []]) =>
+      _executeStatement(sql, parameters);
+
+  Future<MutationResult> _executeStatement(String sql, List<Object?> parameters,
+      {SqlPreparedStatement? prepared}) async {
     if (_closed || _failed || _busy) {
       throw StateError('Database closed or busy');
     }
@@ -601,7 +623,7 @@ final class MutableSqliteDatabase {
       _materializeMain();
     }
     final live = _liveMain;
-    if (live != null) {
+    if (live != null && prepared == null) {
       _busy = true;
       try {
         live.wroteRows = false;
@@ -671,7 +693,10 @@ final class MutableSqliteDatabase {
       }
     }
     return _exclusive(() async {
-      final parser = SqlParser(sql);
+      if (prepared != null) await prepared._ensureCurrent();
+      final parser = prepared == null
+          ? SqlParser(sql)
+          : SqlParser.prepared(prepared._program!);
       if (parser.take('PRAGMA')) {
         final parsed = _pragmaName(parser);
         final name = parsed.$2;
@@ -734,7 +759,7 @@ final class MutableSqliteDatabase {
         return _transaction(parser);
       }
       final names = await _schemaCatalog();
-      final route = routeMutation(sql, names);
+      final route = prepared?._route ?? routeMutation(sql, names);
       if (route.kind == 'attach') {
         await _attach(route.name!, route.argument!);
         return const MutationResult(0, null);
@@ -752,7 +777,9 @@ final class MutableSqliteDatabase {
         statementSql = rewritten.sql;
         statementParameters = rewritten.parameters;
       }
-      final keyword = SqlParser(statementSql).current.keyword;
+      final keyword = prepared == null
+          ? SqlParser(statementSql).current.keyword
+          : prepared._program!.tokens.first.keyword;
       final maintenance =
           const {'REINDEX', 'ANALYZE', 'VACUUM'}.contains(keyword);
       final vacuumOnLive =
@@ -778,7 +805,8 @@ final class MutableSqliteDatabase {
           schema == 'main' && _journal == null && !maintenance;
       final MutationImage result;
       final previousTarget = state.reportedTarget;
-      state.reportedTarget = qualifiedDmlTarget(sql);
+      state.reportedTarget =
+          prepared == null ? qualifiedDmlTarget(sql) : prepared._reportedTarget;
       try {
         result = route.kind == 'cross-write'
             ? await _runCrossWrite(state, sql, schema, parameters, names,
@@ -786,7 +814,8 @@ final class MutableSqliteDatabase {
             : await state.execute(statementSql, statementParameters,
                 foreignKeys: _foreignKeys,
                 inTransaction: inTransaction,
-                recursiveTriggers: _recursiveTriggers);
+                recursiveTriggers: _recursiveTriggers,
+                preparation: prepared?._program);
       } on MutationFailure catch (failure) {
         if (failure.rollbackTransaction) {
           if (inTransaction) {

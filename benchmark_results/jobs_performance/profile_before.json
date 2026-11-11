@@ -1,0 +1,91 @@
+{
+  "samples": 3627,
+  "scope": "JIT only, ten claim+complete pairs at queue depth1000, seeding excluded; top60 global functions filtered to engine",
+  "functions": [
+    {
+      "name": "asciiLower",
+      "inclusive": 1426,
+      "exclusive": 15
+    },
+    {
+      "name": "evaluate",
+      "inclusive": 1022,
+      "exclusive": 12
+    },
+    {
+      "name": "_readImage",
+      "inclusive": 951,
+      "exclusive": 0
+    },
+    {
+      "name": "_queryUnlocked",
+      "inclusive": 921,
+      "exclusive": 0
+    },
+    {
+      "name": "_materializeMain",
+      "inclusive": 915,
+      "exclusive": 0
+    },
+    {
+      "name": "durableImage",
+      "inclusive": 913,
+      "exclusive": 0
+    },
+    {
+      "name": "_execute",
+      "inclusive": 799,
+      "exclusive": 1
+    },
+    {
+      "name": "_row",
+      "inclusive": 675,
+      "exclusive": 11
+    },
+    {
+      "name": "_query",
+      "inclusive": 619,
+      "exclusive": 0
+    },
+    {
+      "name": "_context",
+      "inclusive": 604,
+      "exclusive": 11
+    },
+    {
+      "name": "materialize",
+      "inclusive": 583,
+      "exclusive": 0
+    },
+    {
+      "name": "rows",
+      "inclusive": 582,
+      "exclusive": 1
+    },
+    {
+      "name": "prepare",
+      "inclusive": 541,
+      "exclusive": 0
+    },
+    {
+      "name": "<anonymous closure>",
+      "inclusive": 531,
+      "exclusive": 0
+    },
+    {
+      "name": "evaluateGenerated",
+      "inclusive": 471,
+      "exclusive": 11
+    },
+    {
+      "name": "serialize",
+      "inclusive": 444,
+      "exclusive": 1
+    },
+    {
+      "name": "_indexKeysSame",
+      "inclusive": 403,
+      "exclusive": 3
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+[
+  {
+    "iteration": 0,
+    "result": {
+      "rows": 100,
+      "mode": "batch",
+      "install_us": 5037,
+      "enqueue_us": 68685,
+      "duplicate_100_us": 116851,
+      "claim_complete_us": 4312263,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "a470316c9f15e38824a16f538c717737606472c8a2e9d33511d5e6ae00dcae78",
+      "rss": 43216896,
+      "peak_rss": 47730688
+    }
+  },
+  {
+    "iteration": 0,
+    "result": {
+      "rows": 100,
+      "mode": "individual",
+      "install_us": 4124,
+      "enqueue_us": 279377,
+      "duplicate_100_us": 114898,
+      "claim_complete_us": 4289556,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "616365fad2d2be4c3ad4a616299ab2fb2eee89f6148b754b441236b7ce00e4b5",
+      "rss": 44376064,
+      "peak_rss": 47923200
+    }
+  },
+  {
+    "iteration": 1,
+    "result": {
+      "rows": 100,
+      "mode": "individual",
+      "install_us": 3860,
+      "enqueue_us": 253658,
+      "duplicate_100_us": 119074,
+      "claim_complete_us": 4124459,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "616365fad2d2be4c3ad4a616299ab2fb2eee89f6148b754b441236b7ce00e4b5",
+      "rss": 44290048,
+      "peak_rss": 48132096
+    }
+  },
+  {
+    "iteration": 1,
+    "result": {
+      "rows": 100,
+      "mode": "batch",
+      "install_us": 4198,
+      "enqueue_us": 75075,
+      "duplicate_100_us": 114872,
+      "claim_complete_us": 4373105,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "a470316c9f15e38824a16f538c717737606472c8a2e9d33511d5e6ae00dcae78",
+      "rss": 43261952,
+      "peak_rss": 47669248
+    }
+  },
+  {
+    "iteration": 2,
+    "result": {
+      "rows": 100,
+      "mode": "batch",
+      "install_us": 3756,
+      "enqueue_us": 62137,
+      "duplicate_100_us": 107004,
+      "claim_complete_us": 4365792,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "a470316c9f15e38824a16f538c717737606472c8a2e9d33511d5e6ae00dcae78",
+      "rss": 43765760,
+      "peak_rss": 48177152
+    }
+  },
+  {
+    "iteration": 2,
+    "result": {
+      "rows": 100,
+      "mode": "individual",
+      "install_us": 3816,
+      "enqueue_us": 242393,
+      "duplicate_100_us": 107486,
+      "claim_complete_us": 4226151,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "616365fad2d2be4c3ad4a616299ab2fb2eee89f6148b754b441236b7ce00e4b5",
+      "rss": 44249088,
+      "peak_rss": 47628288
+    }
+  },
+  {
+    "iteration": 0,
+    "result": {
+      "rows": 1000,
+      "mode": "batch",
+      "install_us": 4142,
+      "enqueue_us": 674666,
+      "duplicate_100_us": 112683,
+      "claim_complete_us": 3970755,
+      "processed": 10,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 180224,
+      "final_bytes": 180224,
+      "logical_sha256": "4601c00042fab0f163d096c5d0e0f99eaa4e0f1584f9dc173cd817c3e7741f97",
+      "image_sha256": "8c57bd482998859ded1ce233c44cc912aaa73803a28cb942d0fdbbed25514a78",
+      "rss": 47255552,
+      "peak_rss": 53932032
+    }
+  },
+  {
+    "iteration": 1,
+    "result": {
+      "rows": 1000,
+      "mode": "batch",
+      "install_us": 8067,
+      "enqueue_us": 695874,
+      "duplicate_100_us": 114702,
+      "claim_complete_us": 3937680,
+      "processed": 10,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 180224,
+      "final_bytes": 180224,
+      "logical_sha256": "4601c00042fab0f163d096c5d0e0f99eaa4e0f1584f9dc173cd817c3e7741f97",
+      "image_sha256": "8c57bd482998859ded1ce233c44cc912aaa73803a28cb942d0fdbbed25514a78",
+      "rss": 47300608,
+      "peak_rss": 53989376
+    }
+  },
+  {
+    "iteration": 2,
+    "result": {
+      "rows": 1000,
+      "mode": "batch",
+      "install_us": 4285,
+      "enqueue_us": 655976,
+      "duplicate_100_us": 109165,
+      "claim_complete_us": 3908927,
+      "processed": 10,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 180224,
+      "final_bytes": 180224,
+      "logical_sha256": "4601c00042fab0f163d096c5d0e0f99eaa4e0f1584f9dc173cd817c3e7741f97",
+      "image_sha256": "8c57bd482998859ded1ce233c44cc912aaa73803a28cb942d0fdbbed25514a78",
+      "rss": 46727168,
+      "peak_rss": 53862400
+    }
+  }
+]

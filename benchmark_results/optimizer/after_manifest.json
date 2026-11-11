@@ -1,0 +1,116 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "dart": "Dart SDK version: 3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "source_sha256": {
+    "packages/sqlite_plus/lib/src/sql/database.dart": "b175f7fb50da30c31b362d6b995778e9c8a4666f9e30cd29b7f75bbf9ae549c2",
+    "packages/sqlite_plus/lib/src/sql/bounded_sort_heap.dart": "1d780b710f3474c022734ceed976c1d6b84fc3aed2b26f51579e2e393102408b"
+  },
+  "binaries": {
+    "before": {
+      "bytes": 10207928,
+      "sha256": "3e17c24e8f97fbebfe29e93fc5773277964e9344c32ba1f7096472b900c8cffb"
+    },
+    "after": {
+      "bytes": 10208864,
+      "sha256": "59a061b0a2e760509480a8076b65a0f5959794cef9fb9b7ae5e402190f31b4be"
+    },
+    "ordinary-before": {
+      "bytes": 10170768,
+      "sha256": "6aa5e85e29e9ef2fcc53359c7488641ba68cb7ef686627aeff452908490462b1"
+    },
+    "ordinary-after": {
+      "bytes": 10171680,
+      "sha256": "0d7340c7e395a33f5e8fa4afb0efe43b954d06fd7181d6607ee754a6991513b7"
+    },
+    "orm-before": {
+      "bytes": 10372488,
+      "sha256": "edaef2355d37e7afb576643c8d6634c7b5981d0d7255409546f5b76307030b2f"
+    },
+    "orm-after": {
+      "bytes": 10373536,
+      "sha256": "b7dca0d47740b6126c8941592536b4a67b6106eaf1195501d5aa05a6c700a626"
+    },
+    "update-probe-before": {
+      "bytes": 10147848,
+      "sha256": "af03c6f91e105543dc458d664b1412083a480d878d6457ca5e7f608e7ee8ebfa"
+    },
+    "update-probe-after": {
+      "bytes": 10148768,
+      "sha256": "72a02025a3601616b516af0058e4f866cdc43dcb10dde2b3c21224ef2852191a"
+    },
+    "update-probe-classless": {
+      "bytes": 10148648,
+      "sha256": "52789a629025bca0627f969a9deac29a2bfa4ffb6979ec7715c861f577cf6b92"
+    }
+  },
+  "seed_images": [
+    {
+      "path": "/tmp/optimizer-1000-random.db",
+      "rows": 1000,
+      "layout": "random",
+      "bytes": 57344,
+      "sha256": "9c51a1a6208aadda21aaa9a8452202ffa1e0d9d9d59bc70d55f824d873c8caed"
+    },
+    {
+      "path": "/tmp/optimizer-10000-random.db",
+      "rows": 10000,
+      "layout": "random",
+      "bytes": 471040,
+      "sha256": "4a8692ad438456e7adb1a19a5abb097b5c71084366cc77583e84effe199236a3"
+    },
+    {
+      "path": "/tmp/optimizer-100000-random.db",
+      "rows": 100000,
+      "layout": "random",
+      "bytes": 4767744,
+      "sha256": "b3bf118659119929ce5e8f0db3e8ce4593e11365003a13b2ff7520854e8cc3cc"
+    },
+    {
+      "path": "/tmp/optimizer-10000-ascending.db",
+      "rows": 10000,
+      "layout": "ascending",
+      "bytes": 471040,
+      "sha256": "47b226694d6587c76e9207c3d88d9be96a96a088e009452a8e29bb6626159800"
+    },
+    {
+      "path": "/tmp/optimizer-10000-descending.db",
+      "rows": 10000,
+      "layout": "descending",
+      "bytes": 471040,
+      "sha256": "9f49ce9cf3bc4e1364bbc98c7771cbed9699031f0750378cff35e40cb70207d6"
+    },
+    {
+      "path": "/tmp/optimizer-10000-ties.db",
+      "rows": 10000,
+      "layout": "ties",
+      "bytes": 458752,
+      "sha256": "6cb3cc7e0a815bd981acce531d132c3c13413b368bb4cfceb63fb014c110a726"
+    },
+    {
+      "path": "/tmp/optimizer-33-random.db",
+      "rows": 33,
+      "layout": "random",
+      "bytes": 8192,
+      "sha256": "fe5e03074dffe9577c356560d08ade557a48ac50d3891ca2adc5b4a0b942104b"
+    },
+    {
+      "path": "/tmp/optimizer-64-random.db",
+      "rows": 64,
+      "layout": "random",
+      "bytes": 8192,
+      "sha256": "210fa8862c10b2d6aadab82109584c7e57046b42c588a1fee87c1f4d71a6de18"
+    }
+  ],
+  "benchmark_source_sha256": {
+    "tool/optimizer_benchmark/summarize.py": "7441f4b2b100c680233811abacd5567fb6f3a97f0fefdb6f79ea91f649758a79",
+    "tool/optimizer_benchmark/regression.py": "f3a016d99633ff1e17a5305c3207dedb6cfd2ea0fdec3916d776e9692fad7b2a",
+    "tool/optimizer_benchmark/followup.py": "42fcf67970215c4a0721554635e2982b8e22749aba0ccd0cf68f3632f3b247d4",
+    "tool/optimizer_benchmark/build.py": "26f323f42539013fb9941f60fab122767dfa9706dc7db38026f9c57c13ab3440",
+    "tool/optimizer_benchmark/update_probe.dart": "ba483928d7cdecd466d306521d42a30ad4a568a8eb10d3c8f48331b3a0c8f106",
+    "tool/optimizer_benchmark/main.dart": "803ddf59b3d2a28ebbd14a68fc019e474cdd413b6bdcdfa7a254d22d07e35a17",
+    "tool/optimizer_benchmark/edges.py": "12b0bd98b04180779a61416d603989ed4491157960d077fc11e7202877cc790f",
+    "tool/optimizer_benchmark/assertions.dart": "2377230746fc98ae88ffac941cb7b6f3500ced3c2da0c911736a193eed80a238",
+    "tool/optimizer_benchmark/run.py": "859d0a8cb1cd507855e32780cc2d8f3dae2f28a7bfad758286877e1227986750",
+    "tool/optimizer_benchmark/update_probe.py": "c747ef3fb3ac36183d5999bb874f70b7914788f5d813d2c13f9f56fa89a9b972"
+  }
+}

@@ -1,0 +1,203 @@
+[
+  {
+    "binary": "/tmp/prepared-benchmark",
+    "args": [
+      "read",
+      "ordinary"
+    ],
+    "samples": 5,
+    "median_ms": 2524.043,
+    "min_ms": 2474.162,
+    "max_ms": 2582.726
+  },
+  {
+    "binary": "/tmp/prepared-benchmark",
+    "args": [
+      "read",
+      "prepared"
+    ],
+    "samples": 5,
+    "median_ms": 2549.538,
+    "min_ms": 2416.626,
+    "max_ms": 2573.464
+  },
+  {
+    "binary": "/tmp/prepared-benchmark",
+    "args": [
+      "update",
+      "ordinary"
+    ],
+    "samples": 5,
+    "median_ms": 1702.534,
+    "min_ms": 1688.793,
+    "max_ms": 1724.625
+  },
+  {
+    "binary": "/tmp/prepared-benchmark",
+    "args": [
+      "update",
+      "prepared"
+    ],
+    "samples": 5,
+    "median_ms": 1630.393,
+    "min_ms": 1556.177,
+    "max_ms": 1672.035
+  },
+  {
+    "binary": "/tmp/prepared-benchmark",
+    "args": [
+      "orm",
+      "ordinary"
+    ],
+    "samples": 5,
+    "median_ms": 3704.42,
+    "min_ms": 3601.538,
+    "max_ms": 3773.586
+  },
+  {
+    "binary": "/tmp/prepared-benchmark",
+    "args": [
+      "orm",
+      "prepared"
+    ],
+    "samples": 5,
+    "median_ms": 3603.698,
+    "min_ms": 3386.064,
+    "max_ms": 3653.58
+  },
+  {
+    "binary": "/tmp/prepared-benchmark",
+    "args": [
+      "orm",
+      "cache"
+    ],
+    "samples": 5,
+    "median_ms": 3625.679,
+    "min_ms": 3519.128,
+    "max_ms": 3842.962
+  },
+  {
+    "binary": "/tmp/prepared-ordinary-before",
+    "args": [
+      "read",
+      "1000"
+    ],
+    "samples": 5,
+    "median_ms": 37.863,
+    "min_ms": 36.103,
+    "max_ms": 40.861
+  },
+  {
+    "binary": "/tmp/prepared-ordinary-after",
+    "args": [
+      "read",
+      "1000"
+    ],
+    "samples": 5,
+    "median_ms": 36.82,
+    "min_ms": 36.745,
+    "max_ms": 45.877
+  },
+  {
+    "binary": "/tmp/prepared-ordinary-before",
+    "args": [
+      "insert",
+      "1000"
+    ],
+    "samples": 5,
+    "median_ms": 1.818,
+    "min_ms": 1.607,
+    "max_ms": 1.879
+  },
+  {
+    "binary": "/tmp/prepared-ordinary-after",
+    "args": [
+      "insert",
+      "1000"
+    ],
+    "samples": 5,
+    "median_ms": 1.747,
+    "min_ms": 1.665,
+    "max_ms": 2.003
+  },
+  {
+    "binary": "/tmp/prepared-ordinary-before",
+    "args": [
+      "update",
+      "1000"
+    ],
+    "samples": 5,
+    "median_ms": 3.965,
+    "min_ms": 3.53,
+    "max_ms": 4.597
+  },
+  {
+    "binary": "/tmp/prepared-ordinary-after",
+    "args": [
+      "update",
+      "1000"
+    ],
+    "samples": 5,
+    "median_ms": 3.59,
+    "min_ms": 3.377,
+    "max_ms": 4.001
+  },
+  {
+    "binary": "/tmp/prepared-ordinary-before",
+    "args": [
+      "guarded",
+      "1000"
+    ],
+    "samples": 5,
+    "median_ms": 172.832,
+    "min_ms": 170.644,
+    "max_ms": 190.921
+  },
+  {
+    "binary": "/tmp/prepared-ordinary-after",
+    "args": [
+      "guarded",
+      "1000"
+    ],
+    "samples": 5,
+    "median_ms": 171.757,
+    "min_ms": 165.413,
+    "max_ms": 188.232
+  },
+  {
+    "binary": "/tmp/prepared-orm-ordinary-before",
+    "args": [],
+    "samples": 5,
+    "median_ms": 2943.249,
+    "min_ms": 2875.88,
+    "max_ms": 3119.013
+  },
+  {
+    "binary": "/tmp/prepared-orm-ordinary-after",
+    "args": [],
+    "samples": 5,
+    "median_ms": 2998.171,
+    "min_ms": 2850.588,
+    "max_ms": 3131.705
+  },
+  {
+    "binary": "/tmp/prepared-syntax",
+    "args": [
+      "ordinary"
+    ],
+    "samples": 5,
+    "median_ms": 347.487,
+    "min_ms": 336.789,
+    "max_ms": 354.798
+  },
+  {
+    "binary": "/tmp/prepared-syntax",
+    "args": [
+      "prepared"
+    ],
+    "samples": 5,
+    "median_ms": 125.393,
+    "min_ms": 122.653,
+    "max_ms": 129.2
+  }
+]

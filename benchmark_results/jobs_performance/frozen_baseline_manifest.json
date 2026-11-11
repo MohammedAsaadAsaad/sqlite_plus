@@ -1,0 +1,10 @@
+{
+  "binary": "/tmp/jobs-before-performance",
+  "binary_sha256": "cc7cd0e01133fdc061244905ecba79c5b84592195b1fd4130d8052b9460ed49a",
+  "source_sha256": {
+    "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "5118937b407e2818c4fa48c8367f421abdb894252232bfd1b6b3b4a871b59bd4",
+    "packages/sqlite_plus_jobs/lib/src/queue.dart": "88caa135ba494c40810d67e5cdc6e6b9c2d049f64f9cfe9a507d9f5ff8330486",
+    "tool/jobs_benchmark/main.dart": "10686c8f3f1fb2db6b13c533ca85e8da5656b2ab469d9943284bf2deeb2ca3e0"
+  },
+  "note": "Preserved prior AOT binary; queue source differs only by documented brace patch from its measured snapshot."
+}

@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-08",
+  "scope": "Local validation; no publish/push/merge",
+  "test_suites": [
+    {
+      "suite": "core_full",
+      "result": "04:03 +10695 ~1: All tests passed!"
+    },
+    {
+      "suite": "orm_changes_sync_branch_inspector_jobs_full",
+      "result": "02:26 +510: All tests passed!"
+    },
+    {
+      "suite": "search_full",
+      "result": "01:07 +86: All tests passed!"
+    },
+    {
+      "suite": "final_prepared_reactive_geo_vec_arabic",
+      "result": "00:14 +82: All tests passed!"
+    },
+    {
+      "suite": "generator_full",
+      "result": "04:00 +78: All tests passed!"
+    }
+  ],
+  "analyze": "Analyzing sqlite_plus, sqlite_plus_orm, prepared_benchmark...\nNo issues found!",
+  "format": "Formatted 299 files (0 changed) in 1.30 seconds.",
+  "vm_example": "Prepared ORM assertions passed: typed bindings, current rows, updates, cache and lifetime.",
+  "js_example": "Prepared ORM assertions passed: typed bindings, current rows, updates, cache and lifetime.",
+  "baseline_reconstruction": "Reversed baseline.patch libraries byte-match saved pre-feature snapshot",
+  "benchmark_equivalence": "summarize.py checksums/logical hashes/image hashes passed"
+}

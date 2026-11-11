@@ -581,3 +581,159 @@ portable directory-fsync/power-loss or multi-isolate guarantee. Real browser,
 physical crash, Windows/macOS and remote CI remain unverified for this milestone.
 Default budgets and measured 1k/10k phase times/storage:
 packages/sqlite_plus_branch/README.md and benchmark_results/branch/README.md.
+
+## Branch/ORM/Inspector workflows (2026-11-08, workspace)
+
+Branch callback preview runs once, retains actual reviewed differences/conflicts,
+rejects stale source/escaped-draft edits and cleans up failures. Generic callback
+values are not deep-copied. Existing branch ordinary-schema/ownership limits apply.
+ORM prepared imports encode inputs before asynchronous work, report per-index
+validation/deduplication, group duplicate keys using actual SQL NOCASE/RTRIM/BLOB
+identity, and apply through atomic upsertMany. Explicit keepExisting handles SQL
+NULL/zero-length text, including correct NUL-prefixed text distinction. Source
+values are resolved at apply, not a cached estimate; input counts are not insertion
+promises. Clean tracking/Changes/Reactive/Inspector integration is tested. Dirty
+contexts, metadata drift and unresolved errors reject application.
+
+Inspector index advice accepts a bounded single-table token grammar and evaluates
+one candidate only on a disposable snapshot, comparing plans/results/timing/size.
+No automatic index or production query experiment. Write overhead is unmeasured.
+Optional replay entry point explicitly captures raw SQL/bindings and initial/final
+images; ordinary records stay redacted. Replay targets fresh memory only, validates
+outcomes and logical final state (with a separate physical-image flag), and rejects
+incomplete/oversized/unsupported sessions. Non-deterministic SQL, external actions,
+registries and connection counters are not guaranteed reproducible. Logical proof
+requires ordinary non-generated tables. Defaults and plaintext/checksum limits are
+specified in packages/sqlite_plus_inspector/doc/DIAGNOSTICS.md.
+
+Linux VM/pinned SQLite 3.53.1 and compiled JS/Node examples pass; actual browser,
+remote CI and macOS/Windows remain unverified for this milestone. Core runtime
+sources are unchanged. See benchmark_results/workflows for raw performance data:
+initial/follow-up ordinary update samples overlap broadly but do not establish a
+zero-effect guarantee; 1000-row import apply remains ~13s and needs performance
+work before production bulk use. No public release readiness claim is made.
+
+
+## UPSERT/import performance follow-up (2026-11-08, local)
+
+Supersedes the earlier ~13s/1000 import limitation for the measured workload.
+Core preparation flag repair avoids per-row whole-database validation; SQL
+comparator conflict trees and lazy row slots optimize ordinary UPSERT shapes.
+FK pragma ON is eligible only when no actual FK metadata exists; triggers,
+generated/complex indexes and key changes retain conservative fallbacks.
+No persistent tables/indexes or file-format changes; no public API change.
+
+AOT three-process medians: same 1000-row apply 13971.559 -> 119.110ms (117.3x),
+prepare+apply 14024.795 -> 171.626ms. Logical and physical SQLite hashes match;
+file remains 28672 bytes. SKU 1000 apply 348–434ms across insert/update/mixed
+candidate medians. 10k existing-row total median 6004.646ms; nonlinear growth and
+255–273MB peak RSS remain limits. Ordinary read/insert samples do not show a
+material slowdown, but update follow-up shows 3475 -> 3858us/1000 statements
+(+11.02%, +0.383ms); overlapping ranges do not prove zero overhead.
+
+Final full core 10673 pass/one optional SQLCipher CLI skip; affected add-ons 459
+pass. Search 86/generator 78 passed before final no-FK eligibility widening.
+Native three-encoding/collation/rollback/trigger/FK/counters/RETURNING/cross-open
+checks and VM+compiled JS/Node examples pass. Fatal-info affected analysis and
+329-file format checks pass. Workspace-wide dry-format flags seven pre-existing
+Flutter-example differences/missing flutter_lints; no unrelated rewrites.
+
+Raw 54 AOT samples + 24 ordinary-update follow-up samples, source/binary hashes,
+JIT profiling, reproduction and honest limits: benchmark_results/import_performance.
+No remote CI, device/browser, Windows/macOS or file-backed performance claim;
+no publication/push/main merge performed for this follow-up.
+
+
+## sqlite_plus_jobs — opt-in embedded queue (2026-11-08, local)
+
+Added experimental unpublished package using public engine SQL only. Queue-scoped
+BINARY dedup, priority/delay, lease tokens/expiry/renewal, bounded attempts/retry,
+cancellation, explicit retry/prune and optional registered-handler runOne worker.
+Application DML+enqueue and result+lease-fenced completion are atomic. Connection
+coordination covers handles sharing the same MutableSqliteDatabase only. No ORM,
+Changes/Sync transaction-driver integration, OS scheduling or engine hooks.
+
+Schema uses two reserved ordinary tables, three implicit immutable indexes and
+transactional monotonic IDs (no reuse after pruning). Batch dedup loads retained
+keys once per transaction; bounds/valid Unicode and full SQL constraints remain.
+Commit/rollback uncertainty rejects later jobs operations until a fresh recovered
+connection is opened. Unknown schema/version is rejected without automatic repair.
+
+Final jobs 52 cases pass; existing add-ons 459 passed in combined 510-case regression
+before the final package-only batch cache refinement, followed by complete jobs
+rechecks. Tests include DELETE/PERSIST fault injection with both persistence
+models, atomic app data+job state, counter corruption/exhaustion, actual file
+reopen, native SQLite 3.53.1 three-encoding differential/cross-open integrity.
+VM and compiled JS/Node example, fatal-info analysis and affected format pass.
+Core runtime source unchanged from preceding import optimization. Full engine
+suite was not repeated for this package-only milestone. Remote CI/device/browser
+storage/Windows/macOS acceptance is unverified; CI definition added, not executed.
+
+AOT nine fresh processes, 100/1000 batch and 100 individual: 100 batch enqueue median
+68.685ms; 1000 batch median 674.666ms. Large queue processing remains an OPEN gate:
+10 claim+complete pairs at depth 1000 median 3937.680ms. No high-throughput or
+production publication readiness claim. File size after explicit install 24576
+bytes (empty 4096); 1000 synthetic jobs 180224 bytes. Memory/storage follow backend
+limits; no zero-overhead timing claim. Raw data, hashes, ranges and two style-only
+post-timing brace changes are recorded in benchmark_results/jobs. Scope/status:
+docs/plans/JOBS.md. No publication, push or main merge performed.
+
+
+## Jobs processing performance follow-up (local)
+
+Optimized Jobs scheduling through a temporary metadata-only queue equality read,
+inside the same exclusive transaction, preserving priority/creation/ID order and
+SQL lease fences. Generic core improvements narrow safe integer rowid AND
+predicates, skip unchanged shared index records, and resolve the union of index
+column offsets once per comparison. Fix stale live equality-read indexes after
+prepared plain INSERT; preserve the existing append-order cache. No schema/API/
+file-format migration or package-specific core hooks.
+
+76 fresh AOT samples, rotating matched variant order and excluding seeding from
+processing timers. Original depth 1000/ten-job memory median 4016.599 -> 34.278ms
+(117.2x). Separate phase driver: 4026.429 -> 32.083ms; file fixture 5173.096
+-> 1753.273ms. Full 1000-job memory drain 3139.026ms; depth 10000/ten pairs 179.613ms
+(candidate-only scaling measurements). File fixture is rollback-journal-backed
+existing tmpfs files, not physical-device or OS power-loss throughput acceptance.
+Queue-depth and file image/storage work remain costs.
+
+Ordinary read/insert/update medians +0.44%/+1.21%/+4.76%, with overlapping ranges;
+no zero-overhead guarantee. Guarded updates 13525.313 -> 179.696ms/1000 statements.
+Prior ORM import apply remains fast: 132.853 -> 118.695ms/1000 rows, with identical
+logical/physical hashes and 28672-byte file. Historical samples are preserved.
+
+Full core 10681 pass/one optional SQLCipher CLI skip; add-ons 514 (Jobs 55) and
+Search 86 pass. Final 77 targeted Jobs/point/pagination checks pass after removing
+only a redundant append-order cache reset. Expanded native SET/WHERE subquery,
+coercion/BLOB/NULL/alias/int64 comparisons pass in three text encodings. VM and
+compiled JS/Node Jobs+ORM examples, affected fatal-info analysis and format pass.
+Generator source is unchanged and its suite was not repeated. Native targeted CI
+cases added; remote CI, actual browsers/devices, Windows/macOS and independent
+connection/process/isolate ownership remain unverified/out of scope.
+
+Raw medians/ranges/RSS, reproducible copied-baseline patches, source/binary hashes,
+profiling, archived intermediate runs and limits: benchmark_results/jobs_performance.
+Current workspace depends on these unreleased core fixes; before independent Jobs
+publication, release the core fixes and raise the dependency floor appropriately.
+No push, merge or publication performed.
+
+## Optional preparation and ORM binding
+
+Ordinary simple SELECT syntax and positional DML expression/token reuse are
+implemented. Schema/search-scope changes and rollback invalidate preparation;
+rows/values/physical plans are never cached. Complex SELECT shapes remain on
+normal APIs (ORM adapter fallback). Typed prepared reads/updates preserve tracking,
+versions, capture and notifications. Automatic ORM cache defaults to 0 and is
+bounded to 128 entries. No file-format/schema change. See
+[scope and evidence](benchmark_results/prepared/README.md).
+
+## Optimizer follow-up: bounded selection
+
+Eligible explicit-LIMIT/non-DISTINCT ordering retains the existing K candidates
+with an in-place max-heap for K>=32 rather than repeated linear worst-row search.
+Small K/unsupported/unlimited paths remain. Stable tie retention and scalar
+projection decisions verified; no access-plan/schema/page-read reduction claim.
+300 pinned native comparisons across encodings, full regressions and VM/JS
+assertions; repeated AOT/control/memory/IO costs and limits:
+[initial optimizer evidence](benchmark_results/optimizer/README.md).
+This is one measured milestone; the 42-item roadmap is not complete.

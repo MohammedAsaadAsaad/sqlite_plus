@@ -1,0 +1,142 @@
+[
+  {
+    "iteration": 0,
+    "result": {
+      "rows": 100,
+      "mode": "batch",
+      "install_us": 5972,
+      "enqueue_us": 1083096,
+      "duplicate_100_us": 709576,
+      "claim_complete_us": 4469933,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "e49b96a53faef71a3bf4ead3ab5e60c0bfad7bf42945f7396d1706de179411f7",
+      "rss": 45232128,
+      "peak_rss": 48001024
+    }
+  },
+  {
+    "iteration": 0,
+    "result": {
+      "rows": 100,
+      "mode": "individual",
+      "install_us": 3885,
+      "enqueue_us": 1089166,
+      "duplicate_100_us": 590257,
+      "claim_complete_us": 4250182,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "4596d0f73f6594fe481e3cd325c5f4f8458f1adac7ccec0533eed41ba67d10f7",
+      "rss": 45858816,
+      "peak_rss": 48136192
+    }
+  },
+  {
+    "iteration": 1,
+    "result": {
+      "rows": 100,
+      "mode": "individual",
+      "install_us": 3986,
+      "enqueue_us": 1054023,
+      "duplicate_100_us": 633114,
+      "claim_complete_us": 4307395,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "4596d0f73f6594fe481e3cd325c5f4f8458f1adac7ccec0533eed41ba67d10f7",
+      "rss": 45842432,
+      "peak_rss": 47935488
+    }
+  },
+  {
+    "iteration": 1,
+    "result": {
+      "rows": 100,
+      "mode": "batch",
+      "install_us": 7407,
+      "enqueue_us": 922275,
+      "duplicate_100_us": 575858,
+      "claim_complete_us": 4288246,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "e49b96a53faef71a3bf4ead3ab5e60c0bfad7bf42945f7396d1706de179411f7",
+      "rss": 45301760,
+      "peak_rss": 48136192
+    }
+  },
+  {
+    "iteration": 2,
+    "result": {
+      "rows": 100,
+      "mode": "batch",
+      "install_us": 3796,
+      "enqueue_us": 941772,
+      "duplicate_100_us": 603362,
+      "claim_complete_us": 4264948,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "e49b96a53faef71a3bf4ead3ab5e60c0bfad7bf42945f7396d1706de179411f7",
+      "rss": 45350912,
+      "peak_rss": 47984640
+    }
+  },
+  {
+    "iteration": 2,
+    "result": {
+      "rows": 100,
+      "mode": "individual",
+      "install_us": 3847,
+      "enqueue_us": 1014733,
+      "duplicate_100_us": 617021,
+      "claim_complete_us": 4245041,
+      "processed": 100,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 32768,
+      "final_bytes": 32768,
+      "logical_sha256": "15c43f2903faa5a9ba5207cc3a359a010e79d3f84b99b32acc11aceb5d83bce6",
+      "image_sha256": "4596d0f73f6594fe481e3cd325c5f4f8458f1adac7ccec0533eed41ba67d10f7",
+      "rss": 45912064,
+      "peak_rss": 48111616
+    }
+  },
+  {
+    "iteration": 0,
+    "result": {
+      "rows": 1000,
+      "mode": "batch",
+      "install_us": 4091,
+      "enqueue_us": 84265139,
+      "duplicate_100_us": 3917705,
+      "claim_complete_us": 4045941,
+      "processed": 10,
+      "base_bytes": 4096,
+      "installed_bytes": 24576,
+      "enqueued_bytes": 180224,
+      "final_bytes": 180224,
+      "logical_sha256": "4601c00042fab0f163d096c5d0e0f99eaa4e0f1584f9dc173cd817c3e7741f97",
+      "image_sha256": "bea922c25803131b7508f1054076e076e106e541710bbaf630020275bc82dac9",
+      "rss": 46379008,
+      "peak_rss": 49098752
+    }
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "discarded_distinct_probe": {
+    "rows": 10000,
+    "k": 100,
+    "repeats": 5,
+    "variant": "before",
+    "completed": false,
+    "timing_sample_recorded": false,
+    "reason": "Unchanged DISTINCT duplicate checking made the negative control exceed 86 seconds before returning a sample. Cancelled the sample and rescaled BOTH variants to 1000 rows / one query. No speedup or latency claim is made from the incomplete probe."
+  }
+}

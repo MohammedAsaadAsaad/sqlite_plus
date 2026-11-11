@@ -9,6 +9,8 @@ import 'expressions.dart';
 import 'triggers.dart';
 import 'windows.dart';
 
+part 'prepared_syntax.dart';
+
 abstract interface class SqlRows {
   List<String> get columns;
   List<List<Object?>> get rows;
@@ -673,7 +675,7 @@ final class QuerySource {
 }
 
 /// Strict parser for the M3 single-table SELECT grammar. Unsupported syntax fails.
-final class SqlParser {
+base class SqlParser {
   SqlParser(String sql,
       {this.deferFunctionResolution = false,
       this.deferFunctionValidation = false})
@@ -683,6 +685,16 @@ final class SqlParser {
       {this.deferFunctionResolution = false,
       this.deferFunctionValidation = false})
       : source = null;
+  SqlParser._prepared(String sql, this.tokens,
+      {this.deferFunctionResolution = false,
+      this.deferFunctionValidation = false})
+      : source = sql;
+  factory SqlParser.prepared(SqlPreparation preparation,
+          {bool deferFunctionResolution = false,
+          bool deferFunctionValidation = false}) =>
+      _PreparedSqlParser(preparation,
+          deferFunctionResolution: deferFunctionResolution,
+          deferFunctionValidation: deferFunctionValidation);
   final String? source;
   bool deferFunctionResolution;
   bool deferFunctionValidation;

@@ -260,3 +260,38 @@ merges atomically with explicit resolutions and same-transaction retry receipts.
 Portable checkpoints, optional two-slot IO storage and a complete ORM example are
 included. Experimental/unpublished: ordinary keyed tables only; no shared pages,
 schema/virtual/trigger merges or automatic Changes/Reactive/Sync integration.
+
+### Preview, import and explicit diagnostics
+
+Existing packages also contain unreleased workflow additions: [Branch operation
+preview](packages/sqlite_plus_branch/README.md#operation-preview), [prepared ORM
+imports](packages/sqlite_plus_orm/doc/IMPORT.md) and [Inspector index advice plus
+opt-in replay](packages/sqlite_plus_inspector/doc/DIAGNOSTICS.md). The [shared
+plan](docs/plans/PREVIEW_IMPORT_DIAGNOSTICS.md) and [AOT evidence/limits](benchmark_results/workflows/README.md)
+cover scope and remaining release gates. The [core import performance follow-up](benchmark_results/import_performance/README.md) records the optimized workload and its limits. No separate Preview/Import
+package, automatic index creation or default raw recording is introduced.
+
+### Embedded job queues (unreleased)
+
+[`sqlite_plus_jobs`](packages/sqlite_plus_jobs) adds durable task state, queue-scoped
+idempotent enqueue, priority/delay, lease tokens, bounded retries and explicit
+retention. Application writes can commit atomically with enqueue or lease-fenced
+completion. Its optional worker runs one registered handler when called; the
+application controls scheduling. Same-connection coordination only, with
+at-least-once processing and backend-dependent durability. No core hooks or
+implicit ORM/Changes/Sync integration. See the [plan/status](docs/plans/JOBS.md)
+and [performance evidence](benchmark_results/jobs_performance/README.md).
+
+### Optional prepared statements
+
+Reuse eligible SQL syntax through `db.prepare`, or typed ORM query/update
+preparation. Existing ORM query caching stays disabled by default. See the
+[complete example](packages/sqlite_plus_orm/example/prepared.dart),
+[API and limits](packages/sqlite_plus_orm/doc/PREPARED.md), and
+[performance evidence](benchmark_results/prepared/README.md).
+
+### Continue the optimizer work
+
+[AI handoff and reproducible continuation instructions](docs/AI_HANDOFF.md)
+include the [42-item progress ledger](docs/plans/OPTIMIZER.md), acceptance gates,
+current measurements/costs, fresh-machine tests and the next milestone.

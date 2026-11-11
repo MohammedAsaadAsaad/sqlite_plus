@@ -1,0 +1,12 @@
+--- a/tool/workflows_benchmark/main.dart
++++ b/tool/workflows_benchmark/main.dart
+@@ -58,7 +58,8 @@
+         clock
+           ..reset()
+           ..start();
+-        final result = await plan.apply();
++        final result = await plan.apply(
++            batchSize: args.length > 2 ? int.parse(args[2]) : 200);
+         phases['apply_us'] = clock.elapsedMicroseconds;
+         if (result.affectedRows != count) throw StateError('Import count');
+       } finally {

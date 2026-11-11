@@ -1,0 +1,173 @@
+--- before/packages/sqlite_plus/lib/src/sql/image_mutations.dart
++++ after/packages/sqlite_plus/lib/src/sql/image_mutations.dart
+@@ -3553,14 +3553,24 @@
+     // update and delete cost grow with the table.
+     BigInt? soleRowid;
+     var soleExact = false;
++    final conjunct = !insert &&
++            !table.view &&
++            !schema.withoutRowid &&
++            !schema.virtual &&
++            fromSources == null &&
++            where is BinaryExpr &&
++            where.op == 'AND' &&
++            !schema.columns.any((column) => column.generatedExpression != null)
++        ? _integerRowidConjunct(table, name, alias, where, bound)
++        : null;
+     if (!insert &&
+         !table.view &&
+         !schema.withoutRowid &&
+         where != null &&
+         fromSources == null &&
+-        where is BinaryExpr &&
+-        ['=', '=='].contains(where.op)) {
+-      final comparison = where;
++        (conjunct != null ||
++            where is BinaryExpr && ['=', '=='].contains(where.op))) {
++      final comparison = conjunct ?? where as BinaryExpr;
+       ColumnExpr? column;
+       Expr? constant;
+       if (comparison.left is ColumnExpr && comparison.right is! ColumnExpr) {
+@@ -4002,6 +4012,7 @@
+           added.add((i, key));
+         }
+         table.rows.add(next);
++        table.valueIndexes = null;
+         if (singleForeignKeyInsert) {
+           _validate(foreignKeys: true);
+         }
+@@ -5110,33 +5121,45 @@
+   bool _indexKeysSame(_Table table, List<TableRow> before, List<TableRow> after,
+       List<_Index> indexes) {
+     if (before.length != after.length) return false;
++    // Resolve the union once, rather than lowercasing names, allocating sets
++    // and finding the same column offsets for every row and every index.
++    final referenced = <String>{
++      for (final index in indexes) ...index.referencedColumns
++    };
++    final columns = <int>[];
++    final alias = asciiLower(table.schema.rowidAlias ?? '');
++    for (final column in referenced) {
++      if (alias.isNotEmpty && column == alias) {
++        columns.add(-1);
++      } else {
++        final offset = table.schema.columns
++            .indexWhere((c) => asciiLower(c.name) == column);
++        // _columnValue returns null on both rows for unknown columns.
++        if (offset >= 0) columns.add(offset);
++      }
++    }
+     final previous = {for (final row in before) row.rowId: row};
+     for (final row in after) {
+       final old = previous[row.rowId];
+       if (old == null) return false;
+-      for (final index in indexes) {
+-        for (final column in index.referencedColumns) {
+-          if (!_sameValue(_columnValue(table, old, column),
+-              _columnValue(table, row, column))) {
+-            return false;
+-          }
+-        }
++      if (identical(old, row)) continue;
++      for (final column in columns) {
++        final a = column == -1
++            ? old.rowId
++            : column < old.values.length
++                ? old.values[column]
++                : null;
++        final b = column == -1
++            ? row.rowId
++            : column < row.values.length
++                ? row.values[column]
++                : null;
++        if (!_sameValue(a, b)) return false;
+       }
+     }
+     return true;
+   }
+ 
+-  Object? _columnValue(_Table table, TableRow row, String column) {
+-    if (table.schema.rowidAlias != null &&
+-        asciiLower(table.schema.rowidAlias!) == column) {
+-      return row.rowId;
+-    }
+-    final index = table.schema.columns
+-        .indexWhere((candidate) => asciiLower(candidate.name) == column);
+-    if (index < 0 || index >= row.values.length) return null;
+-    return row.values[index];
+-  }
+-
+   bool _sameRows(List<TableRow> before, List<TableRow> after) {
+     if (before.length != after.length) return false;
+     final previous = {for (final row in before) row.rowId: row};
+@@ -6323,6 +6346,70 @@
+       name == '_rowid_' ||
+       name.isNotEmpty && name == asciiLower(table.schema.rowidAlias ?? '');
+ 
++  // Only constant integer rowid equalities inside AND may narrow candidates.
++  // Evaluate the ORIGINAL predicate on the candidate; never drop lease guards.
++  // Functions, subqueries, generated values and collations retain full execution
++  // so callbacks, coercions and their evaluation behavior are not approximated.
++  BinaryExpr? _integerRowidConjunct(_Table table, String name, String alias,
++      Expr predicate, List<Object?> bound) {
++    bool safe(Expr e) {
++      if (e is Literal || e is ParameterExpr || e is ColumnExpr) return true;
++      return e is BinaryExpr &&
++          const {'AND', 'OR', '=', '==', '!=', '<>', '<', '<=', '>', '>='}
++              .contains(e.op) &&
++          safe(e.left) &&
++          safe(e.right);
++    }
++
++    if (!safe(predicate)) return null;
++    BinaryExpr? find(Expr e) {
++      if (e is! BinaryExpr) return null;
++      if (e.op == 'AND') return find(e.left) ?? find(e.right);
++      if (e.op != '=' && e.op != '==') return null;
++      final ColumnExpr column;
++      final Expr constant;
++      if (e.left is ColumnExpr) {
++        column = e.left as ColumnExpr;
++        constant = e.right;
++      } else if (e.right is ColumnExpr) {
++        column = e.right as ColumnExpr;
++        constant = e.left;
++      } else {
++        return null;
++      }
++      final parts = column.key.split('.');
++      final field = parts.last;
++      final rowAlias = asciiLower(table.schema.rowidAlias ?? '');
++      final isRowid = field == rowAlias && rowAlias.isNotEmpty ||
++          const {'rowid', 'oid', '_rowid_'}.contains(field) &&
++              !table.schema.columns.any((c) => asciiLower(c.name) == field);
++      final qualified = parts.length == 1 ||
++          parts.length == 2 &&
++              (parts.first == asciiLower(alias) ||
++                  parts.first == asciiLower(name)) ||
++          parts.length == 3 &&
++              parts.first == 'main' &&
++              (parts[1] == asciiLower(alias) || parts[1] == asciiLower(name));
++      if (!isRowid || !qualified) return null;
++      Object? value;
++      if (constant is Literal) {
++        value = constant.value;
++      } else if (constant is ParameterExpr && constant.index < bound.length) {
++        value = bound[constant.index];
++      } else {
++        return null;
++      }
++      if (value is int) value = BigInt.from(value);
++      return value is BigInt &&
++              value >= -(BigInt.one << 63) &&
++              value < BigInt.one << 63
++          ? e
++          : null;
++    }
++
++    return find(predicate);
++  }
++
+   int _upsertSlot(_Table table, TableRow row) {
+     var slots = table.upsertSlots;
+     if (slots == null || slots.length != table.rows.length) {

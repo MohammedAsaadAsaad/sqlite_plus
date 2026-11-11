@@ -1,0 +1,43 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "dart": "Dart SDK version: 3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\"",
+  "source_sha256": {
+    "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "5118937b407e2818c4fa48c8367f421abdb894252232bfd1b6b3b4a871b59bd4",
+    "packages/sqlite_plus_orm/lib/src/writes.dart": "b2410060715ae1b4f4b8f8bcf4806640fa4a6967556699be2266ce4d3e01cb95",
+    "packages/sqlite_plus_orm/lib/src/import.dart": "26aeeb3787ad3e9b867c05ca8ef50a76130aa89433dbdb0f2ccaea19f7c83ed9",
+    "tool/workflows_benchmark/main.dart": "1c94f5677a5521944dc7135967cdc2c9bddfffeecdd2999d9b9536a2e51ffe16",
+    "tool/import_performance/ordinary_benchmark.dart": "98dc9ff8a1ac40aa5f490ba95b3da6ea1a81c806424ab2b711319e6689658a86",
+    "tool/import_performance/shape_benchmark.dart": "70cc975c0210369927b0353e04798225db68ba18fa96a6a9f8d5f0f9f83bebd0",
+    "tool/import_performance/profile.dart": "fe20078d11e036b4769182c3c0d68de57874e57405f1b3e8f8a49f388008b483",
+    "tool/import_performance/run_measurements.py": "a1dae1744550d060bd269bf2380a926f80ae7a712fc4be32292f799c7a727a8e"
+  },
+  "binaries": {
+    "/tmp/workflows-benchmark": {
+      "sha256": "fea3de4669bc683f739a91504b673b5f24f122b4e147fc427044cddb9194e79e",
+      "bytes": 10386000
+    },
+    "/tmp/workflows-optimized": {
+      "sha256": "a28812488bce4a8033f90152874b475e2ae4c4da8871cb93290afaa828ae4205",
+      "bytes": 10449472
+    },
+    "/tmp/import-ordinary-before": {
+      "sha256": "49f0a68aef09a3092fb53dace2c9c933fd3fd044d74a4529b3494a9259da4ab9",
+      "bytes": 10106776
+    },
+    "/tmp/import-ordinary-after": {
+      "sha256": "fb73ca68080d8892cf54d746fec1772b4c631d70852d8aee5e9ac31c38f41c2a",
+      "bytes": 10169208
+    },
+    "/tmp/import-shapes-before": {
+      "sha256": "3342404a489b2f2950d9a5ba95d37b697c661de3444463e98980f50d8874de82",
+      "bytes": 10234920
+    },
+    "/tmp/import-shapes-after": {
+      "sha256": "954767d92e67f55c29b3d819a8cc137f9d58a6d9945d58441d9a594a18add7b6",
+      "bytes": 10298624
+    }
+  },
+  "baseline_package_override": "Only sqlite_plus points to detached base_commit worktree; ORM and drivers use current workspace.",
+  "encoding": "default UTF-8",
+  "storage": "in-memory; exported SQLite image, no file IO"
+}

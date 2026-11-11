@@ -1,0 +1,89 @@
+[
+  {
+    "kind": "ordinary",
+    "args": [
+      "read",
+      "1000"
+    ],
+    "before": {
+      "median_ms": 34.952,
+      "min_ms": 34.258,
+      "max_ms": 37.826
+    },
+    "after": {
+      "median_ms": 36.467,
+      "min_ms": 36.141,
+      "max_ms": 38.363
+    },
+    "after_over_before": 1.0433451590753033
+  },
+  {
+    "kind": "ordinary",
+    "args": [
+      "insert",
+      "1000"
+    ],
+    "before": {
+      "median_ms": 1.678,
+      "min_ms": 1.562,
+      "max_ms": 1.941
+    },
+    "after": {
+      "median_ms": 1.613,
+      "min_ms": 1.55,
+      "max_ms": 1.756
+    },
+    "after_over_before": 0.9612634088200239
+  },
+  {
+    "kind": "ordinary",
+    "args": [
+      "update",
+      "1000"
+    ],
+    "before": {
+      "median_ms": 3.443,
+      "min_ms": 3.223,
+      "max_ms": 3.699
+    },
+    "after": {
+      "median_ms": 3.654,
+      "min_ms": 3.136,
+      "max_ms": 3.738
+    },
+    "after_over_before": 1.0612837641591635
+  },
+  {
+    "kind": "ordinary",
+    "args": [
+      "guarded",
+      "1000"
+    ],
+    "before": {
+      "median_ms": 181.078,
+      "min_ms": 170.42,
+      "max_ms": 185.697
+    },
+    "after": {
+      "median_ms": 169.232,
+      "min_ms": 165.774,
+      "max_ms": 177.128
+    },
+    "after_over_before": 0.9345806779398933
+  },
+  {
+    "kind": "orm",
+    "args": [],
+    "before": {
+      "median_ms": 3044.125,
+      "min_ms": 2950.102,
+      "max_ms": 3207.037
+    },
+    "after": {
+      "median_ms": 3007.0,
+      "min_ms": 2918.131,
+      "max_ms": 3125.05
+    },
+    "after_over_before": 0.9878043772841129
+  }
+]

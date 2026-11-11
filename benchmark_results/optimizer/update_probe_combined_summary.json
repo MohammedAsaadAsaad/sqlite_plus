@@ -1,0 +1,15 @@
+{
+  "before": {
+    "samples": 20,
+    "median_ms": 312.67650000000003,
+    "min_ms": 298.444,
+    "max_ms": 344.042
+  },
+  "after": {
+    "samples": 20,
+    "median_ms": 318.58799999999997,
+    "min_ms": 307.855,
+    "max_ms": 374.613
+  },
+  "after_over_before": 1.0189061218223945
+}

@@ -1,3 +1,16 @@
+## Unreleased — optional prepared statements
+
+- Connection-bound reusable syntax with fresh bindings and schema invalidation.
+- Typed ORM prepared reads/updates and optional bounded cache (default disabled).
+- Existing adapter interception/capture paths retained; unsupported shapes fall back in ORM.
+- See `doc/PREPARED.md` and workspace prepared benchmarks for measured scope.
+
+## Unreleased — prepared imports
+
+- Per-input validation/duplicate diagnostics and encoded snapshot plans.
+- Atomic upsert reuse with explicit preserve-NULL/empty-text conflict policy.
+- Actual SQL collation grouping, tracking/Changes/Reactive/Inspector coverage.
+
 # Changelog
 
 ## 0.1.12

@@ -1,0 +1,15 @@
+{
+  "binary": "/tmp/jobs-before-performance",
+  "binary_sha256": "ca145b41cb399b5d9f8f6d16fb1875015ad88c2ecd0f03fab22eb69780125c16",
+  "source_sha256": {
+    "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "5118937b407e2818c4fa48c8367f421abdb894252232bfd1b6b3b4a871b59bd4",
+    "packages/sqlite_plus_jobs/lib/src/queue.dart": "88caa135ba494c40810d67e5cdc6e6b9c2d049f64f9cfe9a507d9f5ff8330486",
+    "tool/jobs_benchmark/main.dart": "10686c8f3f1fb2db6b13c533ca85e8da5656b2ab469d9943284bf2deeb2ca3e0"
+  },
+  "note": "Final baseline recompiled with copied pre-milestone packages; preserved prior frozen binary/manifest are separate. Other package sources unchanged.",
+  "binaries": {
+    "/tmp/jobs-before-performance": "ca145b41cb399b5d9f8f6d16fb1875015ad88c2ecd0f03fab22eb69780125c16",
+    "/tmp/jobs-processing-before": "7f3a379fa00c81b0db698d397a61d8c36bc079d8045c8070e809261a8ec264d1",
+    "/tmp/jobs-ordinary-before": "392a6c471171b5d6ff42fbfc741a47c8af23c0784be67af0a19ac2bd4b551375"
+  }
+}

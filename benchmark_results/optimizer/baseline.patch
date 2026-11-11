@@ -1,0 +1,115 @@
+--- /dev/null
++++ b/packages/sqlite_plus/lib/src/sql/bounded_sort_heap.dart
+@@ -0,0 +1,50 @@
++/// Internal max-heap over the caller's existing retained sort entries.
++/// The maximum entry is the last/worst row in final output order. No second
++/// backing list, eager capacity allocation, or SQL value evaluation is used.
++final class BoundedSortHeap<T> {
++  BoundedSortHeap(this.entries, this.compare) {
++    for (var i = entries.length ~/ 2 - 1; i >= 0; i--) {
++      _down(i);
++    }
++  }
++  final List<T> entries;
++  final int Function(T, T) compare;
++  T get worst => entries.first;
++
++  T removeWorst() {
++    final result = entries.first;
++    final last = entries.removeLast();
++    if (entries.isNotEmpty) {
++      entries[0] = last;
++      _down(0);
++    }
++    return result;
++  }
++
++  void add(T entry) {
++    entries.add(entry);
++    var slot = entries.length - 1;
++    while (slot > 0) {
++      final parent = (slot - 1) ~/ 2;
++      if (compare(entries[parent], entry) >= 0) break;
++      entries[slot] = entries[parent];
++      slot = parent;
++    }
++    entries[slot] = entry;
++  }
++
++  void _down(int slot) {
++    final entry = entries[slot];
++    while (slot * 2 + 1 < entries.length) {
++      var child = slot * 2 + 1;
++      if (child + 1 < entries.length &&
++          compare(entries[child + 1], entries[child]) > 0) {
++        child++;
++      }
++      if (compare(entry, entries[child]) >= 0) break;
++      entries[slot] = entries[child];
++      slot = child;
++    }
++    entries[slot] = entry;
++  }
++}
+--- a/packages/sqlite_plus/lib/src/sql/database.dart
++++ b/packages/sqlite_plus/lib/src/sql/database.dart
+@@ -15,6 +15,7 @@
+ import 'image_mutations.dart';
+ import 'index_definition.dart';
+ import 'planner_statistics.dart';
++import 'bounded_sort_heap.dart';
+ import 'windows.dart';
+ import 'search_modules.dart';
+ import 'search_runtime.dart';
+@@ -2175,6 +2176,7 @@
+       }
+ 
+       final output = <(List<Object?>, List<Object?>, int)>[];
++      BoundedSortHeap<(List<Object?>, List<Object?>, int)>? selection;
+       final unsorted = order.isEmpty;
+       final streamLimit = !distinct && unsorted;
+       var emitted = 0;
+@@ -2255,12 +2257,24 @@
+               ? limit + (offset > 0 ? offset : 0)
+               : null;
+           if (capacity != null && output.length >= capacity) {
+-            var worst = 0;
+-            for (var i = 1; i < output.length; i++) {
+-              if (compareKeys(output[i].$2, output[worst].$2) >= 0) worst = i;
++            // Tiny K keeps the existing linear path. Build lazily only when
++            // the retained set fills; large LIMITs over short inputs pay no
++            // heap construction cost. Sequence preserves the last-worst tie.
++            if (capacity >= 32) {
++              selection ??= BoundedSortHeap(output, (a, b) {
++                final keys = compareKeys(a.$2, b.$2);
++                return keys != 0 ? keys : a.$3.compareTo(b.$3);
++              });
++              if (compareKeys(candidateKeys, selection.worst.$2) >= 0) continue;
++              selection.removeWorst();
++            } else {
++              var worst = 0;
++              for (var i = 1; i < output.length; i++) {
++                if (compareKeys(output[i].$2, output[worst].$2) >= 0) worst = i;
++              }
++              if (compareKeys(candidateKeys, output[worst].$2) >= 0) continue;
++              output.removeAt(worst);
+             }
+-            if (compareKeys(candidateKeys, output[worst].$2) >= 0) continue;
+-            output.removeAt(worst);
+           }
+         }
+         for (var i = 0; i < items.length; i++) {
+@@ -2311,7 +2325,12 @@
+               ? values[slot]
+               : order[i].expression.evaluate(orderCtx));
+         }
+-        output.add((values, keys, sequence++));
++        final entry = (values, keys, sequence++);
++        if (selection == null) {
++          output.add(entry);
++        } else {
++          selection.add(entry);
++        }
+         if (streamLimit &&
+             limit != null &&
+             limit >= 0 &&

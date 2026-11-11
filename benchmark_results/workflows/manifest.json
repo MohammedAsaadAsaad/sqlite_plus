@@ -1,0 +1,28 @@
+{
+  "baseline_commit": "3ccfb572e819821e9c51d5bd150516859716d647",
+  "baseline_binary_manifest": "benchmark_results/direct_writes/manifest.json",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "ordinary_samples": 12,
+  "feature_samples": 24,
+  "source_sha256": {
+    "packages/sqlite_plus_orm/lib/src/import.dart": "26aeeb3787ad3e9b867c05ca8ef50a76130aa89433dbdb0f2ccaea19f7c83ed9",
+    "packages/sqlite_plus_orm/lib/src/writes.dart": "b2410060715ae1b4f4b8f8bcf4806640fa4a6967556699be2266ce4d3e01cb95",
+    "packages/sqlite_plus_branch/lib/src/preview.dart": "382660d8509b32fcde04b3f695650be64354ab40f2295185444305b0e53a53f0",
+    "packages/sqlite_plus_inspector/lib/src/advisor.dart": "45bc1ac5838e04850489e5ff3a310296ad0d44e30a4900531502fea0ae65517c",
+    "packages/sqlite_plus_inspector/lib/src/diagnostic_values.dart": "8dc7f1c0cda390177de9c14053c2a08b6844114dac9e966a83e448585a0a78c2",
+    "packages/sqlite_plus_inspector/lib/sqlite_plus_inspector_replay.dart": "9b78b4e9a965f1915b4cdcc8519b2617be97d9111961ffdf4eb076098cd89ed2",
+    "tool/workflows_benchmark/main.dart": "1c94f5677a5521944dc7135967cdc2c9bddfffeecdd2999d9b9536a2e51ffe16",
+    "tool/direct_writes_benchmark/main.dart": "ada8edb457d3ce2a21d02edd9e3e43f432c59454128d5a1ba2ef26b0c68c93ed"
+  },
+  "binary_sha256": {
+    "/tmp/direct-writes-benchmark": "1f21ca6aece736e68cb69ae978edafc92f1ca0d4ebec2d729d58d851a2b87b04",
+    "/tmp/direct-writes-workflows": "13440083d3726a175fc11ae4e17504bc3fba8bcc7e32138b2a70046c440f8a07",
+    "/tmp/workflows-benchmark": "fea3de4669bc683f739a91504b673b5f24f122b4e147fc427044cddb9194e79e"
+  },
+  "notes": "Primary source fingerprints match final code. Ordinary candidates and final feature binary were compiled after empty-field simplification. Extra imported-state comparison applies only to explicit diagnostic replay. Probe uses the supplied patch; its separate binary/source hashes are retained.",
+  "batch_probe_source_sha256": "a40f3e64b2614601ffebae88d2910a4df411e53e8e4f0c90a3ab762a1382b52a",
+  "batch_probe_binary_sha256": "fa5b9f3f2d318ddc32e16aad1ef9a2305186fded48b6e8ea35e274c247ea506d",
+  "update_followup_samples": 24,
+  "pre_optimization_writes_sha256": "c00de5337c903e94c1946e9e55158b65daff5a2f9acf1eb26e6894965c240d78",
+  "dart_version": "Dart SDK version: 3.13.7 (stable) (Thu Oct 22 14:28:57 2026 -0700) on \"linux_x64\""
+}

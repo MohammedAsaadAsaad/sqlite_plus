@@ -1,0 +1,1127 @@
+--- a/packages/sqlite_plus/lib/src/sql/database.dart
++++ b/packages/sqlite_plus/lib/src/sql/database.dart
+@@ -1254,6 +1254,58 @@
+         parameters.map(sqlValue).toList());
+   }
+ 
++  /// Validate reusable ordinary SELECT syntax without scanning rows or binding
++  /// user values. Physical access planning remains binding-aware at execution.
++  void validatePreparation(SqlPreparation preparation) => functions.run(() {
++        final statement = preparation.selectSyntax();
++        if (!preparation.reusableSelect || _needsRelational(statement)) {
++          throw UnsupportedError(
++              'Prepared SELECT currently requires a simple ordinary-table query');
++        }
++        final table =
++            statement.table == null ? null : catalog.table(statement.table!);
++        if (table != null &&
++            (table.virtual ||
++                table.columns.any((c) => c.generatedExpression != null))) {
++          throw UnsupportedError(
++              'Prepared SELECT does not support virtual/generated sources');
++        }
++        final metadata = SelectStatement(
++            statement.items,
++            statement.table,
++            statement.where,
++            statement.order,
++            Literal(BigInt.zero),
++            null,
++            statement.distinct,
++            statement.parameterCount)
++          ..sources.addAll(statement.sources);
++        _evaluate(metadata, List.filled(statement.parameterCount, null), table,
++            const <RowValues>[]);
++      });
++
++  /// Execute retained safe syntax with fresh bindings, rows and access planning.
++  Future<QueryResult> queryPreparation(
++          SqlPreparation preparation, List<Object?> parameters) =>
++      functions.run(() async {
++        final statement = preparation.selectSyntax();
++        if (!preparation.reusableSelect || _needsRelational(statement)) {
++          throw UnsupportedError(
++              'Prepared SELECT requires simple ordinary sources');
++        }
++        final table =
++            statement.table == null ? null : catalog.table(statement.table!);
++        if (table != null &&
++            (table.virtual ||
++                table.columns.any((c) => c.generatedExpression != null))) {
++          throw UnsupportedError(
++              'Prepared SELECT requires ordinary non-generated sources');
++        }
++        return (await _prepareQuery(
++                preparation.sql, parameters, null, statement))
++            .materialize();
++      });
++
+   /// Runs one read statement. [parameters] bind `?`, `?NNN`, and named placeholders.
+   Future<QueryResult> query(String sql,
+           [List<Object?> parameters = const []]) =>
+@@ -1510,9 +1562,9 @@
+           });
+ 
+   Future<_QueryExecution> _prepareQuery(String sql, List<Object?> parameters,
+-      [EvalContext? outer]) async {
++      [EvalContext? outer, SelectStatement? preparedSyntax]) async {
+     if (_closed) throw StateError('Database is closed');
+-    final statement = SqlParser(sql).select();
++    final statement = preparedSyntax ?? SqlParser(sql).select();
+     if (parameters.length != statement.parameterCount) {
+       throw const SqlException('Incorrect parameter count');
+     }
+--- a/packages/sqlite_plus/lib/src/sql/image_mutations.dart
++++ b/packages/sqlite_plus/lib/src/sql/image_mutations.dart
+@@ -2006,7 +2006,8 @@
+       bool inTransaction = false,
+       bool compileOnly = false,
+       bool deferTriggerFunctions = false,
+-      bool? recursiveTriggers}) async {
++      bool? recursiveTriggers,
++      SqlPreparation? preparation}) async {
+     final outer = _executionDepth++ == 0;
+     if (outer) wroteRows = false;
+     _subqueries.add(null);
+@@ -2019,7 +2020,8 @@
+           inTransaction: inTransaction,
+           compileOnly: compileOnly,
+           deferTriggerFunctions: deferTriggerFunctions,
+-          recursiveTriggers: recursiveTriggers);
++          recursiveTriggers: recursiveTriggers,
++          preparation: preparation);
+       _counterFrames.last?.finish();
+       return result;
+     } on SqlTriggerFailure catch (error) {
+@@ -2048,9 +2050,10 @@
+       bool inTransaction = false,
+       bool compileOnly = false,
+       bool deferTriggerFunctions = false,
+-      bool? recursiveTriggers}) async {
++      bool? recursiveTriggers,
++      SqlPreparation? preparation}) async {
+     if (recursiveTriggers != null) _recursiveTriggers = recursiveTriggers;
+-    sql = SqlParser.canonicalSchemaCreation(sql);
++    if (preparation == null) sql = SqlParser.canonicalSchemaCreation(sql);
+     if (!compileOnly && _executionDepth == 1) {
+       final bulk = _tryBulkIncrement(sql, parameters, foreignKeys: foreignKeys);
+       if (bulk != null) return bulk;
+@@ -2061,9 +2064,13 @@
+           _tryDirectInsert(sql, parameters, foreignKeys: foreignKeys);
+       if (inserted != null) return inserted;
+     }
+-    final p = SqlParser(sql,
+-        deferFunctionResolution: deferTriggerFunctions,
+-        deferFunctionValidation: deferTriggerFunctions);
++    final p = preparation == null
++        ? SqlParser(sql,
++            deferFunctionResolution: deferTriggerFunctions,
++            deferFunctionValidation: deferTriggerFunctions)
++        : SqlParser.prepared(preparation,
++            deferFunctionResolution: deferTriggerFunctions,
++            deferFunctionValidation: deferTriggerFunctions);
+     final leadingCtes = <String, (List<String>, SelectStatement)>{};
+     final cteMaterialization = <String, bool>{};
+     if (p.take('WITH')) {
+--- a/packages/sqlite_plus/lib/src/sql/mutable_database.dart
++++ b/packages/sqlite_plus/lib/src/sql/mutable_database.dart
+@@ -21,6 +21,8 @@
+ import 'function_registry.dart';
+ import 'virtual_table.dart';
+ 
++part 'prepared_statement.dart';
++
+ final _crossQueryKey = Object();
+ 
+ final class _ConnectionSnapshot {
+@@ -254,7 +256,11 @@
+     if (reader != null) unawaited(reader.close());
+   }
+ 
+-  void _invalidateCatalog() => _catalog = null;
++  int _preparationEpoch = 0;
++  void _invalidateCatalog() {
++    _catalog = null;
++    _preparationEpoch++;
++  }
+ 
+   void _rememberSchema(String sql) {
+     final parser = SqlParser(sql);
+@@ -346,7 +352,8 @@
+   Future<QueryResult> _readImage(String schema, String sql,
+       [List<Object?> parameters = const [],
+       bool schemaView = false,
+-      bool browse = false]) async {
++      bool browse = false,
++      SqlPreparation? preparation]) async {
+     if (schema == 'main' &&
+         _dirtyMain &&
+         (!schemaView || (_liveMain?.schemaChanged ?? false))) {
+@@ -356,7 +363,9 @@
+       final reader = await _cachedMainReader();
+       return browse
+           ? reader.browse(sql, parameters)
+-          : reader.query(sql, parameters);
++          : preparation == null
++              ? reader.query(sql, parameters)
++              : reader.queryPreparation(preparation, parameters);
+     }
+     final reader = await SqliteDatabase.openReadOnly(
+         ByteImageStorage(_imageFor(schema)),
+@@ -364,7 +373,9 @@
+     try {
+       return browse
+           ? await reader.browse(sql, parameters)
+-          : await reader.query(sql, parameters);
++          : preparation == null
++              ? await reader.query(sql, parameters)
++              : await reader.queryPreparation(preparation, parameters);
+     } finally {
+       await reader.close();
+     }
+@@ -460,13 +471,20 @@
+   }
+ 
+   Future<QueryResult> _queryUnlocked(String sql,
+-      [List<Object?> parameters = const []]) async {
++      [List<Object?> parameters = const [],
++      SqlPreparedStatement? prepared]) async {
+     final live = _liveMain;
+-    if (live != null) {
++    if (live != null &&
++        (prepared == null || prepared._route!.schema == 'main')) {
+       final fast = parameters.isEmpty
+           ? live.tryFastCount(sql) ?? live.tryFastRead(sql, parameters)
+           : live.tryFastRead(sql, parameters);
+       if (fast != null) return fast;
++    }
++    if (prepared != null) {
++      final route = prepared._route!;
++      return _readImage(route.schema!, route.sql, parameters, false, false,
++          prepared._program);
+     }
+     final explain = SqlParser(sql);
+     if (explain.take('EXPLAIN')) {
+@@ -589,7 +607,11 @@
+ 
+   /// Runs one write statement inside the connection lock.
+   Future<MutationResult> execute(String sql,
+-      [List<Object?> parameters = const []]) async {
++          [List<Object?> parameters = const []]) =>
++      _executeStatement(sql, parameters);
++
++  Future<MutationResult> _executeStatement(String sql, List<Object?> parameters,
++      {SqlPreparedStatement? prepared}) async {
+     if (_closed || _failed || _busy) {
+       throw StateError('Database closed or busy');
+     }
+@@ -601,7 +623,7 @@
+       _materializeMain();
+     }
+     final live = _liveMain;
+-    if (live != null) {
++    if (live != null && prepared == null) {
+       _busy = true;
+       try {
+         live.wroteRows = false;
+@@ -671,7 +693,10 @@
+       }
+     }
+     return _exclusive(() async {
+-      final parser = SqlParser(sql);
++      if (prepared != null) await prepared._ensureCurrent();
++      final parser = prepared == null
++          ? SqlParser(sql)
++          : SqlParser.prepared(prepared._program!);
+       if (parser.take('PRAGMA')) {
+         final parsed = _pragmaName(parser);
+         final name = parsed.$2;
+@@ -734,7 +759,7 @@
+         return _transaction(parser);
+       }
+       final names = await _schemaCatalog();
+-      final route = routeMutation(sql, names);
++      final route = prepared?._route ?? routeMutation(sql, names);
+       if (route.kind == 'attach') {
+         await _attach(route.name!, route.argument!);
+         return const MutationResult(0, null);
+@@ -752,7 +777,9 @@
+         statementSql = rewritten.sql;
+         statementParameters = rewritten.parameters;
+       }
+-      final keyword = SqlParser(statementSql).current.keyword;
++      final keyword = prepared == null
++          ? SqlParser(statementSql).current.keyword
++          : prepared._program!.tokens.first.keyword;
+       final maintenance =
+           const {'REINDEX', 'ANALYZE', 'VACUUM'}.contains(keyword);
+       final vacuumOnLive =
+@@ -778,7 +805,8 @@
+           schema == 'main' && _journal == null && !maintenance;
+       final MutationImage result;
+       final previousTarget = state.reportedTarget;
+-      state.reportedTarget = qualifiedDmlTarget(sql);
++      state.reportedTarget =
++          prepared == null ? qualifiedDmlTarget(sql) : prepared._reportedTarget;
+       try {
+         result = route.kind == 'cross-write'
+             ? await _runCrossWrite(state, sql, schema, parameters, names,
+@@ -786,7 +814,8 @@
+             : await state.execute(statementSql, statementParameters,
+                 foreignKeys: _foreignKeys,
+                 inTransaction: inTransaction,
+-                recursiveTriggers: _recursiveTriggers);
++                recursiveTriggers: _recursiveTriggers,
++                preparation: prepared?._program);
+       } on MutationFailure catch (failure) {
+         if (failure.rollbackTransaction) {
+           if (inTransaction) {
+--- a/packages/sqlite_plus/lib/src/sql/parser.dart
++++ b/packages/sqlite_plus/lib/src/sql/parser.dart
+@@ -8,6 +8,8 @@
+ import 'expressions.dart';
+ import 'triggers.dart';
+ import 'windows.dart';
++
++part 'prepared_syntax.dart';
+ 
+ abstract interface class SqlRows {
+   List<String> get columns;
+@@ -673,7 +675,7 @@
+ }
+ 
+ /// Strict parser for the M3 single-table SELECT grammar. Unsupported syntax fails.
+-final class SqlParser {
++base class SqlParser {
+   SqlParser(String sql,
+       {this.deferFunctionResolution = false,
+       this.deferFunctionValidation = false})
+@@ -683,6 +685,16 @@
+       {this.deferFunctionResolution = false,
+       this.deferFunctionValidation = false})
+       : source = null;
++  SqlParser._prepared(String sql, this.tokens,
++      {this.deferFunctionResolution = false,
++      this.deferFunctionValidation = false})
++      : source = sql;
++  factory SqlParser.prepared(SqlPreparation preparation,
++          {bool deferFunctionResolution = false,
++          bool deferFunctionValidation = false}) =>
++      _PreparedSqlParser(preparation,
++          deferFunctionResolution: deferFunctionResolution,
++          deferFunctionValidation: deferFunctionValidation);
+   final String? source;
+   bool deferFunctionResolution;
+   bool deferFunctionValidation;
+--- /dev/null
++++ b/packages/sqlite_plus/lib/src/sql/prepared_statement.dart
+@@ -0,0 +1,156 @@
++part of 'mutable_database.dart';
++
++extension PreparedSqlDatabase on MutableSqliteDatabase {
++  /// Compile connection-bound reusable syntax. Does not execute the statement.
++  /// Simple ordinary SELECT and unqualified ordinary DML targets are supported.
++  Future<SqlPreparedStatement> prepare(String sql) => _exclusive(() async {
++        final syntax = SqlPreparation(sql);
++        final kind = syntax.tokens.first.keyword;
++        if (!const {'SELECT', 'INSERT', 'REPLACE', 'UPDATE', 'DELETE'}
++            .contains(kind)) {
++          throw UnsupportedError(
++              'prepare supports SELECT/INSERT/UPDATE/DELETE/REPLACE');
++        }
++        final result = SqlPreparedStatement._(this, sql, kind == 'SELECT');
++        await result._compile();
++        return result;
++      });
++}
++
++/// Reusable syntax with fresh values/rows on each call. One in-flight operation
++/// per handle; close explicitly. It never owns/closes the database.
++final class SqlPreparedStatement {
++  SqlPreparedStatement._(this._database, this.sql, this.isReadOnly);
++  MutableSqliteDatabase? _database;
++  final String sql;
++  final bool isReadOnly;
++  SqlPreparation? _program;
++  StatementRoute? _route;
++  String? _reportedTarget;
++  int _epoch = -1, _preparations = 0;
++  int _lastExpressionParses = 0, _lastExpressionHits = 0, _lastSelectParses = 0;
++  bool _busy = false;
++  bool get isClosed => _database == null;
++  int get parameterCount => _program?.parameterCount ?? _parameterCount;
++  int _parameterCount = 0;
++  int get preparationCount => _preparations;
++  int get expressionParseCount =>
++      _program?.expressionParses ?? _lastExpressionParses;
++  int get expressionReuseCount =>
++      _program?.expressionHits ?? _lastExpressionHits;
++  int get selectParseCount => _program?.selectParses ?? _lastSelectParses;
++
++  Future<void> _ensureCurrent() async {
++    if (_database == null) throw StateError('Prepared statement is closed');
++    if (_epoch != _database!._preparationEpoch) await _compile();
++  }
++
++  Future<void> _compile() async {
++    final db = _database!;
++    final names = await db._schemaCatalog();
++    final route =
++        isReadOnly ? routeQuery(sql, names) : routeMutation(sql, names);
++    if (route.cross || !isReadOnly && route.kind != 'single') {
++      throw UnsupportedError('Cross-schema preparation is not supported');
++    }
++    final program =
++        _program?.sql == route.sql ? _program! : SqlPreparation(route.sql);
++    program.resetSyntax();
++    if (route.schema == 'main') db._materializeMain();
++    final ownsReader = route.schema != 'main';
++    final reader = ownsReader
++        ? await SqliteDatabase.openReadOnly(
++            ByteImageStorage(db._imageFor(route.schema!)),
++            functions: db.functions)
++        : await db._cachedMainReader();
++    try {
++      if (isReadOnly) {
++        reader.validatePreparation(program);
++      } else {
++        final p = SqlParser.prepared(program);
++        final replace = p.take('REPLACE');
++        final insert = replace || p.take('INSERT');
++        final update = !insert && p.take('UPDATE');
++        if (!insert && !update) p.require('DELETE');
++        if (!replace && (insert || update) && p.take('OR')) p.identifier();
++        if (insert) p.require('INTO');
++        if (!insert && !update) p.require('FROM');
++        final target = p.identifier();
++        if (p.current.text == '.') {
++          throw UnsupportedError('Prepared DML targets must be unqualified');
++        }
++        final table = reader.catalog.table(target);
++        if (table.virtual ||
++            reader.catalog.entries.any((e) =>
++                asciiLower(e.name) == asciiLower(target) && e.type == 'view')) {
++          throw UnsupportedError('Prepared DML requires an ordinary table');
++        }
++        final state = route.schema == 'main' && db._liveMain != null
++            ? db._liveMain!
++            : await ImageMutations.load(db._imageFor(route.schema!));
++        final wrote = state.wroteRows;
++        try {
++          await state.execute(
++              route.sql, List.filled(program.parameterCount, null),
++              compileOnly: true,
++              foreignKeys: db._foreignKeys,
++              inTransaction: db.inTransaction,
++              preparation: program);
++        } finally {
++          state.wroteRows = wrote;
++        }
++      }
++    } finally {
++      if (ownsReader) await reader.close();
++    }
++    _reportedTarget = isReadOnly ? null : qualifiedDmlTarget(sql);
++    _route = route;
++    _program = program;
++    _parameterCount = program.parameterCount;
++    _epoch = db._preparationEpoch;
++    _preparations++;
++  }
++
++  Future<T> _operation<T>(List<Object?> parameters, bool read,
++      Future<T> Function(MutableSqliteDatabase, List<Object?>) run) {
++    try {
++      if (isClosed) throw StateError('Prepared statement is closed');
++      if (_busy) throw StateError('Prepared statement is already executing');
++      if (read != isReadOnly) {
++        throw StateError('Use query for SELECT and execute for DML');
++      }
++      if (parameters.length != parameterCount) {
++        throw const SqlException('Incorrect parameter count');
++      }
++      final bound = List<Object?>.unmodifiable(parameters.map(sqlValue));
++      _busy = true;
++      return run(_database!, bound).whenComplete(() => _busy = false);
++    } catch (error, stack) {
++      return Future.error(error, stack);
++    }
++  }
++
++  Future<QueryResult> query([List<Object?> parameters = const []]) =>
++      _operation(
++          parameters,
++          true,
++          (db, bound) => db._exclusive(() async {
++                await _ensureCurrent();
++                return db._queryUnlocked(sql, bound, this);
++              }));
++  Future<MutationResult> execute([List<Object?> parameters = const []]) =>
++      _operation(parameters, false,
++          (db, bound) => db._executeStatement(sql, bound, prepared: this));
++  Future<void> close() {
++    if (_busy) {
++      return Future.error(StateError('Cannot close an executing statement'));
++    }
++    _lastExpressionParses = expressionParseCount;
++    _lastExpressionHits = expressionReuseCount;
++    _lastSelectParses = selectParseCount;
++    _database = null;
++    _route = null;
++    _program = null;
++    return Future.value();
++  }
++}
+--- /dev/null
++++ b/packages/sqlite_plus/lib/src/sql/prepared_syntax.dart
+@@ -0,0 +1,126 @@
++part of 'parser.dart';
++
++/// Reusable syntax, never result rows or bound values. Used by prepared handles.
++/// Relational/function/subquery trees are not shared across executions.
++final class SqlPreparation {
++  SqlPreparation(this.sql)
++      : tokens = List.unmodifiable(SqlTokenizer.tokenize(sql)) {
++    if (sql.length > 65536) {
++      throw UnsupportedError('Prepared SQL exceeds 64Ki code units');
++    }
++    var count = 0;
++    final names = <String, int>{};
++    for (final token in tokens) {
++      if (token.kind != SqlTokenKind.parameter) continue;
++      final int? index;
++      if (token.text.startsWith('?')) {
++        index = token.text.length == 1
++            ? count + 1
++            : int.tryParse(token.text.substring(1));
++      } else {
++        namedBindings = true;
++        index = names.putIfAbsent(token.text, () => count + 1);
++      }
++      if (index == null || index < 1 || index > 32766) {
++        throw const SqlException('Invalid parameter index');
++      }
++      if (index > count) count = index;
++    }
++    parameterCount = count;
++  }
++  final String sql;
++  final List<SqlToken> tokens;
++  late final int parameterCount;
++  bool namedBindings = false;
++  int expressionParses = 0, expressionHits = 0, selectParses = 0;
++  final _expressions = <(int, int, int, bool, bool), (Expr, int, int)>{};
++  SelectStatement? _select;
++
++  SelectStatement selectSyntax() {
++    final cached = _select;
++    if (cached != null) return cached;
++    selectParses++;
++    return _select = SqlParser.prepared(this).select();
++  }
++
++  void resetSyntax() {
++    _expressions.clear();
++    _select = null;
++  }
++
++  static bool reusableExpression(Expr e) {
++    if (e is Literal) return e.value is! Uint8List;
++    // TRUE/FALSE names carry mutable scope-resolution state.
++    if (e is BoolNameExpr) return false;
++    if (e is ColumnExpr || e is ParameterExpr) return true;
++    if (e is InExpr) {
++      return reusableExpression(e.operand) &&
++          e.values.every(reusableExpression);
++    }
++    return (e is UnaryExpr ||
++            e is BinaryExpr ||
++            e is CollateExpr ||
++            e is BetweenExpr ||
++            e is CastExpr ||
++            e is CaseExpr) &&
++        e.children.every(reusableExpression);
++  }
++
++  bool get reusableSelect {
++    final s = selectSyntax();
++    return !s.valuesQuery &&
++        s.ctes.isEmpty &&
++        s.compounds.isEmpty &&
++        s.groupBy.isEmpty &&
++        s.having == null &&
++        s.windowDefinitions.isEmpty &&
++        s.sources.length <= 1 &&
++        s.sources.every((x) =>
++            x.table != null &&
++            x.alias == null &&
++            x.query == null &&
++            x.group.isEmpty &&
++            x.pragmaArguments == null) &&
++        s.items.every((x) => x.expression == null
++            ? x.label == '*'
++            : reusableExpression(x.expression!)) &&
++        (s.where == null || reusableExpression(s.where!)) &&
++        s.order.every((x) => reusableExpression(x.expression)) &&
++        (s.limit == null || reusableExpression(s.limit!)) &&
++        (s.offset == null || reusableExpression(s.offset!));
++  }
++}
++
++final class _PreparedSqlParser extends SqlParser {
++  _PreparedSqlParser(this.preparation,
++      {super.deferFunctionResolution = false,
++      super.deferFunctionValidation = false})
++      : super._prepared(preparation.sql, preparation.tokens);
++  final SqlPreparation preparation;
++  @override
++  Expr expression([int minimum = 0]) {
++    final key = (
++      position,
++      minimum,
++      parameterCount,
++      deferFunctionResolution,
++      deferFunctionValidation
++    );
++    final hit =
++        preparation.namedBindings ? null : preparation._expressions[key];
++    if (hit != null) {
++      preparation.expressionHits++;
++      position = hit.$2;
++      parameterCount = hit.$3;
++      return hit.$1;
++    }
++    preparation.expressionParses++;
++    final result = super.expression(minimum);
++    if (!preparation.namedBindings &&
++        preparation._expressions.length < 2048 &&
++        SqlPreparation.reusableExpression(result)) {
++      preparation._expressions[key] = (result, position, parameterCount);
++    }
++    return result;
++  }
++}
+--- a/packages/sqlite_plus_orm/lib/sqlite_plus_orm.dart
++++ b/packages/sqlite_plus_orm/lib/sqlite_plus_orm.dart
+@@ -37,3 +37,5 @@
+ part 'src/reactive.dart';
+ part 'src/writes.dart';
+ part 'src/import.dart';
++
++part 'src/prepared.dart';
+--- a/packages/sqlite_plus_orm/lib/src/connection.dart
++++ b/packages/sqlite_plus_orm/lib/src/connection.dart
+@@ -8,6 +8,20 @@
+   MutableSqliteDatabase? get engineDatabase => null;
+   SqlitePlusChanges? get changeFeed => null;
+   bool get usesSaveTransactionDriver => false;
++
++  /// Adapters must opt in explicitly so wrappers never lose capture/inspection.
++  bool get supportsEnginePreparation => false;
++  Future<OrmPreparedCommand> prepareCommand(String sql) async {
++    if (!supportsEnginePreparation) return _FallbackPreparedCommand(this, sql);
++    // Also checks closed/connection lease through the adapter's normal property.
++    inTransaction;
++    try {
++      return _EnginePreparedCommand(this, await engineDatabase!.prepare(sql));
++    } on UnsupportedError {
++      return _FallbackPreparedCommand(this, sql);
++    }
++  }
++
+   Future<R> exclusive<R>(Future<R> Function() action,
+           {bool schemaChange = false}) =>
+       action();
+@@ -110,6 +124,8 @@
+   final MutableSqliteDatabase database;
+   @override
+   MutableSqliteDatabase get engineDatabase => database;
++  @override
++  bool get supportsEnginePreparation => true;
+ 
+   /// Whether [close] also closes [database].
+   final bool closeDatabase;
+@@ -187,6 +203,8 @@
+   final MutableSqliteDatabase database;
+   @override
+   MutableSqliteDatabase get engineDatabase => database;
++  @override
++  bool get supportsEnginePreparation => true;
+   bool _closed = false;
+ 
+   /// Loads [opened] into a memory database, or creates one when it is empty.
+@@ -310,6 +328,18 @@
+   }
+ 
+   @override
++  Future<OrmPreparedCommand> prepareCommand(String sql) async {
++    // Writes must go through ChangeWriter.execute; never execute directly on db.
++    if (SqlTokenizer.tokenize(sql).first.keyword != 'SELECT') {
++      return _FallbackPreparedCommand(this, sql);
++    }
++    Future<R> scope<R>(Future<R> Function() action) =>
++        _writer != null || _raw ? action() : changes.exclusive((_) => action());
++    final command = await scope(() => delegate.prepareCommand(sql));
++    return _ScopedPreparedCommand(command, scope);
++  }
++
++  @override
+   Future<QueryResult> query(String sql, [List<Object?> parameters = const []]) {
+     final writer = _writer;
+     if (writer != null) return writer.query(sql, parameters);
+--- a/packages/sqlite_plus_orm/lib/src/context.dart
++++ b/packages/sqlite_plus_orm/lib/src/context.dart
+@@ -224,11 +224,15 @@
+   DbContext(OrmConnection connection, this.model,
+       {SqlitePlusChanges? changes,
+       this.reactiveDebounce = Duration.zero,
+-      this.reactiveMaxRows = 10000})
++      this.reactiveMaxRows = 10000,
++      this.preparedQueryCacheSize = 0})
+       : connection = changes == null
+             ? connection
+             : ChangesOrmConnection(connection, changes) {
+-    if (reactiveDebounce.isNegative || reactiveMaxRows < 1) {
++    if (reactiveDebounce.isNegative ||
++        reactiveMaxRows < 1 ||
++        preparedQueryCacheSize < 0 ||
++        preparedQueryCacheSize > 128) {
+       throw ArgumentError('Invalid reactive limits');
+     }
+     this.connection.claim(this);
+@@ -242,6 +246,49 @@
+   final DbModel model;
+   final Duration reactiveDebounce;
+   final int reactiveMaxRows;
++
++  /// Opt-in bounded cache of normal read-command shapes. Zero preserves legacy path.
++  final int preparedQueryCacheSize;
++  Map<String, OrmPreparedCommand>? _preparedCache;
++  Set<_OrmPreparedResource>? _preparedResources;
++  int get preparedQueryCacheEntries => _preparedCache?.length ?? 0;
++  Future<void> clearPreparedQueries() => _run(() => _clearPreparedCache());
++  Future<void> _clearPreparedCache() async {
++    final entries =
++        _preparedCache?.values.toList() ?? const <OrmPreparedCommand>[];
++    _preparedCache?.clear();
++    for (final entry in entries) {
++      await entry.close();
++    }
++  }
++
++  Future<QueryResult> _preparedRows(OrmQueryCommand command) async {
++    final cache = _preparedCache ??= {};
++    var prepared = cache.remove(command.sql);
++    prepared ??= await connection.prepareCommand(command.sql);
++    cache[command.sql] = prepared;
++    while (cache.length > preparedQueryCacheSize) {
++      final old = cache.remove(cache.keys.first)!;
++      await old.close();
++    }
++    try {
++      return await prepared.query(command.parameters);
++    } on UnsupportedError {
++      cache.remove(command.sql);
++      await prepared.close();
++      return connection.query(command.sql, command.parameters);
++    }
++  }
++
++  Future<void> _disposePrepared() async {
++    await _clearPreparedCache();
++    for (final resource
++        in _preparedResources?.toList() ?? const <_OrmPreparedResource>[]) {
++      await resource._dispose();
++    }
++    _preparedResources = null;
++  }
++
+   ReactiveRegistry? _reactiveRegistry;
+   bool _captureInitialized = false;
+   final Map<Object, EntityEntry<dynamic>> _entries = Map.identity();
+@@ -1404,6 +1451,9 @@
+       try {
+         _closed = true;
+         await _reactiveRegistry?.close();
++        if (_preparedCache != null || _preparedResources != null) {
++          await _disposePrepared();
++        }
+         for (final entry in _entries.values.toList()) {
+           _detach(entry);
+         }
+--- /dev/null
++++ b/packages/sqlite_plus_orm/lib/src/prepared.dart
+@@ -0,0 +1,324 @@
++part of '../sqlite_plus_orm.dart';
++
++/// Adapter capability. Fallbacks preserve the adapter pipeline and explicitly
++/// report that they do not reuse engine syntax.
++abstract class OrmPreparedCommand {
++  bool get usesEnginePreparation;
++  Future<QueryResult> query(List<Object?> parameters);
++  Future<MutationResult> execute(List<Object?> parameters);
++  Future<void> close();
++}
++
++final class _FallbackPreparedCommand implements OrmPreparedCommand {
++  _FallbackPreparedCommand(this.connection, this.sql);
++  final OrmConnection connection;
++  final String sql;
++  bool closed = false;
++  @override
++  bool get usesEnginePreparation => false;
++  void check() {
++    if (closed) throw const OrmStateException('Prepared command closed');
++  }
++
++  @override
++  Future<QueryResult> query(List<Object?> parameters) {
++    check();
++    return connection.query(sql, parameters);
++  }
++
++  @override
++  Future<MutationResult> execute(List<Object?> parameters) {
++    check();
++    return connection.execute(sql, parameters);
++  }
++
++  @override
++  Future<void> close() async {
++    closed = true;
++  }
++}
++
++final class _EnginePreparedCommand implements OrmPreparedCommand {
++  _EnginePreparedCommand(this.connection, this.statement);
++  final OrmConnection connection;
++  final SqlPreparedStatement statement;
++  @override
++  bool get usesEnginePreparation => true;
++  @override
++  Future<QueryResult> query(List<Object?> parameters) {
++    connection.inTransaction;
++    return statement.query(parameters);
++  }
++
++  @override
++  Future<MutationResult> execute(List<Object?> parameters) {
++    connection.inTransaction;
++    return statement.execute(parameters);
++  }
++
++  @override
++  Future<void> close() => statement.close();
++}
++
++final class _ScopedPreparedCommand implements OrmPreparedCommand {
++  _ScopedPreparedCommand(this.command, this.scope);
++  final OrmPreparedCommand command;
++  final OrmOperationRunner scope;
++  @override
++  bool get usesEnginePreparation => command.usesEnginePreparation;
++  @override
++  Future<QueryResult> query(List<Object?> parameters) =>
++      scope(() => command.query(parameters));
++  @override
++  Future<MutationResult> execute(List<Object?> parameters) =>
++      scope(() => command.execute(parameters));
++  @override
++  Future<void> close() => command.close();
++}
++
++/// Binding identity, not a string substitution. Reuse the same object as a map
++/// key. Values are checked by this Dart type and each mapped column's codec.
++final class QueryParameter<V> {
++  QueryParameter(this.name) {
++    if (name.isEmpty || name.length > 128) {
++      throw ArgumentError('Parameter name');
++    }
++  }
++  final String name;
++  Object? _check(Object? value) => value as V;
++}
++
++final class _OrmParameterUse {
++  _OrmParameterUse(this.parameter, this.encode);
++  final QueryParameter<dynamic> parameter;
++  final Object? Function(Object?) encode;
++}
++
++final class _ParameterPredicate<T, V> extends SqlPredicate<T> {
++  const _ParameterPredicate(this.column, this.operator, this.parameter);
++  final Column<T, V> column;
++  final String operator;
++  final QueryParameter<V> parameter;
++  @override
++  Iterable<Column<T, dynamic>> get _columns => [column];
++  @override
++  String _sql(List<Object?> values) {
++    values.add(_OrmParameterUse(parameter, (v) => column.encodeValue(v as V)));
++    return '${quoteIdentifier(column.sqlName)} $operator ?';
++  }
++}
++
++extension ParameterColumnPredicates<T, V> on Column<T, V> {
++  /// Fixed SQL '=' semantics: a NULL binding does not match NULL. Use isParameter
++  /// when null-safe equality is desired.
++  SqlPredicate<T> eqParameter(QueryParameter<V> p) =>
++      _ParameterPredicate(this, '=', p);
++  SqlPredicate<T> notEqParameter(QueryParameter<V> p) =>
++      _ParameterPredicate(this, '<>', p);
++  SqlPredicate<T> gtParameter(QueryParameter<V> p) =>
++      _ParameterPredicate(this, '>', p);
++  SqlPredicate<T> gteParameter(QueryParameter<V> p) =>
++      _ParameterPredicate(this, '>=', p);
++  SqlPredicate<T> ltParameter(QueryParameter<V> p) =>
++      _ParameterPredicate(this, '<', p);
++  SqlPredicate<T> lteParameter(QueryParameter<V> p) =>
++      _ParameterPredicate(this, '<=', p);
++  SqlPredicate<T> isParameter(QueryParameter<V> p) =>
++      _ParameterPredicate(this, 'IS', p);
++  SqlPredicate<T> isNotParameter(QueryParameter<V> p) =>
++      _ParameterPredicate(this, 'IS NOT', p);
++}
++
++List<Object?> _bindPrepared(
++    List<Object?> template, Map<QueryParameter<dynamic>, Object?> parameters) {
++  final needed = {
++    for (final item in template)
++      if (item is _OrmParameterUse) item.parameter
++  };
++  if (parameters.length != needed.length ||
++      !parameters.keys.every(needed.contains)) {
++    throw const OrmStateException('Missing or unexpected query parameter');
++  }
++  return List.unmodifiable(template.map((item) {
++    if (item is! _OrmParameterUse) return copyOrmValue(item);
++    try {
++      return copyOrmValue(
++          item.encode(item.parameter._check(parameters[item.parameter])));
++    } catch (error) {
++      throw OrmCodecException(
++          'Invalid binding for ${item.parameter.name}', error);
++    }
++  }));
++}
++
++DbContext _preparedOwner<T>(TypedQuery<T> query) => query._watchOwner;
++
++abstract class _OrmPreparedResource {
++  Future<void> _dispose();
++}
++
++extension PreparedTypedQueries<T> on TypedQuery<T> {
++  Future<PreparedOrmQuery<T>> prepare() {
++    final owner = _preparedOwner(this);
++    return owner._run(() async {
++      registerOrmScalars(connection, [type]);
++      final command = _command(template: true);
++      final compiled = await connection.prepareCommand(command.sql);
++      final result = PreparedOrmQuery<T>._(owner, this, command, compiled);
++      (owner._preparedResources ??= {}).add(result);
++      return result;
++    });
++  }
++
++  Future<PreparedOrmUpdate<T>> prepareUpdate(
++      Map<Column<T, dynamic>, Object?> values,
++      {List<Column<T, dynamic>> returning = const []}) {
++    final owner = _preparedOwner(this);
++    return owner._run(() async {
++      _writeType(type);
++      if (_ordering.isNotEmpty ||
++          _offset != 0 ||
++          _limit != null ||
++          _rank ||
++          _distance) {
++        throw const OrmStateException(
++            'Prepared UPDATE cannot combine ordering/pagination/rank');
++      }
++      if (values.isEmpty) {
++        throw const OrmMappingException('UPDATE requires assignments');
++      }
++      _writeColumns(type, values.keys);
++      final selected = _projection(type, returning);
++      final parameters = <Object?>[], assignments = <String>[];
++      final changed = <Column<T, dynamic>>[];
++      for (final entry in values.entries) {
++        final column = entry.key, value = entry.value;
++        if (column.keyOrder != null || column.generated || column.version) {
++          throw const OrmMappingException(
++              'Keys/generated/version fields are managed by ORM');
++        }
++        String expression;
++        if (value is _ArithmeticAssignment<T, dynamic>) {
++          _writeColumns(type, value._columns);
++          expression = value._sql(parameters);
++        } else if (value is QueryParameter) {
++          parameters.add(_OrmParameterUse(value, column.encodeValue));
++          expression = '?';
++        } else {
++          if (value is SqlExpression) {
++            throw const OrmMappingException('Unsupported assignment');
++          }
++          parameters.add(copyOrmValue(column.encodeValue(value)));
++          expression = '?';
++        }
++        assignments.add('${quoteIdentifier(column.sqlName)}=$expression');
++        changed.add(column);
++      }
++      final version = type.versionColumn;
++      if (version != null) {
++        assignments.add(
++            '${quoteIdentifier(version.sqlName)}=${quoteIdentifier(version.sqlName)}+1');
++        changed.add(version);
++      }
++      final predicate = _predicate?._sql(parameters);
++      final projected =
++          <Column<T, dynamic>>{...changed, ...selected, ...type.keys}.toList();
++      final sql =
++          'UPDATE ${quoteIdentifier(type.tableName)} SET ${assignments.join(',')}${predicate == null ? '' : ' WHERE $predicate'} RETURNING ${projected.map((c) => quoteIdentifier(c.sqlName)).join(',')}';
++      final command = await connection.prepareCommand(sql);
++      final result = PreparedOrmUpdate<T>._(
++          owner,
++          type,
++          List.unmodifiable(parameters
++              .map((p) => p is _OrmParameterUse ? p : copyOrmValue(p))),
++          projected,
++          selected,
++          command);
++      (owner._preparedResources ??= {}).add(result);
++      return result;
++    });
++  }
++}
++
++final class PreparedOrmQuery<T> implements _OrmPreparedResource {
++  PreparedOrmQuery._(this.owner, this._query, this._template, this._command);
++  final DbContext owner;
++  final TypedQuery<T> _query;
++  final OrmQueryCommand _template;
++  final OrmPreparedCommand _command;
++  bool _closed = false;
++  bool get isClosed => _closed;
++  bool get usesEnginePreparation => _command.usesEnginePreparation;
++  Future<List<T>> toList(
++      {Map<QueryParameter<dynamic>, Object?> parameters = const {}}) {
++    try {
++      if (_closed) throw const OrmStateException('Prepared query closed');
++      final bound = _bindPrepared(_template._parameters, parameters);
++      return owner._run(() async {
++        if (_closed) throw const OrmStateException('Prepared query closed');
++        final result = await _command.query(bound);
++        return [for (final row in result.rows) _query._read(result, row)];
++      });
++    } catch (error, stack) {
++      return Future.error(error, stack);
++    }
++  }
++
++  Future<void> close() => _closed
++      ? Future.value()
++      : owner._closed
++          ? _dispose()
++          : owner._run(_dispose);
++  @override
++  Future<void> _dispose() async {
++    if (_closed) return;
++    await _command.close();
++    _closed = true;
++    owner._preparedResources?.remove(this);
++  }
++}
++
++final class PreparedOrmUpdate<T> implements _OrmPreparedResource {
++  PreparedOrmUpdate._(this.owner, this.type, this._template, this._projected,
++      this._selected, this._command);
++  final DbContext owner;
++  final EntityType<T> type;
++  final List<Object?> _template;
++  final List<Column<T, dynamic>> _projected, _selected;
++  final OrmPreparedCommand _command;
++  bool _closed = false;
++  bool get isClosed => _closed;
++  bool get usesEnginePreparation => _command.usesEnginePreparation;
++  Future<OrmWriteResult> execute(
++      {Map<QueryParameter<dynamic>, Object?> parameters = const {}}) {
++    try {
++      if (_closed) throw const OrmStateException('Prepared update closed');
++      final bound = _bindPrepared(_template, parameters);
++      return owner._directWrite(() async {
++        if (_closed) throw const OrmStateException('Prepared update closed');
++        final broad = (await owner._triggerTables())
++                .contains(type.tableName.toLowerCase()) ||
++            owner.model.foreignKeys.isNotEmpty;
++        final mutation = await _command.execute(bound);
++        final rows = await owner
++            ._writeRows(type, mutation, _projected, _selected, broad: broad);
++        return OrmWriteResult._(mutation.changes, rows);
++      });
++    } catch (error, stack) {
++      return Future.error(error, stack);
++    }
++  }
++
++  Future<void> close() => _closed
++      ? Future.value()
++      : owner._closed
++          ? _dispose()
++          : owner._run(_dispose);
++  @override
++  Future<void> _dispose() async {
++    if (_closed) return;
++    await _command.close();
++    _closed = true;
++    owner._preparedResources?.remove(this);
++  }
++}
+--- a/packages/sqlite_plus_orm/lib/src/query.dart
++++ b/packages/sqlite_plus_orm/lib/src/query.dart
+@@ -590,6 +590,10 @@
+ final class OrmQueryCommand {
+   OrmQueryCommand._(this.sql, List<Object?> parameters)
+       : _parameters = List.unmodifiable(parameters.map(copyOrmValue));
++
++  OrmQueryCommand._template(this.sql, List<Object?> parameters)
++      : _parameters = List.unmodifiable(
++            parameters.map((p) => p is _OrmParameterUse ? p : copyOrmValue(p)));
+ 
+   /// SQL text with `?` placeholders.
+   final String sql;
+@@ -772,7 +776,9 @@
+   TypedQuery<T> asNoTracking() => _copy(noTracking: true);
+ 
+   /// The SQL and parameters this query would run.
+-  OrmQueryCommand toSql() {
++  OrmQueryCommand toSql() => _command();
++
++  OrmQueryCommand _command({bool template = false}) {
+     final parameters = <Object?>[];
+     final sql = StringBuffer('SELECT ')
+       ..write(type.columns
+@@ -798,7 +804,13 @@
+         parameters.add(BigInt.from(_offset));
+       }
+     }
+-    return OrmQueryCommand._(sql.toString(), parameters);
++    if (!template && parameters.any((p) => p is _OrmParameterUse)) {
++      throw const OrmStateException(
++          'QueryParameter requires prepare() and bindings');
++    }
++    return template
++        ? OrmQueryCommand._template(sql.toString(), parameters)
++        : OrmQueryCommand._(sql.toString(), parameters);
+   }
+ 
+   Future<R> _run<R>(Future<R> Function() operation) =>
+@@ -807,6 +819,9 @@
+   Future<QueryResult> _rows() {
+     registerOrmScalars(connection, [type]);
+     final command = toSql();
++    if ((_context?.preparedQueryCacheSize ?? 0) > 0) {
++      return _context!._preparedRows(command);
++    }
+     return connection.query(command.sql, command.parameters);
+   }
+ 

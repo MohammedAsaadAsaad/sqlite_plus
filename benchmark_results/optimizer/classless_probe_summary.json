@@ -1,0 +1,17 @@
+{
+  "before": {
+    "median_ms": 313.927,
+    "min_ms": 309.19,
+    "max_ms": 344.042
+  },
+  "after": {
+    "median_ms": 317.6835,
+    "min_ms": 311.561,
+    "max_ms": 330.693
+  },
+  "classless": {
+    "median_ms": 335.8605,
+    "min_ms": 319.362,
+    "max_ms": 351.941
+  }
+}

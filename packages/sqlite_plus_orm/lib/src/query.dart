@@ -591,6 +591,10 @@ final class OrmQueryCommand {
   OrmQueryCommand._(this.sql, List<Object?> parameters)
       : _parameters = List.unmodifiable(parameters.map(copyOrmValue));
 
+  OrmQueryCommand._template(this.sql, List<Object?> parameters)
+      : _parameters = List.unmodifiable(
+            parameters.map((p) => p is _OrmParameterUse ? p : copyOrmValue(p)));
+
   /// SQL text with `?` placeholders.
   final String sql;
   final List<Object?> _parameters;
@@ -772,7 +776,9 @@ final class TypedQuery<T> {
   TypedQuery<T> asNoTracking() => _copy(noTracking: true);
 
   /// The SQL and parameters this query would run.
-  OrmQueryCommand toSql() {
+  OrmQueryCommand toSql() => _command();
+
+  OrmQueryCommand _command({bool template = false}) {
     final parameters = <Object?>[];
     final sql = StringBuffer('SELECT ')
       ..write(type.columns
@@ -798,7 +804,13 @@ final class TypedQuery<T> {
         parameters.add(BigInt.from(_offset));
       }
     }
-    return OrmQueryCommand._(sql.toString(), parameters);
+    if (!template && parameters.any((p) => p is _OrmParameterUse)) {
+      throw const OrmStateException(
+          'QueryParameter requires prepare() and bindings');
+    }
+    return template
+        ? OrmQueryCommand._template(sql.toString(), parameters)
+        : OrmQueryCommand._(sql.toString(), parameters);
   }
 
   Future<R> _run<R>(Future<R> Function() operation) =>
@@ -807,6 +819,9 @@ final class TypedQuery<T> {
   Future<QueryResult> _rows() {
     registerOrmScalars(connection, [type]);
     final command = toSql();
+    if ((_context?.preparedQueryCacheSize ?? 0) > 0) {
+      return _context!._preparedRows(command);
+    }
     return connection.query(command.sql, command.parameters);
   }
 

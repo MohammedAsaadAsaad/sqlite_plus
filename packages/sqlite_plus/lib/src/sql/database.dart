@@ -15,6 +15,7 @@ import 'function_registry.dart';
 import 'image_mutations.dart';
 import 'index_definition.dart';
 import 'planner_statistics.dart';
+import 'bounded_sort_heap.dart';
 import 'windows.dart';
 import 'search_modules.dart';
 import 'search_runtime.dart';
@@ -1254,6 +1255,58 @@ final class SqliteDatabase {
         parameters.map(sqlValue).toList());
   }
 
+  /// Validate reusable ordinary SELECT syntax without scanning rows or binding
+  /// user values. Physical access planning remains binding-aware at execution.
+  void validatePreparation(SqlPreparation preparation) => functions.run(() {
+        final statement = preparation.selectSyntax();
+        if (!preparation.reusableSelect || _needsRelational(statement)) {
+          throw UnsupportedError(
+              'Prepared SELECT currently requires a simple ordinary-table query');
+        }
+        final table =
+            statement.table == null ? null : catalog.table(statement.table!);
+        if (table != null &&
+            (table.virtual ||
+                table.columns.any((c) => c.generatedExpression != null))) {
+          throw UnsupportedError(
+              'Prepared SELECT does not support virtual/generated sources');
+        }
+        final metadata = SelectStatement(
+            statement.items,
+            statement.table,
+            statement.where,
+            statement.order,
+            Literal(BigInt.zero),
+            null,
+            statement.distinct,
+            statement.parameterCount)
+          ..sources.addAll(statement.sources);
+        _evaluate(metadata, List.filled(statement.parameterCount, null), table,
+            const <RowValues>[]);
+      });
+
+  /// Execute retained safe syntax with fresh bindings, rows and access planning.
+  Future<QueryResult> queryPreparation(
+          SqlPreparation preparation, List<Object?> parameters) =>
+      functions.run(() async {
+        final statement = preparation.selectSyntax();
+        if (!preparation.reusableSelect || _needsRelational(statement)) {
+          throw UnsupportedError(
+              'Prepared SELECT requires simple ordinary sources');
+        }
+        final table =
+            statement.table == null ? null : catalog.table(statement.table!);
+        if (table != null &&
+            (table.virtual ||
+                table.columns.any((c) => c.generatedExpression != null))) {
+          throw UnsupportedError(
+              'Prepared SELECT requires ordinary non-generated sources');
+        }
+        return (await _prepareQuery(
+                preparation.sql, parameters, null, statement))
+            .materialize();
+      });
+
   /// Runs one read statement. [parameters] bind `?`, `?NNN`, and named placeholders.
   Future<QueryResult> query(String sql,
           [List<Object?> parameters = const []]) =>
@@ -1510,9 +1563,9 @@ final class SqliteDatabase {
           });
 
   Future<_QueryExecution> _prepareQuery(String sql, List<Object?> parameters,
-      [EvalContext? outer]) async {
+      [EvalContext? outer, SelectStatement? preparedSyntax]) async {
     if (_closed) throw StateError('Database is closed');
-    final statement = SqlParser(sql).select();
+    final statement = preparedSyntax ?? SqlParser(sql).select();
     if (parameters.length != statement.parameterCount) {
       throw const SqlException('Incorrect parameter count');
     }
@@ -2123,6 +2176,7 @@ final class SqliteDatabase {
       }
 
       final output = <(List<Object?>, List<Object?>, int)>[];
+      BoundedSortHeap<(List<Object?>, List<Object?>, int)>? selection;
       final unsorted = order.isEmpty;
       final streamLimit = !distinct && unsorted;
       var emitted = 0;
@@ -2203,12 +2257,24 @@ final class SqliteDatabase {
               ? limit + (offset > 0 ? offset : 0)
               : null;
           if (capacity != null && output.length >= capacity) {
-            var worst = 0;
-            for (var i = 1; i < output.length; i++) {
-              if (compareKeys(output[i].$2, output[worst].$2) >= 0) worst = i;
+            // Tiny K keeps the existing linear path. Build lazily only when
+            // the retained set fills; large LIMITs over short inputs pay no
+            // heap construction cost. Sequence preserves the last-worst tie.
+            if (capacity >= 32) {
+              selection ??= BoundedSortHeap(output, (a, b) {
+                final keys = compareKeys(a.$2, b.$2);
+                return keys != 0 ? keys : a.$3.compareTo(b.$3);
+              });
+              if (compareKeys(candidateKeys, selection.worst.$2) >= 0) continue;
+              selection.removeWorst();
+            } else {
+              var worst = 0;
+              for (var i = 1; i < output.length; i++) {
+                if (compareKeys(output[i].$2, output[worst].$2) >= 0) worst = i;
+              }
+              if (compareKeys(candidateKeys, output[worst].$2) >= 0) continue;
+              output.removeAt(worst);
             }
-            if (compareKeys(candidateKeys, output[worst].$2) >= 0) continue;
-            output.removeAt(worst);
           }
         }
         for (var i = 0; i < items.length; i++) {
@@ -2259,7 +2325,12 @@ final class SqliteDatabase {
               ? values[slot]
               : order[i].expression.evaluate(orderCtx));
         }
-        output.add((values, keys, sequence++));
+        final entry = (values, keys, sequence++);
+        if (selection == null) {
+          output.add(entry);
+        } else {
+          selection.add(entry);
+        }
         if (streamLimit &&
             limit != null &&
             limit >= 0 &&

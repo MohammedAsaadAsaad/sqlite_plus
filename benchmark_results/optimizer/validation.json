@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-08",
+  "scope": "Initial bounded selection milestone only; remaining roadmap queued",
+  "suites": [
+    {
+      "suite": "core_full",
+      "result": "06:32 +10705 ~1: All tests passed!"
+    },
+    {
+      "suite": "addons_full",
+      "result": "04:03 +572: All tests passed!"
+    },
+    {
+      "suite": "search_full",
+      "result": "01:35 +86: All tests passed!"
+    },
+    {
+      "suite": "new_orm",
+      "result": "00:01 +2: All tests passed!"
+    }
+  ],
+  "analyze": "Analyzing sqlite_plus, sqlite_plus_orm, optimizer_benchmark...\nNo issues found!",
+  "vm": "Optimizer bounded selection assertions passed: raw/prepared/ORM/cache, K/offset boundaries.",
+  "javascript": "Optimizer bounded selection assertions passed: raw/prepared/ORM/cache, K/offset boundaries.",
+  "paired_workload_cases": 27,
+  "main_aot_processes": 270,
+  "native_sort_comparisons": 300,
+  "baseline_reconstruction": "Reverse patch byte-matched saved pre-optimizer libraries",
+  "cost_followup": "20 samples/variant for flagged controls; 20 long UPDATE samples/variant across two batches; classless representation rejected",
+  "runtime_source_hashes": "Still match measured binaries source manifest",
+  "push_merge_publish": false,
+  "format": "Formatted 303 files (0 changed) in 0.74 seconds."
+}

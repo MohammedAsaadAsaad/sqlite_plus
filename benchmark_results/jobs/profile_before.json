@@ -1,0 +1,136 @@
+{
+  "samples": 1176,
+  "scope": "JIT whole jobs workflow20, top60 global functions retained, diagnostic only",
+  "functions": [
+    {
+      "name": "commit",
+      "inclusive": 709,
+      "exclusive": 0
+    },
+    {
+      "name": "rebuild",
+      "inclusive": 708,
+      "exclusive": 0
+    },
+    {
+      "name": "_imageAfterRowEdits",
+      "inclusive": 708,
+      "exclusive": 0
+    },
+    {
+      "name": "serialize",
+      "inclusive": 708,
+      "exclusive": 0
+    },
+    {
+      "name": "asciiLower",
+      "inclusive": 412,
+      "exclusive": 5
+    },
+    {
+      "name": "_row",
+      "inclusive": 387,
+      "exclusive": 2
+    },
+    {
+      "name": "_validate",
+      "inclusive": 272,
+      "exclusive": 0
+    },
+    {
+      "name": "evaluateGenerated",
+      "inclusive": 243,
+      "exclusive": 4
+    },
+    {
+      "name": "evaluate",
+      "inclusive": 210,
+      "exclusive": 0
+    },
+    {
+      "name": "_indexKey",
+      "inclusive": 192,
+      "exclusive": 0
+    },
+    {
+      "name": "_context",
+      "inclusive": 190,
+      "exclusive": 4
+    },
+    {
+      "name": "_query",
+      "inclusive": 177,
+      "exclusive": 0
+    },
+    {
+      "name": "_prepareQuery",
+      "inclusive": 176,
+      "exclusive": 2
+    },
+    {
+      "name": "run",
+      "inclusive": 166,
+      "exclusive": 0
+    },
+    {
+      "name": "<anonymous closure>",
+      "inclusive": 165,
+      "exclusive": 0
+    },
+    {
+      "name": "run",
+      "inclusive": 165,
+      "exclusive": 0
+    },
+    {
+      "name": "query",
+      "inclusive": 157,
+      "exclusive": 0
+    },
+    {
+      "name": "<anonymous closure>",
+      "inclusive": 157,
+      "exclusive": 0
+    },
+    {
+      "name": "_readImage",
+      "inclusive": 152,
+      "exclusive": 0
+    },
+    {
+      "name": "_execute",
+      "inclusive": 146,
+      "exclusive": 1
+    },
+    {
+      "name": "_plan",
+      "inclusive": 105,
+      "exclusive": 0
+    },
+    {
+      "name": "table",
+      "inclusive": 98,
+      "exclusive": 0
+    },
+    {
+      "name": "_key",
+      "inclusive": 93,
+      "exclusive": 0
+    },
+    {
+      "name": "parseTable",
+      "inclusive": 92,
+      "exclusive": 1
+    },
+    {
+      "name": "evaluate",
+      "inclusive": 81,
+      "exclusive": 0
+    },
+    {
+      "name": "_indexDefinition",
+      "inclusive": 81,
+      "exclusive": 0
+    }
+  ]
+}

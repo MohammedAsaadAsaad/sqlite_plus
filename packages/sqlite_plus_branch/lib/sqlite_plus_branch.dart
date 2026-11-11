@@ -11,3 +11,4 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 part 'src/models.dart';
 part 'src/snapshot.dart';
 part 'src/branch.dart';
+part 'src/preview.dart';

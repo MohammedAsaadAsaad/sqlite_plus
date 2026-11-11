@@ -258,3 +258,39 @@ Tests cover field/row conflicts, stale approvals, constraints and FK rollback,
 uncertain commit before/after pager persistence, ORM and pinned SQLite cross-open
 integrity for three encodings. VM and compiled JS/Node assertions run locally;
 real browser/device and cross-platform CI are separate gates.
+
+## Operation preview
+
+`preview` is a convenience inside Branch; it creates an ordinary isolated branch
+and runs the callback once. Its argument is a MutableSqliteDatabase, so write
+`draft.execute(...)`, not an undeclared domain API:
+
+```dart
+final preview = await branches.preview((draft) async {
+  return draft.execute('UPDATE products SET price=550 WHERE sku=?', ['A']);
+}, name: 'price-change');
+try {
+  print(preview.value.affectedRows); // Callback result, not a cloned business object.
+  print(preview.changes); // Exact reviewed row differences.
+  print(preview.conflicts);
+  await preview.merge(); // Explicit acceptance; callback is never rerun.
+} finally {
+  await preview.close(); // Discard/release working memory, idempotent sequentially.
+}
+```
+
+The preview retains its original review token. Any later source edit or escaped
+working-engine edit invalidates acceptance; conflict resolutions use the existing
+BranchResolution IDs/policy. Callback/validation failures close the draft and
+preserve the error. No exception is converted into an implicit approval or a list
+of all possible DB constraint violations. External side effects in application
+callbacks cannot be rolled back by this database feature.
+
+Finish/save/close a draft ORM context inside the callback. Do not retain or close
+the supplied engine. The callback result can be any Dart object and is not deeply
+copied; only the reviewed database state governs merging. Existing branch schema,
+image, source-ownership and single-merge limits apply. No separate Preview package.
+
+The [complete prepared-import preview](example/import_preview.dart) defines its
+model/columns first, validates/deduplicates input through ORM, applies on the
+isolated draft, reviews actual differences and merges them without rerunning input.

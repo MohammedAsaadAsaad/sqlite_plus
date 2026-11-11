@@ -1,0 +1,65 @@
+{
+  "samples": 11678,
+  "functions": [
+    {
+      "function": "handleUpsert",
+      "inclusive": 11071,
+      "exclusive": 1,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/image_mutations.dart"
+    },
+    {
+      "function": "accept",
+      "inclusive": 11008,
+      "exclusive": 5,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/image_mutations.dart"
+    },
+    {
+      "function": "_validate",
+      "inclusive": 10950,
+      "exclusive": 24,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/image_mutations.dart"
+    },
+    {
+      "function": "_context",
+      "inclusive": 8091,
+      "exclusive": 177,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/image_mutations.dart"
+    },
+    {
+      "function": "asciiLower",
+      "inclusive": 5381,
+      "exclusive": 144,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/values.dart"
+    },
+    {
+      "function": "_row",
+      "inclusive": 4409,
+      "exclusive": 95,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/image_mutations.dart"
+    },
+    {
+      "function": "evaluateGenerated",
+      "inclusive": 2170,
+      "exclusive": 68,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/catalog.dart"
+    },
+    {
+      "function": "affinity",
+      "inclusive": 722,
+      "exclusive": 67,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/catalog.dart"
+    },
+    {
+      "function": "affinityFor",
+      "inclusive": 620,
+      "exclusive": 54,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/values.dart"
+    },
+    {
+      "function": "_execute",
+      "inclusive": 191,
+      "exclusive": 2,
+      "source": "file:///workspace/sqlite_plus/packages/sqlite_plus/lib/src/sql/image_mutations.dart"
+    }
+  ]
+}

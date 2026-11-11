@@ -1,0 +1,54 @@
+--- before/packages/sqlite_plus_jobs/lib/src/queue.dart
++++ after/packages/sqlite_plus_jobs/lib/src/queue.dart
+@@ -296,19 +296,42 @@
+     return _run(() => _atomic(() async {
+           final now = _now();
+           final until = _later(now, duration);
+-          final exhausted = await database.query(
+-              "SELECT id FROM _spj_jobs WHERE queue=? AND state='running' AND lease_until<=? AND attempts>=max_attempts LIMIT 1",
+-              [queue, now]);
+-          if (exhausted.rows.isNotEmpty) {
++          // This simple equality read uses the engine's live-row path. Project
++          // scheduling metadata only; payloads are fetched for the claimed row.
++          // The snapshot is local to this transaction, never retained as truth.
++          final rows = await database.query(
++              'SELECT id,type,state,priority,created_at,available_at,attempts,max_attempts,lease_until FROM _spj_jobs WHERE queue=?',
++              [queue]);
++          final time = BigInt.from(now);
++          var exhausted = false;
++          List<Object?>? selected;
++          for (final row in rows.rows) {
++            final state = row[2] as String;
++            final attempts = row[6] as BigInt, maximum = row[7] as BigInt;
++            final expired = state == 'running' && (row[8] as BigInt) <= time;
++            if (expired && attempts >= maximum) exhausted = true;
++            if (attempts >= maximum ||
++                !(state == 'queued' && (row[5] as BigInt) <= time || expired) ||
++                accepted != null && !accepted.contains(row[1])) {
++              continue;
++            }
++            final best = selected;
++            if (best == null ||
++                (row[3] as BigInt) > (best[3] as BigInt) ||
++                row[3] == best[3] &&
++                    ((row[4] as BigInt) < (best[4] as BigInt) ||
++                        row[4] == best[4] &&
++                            (row[0] as BigInt) < (best[0] as BigInt))) {
++              selected = row;
++            }
++          }
++          if (exhausted) {
+             await database.execute(
+                 "UPDATE _spj_jobs SET state='failed',lease_token=NULL,lease_until=NULL,error='Lease expired after final attempt',finished_at=? WHERE queue=? AND state='running' AND lease_until<=? AND attempts>=max_attempts",
+                 [now, queue, now]);
+           }
+-          final selected = await database.query(
+-              "SELECT id FROM _spj_jobs WHERE queue=? AND attempts<max_attempts AND ((state='queued' AND available_at<=?) OR (state='running' AND lease_until<=?))${accepted == null ? '' : ' AND type IN (${List.filled(accepted.length, '?').join(',')})'} ORDER BY priority DESC,created_at,id LIMIT 1",
+-              [queue, now, now, if (accepted != null) ...accepted]);
+-          if (selected.rows.isEmpty) return null;
+-          final id = selected.rows.single.single;
++          if (selected == null) return null;
++          final id = selected[0];
+           final random = Random.secure();
+           final token = List.generate(24,
+                   (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'))
