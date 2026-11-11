@@ -606,6 +606,41 @@ void main() {
     }
   });
 
+  test('unordered joins keep nested-loop order', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE a(id INTEGER PRIMARY KEY, k INT)');
+    await db.execute('CREATE TABLE b(id INTEGER PRIMARY KEY, k INT)');
+    await db.execute('CREATE INDEX bk ON b(k)');
+    await db.execute('INSERT INTO a VALUES (1, 2), (2, 1), (3, 2)');
+    await db.execute('INSERT INTO b VALUES (1, 1), (2, 2), (3, 2)');
+    const indexed =
+        'SELECT a.id AS aid, b.id AS bid FROM a INNER JOIN b ON a.k = b.k';
+    const filtered =
+        'SELECT a.id AS aid, b.id AS bid FROM a, b WHERE a.k = b.k';
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const setup = 'CREATE TABLE a(id INTEGER PRIMARY KEY, k INT); '
+        'CREATE TABLE b(id INTEGER PRIMARY KEY, k INT); '
+        'CREATE INDEX bk ON b(k); '
+        'INSERT INTO a VALUES (1, 2), (2, 1), (3, 2); '
+        'INSERT INTO b VALUES (1, 1), (2, 2), (3, 2);';
+    for (final sql in [indexed, filtered]) {
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(sql);
+      final expected = jsonDecode(native.stdout.toString()) as List;
+      expect(actual.rows.length, expected.length, reason: sql);
+      for (var i = 0; i < actual.rows.length; i++) {
+        expect([
+          for (final value in actual.rows[i])
+            value is BigInt ? value.toInt() : value
+        ], (expected[i] as Map).values.toList(), reason: '$sql row $i');
+      }
+    }
+  });
+
   test('malformed UTF-8 and UTF-16 records are rejected', () {
     expect(
         () =>

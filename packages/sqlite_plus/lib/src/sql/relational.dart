@@ -1173,6 +1173,9 @@ extension _RelationalQueries on SqliteDatabase {
           return hits;
         }
 
+        // Nested loop, including the index probe above, keeps each outer row's
+        // matches in inner-table order. A hash join would change that order,
+        // so it is not used.
         Iterable<RowValues> combine() sync* {
           for (final left in leftRows) {
             var found = false;
