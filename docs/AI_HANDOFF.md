@@ -27,7 +27,12 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 25, bounded temporary lookup structures.** Item 24 is
+**Active item: 26, EXISTS early exit.** Item 25 is correctness-verified
+and not cost-accepted. An inner-join lookup keeps at most 1024 distinct
+keys. `sqlite_stat1` above that stays a scan. 1024 keys still seek, and
+both sizes match pinned SQLite 3.53.1. No AOT sample is recorded.
+
+Item 24 is
 rejected. A hash join is not used. Indexed and unindexed joins without
 `ORDER BY` keep nested-loop row order and match pinned SQLite 3.53.1.
 

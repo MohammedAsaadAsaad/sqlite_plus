@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 25 join lookup is capped
+
+An inner-join probe keeps at most 1024 distinct keys. A larger
+`sqlite_stat1` cardinality stays a scan, and a runtime build past the cap
+scans too. 1024 keys still seek. Both sizes match pinned SQLite 3.53.1. No
+AOT sample is recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 24 hash join rejected
 
 Joins stay nested loops. An indexed inner probe and a comma join without

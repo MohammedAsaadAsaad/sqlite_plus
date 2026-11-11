@@ -606,6 +606,47 @@ void main() {
     }
   });
 
+  test('an inner lookup stops after 1024 distinct keys', () async {
+    Future<void> check(int rows, String planText) async {
+      final db = await MutableSqliteDatabase.create();
+      addTearDown(db.close);
+      await db.execute('CREATE TABLE a(id INTEGER PRIMARY KEY, k INT)');
+      await db.execute('CREATE TABLE b(id INTEGER PRIMARY KEY, k INT)');
+      await db.execute('CREATE INDEX bk ON b(k)');
+      await db.execute('INSERT INTO a VALUES (1, 1), (2, $rows)');
+      final values = [for (var i = 1; i <= rows; i++) '($i, $i)'].join(',');
+      await db.execute('INSERT INTO b(id, k) VALUES $values');
+      await db.execute('ANALYZE');
+      const query =
+          'SELECT a.id AS aid, b.id AS bid FROM a INNER JOIN b ON a.k = b.k '
+          'ORDER BY aid, bid';
+      final plan = await db.query('EXPLAIN QUERY PLAN $query');
+      expect(plan.rows.last[3].toString(), planText, reason: '$rows keys');
+      const pinned = '/tmp/sqlite-build/sqlite3';
+      if (!File(pinned).existsSync()) return;
+      final setup = 'CREATE TABLE a(id INTEGER PRIMARY KEY, k INT); '
+          'CREATE TABLE b(id INTEGER PRIMARY KEY, k INT); '
+          'CREATE INDEX bk ON b(k); '
+          'INSERT INTO a VALUES (1, 1), (2, $rows); '
+          'INSERT INTO b(id, k) VALUES $values;';
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $query;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(query);
+      final expected = jsonDecode(native.stdout.toString()) as List;
+      expect(actual.rows.length, expected.length, reason: '$rows keys');
+      for (var i = 0; i < actual.rows.length; i++) {
+        expect([
+          for (final value in actual.rows[i])
+            value is BigInt ? value.toInt() : value
+        ], (expected[i] as Map).values.toList(), reason: '$rows keys row $i');
+      }
+    }
+
+    await check(1024, 'SEARCH b USING INDEX bk (k=?)');
+    await check(1025, 'SCAN b');
+  });
+
   test('unordered joins keep nested-loop order', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);

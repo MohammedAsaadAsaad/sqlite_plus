@@ -1154,8 +1154,10 @@ extension _RelationalQueries on SqliteDatabase {
             rightMeta.affinity == leftMeta.affinity &&
             rightMeta.collation == leftMeta.collation;
         List<List<RowValues>>? indexGroups;
+        var lookupAbandoned = false;
         Iterable<RowValues> innerRows(RowValues left) {
-          if (indexed == null ||
+          if (lookupAbandoned ||
+              indexed == null ||
               !sameComparison ||
               correlatedVirtual ||
               pragmaSource) {
@@ -1163,6 +1165,10 @@ extension _RelationalQueries on SqliteDatabase {
           }
           final key = '$alias.${indexed.column}';
           indexGroups ??= _equalGroups(right.toList(), key, rightMeta);
+          if (indexGroups == null) {
+            lookupAbandoned = true;
+            return rightFor(left);
+          }
           final hits = <RowValues>[];
           for (final group in indexGroups!) {
             final probe = merge({...left, ...group.first});
