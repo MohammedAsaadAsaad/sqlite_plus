@@ -27,7 +27,13 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 21, broader safe predicate pushdown.** Item 20 is
+**Active item: 22, bounded join-order search.** Item 21 is
+correctness-verified and not cost-accepted. `AND` skips its right side when
+the left side is false, and `OR` skips its right side when the left side is
+true. NULL on the left still evaluates the right side. Constant results match
+pinned SQLite 3.53.1. No AOT sample is recorded.
+
+Item 20 is
 correctness-verified and not cost-accepted. A `sqlite_stat1` value longer
 than 65536 characters is ignored. The invalid-stat test still returns the
 matching row. No loading-time AOT sample is recorded.

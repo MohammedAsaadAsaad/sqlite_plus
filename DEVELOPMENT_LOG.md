@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 21 AND and OR short-circuit
+
+`AND` skips its right side when the left side is false. `OR` skips its right
+side when the left side is true. A NULL left side still evaluates the right
+side. Constant results match pinned SQLite 3.53.1. No AOT sample is recorded,
+so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 20 stat text is bounded at load
 
 A `sqlite_stat1` string longer than 65536 characters is ignored and the

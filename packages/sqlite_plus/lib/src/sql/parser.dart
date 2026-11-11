@@ -406,24 +406,26 @@ final class BinaryExpr extends Expr {
         return boolean(op == 'IS NOT' ? !result : result);
       }
     }
-    var a = left.evaluate(context);
-    var b = right.evaluate(context);
     if (op == 'AND' || op == 'OR') {
-      final aa = truth(a, context.encoding);
-      final bb = truth(b, context.encoding);
+      final aa = truth(left.evaluate(context), context.encoding);
+      if (op == 'AND' && aa == false) return BigInt.zero;
+      if (op == 'OR' && aa == true) return BigInt.one;
+      final bb = truth(right.evaluate(context), context.encoding);
       if (op == 'AND') {
-        return aa == false || bb == false
+        return bb == false
             ? BigInt.zero
             : aa == null || bb == null
                 ? null
                 : BigInt.one;
       }
-      return aa == true || bb == true
+      return bb == true
           ? BigInt.one
           : aa == null || bb == null
               ? null
               : BigInt.zero;
     }
+    var a = left.evaluate(context);
+    var b = right.evaluate(context);
     if (['=', '==', '!=', '<>', '<', '>', '<=', '>=', 'IS', 'IS NOT']
         .contains(op)) {
       final la = left.affinity(context);

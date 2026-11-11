@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -446,6 +447,59 @@ void main() {
         SqlErrorCode.syntax);
     expect((await capture(db.execute("INSERT INTO t VALUES('a')"))).errorCode,
         SqlErrorCode.constraint);
+  });
+
+  test('AND and OR skip the right side once the left side decides', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    var calls = 0;
+    db.functions.registerScalar('probe', 0, (_) {
+      calls++;
+      return 7;
+    });
+    expect((await db.query('SELECT 0 AND probe()')).rows, [
+      [BigInt.zero]
+    ]);
+    expect((await db.query('SELECT 1 OR probe()')).rows, [
+      [BigInt.one]
+    ]);
+    expect(calls, 0);
+    expect((await db.query('SELECT 1 AND probe()')).rows, [
+      [BigInt.one]
+    ]);
+    expect((await db.query('SELECT 0 OR probe()')).rows, [
+      [BigInt.one]
+    ]);
+    expect(calls, 2);
+    expect((await db.query('SELECT NULL AND 0')).rows, [
+      [BigInt.zero]
+    ]);
+    expect((await db.query('SELECT NULL OR 1')).rows, [
+      [BigInt.one]
+    ]);
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (File(pinned).existsSync()) {
+      for (final query in [
+        'SELECT 0 AND 1',
+        'SELECT 1 OR 0',
+        'SELECT NULL AND 0',
+        'SELECT NULL OR 1',
+        'SELECT NULL AND NULL',
+        'SELECT 1 AND 1',
+      ]) {
+        final native =
+            await Process.run(pinned, ['-json', ':memory:', '$query;']);
+        expect(native.exitCode, 0, reason: native.stderr.toString());
+        final actual = await db.query(query);
+        final expected = jsonDecode(native.stdout.toString()) as List;
+        expect(actual.rows.length, expected.length, reason: query);
+        for (var i = 0; i < actual.rows.length; i++) {
+          final left = actual.rows[i].single;
+          final right = (expected[i] as Map).values.single;
+          expect(left is BigInt ? left.toInt() : left, right, reason: query);
+        }
+      }
+    }
   });
 
   test('malformed UTF-8 and UTF-16 records are rejected', () {
