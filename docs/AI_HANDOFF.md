@@ -27,7 +27,13 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 33, safe constant-expression simplification.** Item 32 is
+**Active item: 34, predicate contradictions.** Item 33 is
+correctness-verified and not cost-accepted. A select item, `WHERE`, or
+`HAVING` with no column, parameter, or function is replaced by its value.
+`probe()+1` still calls the probe. Arithmetic and `WHERE 1=0` match pinned
+SQLite 3.53.1. No AOT sample is recorded.
+
+Item 32 is
 correctness-verified and not cost-accepted. `count`, `sum`, `avg`, `total`,
 `min`, and `max` update a running value instead of retaining every input.
 Group rows are kept when a bare column, `HAVING`, or window needs them.

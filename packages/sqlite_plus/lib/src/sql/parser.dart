@@ -571,7 +571,7 @@ final class SelectStatement {
   Expr? having;
   final List<SelectItem> items;
   final String? table;
-  final Expr? where;
+  Expr? where;
   final List<OrderTerm> order;
   final Expr? limit;
   final Expr? offset;

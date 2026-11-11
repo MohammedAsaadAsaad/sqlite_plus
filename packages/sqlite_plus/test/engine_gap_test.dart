@@ -720,6 +720,45 @@ void main() {
     ]);
   });
 
+  test('pure arithmetic folds and functions stay', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY)');
+    await db.execute('INSERT INTO t VALUES (1), (2)');
+    var calls = 0;
+    db.functions.registerScalar('probe', 0, (_) {
+      calls++;
+      return 5;
+    });
+    expect((await db.query('SELECT probe()+1')).rows, [
+      [BigInt.from(6)]
+    ]);
+    expect(calls, 1);
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY); '
+        'INSERT INTO t VALUES (1), (2);';
+    for (final sql in [
+      'SELECT 1+2 AS s, 8/2 AS d, 3*4 AS p',
+      'SELECT id FROM t WHERE 1=0',
+      'SELECT id FROM t WHERE 1=1 ORDER BY id',
+      'SELECT id FROM t WHERE id = 1+1 ORDER BY id',
+    ]) {
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(sql);
+      final text = native.stdout.toString().trim();
+      final expected = text.isEmpty ? const [] : jsonDecode(text) as List;
+      expect([
+        for (final row in actual.rows)
+          [for (final value in row) value is BigInt ? value.toInt() : value]
+      ], [
+        for (final row in expected) (row as Map).values.toList()
+      ], reason: sql);
+    }
+  });
+
   test('plain aggregates stream without changing results', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);

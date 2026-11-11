@@ -1991,6 +1991,7 @@ final class SqliteDatabase {
       _SqlDiagnosticTrace? diagnostics]) async {
     if (_closed) throw StateError('Database is closed');
     final statement = preparedSyntax ?? SqlParser(sql).select();
+    _foldConstants(statement);
     if (parameters.length != statement.parameterCount) {
       throw const SqlException('Incorrect parameter count');
     }
@@ -2124,6 +2125,70 @@ final class SqliteDatabase {
         inputOrdered: scanSatisfiesOrder || scanOrder != null,
         diagnostics: diagnostics);
   }
+
+  /// Replace an expression that has no column, parameter, or function with its
+  /// value. A function stays in place so its side effect still runs.
+  void _foldConstants(SelectStatement statement) {
+    final seen = <SelectStatement>{};
+    void fold(SelectStatement query) {
+      if (!seen.add(query)) return;
+      final encoding = _pager.header.textEncoding;
+      for (var i = 0; i < query.items.length; i++) {
+        final item = query.items[i];
+        final expression = item.expression;
+        if (expression == null) continue;
+        final folded = _foldedLiteral(expression, encoding);
+        if (folded == null) continue;
+        query.items[i] = SelectItem(folded, item.label,
+            explicitAlias: item.explicitAlias,
+            qualifierOffset: item.qualifierOffset);
+      }
+      final where = _foldedLiteral(query.where, encoding);
+      if (where != null) query.where = where;
+      final having = _foldedLiteral(query.having, encoding);
+      if (having != null) query.having = having;
+      for (final source in query.sources) {
+        if (source.query != null) fold(source.query!);
+      }
+      for (final part in query.compounds) {
+        fold(part.$2);
+      }
+      for (final cte in query.ctes.values) {
+        fold(cte.$2);
+      }
+      for (final expr in _expressions(query)) {
+        for (final nested in _nested(expr)) {
+          fold(nested);
+        }
+      }
+    }
+
+    fold(statement);
+  }
+
+  Literal? _foldedLiteral(Expr? expression, int encoding) {
+    if (expression == null ||
+        expression is Literal ||
+        _constantImpure(expression)) {
+      return null;
+    }
+    try {
+      return Literal(expression
+          .evaluate(EvalContext(const {}, const {}, const [], encoding)));
+    } on SqlException {
+      return null;
+    }
+  }
+
+  bool _constantImpure(Expr expression) =>
+      expression is FunctionExpr ||
+      expression is ColumnExpr ||
+      expression is ParameterExpr ||
+      expression is SubqueryExpr ||
+      expression is InSelectExpr ||
+      expression.containsAggregate ||
+      expression.containsWindow ||
+      expression.children.any(_constantImpure);
 
   /// True when [statement] is `MAX` of the integer primary key, false for `MIN`.
   ///

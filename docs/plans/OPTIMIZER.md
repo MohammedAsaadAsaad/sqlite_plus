@@ -42,7 +42,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 30 | Ordered DISTINCT/GROUP BY | Implemented/unaccepted; ordered DISTINCT compares the previous row, and GROUP BY sorts only when a group arrives out of order; no AOT sample |
 | 31 | MIN/MAX/COUNT shortcuts | Implemented/unaccepted; MIN/MAX of an integer primary key read one end; COUNT and filtered MIN stay full reads; no AOT sample |
 | 32 | Streaming aggregation | Implemented/unaccepted; count/sum/avg/total/min/max keep a running value; bare columns still retain the group; no AOT sample |
-| 33 | Safe constant-expression simplification | Queued |
+| 33 | Safe constant-expression simplification | Implemented/unaccepted; pure arithmetic is replaced by its value; functions stay; no AOT sample |
 | 34 | Predicate simplification/contradictions | Queued |
 | 35 | Intermediate projection pruning | Queued |
 | 36 | Broader streaming execution | Queued |
@@ -431,3 +431,12 @@ stores its rows when a bare column, `HAVING`, or window reads them.
 3.53.1, including NULL and `group_concat`. No fresh AOT sample is recorded.
 
 Next is item 33. No package publication.
+
+## Item 33 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. A select item, `WHERE`, or `HAVING` that contains no
+column, parameter, or function is replaced by the value of that expression.
+`probe()+1` still calls the probe. `1+2`, `8/2`, `3*4`, and `WHERE 1=0`
+match pinned SQLite 3.53.1. No fresh AOT sample is recorded.
+
+Next is item 34. No package publication.
