@@ -43,7 +43,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 31 | MIN/MAX/COUNT shortcuts | Implemented/unaccepted; MIN/MAX of an integer primary key read one end; COUNT and filtered MIN stay full reads; no AOT sample |
 | 32 | Streaming aggregation | Implemented/unaccepted; count/sum/avg/total/min/max keep a running value; bare columns still retain the group; no AOT sample |
 | 33 | Safe constant-expression simplification | Implemented/unaccepted; pure arithmetic is replaced by its value; functions stay; no AOT sample |
-| 34 | Predicate simplification/contradictions | Queued |
+| 34 | Predicate simplification/contradictions | Implemented/unaccepted; a false direct-table filter skips the scan; count stays 0; functions still run; no AOT sample |
 | 35 | Intermediate projection pruning | Queued |
 | 36 | Broader streaming execution | Queued |
 | 37 | Safe per-execution common work reuse | Queued |
@@ -440,3 +440,14 @@ column, parameter, or function is replaced by the value of that expression.
 match pinned SQLite 3.53.1. No fresh AOT sample is recorded.
 
 Next is item 34. No package publication.
+
+## Item 34 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. The direct single-table reader skips a scan when
+`WHERE` is a false literal or an `AND` of numeric comparisons with an empty
+range. `count(*)` of that filter is 0. `(a > 1 AND a < 1) OR id = 2` still
+returns id 2. A function inside the filter is not skipped. Results match
+pinned SQLite 3.53.1, and the skipped scan reads fewer pages than
+`count(*)`. No fresh AOT sample is recorded.
+
+Next is item 35. No package publication.

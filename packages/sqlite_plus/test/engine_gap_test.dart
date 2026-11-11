@@ -811,6 +811,56 @@ void main() {
     }
   });
 
+  test('a contradictory filter matches SQLite without a scan', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT)');
+    final values = [for (var i = 1; i <= 4000; i++) '($i, $i)'].join(',');
+    await db.execute('INSERT INTO t VALUES $values');
+    var calls = 0;
+    db.functions.registerScalar('probe', 0, (_) {
+      calls++;
+      return 1;
+    });
+    await db.query('SELECT id FROM t WHERE probe() AND a > 1 AND a < 1');
+    expect(calls, 4000);
+    final image = db.exportImage();
+    final stopped = await SqliteDatabase.openReadOnly(ByteImageStorage(image));
+    addTearDown(stopped.close);
+    final before = stopped.pagesRead;
+    expect((await stopped.query('SELECT id FROM t WHERE a > 1 AND a < 1')).rows,
+        isEmpty);
+    final skippedPages = stopped.pagesRead - before;
+    final full = await SqliteDatabase.openReadOnly(ByteImageStorage(image));
+    addTearDown(full.close);
+    final beforeFull = full.pagesRead;
+    await full.query('SELECT count(*) FROM t');
+    expect(skippedPages, lessThan(full.pagesRead - beforeFull));
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    final setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, a INT); '
+        'INSERT INTO t VALUES $values;';
+    for (final sql in [
+      'SELECT id FROM t WHERE a > 1 AND a < 1',
+      'SELECT count(*) AS n FROM t WHERE a > 1 AND a < 1',
+      'SELECT id FROM t WHERE (a > 1 AND a < 1) OR id = 2',
+      'SELECT id FROM t WHERE a >= 1 AND a <= 1 ORDER BY id',
+    ]) {
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(sql);
+      final text = native.stdout.toString().trim();
+      final expected = text.isEmpty ? const [] : jsonDecode(text) as List;
+      expect([
+        for (final row in actual.rows)
+          [for (final value in row) value is BigInt ? value.toInt() : value]
+      ], [
+        for (final row in expected) (row as Map).values.toList()
+      ], reason: sql);
+    }
+  });
+
   test('MIN and MAX of an integer primary key read one end', () async {
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);

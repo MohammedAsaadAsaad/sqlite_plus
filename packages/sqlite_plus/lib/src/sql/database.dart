@@ -2063,52 +2063,57 @@ final class SqliteDatabase {
           _orderedPrefixLimit(statement, bound, scanSatisfiesOrder);
       if (diagnostics != null) diagnostics.plan = SqlDiagnosticPlan._(plan);
       final primaryExtreme = _primaryKeyExtreme(statement, table);
-      final stream = primaryExtreme == null
-          ? _planRecords(table, plan,
-              where: statement.where,
-              parameters: bound,
-              allowUnqualified: true,
-              alias: statement.sources.singleOrNull?.alias,
-              ftsText: _ftsQueryReadsText(statement, table))
-          : BtreeReader(_pager)
-              .scanTable(table.rootPage, reverse: primaryExtreme);
-      final stored = table.storageColumns;
-      await for (final record in stream) {
-        if (prefixLimit == 0) break;
-        if (record.values.length > stored.length) {
-          throw const FormatException(
-              'More stored columns than catalog columns');
-        }
-        final row = <String, Object?>{};
-        for (var i = 0; i < stored.length; i++) {
-          final column = stored[i];
-          row[asciiLower(column.name)] = table.rowidAlias == column.name
-              ? record.rowId
-              : i < record.values.length
-                  ? record.values[i]
-                  : column.defaultValue;
-        }
-        row.updateAll(
-            (name, value) => value is double && value.isNaN ? null : value);
-        for (final column in columns) {
-          final type = column.declaredType.toUpperCase();
-          final key = asciiLower(column.name);
-          if (!type.contains('INT') &&
-              ['REAL', 'FLOA', 'DOUB'].any(type.contains) &&
-              row[key] is BigInt) {
-            row[key] = (row[key] as BigInt).toDouble();
+      if (_whereIsFalse(statement.where)) {
+        // A proved false filter yields no rows. Aggregates still run on
+        // the empty input below, so count(*) stays 0.
+      } else {
+        final stream = primaryExtreme == null
+            ? _planRecords(table, plan,
+                where: statement.where,
+                parameters: bound,
+                allowUnqualified: true,
+                alias: statement.sources.singleOrNull?.alias,
+                ftsText: _ftsQueryReadsText(statement, table))
+            : BtreeReader(_pager)
+                .scanTable(table.rootPage, reverse: primaryExtreme);
+        final stored = table.storageColumns;
+        await for (final record in stream) {
+          if (prefixLimit == 0) break;
+          if (record.values.length > stored.length) {
+            throw const FormatException(
+                'More stored columns than catalog columns');
           }
-        }
-        if (!table.withoutRowid) {
-          for (final name in ['rowid', '_rowid_', 'oid']) {
-            row.putIfAbsent(name, () => record.rowId);
+          final row = <String, Object?>{};
+          for (var i = 0; i < stored.length; i++) {
+            final column = stored[i];
+            row[asciiLower(column.name)] = table.rowidAlias == column.name
+                ? record.rowId
+                : i < record.values.length
+                    ? record.values[i]
+                    : column.defaultValue;
           }
-        }
-        table.evaluateGenerated(row, _pager.header.textEncoding, lazy: true);
-        input.add(row);
-        if (primaryExtreme != null ||
-            prefixLimit != null && input.length >= prefixLimit) {
-          break;
+          row.updateAll(
+              (name, value) => value is double && value.isNaN ? null : value);
+          for (final column in columns) {
+            final type = column.declaredType.toUpperCase();
+            final key = asciiLower(column.name);
+            if (!type.contains('INT') &&
+                ['REAL', 'FLOA', 'DOUB'].any(type.contains) &&
+                row[key] is BigInt) {
+              row[key] = (row[key] as BigInt).toDouble();
+            }
+          }
+          if (!table.withoutRowid) {
+            for (final name in ['rowid', '_rowid_', 'oid']) {
+              row.putIfAbsent(name, () => record.rowId);
+            }
+          }
+          table.evaluateGenerated(row, _pager.header.textEncoding, lazy: true);
+          input.add(row);
+          if (primaryExtreme != null ||
+              prefixLimit != null && input.length >= prefixLimit) {
+            break;
+          }
         }
       }
     }
@@ -2189,6 +2194,84 @@ final class SqliteDatabase {
       expression.containsAggregate ||
       expression.containsWindow ||
       expression.children.any(_constantImpure);
+
+  /// True when [where] cannot match a row and has no function or parameter.
+  bool _whereIsFalse(Expr? where) {
+    if (where == null || _whereHasCall(where)) return false;
+    return _provesFalse(where);
+  }
+
+  bool _whereHasCall(Expr expression) =>
+      expression is FunctionExpr ||
+      expression is ParameterExpr ||
+      expression is SubqueryExpr ||
+      expression is InSelectExpr ||
+      expression.containsAggregate ||
+      expression.containsWindow ||
+      expression.children.any(_whereHasCall);
+
+  bool _provesFalse(Expr expression) {
+    if (expression is Literal) {
+      return truth(expression.value, _pager.header.textEncoding) == false;
+    }
+    if (expression is BinaryExpr && expression.op == 'OR') {
+      return _provesFalse(expression.left) && _provesFalse(expression.right);
+    }
+    final bounds = <String, _ColumnBound>{};
+    if (!_andBounds(expression, bounds)) return false;
+    return bounds.values.any((bound) => bound.empty);
+  }
+
+  bool _andBounds(Expr expression, Map<String, _ColumnBound> bounds) {
+    if (expression is BinaryExpr && expression.op == 'AND') {
+      return _andBounds(expression.left, bounds) &&
+          _andBounds(expression.right, bounds);
+    }
+    if (expression is Literal) {
+      if (truth(expression.value, _pager.header.textEncoding) == false) {
+        bounds[''] = (_ColumnBound()..empty = true);
+      }
+      return true;
+    }
+    final comparison = _simpleComparison(expression);
+    if (comparison == null) return false;
+    final bound = bounds.putIfAbsent(comparison.$1, _ColumnBound.new);
+    return bound.tighten(
+        comparison.$2, comparison.$3, _pager.header.textEncoding);
+  }
+
+  (String, String, Object?)? _simpleComparison(Expr expression) {
+    if (expression is! BinaryExpr) return null;
+    const ops = {'>', '>=', '<', '<=', '=', '=='};
+    if (!ops.contains(expression.op)) return null;
+    final left = expression.left;
+    final right = expression.right;
+    if (left is CollateExpr || right is CollateExpr) return null;
+    ColumnExpr? column;
+    Literal? literal;
+    var op = expression.op;
+    if (left is ColumnExpr && right is Literal) {
+      column = left;
+      literal = right;
+    } else if (right is ColumnExpr && left is Literal) {
+      column = right;
+      literal = left;
+      op = switch (op) {
+        '>' => '<',
+        '>=' => '<=',
+        '<' => '>',
+        '<=' => '>=',
+        _ => op,
+      };
+    } else {
+      return null;
+    }
+    if (literal.value == null) return null;
+    final name = column.qualifier == null
+        ? column.name
+        : column.name.substring(column.qualifier!.length + 1);
+    return (asciiLower(name), op, literal.value);
+  }
 
   /// True when [statement] is `MAX` of the integer primary key, false for `MIN`.
   ///
@@ -4195,5 +4278,79 @@ final class SqliteDatabase {
       }
     }
     return true;
+  }
+}
+
+class _ColumnBound {
+  Object? lower;
+  var lowerInclusive = false;
+  var hasLower = false;
+  Object? upper;
+  var upperInclusive = false;
+  var hasUpper = false;
+  var empty = false;
+
+  bool tighten(String op, Object? value, int encoding) {
+    if (empty) return true;
+    switch (op) {
+      case '=':
+      case '==':
+        return _raise(value, true, encoding) && _cap(value, true, encoding);
+      case '>':
+        return _raise(value, false, encoding);
+      case '>=':
+        return _raise(value, true, encoding);
+      case '<':
+        return _cap(value, false, encoding);
+      case '<=':
+        return _cap(value, true, encoding);
+      default:
+        return false;
+    }
+  }
+
+  bool _raise(Object? value, bool inclusive, int encoding) {
+    if (hasLower && !_boundType(lower, value)) return false;
+    if (!hasLower ||
+        compareValues(value, lower, encoding) > 0 ||
+        (compareValues(value, lower, encoding) == 0 &&
+            lowerInclusive &&
+            !inclusive)) {
+      lower = value;
+      lowerInclusive = inclusive;
+      hasLower = true;
+    }
+    return _check(encoding);
+  }
+
+  bool _cap(Object? value, bool inclusive, int encoding) {
+    if (hasUpper && !_boundType(upper, value)) return false;
+    if (!hasUpper ||
+        compareValues(value, upper, encoding) < 0 ||
+        (compareValues(value, upper, encoding) == 0 &&
+            upperInclusive &&
+            !inclusive)) {
+      upper = value;
+      upperInclusive = inclusive;
+      hasUpper = true;
+    }
+    return _check(encoding);
+  }
+
+  bool _check(int encoding) {
+    if (hasLower && hasUpper && !_boundType(lower, upper)) return false;
+    if (!hasLower || !hasUpper) return true;
+    final comparison = compareValues(lower, upper, encoding);
+    if (comparison > 0 ||
+        (comparison == 0 && (!lowerInclusive || !upperInclusive))) {
+      empty = true;
+    }
+    return true;
+  }
+
+  bool _boundType(Object? a, Object? b) {
+    final numeric = a is num || a is BigInt;
+    if (numeric) return b is num || b is BigInt;
+    return a is String && b is String;
   }
 }

@@ -27,7 +27,15 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 34, predicate contradictions.** Item 33 is
+**Active item: 35, intermediate projection pruning.** Item 34 is
+correctness-verified and not cost-accepted. A direct single-table `WHERE`
+that is a false literal, or an `AND` of comparisons with an empty numeric
+range, skips the scan. `count(*)` on that filter is 0. An `OR` keeps the
+other side. A function in the filter still runs. Results match pinned
+SQLite 3.53.1. The skipped scan reads fewer pages than `count(*)`. No AOT
+sample is recorded.
+
+Item 33 is
 correctness-verified and not cost-accepted. A select item, `WHERE`, or
 `HAVING` with no column, parameter, or function is replaced by its value.
 `probe()+1` still calls the probe. Arithmetic and `WHERE 1=0` match pinned
