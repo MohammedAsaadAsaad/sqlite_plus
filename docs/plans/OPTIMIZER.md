@@ -20,7 +20,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 8 | Safe early termination | Accepted for ordered LIMIT/OFFSET with no WHERE; filtered control median 1.0146 overlaps |
 | 9 | Partial/block sorting | Correctness verified for a unique key tail and an index-prefix block sort; cost not yet separated |
 | 10 | Table/index/lookup/sort cost comparison | Implemented/unaccepted; non-covering full-index visits stay on the table scan; no AOT sample |
-| 11 | Broader covering-index reads and costing | Queued |
+| 11 | Broader covering-index reads and costing | Implemented/unaccepted; equal-estimate ties prefer order, then covering; no AOT sample |
 | 12 | Composite equality/range/order planning | Queued |
 | 13 | Partial/expression index eligibility | Queued |
 | 14 | IN/OR multiple-seek/union paths | Queued |
@@ -212,3 +212,16 @@ plans, and order-providing indexes stay. `planner_statistics_test` matches
 stat is set to `1000 1000`. No fresh AOT sample is recorded.
 
 Next is item 11. No package publication.
+
+## Item 11 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. When two secondary indexes have the same `sqlite_stat1`
+estimate, including when neither has statistics, the planner prefers the index
+that already yields `ORDER BY`, then a covering index, then a longer ordered
+prefix, then the previous score. A lower estimate still wins, so a selective
+non-covering lookup is not replaced by a wider covering index. `SELECT a, b
+FROM t WHERE a = 1` and `SELECT a, b FROM t WHERE a = 1 ORDER BY b` now use
+covering index `iab`. `index_order_test` matches pinned SQLite 3.53.1. No
+fresh AOT sample is recorded.
+
+Next is item 12. No package publication.

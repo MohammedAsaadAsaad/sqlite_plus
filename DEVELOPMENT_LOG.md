@@ -1,5 +1,15 @@
 # Development log
 
+## 2026-11-11 — Item 11 covering index wins an equal-estimate tie
+
+When two secondary indexes have the same `sqlite_stat1` estimate, or neither
+has statistics, the planner prefers the index that already yields `ORDER BY`,
+then a covering index, then a longer ordered prefix, then the previous score.
+A lower estimate still selects the more selective index. `SELECT a, b FROM t
+WHERE a = 1` and `ORDER BY b` on that filter use covering index `iab`. Pinned
+SQLite 3.53.1 matches the compared queries. No AOT sample is recorded, so this
+is not a cost acceptance.
+
 ## 2026-11-11 — Item 10 table scan beats a non-selective index lookup
 
 When `sqlite_stat1` says a non-covering index visits at least every table row,

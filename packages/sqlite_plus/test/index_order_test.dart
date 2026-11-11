@@ -78,6 +78,7 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
       'SELECT b, id FROM t ORDER BY b DESC, id',
       'SELECT b, id FROM t ORDER BY b COLLATE NOCASE, id',
       'SELECT b, id FROM t ORDER BY b COLLATE binary, id',
+      'SELECT a, b FROM t WHERE a = 1',
       'SELECT a FROM t WHERE a = 1 ORDER BY b',
       'SELECT a, b FROM t WHERE a = 1 ORDER BY b DESC',
       'SELECT a FROM t NOT INDEXED ORDER BY a',
@@ -134,7 +135,16 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
         isTrue);
     expect(
         reader.explain('SELECT a, b FROM t WHERE a = 1 ORDER BY b').indexName,
-        'ia');
+        'iab');
+    expect(reader.explain('SELECT a, b FROM t WHERE a = 1 ORDER BY b').covering,
+        isTrue);
+    expect(
+        reader
+            .explain('SELECT a, b FROM t WHERE a = 1 ORDER BY b')
+            .scanSatisfiesOrder,
+        isTrue);
+    expect(reader.explain('SELECT a, b FROM t WHERE a = 1').indexName, 'iab');
+    expect(reader.explain('SELECT a, b FROM t WHERE a = 1').covering, isTrue);
     expect(
         reader
             .explain('SELECT a, b FROM t INDEXED BY iab WHERE a = 1 ORDER BY b')
