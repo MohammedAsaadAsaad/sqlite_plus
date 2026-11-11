@@ -1,5 +1,13 @@
 # Development log
 
+## 2026-11-11 — Item 34 false filters skip the scan
+
+A direct single-table query whose `WHERE` is a false literal, or an `AND`
+of numeric comparisons with an empty range, does not scan the table.
+`count(*)` stays 0, an `OR` keeps its other side, and a function in the
+filter still runs. Results match pinned SQLite 3.53.1. No AOT sample is
+recorded, so this is not a cost acceptance.
+
 ## 2026-11-11 — Item 33 pure arithmetic folds
 
 A select item, `WHERE`, or `HAVING` with no column, parameter, or function
