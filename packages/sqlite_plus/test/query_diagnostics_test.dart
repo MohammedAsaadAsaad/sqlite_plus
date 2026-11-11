@@ -251,6 +251,22 @@ void main() {
     ]);
   });
   test(
+      'support validation walks long scalar expressions without changing evaluation',
+      () async {
+    final where = List.filled(128, 'n>=0').join(' AND ');
+    final sql = 'SELECT id FROM t WHERE $where LIMIT 2';
+    final report = await reader.diagnoseQuery(sql);
+    expect(report.result.rows, (await reader.query(sql)).rows);
+    expect(report.rowsVisited, 2);
+    expect(
+        (await reader.diagnoseQuery('SELECT min(n,3) FROM t WHERE id=1'))
+            .result
+            .rows,
+        [
+          [BigInt.one]
+        ]);
+  });
+  test(
       'DISTINCT, unlimited and small-capacity strategies retain normal results',
       () async {
     for (final sql in [

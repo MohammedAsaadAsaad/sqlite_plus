@@ -5,8 +5,9 @@ import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:sqlite_plus_inspector/sqlite_plus_inspector.dart';
 
 final class ReadSample {
-  ReadSample(this.result, [this.metadata]);
+  ReadSample(this.result, this.durationUs, [this.metadata]);
   final QueryResult result;
+  final int durationUs;
   final Map<String, Object?> Function()? metadata;
 }
 
@@ -78,10 +79,8 @@ Future<void> workload(List<String> args, Reader run) async {
       _ => <Object?>[0, 100],
     };
     final pageStart = pager?.pagesRead;
-    final clock = Stopwatch()..start();
     final sample = await run(db, sql, params, enabled, capacity);
-    clock.stop();
-    queryUs += clock.elapsedMicroseconds;
+    queryUs += sample.durationUs;
     returned += sample.result.rows.length;
     hashes.add(
         sha256.convert(utf8.encode(sample.result.rows.toString())).toString());

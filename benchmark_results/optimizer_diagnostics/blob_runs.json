@@ -1,0 +1,302 @@
+[
+  {
+    "adapter": "reader",
+    "enabled": false,
+    "duration_us": 7337,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 30859264,
+    "label": "baseline-off",
+    "trial": 0
+  },
+  {
+    "adapter": "reader",
+    "enabled": false,
+    "duration_us": 8205,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 30842880,
+    "label": "linked-off",
+    "trial": 0
+  },
+  {
+    "adapter": "reader",
+    "enabled": true,
+    "duration_us": 15029,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 44871680,
+    "label": "diagnostic-on",
+    "trial": 0
+  },
+  {
+    "adapter": "reader",
+    "enabled": false,
+    "duration_us": 10615,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31023104,
+    "label": "linked-off",
+    "trial": 1
+  },
+  {
+    "adapter": "reader",
+    "enabled": true,
+    "duration_us": 15149,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 44859392,
+    "label": "diagnostic-on",
+    "trial": 1
+  },
+  {
+    "adapter": "reader",
+    "enabled": false,
+    "duration_us": 5566,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 30695424,
+    "label": "baseline-off",
+    "trial": 1
+  },
+  {
+    "adapter": "reader",
+    "enabled": true,
+    "duration_us": 12887,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 44961792,
+    "label": "diagnostic-on",
+    "trial": 2
+  },
+  {
+    "adapter": "reader",
+    "enabled": false,
+    "duration_us": 5647,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 30912512,
+    "label": "baseline-off",
+    "trial": 2
+  },
+  {
+    "adapter": "reader",
+    "enabled": false,
+    "duration_us": 6635,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 30818304,
+    "label": "linked-off",
+    "trial": 2
+  },
+  {
+    "adapter": "reader",
+    "enabled": false,
+    "duration_us": 5491,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 30801920,
+    "label": "baseline-off",
+    "trial": 3
+  },
+  {
+    "adapter": "reader",
+    "enabled": false,
+    "duration_us": 12677,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31047680,
+    "label": "linked-off",
+    "trial": 3
+  },
+  {
+    "adapter": "reader",
+    "enabled": true,
+    "duration_us": 11528,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 44879872,
+    "label": "diagnostic-on",
+    "trial": 3
+  },
+  {
+    "adapter": "reader",
+    "enabled": false,
+    "duration_us": 5458,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 30871552,
+    "label": "linked-off",
+    "trial": 4
+  },
+  {
+    "adapter": "reader",
+    "enabled": true,
+    "duration_us": 14812,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 45047808,
+    "label": "diagnostic-on",
+    "trial": 4
+  },
+  {
+    "adapter": "reader",
+    "enabled": false,
+    "duration_us": 4608,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 30683136,
+    "label": "baseline-off",
+    "trial": 4
+  },
+  {
+    "adapter": "mutable",
+    "enabled": false,
+    "duration_us": 5000,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31526912,
+    "label": "baseline-off",
+    "trial": 0
+  },
+  {
+    "adapter": "mutable",
+    "enabled": false,
+    "duration_us": 5247,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31416320,
+    "label": "linked-off",
+    "trial": 0
+  },
+  {
+    "adapter": "mutable",
+    "enabled": true,
+    "duration_us": 19535,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 45379584,
+    "label": "diagnostic-on",
+    "trial": 0
+  },
+  {
+    "adapter": "mutable",
+    "enabled": false,
+    "duration_us": 5763,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31465472,
+    "label": "linked-off",
+    "trial": 1
+  },
+  {
+    "adapter": "mutable",
+    "enabled": true,
+    "duration_us": 19761,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 45436928,
+    "label": "diagnostic-on",
+    "trial": 1
+  },
+  {
+    "adapter": "mutable",
+    "enabled": false,
+    "duration_us": 5081,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31535104,
+    "label": "baseline-off",
+    "trial": 1
+  },
+  {
+    "adapter": "mutable",
+    "enabled": true,
+    "duration_us": 20809,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 45359104,
+    "label": "diagnostic-on",
+    "trial": 2
+  },
+  {
+    "adapter": "mutable",
+    "enabled": false,
+    "duration_us": 4971,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31391744,
+    "label": "baseline-off",
+    "trial": 2
+  },
+  {
+    "adapter": "mutable",
+    "enabled": false,
+    "duration_us": 6309,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31596544,
+    "label": "linked-off",
+    "trial": 2
+  },
+  {
+    "adapter": "mutable",
+    "enabled": false,
+    "duration_us": 5824,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31723520,
+    "label": "baseline-off",
+    "trial": 3
+  },
+  {
+    "adapter": "mutable",
+    "enabled": false,
+    "duration_us": 5170,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31408128,
+    "label": "linked-off",
+    "trial": 3
+  },
+  {
+    "adapter": "mutable",
+    "enabled": true,
+    "duration_us": 21920,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 45309952,
+    "label": "diagnostic-on",
+    "trial": 3
+  },
+  {
+    "adapter": "mutable",
+    "enabled": false,
+    "duration_us": 4989,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31428608,
+    "label": "linked-off",
+    "trial": 4
+  },
+  {
+    "adapter": "mutable",
+    "enabled": true,
+    "duration_us": 20281,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 45330432,
+    "label": "diagnostic-on",
+    "trial": 4
+  },
+  {
+    "adapter": "mutable",
+    "enabled": false,
+    "duration_us": 5022,
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "peak_rss": 31649792,
+    "label": "baseline-off",
+    "trial": 4
+  }
+]

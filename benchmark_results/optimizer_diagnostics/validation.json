@@ -1,7 +1,7 @@
 {
   "date": "2026-11-11",
   "accepted": false,
-  "status": "implemented/unaccepted: final AOT OFF/ON performance/cost matrix pending",
+  "status": "implemented/unaccepted: AOT matrix completed; persistent OFF median increases under investigation",
   "checks": [
     {
       "suite": "core_full",
@@ -18,9 +18,14 @@
     {
       "suite": "inspector_final",
       "result": "00:05 +55: All tests passed!"
+    },
+    {
+      "suite": "linear_guard_focused_native_and_full_inspector",
+      "result": "69 passed; full core 10718 pass preceded diagnostic-only linear guard refinement"
     }
   ],
   "native_result_comparisons": 144,
-  "vm_js_example": "passed before brace-only example formatting; rerun before final acceptance",
-  "note": "Source-only and focused tests are not performance/cost acceptance."
+  "vm_js_example": "passed after final linear support-guard refinement",
+  "note": "Source-only and focused tests are not performance/cost acceptance.",
+  "aot": "165 primary samples + unused controls + 20-sample flagged-control follow-up + separate BLOB probe; see README"
 }

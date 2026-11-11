@@ -196,19 +196,24 @@ final class _SqlDiagnosticTrace {
 }
 
 bool _unsupportedDiagnosticExpression(Expr expression) {
-  if (expression is SubqueryExpr ||
-      expression is InSelectExpr ||
-      expression.containsAggregate ||
-      expression.containsWindow) {
-    return true;
+  final pending = <Expr>[expression];
+  while (pending.isNotEmpty) {
+    final node = pending.removeLast();
+    if (node is SubqueryExpr ||
+        node is InSelectExpr ||
+        node is WindowExpr ||
+        node is FunctionExpr && node.isAggregate) {
+      return true;
+    }
+    // Empty IN intentionally hides its operand from evaluation children.
+    if (node is InExpr) {
+      pending.add(node.operand);
+      pending.addAll(node.values);
+    } else {
+      pending.addAll(node.children);
+    }
   }
-  // Empty IN has no children for evaluation purposes; still inspect its operand
-  // when deciding the supported diagnostic boundary.
-  if (expression is InExpr) {
-    return _unsupportedDiagnosticExpression(expression.operand) ||
-        expression.values.any(_unsupportedDiagnosticExpression);
-  }
-  return expression.children.any(_unsupportedDiagnosticExpression);
+  return false;
 }
 
 extension SqlReadDiagnostics on SqliteDatabase {

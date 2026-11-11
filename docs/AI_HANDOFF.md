@@ -4,6 +4,33 @@ Checkpoint: 2026-11-11. This document is the continuation entry point; no prior
 chat, original execution machine, credentials or preserved `/tmp` directory is
 required. Read the current GitHub branch/PR and CI before making new claims.
 
+## Latest cost checkpoint — investigate before acceptance
+
+Item 3 remains **unaccepted**. The first AOT matrix (165 processes), unused
+controls and expanded follow-up are committed under
+`benchmark_results/optimizer_diagnostics/`; read its README and all raw JSON.
+After 20 samples per variant, unused-read median is **+5.81%**, mutable-point
+**+8.44%**; point-reader **-0.54%**, 100k-sort **+0.12%**. Overlapping ranges
+are not evidence of no regression. No item 6 work is authorized until item 3's
+acceptance gates are resolved. Do not rewrite this evidence as passed.
+
+The diagnostic support-expression guard now uses a linear iterative walk;
+69 focused/native/Inspector tests and the VM/JS example passed afterward.
+The full core 10,718 pass preceded this diagnostic-only guard refinement.
+The benchmark driver now times APIs consistently and serializes metadata after
+timing. Current source hashes/reverse patch match the linear guard candidate.
+
+Next: inspect `blob_summary.json`; investigate the remaining OFF signals using
+isolated same-source AOT controls. Any common evaluator change requires full
+core/add-on regressions, refreshed reverse patches/source hashes, and final-source
+AOT measurements. Archive this candidate's evidence before replacing it. Consider
+whether optional counted iterable types affect AOT specialization, and whether
+redundant BLOB binding snapshots can safely be reduced; these are hypotheses,
+not approved or implemented fixes. Preserve pre-await snapshot/lifetime tests.
+Then update `validation.json`, all roadmap/docs, handoff, and upload the completed
+item immediately to PR #44 before starting item 6. Keep draft/unaccepted if costs
+remain unresolved. Reproduction commands are in the evidence README.
+
 ## 1. Get the actual work
 
 Repository: https://github.com/MohammedAsaadAsaad/sqlite_plus

@@ -1,0 +1,66 @@
+[
+  {
+    "name": "unused-read",
+    "before": {
+      "samples": 20,
+      "median_ms": 36.693,
+      "min_ms": 34.05,
+      "max_ms": 80.124
+    },
+    "after": {
+      "samples": 20,
+      "median_ms": 38.824,
+      "min_ms": 35.385,
+      "max_ms": 50.055
+    },
+    "after_over_before": 1.0580764723516747
+  },
+  {
+    "name": "linked-point-reader",
+    "baseline-off": {
+      "samples": 20,
+      "median_ms": 48.7395,
+      "min_ms": 39.375,
+      "max_ms": 69.048
+    },
+    "linked-off": {
+      "samples": 20,
+      "median_ms": 48.474500000000006,
+      "min_ms": 43.255,
+      "max_ms": 64.615
+    },
+    "after_over_before": 0.9945629315031957
+  },
+  {
+    "name": "linked-point-mutable",
+    "baseline-off": {
+      "samples": 20,
+      "median_ms": 4.497,
+      "min_ms": 3.634,
+      "max_ms": 7.979
+    },
+    "linked-off": {
+      "samples": 20,
+      "median_ms": 4.8765,
+      "min_ms": 3.803,
+      "max_ms": 13.819
+    },
+    "after_over_before": 1.0843895930620413
+  },
+  {
+    "name": "linked-large-sort",
+    "baseline-off": {
+      "samples": 20,
+      "median_ms": 1326.0005,
+      "min_ms": 1179.083,
+      "max_ms": 1581.27
+    },
+    "linked-off": {
+      "samples": 20,
+      "median_ms": 1327.626,
+      "min_ms": 1195.809,
+      "max_ms": 1444.786
+    },
+    "after_over_before": 1.0012258668077425
+  }
+]

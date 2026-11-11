@@ -1,0 +1,48 @@
+[
+  {
+    "adapter": "reader",
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "baseline-off": {
+      "samples": 5,
+      "median_ms": 5.566,
+      "min_ms": 4.608,
+      "max_ms": 7.337
+    },
+    "linked-off": {
+      "samples": 5,
+      "median_ms": 8.205,
+      "min_ms": 5.458,
+      "max_ms": 12.677
+    },
+    "diagnostic-on": {
+      "samples": 5,
+      "median_ms": 14.812,
+      "min_ms": 11.528,
+      "max_ms": 15.149
+    }
+  },
+  {
+    "adapter": "mutable",
+    "calls": 20,
+    "blob_bytes": 1048576,
+    "baseline-off": {
+      "samples": 5,
+      "median_ms": 5.022,
+      "min_ms": 4.971,
+      "max_ms": 5.824
+    },
+    "linked-off": {
+      "samples": 5,
+      "median_ms": 5.247,
+      "min_ms": 4.989,
+      "max_ms": 6.309
+    },
+    "diagnostic-on": {
+      "samples": 5,
+      "median_ms": 20.281,
+      "min_ms": 19.535,
+      "max_ms": 21.92
+    }
+  }
+]

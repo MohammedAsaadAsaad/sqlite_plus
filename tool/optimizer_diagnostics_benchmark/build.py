@@ -25,7 +25,7 @@ for label in ['before','after']:
     command=['dart','compile','exe']
     if label=='before':command+=['--packages='+str(config_path)]
     subprocess.run([*command,'tool/optimizer_diagnostics_benchmark/'+label+'.dart','-o','/tmp/diagnostic-'+label],check=True)
-    for source,suffix in [('tool/prepared_benchmark/ordinary.dart','ordinary'),('tool/prepared_benchmark/orm_ordinary.dart','orm'),('tool/optimizer_benchmark/update_probe.dart','update')]:
+    for source,suffix in [(f'tool/optimizer_diagnostics_benchmark/blob_{label}.dart','blob'),('tool/prepared_benchmark/ordinary.dart','ordinary'),('tool/prepared_benchmark/orm_ordinary.dart','orm'),('tool/optimizer_benchmark/update_probe.dart','update')]:
         subprocess.run([*command,source,'-o','/tmp/diagnostic-'+suffix+'-'+label],check=True)
 images=[]
 for rows,indexes in [(1000,0),(10000,0),(100000,0),(1000,32)]:
