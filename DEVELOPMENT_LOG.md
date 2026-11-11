@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 36 unordered LIMIT stops the scan
+
+A direct table scan with `LIMIT` and no `WHERE` or `ORDER BY` stops after
+`OFFSET + LIMIT`. A filtered limit still reads matching rows. Results match
+pinned SQLite 3.53.1. No AOT sample is recorded, so this is not a cost
+acceptance.
+
 ## 2026-11-11 — Item 35 unused derived columns become NULL
 
 A derived query that is not flattened replaces an unused bare column with
