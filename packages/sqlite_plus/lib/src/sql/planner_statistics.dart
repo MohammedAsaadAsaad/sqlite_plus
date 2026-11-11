@@ -96,6 +96,15 @@ final class PlannerStatistics {
 
   double? rowCount(String tableName) => _tables[asciiLower(tableName)];
 
+  /// Index cardinality from `sqlite_stat1`, used when the table row is absent.
+  double? indexEntries(String tableName, String indexName) {
+    final statistic = _indexes[asciiLower(indexName)];
+    if (statistic == null || statistic.table != asciiLower(tableName)) {
+      return null;
+    }
+    return statistic.rows.first;
+  }
+
   double? estimate(String tableName, String indexName,
       {required int columns,
       required int equalities,

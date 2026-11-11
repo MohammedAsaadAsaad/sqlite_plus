@@ -714,6 +714,33 @@ final class SqliteDatabase {
               equalities: prefix.length - (range ? 1 : 0),
               rangeBounds: rangeBounds,
               unique: definition.$5);
+          final names = [
+            for (final column in definition.$1) asciiLower(column)
+          ];
+          final covered = names.every((name) => name.isNotEmpty) &&
+              _coveredByIndex(statement, table, names);
+          final orderPrefix = satisfies
+              ? 0
+              : _forwardIndexOrderPrefix(
+                  statement, table, indexDefinition, equalityPrefix);
+          final counted = _statistics.rowCount(table.name);
+          final indexed = _statistics.indexEntries(table.name, entry.name);
+          final tableRows =
+              counted ?? (indexed != null && indexed > 0 ? indexed : null);
+          if (estimate != null &&
+              tableRows != null &&
+              estimate >= tableRows &&
+              !satisfies &&
+              orderPrefix == 0 &&
+              !covered) {
+            diagnostics?.record(
+                range ? 'secondary-index-range' : 'secondary-index-lookup',
+                'not-cheaper-than-table-scan',
+                index: entry.name,
+                estimate: estimate,
+                eligible: false);
+            continue;
+          }
           final ordinal = diagnostics?.record(
               range ? 'secondary-index-range' : 'secondary-index-lookup',
               estimate == null ? 'prefix-heuristic' : 'STAT1-assisted-estimate',
@@ -731,15 +758,6 @@ final class SqliteDatabase {
             diagnostics?.select(ordinal!, estimate);
             bestScore = score;
             bestEstimate = estimate;
-            final names = [
-              for (final column in definition.$1) asciiLower(column)
-            ];
-            final covered = names.every((name) => name.isNotEmpty) &&
-                _coveredByIndex(statement, table, names);
-            final orderPrefix = satisfies
-                ? 0
-                : _forwardIndexOrderPrefix(
-                    statement, table, indexDefinition, equalityPrefix);
             best = QueryPlan._indexed(entry.rootPage, access,
                 range ? 'secondary-index-range' : 'secondary-index-lookup',
                 covering: covered,
