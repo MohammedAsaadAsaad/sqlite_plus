@@ -1,5 +1,13 @@
 # Development log
 
+## 2026-11-11 — Item 15 WITHOUT ROWID secondary index seeks
+
+A `WITHOUT ROWID` table can seek a secondary index for an equality or range
+prefix. The primary tree is not selected for that path, because its reader
+still walks the full tree. `NOT INDEXED` remains an `index-tree-scan`. Pinned
+SQLite 3.53.1 matches the comparisons. No AOT sample is recorded, so this is
+not a cost acceptance.
+
 ## 2026-11-11 — Item 14 constant IN and same-column OR seeks
 
 A rowid table seeks a secondary index once per distinct non-null constant when

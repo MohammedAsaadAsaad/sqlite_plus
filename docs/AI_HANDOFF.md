@@ -27,12 +27,17 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 15, WITHOUT ROWID access planning.** Item 14 is
-correctness-verified and not cost-accepted. A rowid table seeks a secondary
-index once per distinct non-null constant in a leading `IN` list or a
-same-column `OR` of equalities. `NOT IN`, NULL-only lists, mixed-column `OR`,
-subqueries, and lists longer than 32 keep the previous path. Pinned SQLite
-3.53.1 matches the comparisons. No AOT sample is recorded yet.
+**Active item: 16, intersection and skip-scan evaluation.** Item 15 is
+correctness-verified and not cost-accepted. A `WITHOUT ROWID` table can seek
+a secondary index for an equality or range prefix. The primary tree is not
+reported as that seek. `NOT INDEXED` stays an `index-tree-scan`. Pinned
+SQLite 3.53.1 matches the comparisons. No AOT sample is recorded yet.
+
+Item 14 is correctness-verified and not cost-accepted. A rowid table seeks a
+secondary index once per distinct non-null constant in a leading `IN` list or
+a same-column `OR` of equalities. `NOT IN`, NULL-only lists, mixed-column
+`OR`, subqueries, and lists longer than 32 keep the previous path. Pinned
+SQLite 3.53.1 matches the comparisons. No AOT sample is recorded yet.
 
 Item 13 is correctness-verified and not cost-accepted. An automatic plan may
 use a partial index when a numeric comparison is stronger than the index

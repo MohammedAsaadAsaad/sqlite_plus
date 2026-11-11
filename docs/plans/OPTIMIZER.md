@@ -24,7 +24,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 12 | Composite equality/range/order planning | Implemented/unaccepted; inclusive BETWEEN becomes index bounds; no AOT sample |
 | 13 | Partial/expression index eligibility | Implemented/unaccepted; stronger numeric bounds prove a partial predicate for automatic plans; no AOT sample |
 | 14 | IN/OR multiple-seek/union paths | Implemented/unaccepted; constant IN and same-column OR seek each value; no AOT sample |
-| 15 | WITHOUT ROWID access planning | Queued |
+| 15 | WITHOUT ROWID access planning | Implemented/unaccepted; secondary equality and range seeks; primary tree is not pretended to be a seek; no AOT sample |
 | 16 | Evaluate intersection and skip-scan | Queued |
 | 17 | Improve STAT1 estimates | Queued |
 | 18 | Evaluate skew-aware/STAT4 samples | Queued |
@@ -260,3 +260,14 @@ residual filter still applies. Results match pinned SQLite 3.53.1, including
 duplicate `IN` values and an extra `AND`. No fresh AOT sample is recorded.
 
 Next is item 15. No package publication.
+
+## Item 15 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. A `WITHOUT ROWID` table can use a secondary index for
+an equality or range prefix. The table's own primary tree is not selected as
+that seek, because reading it still walks the full primary index. `NOT
+INDEXED` remains an `index-tree-scan`. `WHERE a = 10`, `a > 10 AND a < 30`,
+`id = 2`, and `NOT INDEXED` match pinned SQLite 3.53.1. No fresh AOT sample
+is recorded.
+
+Next is item 16. No package publication.
