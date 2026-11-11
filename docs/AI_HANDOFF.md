@@ -27,9 +27,41 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Next: item6 — index-order reuse.** First inspect PR #44's current head/CI and
-resolve any relevant CI failure. This completed item must be uploaded with this
-handoff before starting item6. Do not auto-merge main or publish packages.
+**Active item: 6, index-order reuse. Partial and unaccepted.** The direct
+single-table reader can keep a forward primary or index order and can scan a
+covering index when the primary tree does not already supply that order.
+Descending reversal, aliases, qualified names, non-covering order-only scans,
+and unproved partial or expression indexes still sort. Preliminary 20,000-row
+AOT medians: covering index order 0.752 with non-overlapping ranges; rowid
+0.962; plain sort 0.988; non-covering order 1.035; 200 updates 1.041. The last
+three ranges overlap, which is not a zero-cost result. Evidence:
+`benchmark_results/optimizer_index_order/`. Do not start item 7, merge main, or
+publish packages.
+
+Repeat, from a clean checkout of this item's branch:
+
+`python3 tool/verify_optimizer_handoff.py` now fails on
+`packages/sqlite_plus/lib/src/sql/database.dart` because this item edits that
+file. Leave the item 3 source manifest unchanged. Re-run the verifier on
+`8ae5144` to confirm the accepted diagnostic source.
+
+```sh
+git fetch origin
+git switch feature/optimizer-index-order-20261111
+git worktree add --detach /tmp/opt-item3-verify 8ae5144
+python3 /tmp/opt-item3-verify/tool/verify_optimizer_handoff.py
+git worktree remove /tmp/opt-item3-verify
+# Rebuild /tmp/sqlite-build/sqlite3 only if the pinned 3.53.1 binary is absent.
+cd packages/sqlite_plus && dart test
+cd ../..
+# Rebuild both AOT probes against the item 3 baseline and this tree, then:
+python3 tool/optimizer_benchmark/index_order_cost.py \
+  /tmp/index-order-baseline.exe /tmp/index-order-candidate.exe \
+  20000 8 benchmark_results/optimizer_index_order/preliminary.json
+```
+
+Archive `preliminary.json` before replacing it. Acceptance still needs wider row
+counts and a decision on the update and non-covering medians.
 
 ## CI inspection, 2026-11-11
 

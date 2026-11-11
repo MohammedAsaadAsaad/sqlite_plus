@@ -1,5 +1,18 @@
 # Development log
 
+## 2026-11-11 — Item 6 partial, unaccepted index-order checkpoint
+
+Direct single-table forward scans can skip a later sort when the chosen tree
+already yields `ORDER BY`. A covering index can be selected for that order when
+the primary scan does not. Descending reversal, aliases, qualified names,
+non-covering order-only scans, and unproved partial or expression indexes still
+sort. `index_order_test` matches pinned SQLite 3.53.1. Preliminary 20,000-row
+AOT median ratios: covering order 0.752 (ranges do not overlap), rowid 0.962,
+plain sort 0.988, non-covering order 1.035, 200 updates 1.041. The last three
+ranges overlap and are not a zero-cost result. This is not an acceptance and
+not a compatibility-matrix claim. Raw rows stay in
+`benchmark_results/optimizer_index_order/preliminary.json`.
+
 ## 2026-11-11 — Item3 measured local acceptance and immediate upload
 
 Completed final-source core10719/optional skip1, Inspector55, focused/native14

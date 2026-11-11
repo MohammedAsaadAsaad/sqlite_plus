@@ -1,0 +1,613 @@
+{
+  "rows": 20000,
+  "pairs": 8,
+  "summary": {
+    "index": {
+      "baseline_median_us": 203923.5,
+      "candidate_median_us": 153348.5,
+      "median_ratio_candidate_over_baseline": 0.7519903297069734,
+      "checksums": [
+        20001
+      ],
+      "samples": 8
+    },
+    "rowid": {
+      "baseline_median_us": 152448.5,
+      "candidate_median_us": 146652.0,
+      "median_ratio_candidate_over_baseline": 0.9619773234895719,
+      "checksums": [
+        20001
+      ],
+      "samples": 8
+    },
+    "sort": {
+      "baseline_median_us": 289352.5,
+      "candidate_median_us": 285987.5,
+      "median_ratio_candidate_over_baseline": 0.9883705860498873,
+      "checksums": [
+        666895546
+      ],
+      "samples": 8
+    },
+    "update": {
+      "baseline_median_us": 16274273.5,
+      "candidate_median_us": 16940511.5,
+      "median_ratio_candidate_over_baseline": 1.0409381100790767,
+      "checksums": [
+        200
+      ],
+      "samples": 8
+    },
+    "wide": {
+      "baseline_median_us": 218404.5,
+      "candidate_median_us": 225957.5,
+      "median_ratio_candidate_over_baseline": 1.0345826207793338,
+      "checksums": [
+        20000
+      ],
+      "samples": 8
+    }
+  },
+  "samples": [
+    {
+      "mode": "index",
+      "pair": 0,
+      "label": "baseline",
+      "microseconds": 202177,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 0,
+      "label": "candidate",
+      "microseconds": 157549,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 1,
+      "label": "candidate",
+      "microseconds": 162953,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 1,
+      "label": "baseline",
+      "microseconds": 205670,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 2,
+      "label": "baseline",
+      "microseconds": 205760,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 2,
+      "label": "candidate",
+      "microseconds": 187808,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 3,
+      "label": "candidate",
+      "microseconds": 152447,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 3,
+      "label": "baseline",
+      "microseconds": 233539,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 4,
+      "label": "baseline",
+      "microseconds": 207706,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 4,
+      "label": "candidate",
+      "microseconds": 153915,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 5,
+      "label": "candidate",
+      "microseconds": 149452,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 5,
+      "label": "baseline",
+      "microseconds": 193881,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 6,
+      "label": "baseline",
+      "microseconds": 201106,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 6,
+      "label": "candidate",
+      "microseconds": 145855,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 7,
+      "label": "candidate",
+      "microseconds": 152782,
+      "checksum": 20001
+    },
+    {
+      "mode": "index",
+      "pair": 7,
+      "label": "baseline",
+      "microseconds": 193103,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 0,
+      "label": "baseline",
+      "microseconds": 149893,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 0,
+      "label": "candidate",
+      "microseconds": 140811,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 1,
+      "label": "candidate",
+      "microseconds": 147207,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 1,
+      "label": "baseline",
+      "microseconds": 143520,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 2,
+      "label": "baseline",
+      "microseconds": 152625,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 2,
+      "label": "candidate",
+      "microseconds": 146097,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 3,
+      "label": "candidate",
+      "microseconds": 147637,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 3,
+      "label": "baseline",
+      "microseconds": 158145,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 4,
+      "label": "baseline",
+      "microseconds": 185938,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 4,
+      "label": "candidate",
+      "microseconds": 148121,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 5,
+      "label": "candidate",
+      "microseconds": 141798,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 5,
+      "label": "baseline",
+      "microseconds": 152002,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 6,
+      "label": "baseline",
+      "microseconds": 152272,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 6,
+      "label": "candidate",
+      "microseconds": 153901,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 7,
+      "label": "candidate",
+      "microseconds": 143818,
+      "checksum": 20001
+    },
+    {
+      "mode": "rowid",
+      "pair": 7,
+      "label": "baseline",
+      "microseconds": 168191,
+      "checksum": 20001
+    },
+    {
+      "mode": "sort",
+      "pair": 0,
+      "label": "baseline",
+      "microseconds": 291581,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 0,
+      "label": "candidate",
+      "microseconds": 280830,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 1,
+      "label": "candidate",
+      "microseconds": 294777,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 1,
+      "label": "baseline",
+      "microseconds": 292088,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 2,
+      "label": "baseline",
+      "microseconds": 283722,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 2,
+      "label": "candidate",
+      "microseconds": 284680,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 3,
+      "label": "candidate",
+      "microseconds": 289409,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 3,
+      "label": "baseline",
+      "microseconds": 355728,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 4,
+      "label": "baseline",
+      "microseconds": 279706,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 4,
+      "label": "candidate",
+      "microseconds": 342551,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 5,
+      "label": "candidate",
+      "microseconds": 287225,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 5,
+      "label": "baseline",
+      "microseconds": 296167,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 6,
+      "label": "baseline",
+      "microseconds": 287124,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 6,
+      "label": "candidate",
+      "microseconds": 284750,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 7,
+      "label": "candidate",
+      "microseconds": 283740,
+      "checksum": 666895546
+    },
+    {
+      "mode": "sort",
+      "pair": 7,
+      "label": "baseline",
+      "microseconds": 273962,
+      "checksum": 666895546
+    },
+    {
+      "mode": "update",
+      "pair": 0,
+      "label": "baseline",
+      "microseconds": 16098302,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 0,
+      "label": "candidate",
+      "microseconds": 17149659,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 1,
+      "label": "candidate",
+      "microseconds": 16964284,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 1,
+      "label": "baseline",
+      "microseconds": 16287632,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 2,
+      "label": "baseline",
+      "microseconds": 16260915,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 2,
+      "label": "candidate",
+      "microseconds": 17506007,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 3,
+      "label": "candidate",
+      "microseconds": 16869368,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 3,
+      "label": "baseline",
+      "microseconds": 16093924,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 4,
+      "label": "baseline",
+      "microseconds": 17558517,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 4,
+      "label": "candidate",
+      "microseconds": 17723173,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 5,
+      "label": "candidate",
+      "microseconds": 16916739,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 5,
+      "label": "baseline",
+      "microseconds": 16322626,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 6,
+      "label": "baseline",
+      "microseconds": 16446526,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 6,
+      "label": "candidate",
+      "microseconds": 16906283,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 7,
+      "label": "candidate",
+      "microseconds": 16709028,
+      "checksum": 200
+    },
+    {
+      "mode": "update",
+      "pair": 7,
+      "label": "baseline",
+      "microseconds": 16132774,
+      "checksum": 200
+    },
+    {
+      "mode": "wide",
+      "pair": 0,
+      "label": "baseline",
+      "microseconds": 220992,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 0,
+      "label": "candidate",
+      "microseconds": 222520,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 1,
+      "label": "candidate",
+      "microseconds": 248282,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 1,
+      "label": "baseline",
+      "microseconds": 218458,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 2,
+      "label": "baseline",
+      "microseconds": 218351,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 2,
+      "label": "candidate",
+      "microseconds": 223700,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 3,
+      "label": "candidate",
+      "microseconds": 234014,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 3,
+      "label": "baseline",
+      "microseconds": 218265,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 4,
+      "label": "baseline",
+      "microseconds": 213494,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 4,
+      "label": "candidate",
+      "microseconds": 228215,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 5,
+      "label": "candidate",
+      "microseconds": 221911,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 5,
+      "label": "baseline",
+      "microseconds": 215830,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 6,
+      "label": "baseline",
+      "microseconds": 219181,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 6,
+      "label": "candidate",
+      "microseconds": 218746,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 7,
+      "label": "candidate",
+      "microseconds": 249066,
+      "checksum": 20000
+    },
+    {
+      "mode": "wide",
+      "pair": 7,
+      "label": "baseline",
+      "microseconds": 220011,
+      "checksum": 20000
+    }
+  ]
+}

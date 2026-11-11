@@ -75,12 +75,15 @@ final class QueryResult implements SqlRows {
 /// How one statement reached its rows. This is not SQLite bytecode.
 final class QueryPlan {
   /// A scan described by [access], optional [rootPage], and optional [rowid].
-  const QueryPlan(this.access, this.rootPage, this.rowid)
+  const QueryPlan(this.access, this.rootPage, this.rowid,
+      {this.scanSatisfiesOrder = false})
       : _index = null,
         covering = false,
         coveredColumns = const [];
   const QueryPlan._indexed(this.rootPage, this._index, this.access,
-      {this.covering = false, this.coveredColumns = const []})
+      {this.covering = false,
+      this.coveredColumns = const [],
+      this.scanSatisfiesOrder = false})
       : rowid = null;
   final _IndexAccess? _index;
 
@@ -101,6 +104,12 @@ final class QueryPlan {
 
   /// Point-lookup rowid, when the plan is a single row.
   final BigInt? rowid;
+
+  /// Whether a forward scan of this plan already yields [SelectStatement.order].
+  ///
+  /// This is a delivery fact for the direct single-table reader. It does not
+  /// mean every SQL shape can skip sorting.
+  final bool scanSatisfiesOrder;
 }
 
 /// One `EXPLAIN QUERY PLAN` row. [id] is the compared opcode address,
@@ -501,7 +510,8 @@ final class SqliteDatabase {
       if (key != null) {
         diagnostics?.record('rowid-lookup', 'rowid-equality-priority',
             estimate: 1, chosen: true);
-        return QueryPlan('rowid-lookup', table.rootPage, key);
+        return QueryPlan('rowid-lookup', table.rootPage, key,
+            scanSatisfiesOrder: _queryCanReuseIndexOrder(statement));
       }
     }
     if (!table.withoutRowid) {
@@ -600,12 +610,14 @@ final class SqliteDatabase {
             _IndexAccess('@rowid',
                 (values) => comparison(values.single, rowBounds, 'binary'),
                 table: true, empty: rowBounds.any((b) => b.$2 == null)),
-            'rowid-range');
+            'rowid-range',
+            scanSatisfiesOrder: _primaryScanSatisfiesOrder(statement, table));
       }
       if (notIndexed) {
         diagnostics?.record('table-scan', 'NOT-INDEXED',
             estimate: _statistics.rowCount(table.name), chosen: true);
-        return QueryPlan('table-scan', table.rootPage, null);
+        return QueryPlan('table-scan', table.rootPage, null,
+            scanSatisfiesOrder: _primaryScanSatisfiesOrder(statement, table));
       }
       QueryPlan? best;
       var bestScore = -1;
@@ -657,6 +669,25 @@ final class SqliteDatabase {
           },
               empty:
                   prefix.any((list) => list.any((bound) => bound.$2 == null)));
+          final equalityPrefix = range ? prefix.length - 1 : prefix.length;
+          final satisfies = _indexScanSatisfiesOrder(
+              statement,
+              table,
+              parsed ??
+                  IndexDefinition(
+                      entry.name,
+                      table.name,
+                      definition.$5,
+                      [
+                        for (var i = 0; i < definition.$1.length; i++)
+                          IndexTerm(
+                              ColumnExpr(definition.$1[i]),
+                              definition.$1[i],
+                              definition.$3[i],
+                              definition.$2[i])
+                      ],
+                      null),
+              equalityPrefix);
           final score = prefix.length * 10 + (definition.$5 && !range ? 1 : 0);
           final rangeTerms = range ? prefix.last : <(String, Object?)>[];
           final rangeBounds =
@@ -695,7 +726,9 @@ final class SqliteDatabase {
                 _coveredByIndex(statement, table, names);
             best = QueryPlan._indexed(entry.rootPage, access,
                 range ? 'secondary-index-range' : 'secondary-index-lookup',
-                covering: covered, coveredColumns: covered ? names : const []);
+                covering: covered,
+                coveredColumns: covered ? names : const [],
+                scanSatisfiesOrder: satisfies);
           }
         } on Exception {
           diagnostics?.record('secondary-index', 'index-analysis-unavailable',
@@ -706,16 +739,28 @@ final class SqliteDatabase {
       if (best != null) return best;
     }
     if (forced != null) {
+      final forcedDefinition =
+          forced.sql == null ? null : IndexDefinition.parse(forced.sql!, table);
+      final forcedOrder = forcedDefinition == null
+          ? false
+          : _indexScanSatisfiesOrder(statement, table, forcedDefinition, 0);
       diagnostics?.record('secondary-index-scan', 'INDEXED-BY-scan',
           index: forced.name, chosen: true);
       return QueryPlan._indexed(forced.rootPage,
-          _IndexAccess(forced.name, (_) => 0), 'secondary-index-scan');
+          _IndexAccess(forced.name, (_) => 0), 'secondary-index-scan',
+          scanSatisfiesOrder: forcedOrder);
+    }
+    final primaryOrdered = _primaryScanSatisfiesOrder(statement, table);
+    if (!primaryOrdered && !notIndexed) {
+      final ordered = _coveringIndexOrderPlan(statement, table, diagnostics);
+      if (ordered != null) return ordered;
     }
     diagnostics?.record(table.withoutRowid ? 'index-tree-scan' : 'table-scan',
         'no-eligible-narrowing-access',
         estimate: _statistics.rowCount(table.name), chosen: true);
     return QueryPlan(table.withoutRowid ? 'index-tree-scan' : 'table-scan',
-        table.rootPage, null);
+        table.rootPage, null,
+        scanSatisfiesOrder: primaryOrdered);
   }
 
   CatalogTable _resolveTable(
@@ -1655,6 +1700,7 @@ final class SqliteDatabase {
     }
     final columns = table?.columns ?? <CatalogColumn>[];
     final input = <RowValues>[];
+    var scanSatisfiesOrder = false;
     if (table == null) {
       input.add({});
       if (diagnostics != null) {
@@ -1666,6 +1712,7 @@ final class SqliteDatabase {
     } else {
       diagnostics?.planningClock.start();
       final plan = _plan(statement, table, bound, diagnostics);
+      scanSatisfiesOrder = plan.scanSatisfiesOrder;
       diagnostics?.planningClock.stop();
       if (diagnostics != null) diagnostics.plan = SqlDiagnosticPlan._(plan);
       final stream = _planRecords(table, plan,
@@ -1710,11 +1757,223 @@ final class SqliteDatabase {
       }
     }
     diagnostics?.loaded = input.length;
-    final scanOrder =
-        table == null ? null : _physicalScanOrder(statement, table);
+    final scanOrder = scanSatisfiesOrder || table == null
+        ? null
+        : _physicalScanOrder(statement, table);
     if (scanOrder != null) _sortPhysicalRows(input, scanOrder);
     return _evaluate(statement, bound, table, input,
-        inputOrdered: scanOrder != null, diagnostics: diagnostics);
+        inputOrdered: scanSatisfiesOrder || scanOrder != null,
+        diagnostics: diagnostics);
+  }
+
+  /// True when a forward primary scan already yields [query]'s order.
+  /// Descending and explicit non-default NULLS placement stay on the sort.
+  bool _primaryScanSatisfiesOrder(SelectStatement query, CatalogTable table) {
+    if (!_queryCanReuseIndexOrder(query)) return false;
+    if (!table.withoutRowid) {
+      if (query.order.length != 1 || query.order.single.descending) {
+        return false;
+      }
+      final resolved = _resolvedOrderExpression(query, query.order.single);
+      final name = _bareOrderColumn(resolved);
+      if (name == null) return false;
+      final rowids = {
+        if (table.rowidAlias != null) asciiLower(table.rowidAlias!),
+        for (final key in ['rowid', '_rowid_', 'oid'])
+          if (!table.columns.any((column) => asciiLower(column.name) == key))
+            key
+      };
+      if (!rowids.contains(name)) return false;
+      return _orderCollation(query.order.single, resolved!, table) == 'binary';
+    }
+    final primary = table.columns
+        .where((column) => column.primaryKey > 0)
+        .toList()
+      ..sort((a, b) => a.primaryKey.compareTo(b.primaryKey));
+    if (query.order.length > primary.length) return false;
+    for (var i = 0; i < query.order.length; i++) {
+      final resolved = _resolvedOrderExpression(query, query.order[i]);
+      final name = _bareOrderColumn(resolved);
+      if (name != asciiLower(primary[i].name) ||
+          query.order[i].descending != table.primaryKeyDescending[i] ||
+          _orderCollation(query.order[i], resolved!, table) !=
+              table.primaryKeyCollations[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// True when a forward index scan already yields [query]'s order.
+  ///
+  /// [equalityPrefix] columns are fixed by the seek. Their direction does not
+  /// change the delivered rows. A descending request, a mismatched collation,
+  /// an expression that is not the index expression, or an explicit NULLS
+  /// placement other than SQLite's default stays on the existing sort.
+  bool _indexScanSatisfiesOrder(SelectStatement query, CatalogTable table,
+      IndexDefinition definition, int equalityPrefix) {
+    if (!_queryCanReuseIndexOrder(query) ||
+        equalityPrefix < 0 ||
+        equalityPrefix > definition.terms.length) {
+      return false;
+    }
+    bool matches(int start) {
+      if (query.order.length > definition.terms.length - start) return false;
+      for (var i = 0; i < query.order.length; i++) {
+        final term = query.order[i];
+        final resolved = _resolvedOrderExpression(query, term);
+        final key = definition.terms[start + i];
+        if (resolved == null || !_sameIndexOrder(resolved, key)) return false;
+        if (_orderCollation(term, resolved, table) !=
+            asciiLower(key.collation)) {
+          return false;
+        }
+        if (start + i >= equalityPrefix && term.descending != key.descending) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    return matches(equalityPrefix) || (equalityPrefix > 0 && matches(0));
+  }
+
+  /// A covering secondary index whose forward order is exactly the requested
+  /// order. Non-covering order scans stay on the table scan plus the sort,
+  /// because a rowid lookup per row is not assumed to be cheaper.
+  QueryPlan? _coveringIndexOrderPlan(SelectStatement statement,
+      CatalogTable table, _SqlDiagnosticTrace? diagnostics) {
+    if (table.virtual || !_queryCanReuseIndexOrder(statement)) return null;
+    QueryPlan? best;
+    var bestWidth = 1 << 30;
+    var bestName = '';
+    for (final entry in catalog.entries.where((entry) =>
+        entry.type == 'index' &&
+        asciiLower(entry.tableName) == asciiLower(table.name))) {
+      IndexDefinition? parsed;
+      try {
+        parsed =
+            entry.sql == null ? null : IndexDefinition.parse(entry.sql!, table);
+      } on Exception {
+        continue;
+      }
+      final definition = parsed ??
+          () {
+            final raw = _indexDefinition(entry);
+            return IndexDefinition(
+                entry.name,
+                table.name,
+                raw.$5,
+                [
+                  for (var i = 0; i < raw.$1.length; i++)
+                    IndexTerm(
+                        ColumnExpr(raw.$1[i]), raw.$1[i], raw.$3[i], raw.$2[i])
+                ],
+                null);
+          }();
+      if (definition.terms.any((term) => term.columnName == null) ||
+          !impliesIndexPredicate(statement.where, definition.predicate) ||
+          !_indexScanSatisfiesOrder(statement, table, definition, 0)) {
+        continue;
+      }
+      final names = [
+        for (final term in definition.terms) asciiLower(term.columnName!)
+      ];
+      if (!_coveredByIndex(statement, table, names)) continue;
+      if (definition.terms.length > bestWidth ||
+          definition.terms.length == bestWidth &&
+              entry.name.compareTo(bestName) > 0) {
+        continue;
+      }
+      bestWidth = definition.terms.length;
+      bestName = entry.name;
+      best = QueryPlan._indexed(entry.rootPage,
+          _IndexAccess(entry.name, (_) => 0), 'secondary-index-scan',
+          covering: true, coveredColumns: names, scanSatisfiesOrder: true);
+    }
+    if (best == null) return null;
+    diagnostics?.record('secondary-index-scan', 'covering-index-order',
+        index: bestName, chosen: true);
+    return best;
+  }
+
+  bool _queryCanReuseIndexOrder(SelectStatement query) {
+    if (query.order.isEmpty ||
+        query.groupBy.isNotEmpty ||
+        query.having != null ||
+        query.sources.length != 1 ||
+        query.sources.single.alias != null ||
+        query.sources.single.query != null ||
+        query.items.any((item) =>
+            item.expression?.containsAggregate == true ||
+            item.expression?.containsWindow == true) ||
+        query.order.any((term) =>
+            term.expression.containsAggregate ||
+            term.expression.containsWindow ||
+            _nested(term.expression).isNotEmpty) ||
+        _expressions(query).any(_qualified)) {
+      return false;
+    }
+    for (final term in query.order) {
+      if (term.nullsFirst != null && term.nullsFirst == term.descending) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Expr? _resolvedOrderExpression(SelectStatement query, OrderTerm term) {
+    var expression = term.expression;
+    final ordinal = expressionOrdinal(expression);
+    if (ordinal != null) {
+      if (ordinal < BigInt.one ||
+          ordinal > BigInt.from(query.items.length) ||
+          query.items[ordinal.toInt() - 1].expression == null) {
+        return null;
+      }
+      expression = query.items[ordinal.toInt() - 1].expression!;
+    } else {
+      final operand = indexOperand(expression);
+      if (operand is ColumnExpr && operand.qualifier == null) {
+        final output = query.items
+            .where((item) =>
+                item.explicitAlias && asciiLower(item.label) == operand.key)
+            .firstOrNull;
+        if (output?.expression != null) expression = output!.expression!;
+      }
+    }
+    return expression;
+  }
+
+  String? _bareOrderColumn(Expr? expression) {
+    final operand = expression == null ? null : indexOperand(expression);
+    if (operand is! ColumnExpr || operand.qualifier != null) return null;
+    return operand.key;
+  }
+
+  bool _sameIndexOrder(Expr order, IndexTerm term) {
+    final left = indexOperand(order);
+    final right = indexOperand(term.expression);
+    if (left is ColumnExpr && right is ColumnExpr) {
+      String bare(String key) =>
+          asciiLower(key.contains('.') ? key.split('.').last : key);
+      return bare(left.key) == bare(right.key);
+    }
+    return sameExpression(left, right);
+  }
+
+  String _orderCollation(OrderTerm term, Expr resolved, CatalogTable table) {
+    final context = EvalContext({}, {
+      for (final column in table.columns)
+        asciiLower(column.name): column.affinity
+    }, const [], _pager.header.textEncoding)
+      ..collations = {
+        for (final column in table.columns)
+          asciiLower(column.name): column.collation
+      };
+    return asciiLower(term.expression.explicitCollation(context) ??
+        resolved.collation(context) ??
+        'binary');
   }
 
   /// A primary B-tree can supply these orders before projection callbacks.
