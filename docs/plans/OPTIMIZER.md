@@ -27,7 +27,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 15 | WITHOUT ROWID access planning | Implemented/unaccepted; secondary equality and range seeks; primary tree is not pretended to be a seek; no AOT sample |
 | 16 | Evaluate intersection and skip-scan | Rejected; a non-leading column stays a table scan, and two indexes are not intersected |
 | 17 | Improve STAT1 estimates | Implemented/unaccepted; a range estimate is at least the next equality average; no AOT sample |
-| 18 | Evaluate skew-aware/STAT4 samples | Queued |
+| 18 | Evaluate skew-aware/STAT4 samples | Rejected; sqlite_stat4 is stored and ignored, stat1 remains the estimate |
 | 19 | Stale/missing statistics safeguards | Queued |
 | 20 | Statistics gathering/loading cost | Queued |
 | 21 | Broader safe predicate pushdown | Queued |
@@ -291,3 +291,12 @@ chooses `selective`. Rows match `NOT INDEXED` and pinned SQLite 3.53.1. No
 fresh AOT sample is recorded.
 
 Next is item 18. No package publication.
+
+## Item 18 rejected, 2026-11-11
+
+`sqlite_stat4` rows are stored and are not read. A sample that says the big
+table has one row does not change the stat1 join order or its page reads.
+`engine_gap_test` and `db_browser_b1_test` cover that. No skew-aware estimate
+is claimed.
+
+Next is item 19. No package publication.

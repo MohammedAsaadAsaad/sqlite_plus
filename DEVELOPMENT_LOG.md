@@ -1,5 +1,11 @@
 # Development log
 
+## 2026-11-11 — Item 18 STAT4 samples rejected
+
+`sqlite_stat4` can be stored. Its samples are not planning inputs. A
+contradictory sample leaves the stat1 plan and its page reads unchanged.
+This is a rejection, not a cost acceptance.
+
 ## 2026-11-11 — Item 17 STAT1 range floor
 
 A range constraint is estimated at least as large as equality on that next

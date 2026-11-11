@@ -27,7 +27,12 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 18, skew-aware STAT4 samples.** Item 17 is
+**Active item: 19, stale and missing statistics safeguards.** Item 18 is
+rejected. `sqlite_stat4` is stored and ignored. `sqlite_stat1` remains the
+only estimate. Existing tests cover a contradictory sample and unchanged page
+reads.
+
+Item 17 is
 correctness-verified and not cost-accepted. A range estimate stays at least
 as large as the next column's equality average, so a non-selective range does
 not look cheaper than a tighter equality. Pinned SQLite 3.53.1 matches the
