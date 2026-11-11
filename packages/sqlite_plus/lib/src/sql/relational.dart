@@ -1,6 +1,89 @@
 part of 'database.dart';
 
 extension _RelationalQueries on SqliteDatabase {
+  /// Identical uncorrelated subqueries share one result. A user function or
+  /// a non-deterministic built-in stays out of that key.
+  String? _reusableSubqueryKey(SelectStatement query) {
+    if (_subqueryHasSideEffect(query)) return null;
+    return _subqueryShape(query);
+  }
+
+  bool _subqueryHasSideEffect(SelectStatement query) {
+    var sideEffect = false;
+    void walk(Expr? expression) {
+      if (expression == null || sideEffect) return;
+      if (expression is FunctionExpr) {
+        final name = expression.key;
+        if (SqlFunctionRegistry.resolve(name, expression.arguments.length) !=
+                null ||
+            name.startsWith('current_') ||
+            const {
+              'random',
+              'randomblob',
+              'changes',
+              'total_changes',
+              'last_insert_rowid',
+            }.contains(name)) {
+          sideEffect = true;
+          return;
+        }
+      }
+      if (expression is SubqueryExpr) {
+        sideEffect = _subqueryHasSideEffect(expression.statement);
+      }
+      for (final child in expression.children) {
+        walk(child);
+      }
+    }
+
+    for (final expression in _expressions(query)) {
+      walk(expression);
+    }
+    for (final source in query.sources) {
+      if (source.query != null) {
+        sideEffect = sideEffect || _subqueryHasSideEffect(source.query!);
+      }
+    }
+    for (final part in query.compounds) {
+      sideEffect = sideEffect || _subqueryHasSideEffect(part.$2);
+    }
+    return sideEffect;
+  }
+
+  String _subqueryShape(SelectStatement query) => [
+        query.distinct,
+        for (final item in query.items)
+          '${item.label}:${_exprShape(item.expression)}',
+        for (final source in query.sources)
+          '${source.schema}.${source.table}.${source.alias}.${source.join}.${_exprShape(source.on)}.${source.query == null ? '' : _subqueryShape(source.query!)}',
+        _exprShape(query.where),
+        for (final group in query.groupBy) _exprShape(group),
+        _exprShape(query.having),
+        for (final term in query.order)
+          '${_exprShape(term.expression)}:${term.descending}',
+        for (final part in query.compounds)
+          '${part.$1}:${_subqueryShape(part.$2)}',
+      ].join('\u0001');
+
+  String _exprShape(Expr? expression) {
+    if (expression == null) return '';
+    if (expression is Literal) return 'L${expression.value}';
+    if (expression is ColumnExpr) return 'C${expression.name}';
+    if (expression is FunctionExpr) {
+      return 'F${expression.key}(${expression.arguments.map(_exprShape).join(',')})';
+    }
+    if (expression is BinaryExpr) {
+      return 'B${expression.op}(${_exprShape(expression.left)},${_exprShape(expression.right)})';
+    }
+    if (expression is UnaryExpr) {
+      return 'U${expression.op}(${_exprShape(expression.operand)})';
+    }
+    if (expression is SubqueryExpr) {
+      return 'S(${_subqueryShape(expression.statement)})';
+    }
+    return '${expression.runtimeType}(${expression.children.map(_exprShape).join(',')})';
+  }
+
   Iterable<Expr> _expressions(SelectStatement s) sync* {
     for (final item in s.items) {
       if (item.expression != null) yield item.expression!;
@@ -499,6 +582,7 @@ extension _RelationalQueries on SqliteDatabase {
     // An uncorrelated subquery is run once per statement. A correlated one
     // stays tied to the current outer row.
     final once = <SelectStatement, SqlRows>{};
+    final shared = <String, SqlRows>{};
     SqlRows subquery(SelectStatement query, EvalContext context) {
       if (mutationSubqueries != null) {
         return mutationSubqueries(query, context, cache);
@@ -518,8 +602,13 @@ extension _RelationalQueries on SqliteDatabase {
       final correlated =
           _mutationCorrelated(query, cache, context.row.keys.toSet());
       if (!correlated && once.containsKey(query)) return once[query]!;
+      final key = correlated ? null : _reusableSubqueryKey(query);
+      if (key != null && shared.containsKey(key)) return shared[key]!;
       final result = evaluate(query, cache, context);
-      if (!correlated) once[query] = result;
+      if (!correlated) {
+        once[query] = result;
+        if (key != null) shared[key] = result;
+      }
       return result;
     }
 
