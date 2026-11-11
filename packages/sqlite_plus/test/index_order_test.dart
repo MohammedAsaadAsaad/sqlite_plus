@@ -64,6 +64,9 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
     const queries = [
       'SELECT id FROM t ORDER BY id',
       'SELECT id FROM t ORDER BY id DESC',
+      'SELECT b, id FROM t ORDER BY id, b DESC',
+      'SELECT a, id FROM wide ORDER BY id, a DESC',
+      'SELECT a, b, id FROM t INDEXED BY iab WHERE a = 1 ORDER BY b, id',
       'SELECT id FROM t ORDER BY id DESC LIMIT 2',
       'SELECT id FROM t ORDER BY id DESC LIMIT 1 OFFSET 1',
       "SELECT id FROM t WHERE b = 'a' ORDER BY id LIMIT 1",
@@ -103,6 +106,11 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
     expect(reader.explain('SELECT id FROM t ORDER BY id').scanSatisfiesOrder,
         isTrue);
     expect(
+        reader
+            .explain('SELECT b, id FROM t ORDER BY id, b DESC')
+            .scanSatisfiesOrder,
+        isTrue);
+    expect(
         reader.explain('SELECT id FROM t ORDER BY id DESC').scanSatisfiesOrder,
         isTrue);
     expect(reader.explain('SELECT id FROM t ORDER BY id DESC').scanReverse,
@@ -132,6 +140,12 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
             .explain('SELECT a, b FROM t INDEXED BY iab WHERE a = 1 ORDER BY b')
             .scanSatisfiesOrder,
         isTrue);
+    expect(
+        reader
+            .explain(
+                'SELECT a, b, id FROM t INDEXED BY iab WHERE a = 1 ORDER BY b, id')
+            .orderedPrefix,
+        1);
     expect(
         reader.explain('SELECT b FROM t ORDER BY b DESC').indexName, 'ib_desc');
     expect(

@@ -18,7 +18,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 6 | Use index ordering to avoid sorting | Implemented/unaccepted; direct-path forward order only; preliminary AOT recorded |
 | 7 | Reverse index scans | Implemented/unaccepted; full-scan reverse matches SQLite 3.53.1; AOT ranges overlap |
 | 8 | Safe early termination | Accepted for ordered LIMIT/OFFSET with no WHERE; filtered control median 1.0146 overlaps |
-| 9 | Partial/block sorting | Queued |
+| 9 | Partial/block sorting | Correctness verified for a unique key tail and an index-prefix block sort; cost not yet separated |
 | 10 | Table/index/lookup/sort cost comparison | Queued |
 | 11 | Broader covering-index reads and costing | Queued |
 | 12 | Composite equality/range/order planning | Queued |
@@ -188,3 +188,14 @@ is not zero cost. Evidence:
 `benchmark_results/optimizer_early_stop/preliminary.json`.
 
 Next is item 9. No package publication.
+
+## Item 9 partial checkpoint, 2026-11-11
+
+Not a cost acceptance. A rowid or a complete WITHOUT ROWID primary key already
+determines `ORDER BY`, so later terms do not cause a sort. When a chosen index
+scan groups a proper bare-column prefix, each equal run is sorted by the
+remaining terms. `index_order_test` matches SQLite 3.53.1 for `ORDER BY id, b
+DESC`, `ORDER BY id, a DESC` on a WITHOUT ROWID key, and `INDEXED BY iab WHERE
+a = 1 ORDER BY b, id`. No fresh AOT sample is recorded for this shape yet.
+
+Next is item 10. No package publication.
