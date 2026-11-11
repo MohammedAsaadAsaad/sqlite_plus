@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 36, broader streaming execution.** Item 35 is
+**Active item: 37, per-execution common work.** Item 36 is
+correctness-verified and not cost-accepted. A direct table scan with
+`LIMIT` and no `WHERE`, `ORDER BY`, aggregate, or window stops after
+`OFFSET + LIMIT`. A filtered `LIMIT` still reads the matching rows. The
+rows match pinned SQLite 3.53.1, and the stopped scan reads fewer pages
+than `count(*)`. The scan stays asynchronous. No AOT sample is recorded.
+
+Item 35 is
 correctness-verified and not cost-accepted. An unused bare column of a
 derived query that is not flattened is replaced by NULL. A function in
 that select list stays, so `probe(b)` still runs. The remaining columns

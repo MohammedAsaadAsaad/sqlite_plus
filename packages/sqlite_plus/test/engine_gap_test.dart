@@ -811,6 +811,51 @@ void main() {
     }
   });
 
+  test('unordered LIMIT stops a table scan', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, b INT)');
+    final values = [for (var i = 1; i <= 4000; i++) '($i, ${i % 7})'].join(',');
+    await db.execute('INSERT INTO t VALUES $values');
+    final image = db.exportImage();
+    final stopped = await SqliteDatabase.openReadOnly(ByteImageStorage(image));
+    addTearDown(stopped.close);
+    final before = stopped.pagesRead;
+    expect((await stopped.query('SELECT id FROM t LIMIT 3')).rows, [
+      [BigInt.one],
+      [BigInt.two],
+      [BigInt.from(3)]
+    ]);
+    final limitedPages = stopped.pagesRead - before;
+    final full = await SqliteDatabase.openReadOnly(ByteImageStorage(image));
+    addTearDown(full.close);
+    final beforeFull = full.pagesRead;
+    await full.query('SELECT count(*) FROM t');
+    expect(limitedPages, lessThan(full.pagesRead - beforeFull));
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    final setup = 'CREATE TABLE t(id INTEGER PRIMARY KEY, b INT); '
+        'INSERT INTO t VALUES $values;';
+    for (final sql in [
+      'SELECT id FROM t LIMIT 3',
+      'SELECT id FROM t LIMIT 2 OFFSET 2',
+      'SELECT id FROM t WHERE id > 10 LIMIT 3',
+    ]) {
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(sql);
+      final text = native.stdout.toString().trim();
+      final expected = text.isEmpty ? const [] : jsonDecode(text) as List;
+      expect([
+        for (final row in actual.rows)
+          [for (final value in row) value is BigInt ? value.toInt() : value]
+      ], [
+        for (final row in expected) (row as Map).values.toList()
+      ], reason: sql);
+    }
+  });
+
   test('an unused derived column can be dropped and a function stays',
       () async {
     final db = await MutableSqliteDatabase.create();

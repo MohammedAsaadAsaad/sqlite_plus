@@ -2061,6 +2061,10 @@ final class SqliteDatabase {
       diagnostics?.planningClock.stop();
       final prefixLimit =
           _orderedPrefixLimit(statement, bound, scanSatisfiesOrder);
+      final unorderedLimit =
+          plan.access == 'table-scan' || plan.access == 'index-tree-scan'
+              ? _unorderedScanLimit(statement, bound)
+              : null;
       if (diagnostics != null) diagnostics.plan = SqlDiagnosticPlan._(plan);
       final primaryExtreme = _primaryKeyExtreme(statement, table);
       if (_whereIsFalse(statement.where)) {
@@ -2078,7 +2082,7 @@ final class SqliteDatabase {
                 .scanTable(table.rootPage, reverse: primaryExtreme);
         final stored = table.storageColumns;
         await for (final record in stream) {
-          if (prefixLimit == 0) break;
+          if (prefixLimit == 0 || unorderedLimit == 0) break;
           if (record.values.length > stored.length) {
             throw const FormatException(
                 'More stored columns than catalog columns');
@@ -2111,7 +2115,8 @@ final class SqliteDatabase {
           table.evaluateGenerated(row, _pager.header.textEncoding, lazy: true);
           input.add(row);
           if (primaryExtreme != null ||
-              prefixLimit != null && input.length >= prefixLimit) {
+              prefixLimit != null && input.length >= prefixLimit ||
+              unorderedLimit != null && input.length >= unorderedLimit) {
             break;
           }
         }
@@ -2321,6 +2326,37 @@ final class SqliteDatabase {
   int? _orderedPrefixLimit(
       SelectStatement statement, List<Object?> bound, bool ordered) {
     if (!ordered ||
+        statement.where != null ||
+        statement.distinct ||
+        statement.groupBy.isNotEmpty ||
+        statement.having != null ||
+        statement.compounds.isNotEmpty ||
+        statement.ctes.isNotEmpty ||
+        statement.valuesQuery ||
+        statement.limit == null ||
+        statement.items.any((item) =>
+            item.expression?.containsAggregate == true ||
+            item.expression?.containsWindow == true)) {
+      return null;
+    }
+    final limit = _sqlCount(statement.limit, bound);
+    final offset =
+        statement.offset == null ? 0 : _sqlCount(statement.offset, bound);
+    if (limit == null ||
+        offset == null ||
+        limit < 0 ||
+        offset < 0 ||
+        limit > 0x3fffffff ||
+        offset > 0x3fffffff ||
+        offset + limit > 0x3fffffff) {
+      return null;
+    }
+    return offset + limit;
+  }
+
+  /// Rows to read for `LIMIT` when no `ORDER BY` or `WHERE` can change them.
+  int? _unorderedScanLimit(SelectStatement statement, List<Object?> bound) {
+    if (statement.order.isNotEmpty ||
         statement.where != null ||
         statement.distinct ||
         statement.groupBy.isNotEmpty ||
