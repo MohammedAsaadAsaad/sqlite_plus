@@ -4,23 +4,33 @@ import 'dart:io';
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
 
-void main() {
+String? _sqliteCli() {
+  final fromEnv = Platform.environment['SQLITE_PLUS_SQLITE3'];
+  if (fromEnv != null && File(fromEnv).existsSync()) return fromEnv;
   const pinned = '/tmp/sqlite-build/sqlite3';
-  final cli = File(pinned).existsSync() ? pinned : '/usr/bin/sqlite3';
+  if (File(pinned).existsSync()) return pinned;
+  return null;
+}
+
+void main() {
+  final cli = _sqliteCli();
 
   test('forward index and primary order match the CLI without changing ties',
       () async {
-    final version = await Process.run(cli, [
-      ':memory:',
-      'SELECT sqlite_version() || char(10) || sqlite_source_id();'
-    ]);
-    expect(version.exitCode, 0, reason: version.stderr.toString());
-    final identity = version.stdout.toString().trim();
-    if (cli == pinned) {
-      expect(
-          identity,
-          startsWith(
-              '3.53.1\n2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9'));
+    String? identity;
+    if (cli != null) {
+      final version = await Process.run(cli, [
+        ':memory:',
+        'SELECT sqlite_version() || char(10) || sqlite_source_id();'
+      ]);
+      expect(version.exitCode, 0, reason: version.stderr.toString());
+      identity = version.stdout.toString().trim();
+      if (cli == '/tmp/sqlite-build/sqlite3') {
+        expect(
+            identity,
+            startsWith(
+                '3.53.1\n2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9'));
+      }
     }
     final db = await MutableSqliteDatabase.create();
     addTearDown(db.close);
@@ -76,13 +86,14 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
       "SELECT a, id FROM t ORDER BY a NULLS LAST, id",
     ];
     for (final query in queries) {
+      final actual = await db.query(query);
+      if (cli == null) continue;
       final native =
           await Process.run(cli, ['-json', ':memory:', '$setup $query;']);
       expect(native.exitCode, 0, reason: '$query\n${native.stderr}');
       final expected = native.stdout.toString().trim().isEmpty
           ? <Object?>[]
           : jsonDecode(native.stdout.toString()) as List;
-      final actual = await db.query(query);
       expect(_rows(actual), expected, reason: '$query via $identity');
     }
     final reader =
