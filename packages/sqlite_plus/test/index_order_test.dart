@@ -79,6 +79,9 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
       'SELECT b, id FROM t ORDER BY b COLLATE NOCASE, id',
       'SELECT b, id FROM t ORDER BY b COLLATE binary, id',
       'SELECT a, b FROM t WHERE a = 1',
+      "SELECT id FROM t WHERE a = 1 AND b BETWEEN 'a' AND 'c' ORDER BY b, id",
+      "SELECT id FROM t WHERE a = 1 AND b NOT BETWEEN 'a' AND 'c' ORDER BY id",
+      'SELECT a FROM t WHERE a BETWEEN 0 AND 2 ORDER BY a',
       'SELECT a FROM t WHERE a = 1 ORDER BY b',
       'SELECT a, b FROM t WHERE a = 1 ORDER BY b DESC',
       'SELECT a FROM t NOT INDEXED ORDER BY a',
@@ -145,6 +148,34 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
         isTrue);
     expect(reader.explain('SELECT a, b FROM t WHERE a = 1').indexName, 'iab');
     expect(reader.explain('SELECT a, b FROM t WHERE a = 1').covering, isTrue);
+    expect(
+        reader
+            .explain(
+                "SELECT id FROM t WHERE a = 1 AND b BETWEEN 'a' AND 'c' ORDER BY b")
+            .indexName,
+        'iab');
+    expect(
+        reader
+            .explain(
+                "SELECT id FROM t WHERE a = 1 AND b BETWEEN 'a' AND 'c' ORDER BY b")
+            .access,
+        'secondary-index-range');
+    expect(
+        reader
+            .explain(
+                "SELECT id FROM t WHERE a = 1 AND b BETWEEN 'a' AND 'c' ORDER BY b")
+            .scanSatisfiesOrder,
+        isTrue);
+    expect(
+        reader
+            .explain('SELECT a FROM t WHERE a BETWEEN 0 AND 2 ORDER BY a')
+            .access,
+        'secondary-index-range');
+    expect(
+        reader
+            .explain('SELECT a FROM t WHERE a BETWEEN 0 AND 2 ORDER BY a')
+            .scanSatisfiesOrder,
+        isTrue);
     expect(
         reader
             .explain('SELECT a, b FROM t INDEXED BY iab WHERE a = 1 ORDER BY b')

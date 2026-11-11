@@ -27,13 +27,19 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 12, composite equality/range/order planning.** Item 11 is
-correctness-verified and not cost-accepted. Equal `sqlite_stat1` estimates,
-including indexes with no statistics, prefer an index that already yields
-`ORDER BY`, then a covering index, then a longer ordered prefix, then the
-previous score. A lower estimate still wins. `SELECT a, b FROM t WHERE a = 1`
-and the same query with `ORDER BY b` use covering index `iab`. Pinned SQLite
-3.53.1 matches those queries. No AOT sample is recorded yet.
+**Active item: 13, partial and expression index eligibility.** Item 12 is
+correctness-verified and not cost-accepted. Inclusive `BETWEEN` is planned as
+`>=` and `<=` bounds. A composite index can equality-seek its prefix and
+range-seek the next column, and that range can already yield `ORDER BY` on
+the range column. `NOT BETWEEN` stays a filter. Pinned SQLite 3.53.1 matches
+the new comparisons. No AOT sample is recorded yet.
+
+Item 11 is correctness-verified and not cost-accepted. Equal `sqlite_stat1`
+estimates, including indexes with no statistics, prefer an index that already
+yields `ORDER BY`, then a covering index, then a longer ordered prefix, then
+the previous score. A lower estimate still wins. `SELECT a, b FROM t WHERE a
+= 1` and the same query with `ORDER BY b` use covering index `iab`. Pinned
+SQLite 3.53.1 matches those queries. No AOT sample is recorded yet.
 
 Item 10 is correctness-verified and not cost-accepted. A non-covering secondary
 index whose `sqlite_stat1` estimate visits at least as many rows as the table,
