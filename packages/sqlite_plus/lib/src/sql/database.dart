@@ -2818,6 +2818,7 @@ final class SqliteDatabase {
       } else if (aggregate) {
         final groupCollations =
             groupBy.map((expr) => expr.collation(constantContext)).toList();
+        var groupsArriveSorted = true;
         for (final row in filtered) {
           final ctx =
               EvalContext(row, affinities, bound, _pager.header.textEncoding)
@@ -2825,22 +2826,42 @@ final class SqliteDatabase {
                 ..subquery = subquery
                 ..collations = collations;
           final keys = groupBy.map((expr) => expr.evaluate(ctx)).toList();
+          if (groups.isNotEmpty &&
+              _same(groups.last.$1, keys, groupCollations)) {
+            (groups.last.$2 as List<RowValues>).add(row);
+            continue;
+          }
           final index = groups
               .indexWhere((group) => _same(group.$1, keys, groupCollations));
           if (index < 0) {
+            if (groups.isNotEmpty) {
+              for (var i = 0; i < keys.length; i++) {
+                final comparison = compareValues(groups.last.$1[i], keys[i],
+                    _pager.header.textEncoding, groupCollations[i]);
+                if (comparison > 0) {
+                  groupsArriveSorted = false;
+                }
+                if (comparison != 0) {
+                  break;
+                }
+              }
+            }
             groups.add((keys, <RowValues>[row]));
           } else {
+            groupsArriveSorted = false;
             (groups[index].$2 as List<RowValues>).add(row);
           }
         }
-        groups.sort((a, b) {
-          for (var i = 0; i < groupBy.length; i++) {
-            final comparison = compareValues(a.$1[i], b.$1[i],
-                _pager.header.textEncoding, groupCollations[i]);
-            if (comparison != 0) return comparison;
-          }
-          return 0;
-        });
+        if (!groupsArriveSorted) {
+          groups.sort((a, b) {
+            for (var i = 0; i < groupBy.length; i++) {
+              final comparison = compareValues(a.$1[i], b.$1[i],
+                  _pager.header.textEncoding, groupCollations[i]);
+              if (comparison != 0) return comparison;
+            }
+            return 0;
+          });
+        }
       }
       final aggregateReferences = <FunctionExpr>[
         for (final expr in [
@@ -3123,14 +3144,16 @@ final class SqliteDatabase {
         for (var i = 0; i < items.length; i++) {
           project(i);
         }
-        if (distinct &&
-            output.any((entry) => _same(
-                entry.$1,
-                values,
-                items
-                    .map((item) => item.expression!.collation(ctx))
-                    .toList()))) {
-          continue;
+        if (distinct) {
+          final distinctCollations =
+              items.map((item) => item.expression!.collation(ctx)).toList();
+          final duplicate = inputOrdered &&
+                  _orderPrefixCovers(statement.order, items)
+              ? output.isNotEmpty &&
+                  _same(output.last.$1, values, distinctCollations)
+              : output
+                  .any((entry) => _same(entry.$1, values, distinctCollations));
+          if (duplicate) continue;
         }
         if (unsorted) {
           if (distinct) {
@@ -4021,6 +4044,20 @@ final class SqliteDatabase {
       ]);
     }
     throw SqlException('Unsupported PRAGMA $name');
+  }
+
+  /// True when the first [items.length] order terms are exactly the selected
+  /// expressions. Later terms only break ties, so equal projections are adjacent.
+  bool _orderPrefixCovers(List<OrderTerm> order, List<SelectItem> items) {
+    if (order.length < items.length || items.isEmpty) return false;
+    final prefix = [
+      for (final term in order.take(items.length)) term.expression
+    ];
+    final selected = [for (final item in items) item.expression!];
+    bool covered(Expr expression, List<Expr> candidates) =>
+        candidates.any((candidate) => sameExpression(expression, candidate));
+    return selected.every((expression) => covered(expression, prefix)) &&
+        prefix.every((expression) => covered(expression, selected));
   }
 
   bool _same(List<Object?> a, List<Object?> b, [List<String?>? collations]) {

@@ -1,5 +1,13 @@
 # Development log
 
+## 2026-11-11 — Item 30 ordered DISTINCT and GROUP BY
+
+`DISTINCT` under an `ORDER BY` that covers the selected list compares each
+row with the previous output row. `GROUP BY` extends the current group and
+sorts only when a later group arrives out of order. NULL and duplicate rows
+match pinned SQLite 3.53.1. No AOT sample is recorded, so this is not a cost
+acceptance.
+
 ## 2026-11-11 — Item 29 CTE materialization follows its uses
 
 A CTE read more than once runs once. `NOT MATERIALIZED` runs once per use,
