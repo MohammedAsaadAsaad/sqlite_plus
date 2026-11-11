@@ -426,6 +426,34 @@ final class SqliteDatabase {
     return true;
   }
 
+  List<List<RowValues>> _equalGroups(
+      List<RowValues> rows, String key, CatalogColumn column) {
+    final groups = <List<RowValues>>[];
+    final representatives = <Object?>[];
+    for (final row in rows) {
+      final value = row[key];
+      var placed = false;
+      for (var i = 0; i < representatives.length; i++) {
+        if (value != null &&
+            compareValues(
+                    applyAffinity(representatives[i], column.affinity),
+                    applyAffinity(value, column.affinity),
+                    _pager.header.textEncoding,
+                    column.collation) ==
+                0) {
+          groups[i].add(row);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        representatives.add(value);
+        groups.add([row]);
+      }
+    }
+    return groups;
+  }
+
   List<QuerySource> _orderedJoinSources(SelectStatement statement) {
     final sources = [...statement.normalizedSources];
     if (statement.order.isEmpty || sources.length < 2 || sources.length > 4) {
@@ -1190,14 +1218,137 @@ final class SqliteDatabase {
   List<String> _describeQueryPlan(String sql) =>
       [for (final row in _explainQueryPlan(sql)) row.detail];
 
+  /// Leading index column for an `INNER JOIN` whose `ON` equality can seek it.
+  ///
+  /// The equality has to sit in the `AND` spine. An `OR`, a partial index, or
+  /// an expression index stays a scan.
+  ({String index, String column, Expr equality, String leftKey})?
+      _innerJoinIndex(QuerySource source, [List<QuerySource>? sources]) {
+    if (source.join != 'INNER' ||
+        source.on == null ||
+        source.notIndexed ||
+        source.table == null) {
+      return null;
+    }
+    final alias = asciiLower(source.alias ?? source.table!);
+    final found = _innerIndexedColumn(source.on!, alias);
+    if (found == null) return null;
+    final CatalogTable table;
+    try {
+      table = catalog.table(source.table!);
+    } on SqlException {
+      return null;
+    }
+    for (final entry in catalog.entries) {
+      if (entry.type != 'index' ||
+          asciiLower(entry.tableName) != asciiLower(table.name) ||
+          entry.sql == null) {
+        continue;
+      }
+      IndexDefinition parsed;
+      try {
+        parsed = IndexDefinition.parse(entry.sql!, table);
+      } on Exception {
+        continue;
+      }
+      final term = parsed.terms.firstOrNull;
+      if (parsed.predicate != null ||
+          term == null ||
+          term.columnName == null ||
+          asciiLower(term.columnName!) != found.column) {
+        continue;
+      }
+      if (sources != null) {
+        final rightColumn = _joinColumn(sources, '$alias.${found.column}');
+        final leftColumn = _joinColumn(sources, found.leftKey);
+        if (rightColumn == null ||
+            leftColumn == null ||
+            rightColumn.affinity != leftColumn.affinity ||
+            rightColumn.collation != leftColumn.collation) {
+          continue;
+        }
+      }
+      return (
+        index: entry.name,
+        column: found.column,
+        equality: found.equality,
+        leftKey: found.leftKey
+      );
+    }
+    return null;
+  }
+
+  CatalogColumn? _joinColumn(List<QuerySource> sources, String key) {
+    final dot = key.indexOf('.');
+    if (dot <= 0) return null;
+    final alias = key.substring(0, dot);
+    final name = key.substring(dot + 1);
+    for (final source in sources) {
+      if (asciiLower(source.alias ?? source.table ?? '') != alias ||
+          source.table == null) {
+        continue;
+      }
+      try {
+        for (final column in catalog.table(source.table!).columns) {
+          if (asciiLower(column.name) == name) return column;
+        }
+      } on SqlException {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  ({String column, Expr equality, String leftKey})? _innerIndexedColumn(
+      Expr expression, String alias) {
+    if (expression is BinaryExpr && expression.op == 'AND') {
+      return _innerIndexedColumn(expression.left, alias) ??
+          _innerIndexedColumn(expression.right, alias);
+    }
+    if (expression is! BinaryExpr ||
+        (expression.op != '=' && expression.op != '==') ||
+        expression.left is! ColumnExpr ||
+        expression.right is! ColumnExpr) {
+      return null;
+    }
+    final left = expression.left as ColumnExpr;
+    final right = expression.right as ColumnExpr;
+    final leftHere =
+        left.qualifier != null && asciiLower(left.qualifier!) == alias;
+    final rightHere =
+        right.qualifier != null && asciiLower(right.qualifier!) == alias;
+    if (leftHere == rightHere) return null;
+    final indexed = leftHere ? left : right;
+    final other = leftHere ? right : left;
+    if (other.qualifier == null) return null;
+    final qualifier = indexed.qualifier!;
+    final column = asciiLower(indexed.name.substring(qualifier.length + 1));
+    final otherColumn =
+        asciiLower(other.name.substring(other.qualifier!.length + 1));
+    return (
+      column: column,
+      equality: expression,
+      leftKey: '${asciiLower(other.qualifier!)}.$otherColumn'
+    );
+  }
+
   List<ExplainPlanRow> _explainQueryPlan(String sql) {
     final statement = SqlParser(sql).select();
     final sources = _orderedJoinSources(statement);
     if (sources.length > 1) {
       return [
         for (final source in sources)
-          ExplainPlanRow(2, 0, _defaultRowLogEst + 16,
-              'SCAN ${source.alias ?? source.table ?? ''}')
+          () {
+            final indexed = _innerJoinIndex(source, sources);
+            final label = source.alias ?? source.table ?? '';
+            return ExplainPlanRow(
+                2,
+                0,
+                _defaultRowLogEst + 16,
+                indexed == null
+                    ? 'SCAN $label'
+                    : 'SEARCH $label USING INDEX ${indexed.index} (${indexed.column}=?)');
+          }()
       ];
     }
     if (sources.isEmpty || sources.single.table == null) {

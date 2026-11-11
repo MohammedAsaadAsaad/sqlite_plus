@@ -1,5 +1,12 @@
 # Development log
 
+## 2026-11-11 — Item 23 indexed inner join
+
+An `INNER JOIN` probes a leading index column when `ON` is an equality on
+that column. `OR` and `LEFT JOIN` keep a scan. NULL keys and an extra `AND`
+match pinned SQLite 3.53.1. No AOT sample is recorded, so this is not a cost
+acceptance.
+
 ## 2026-11-11 — Item 22 join reorder bound is four sources
 
 Simple comma joins of two to four sources, with `ORDER BY` and

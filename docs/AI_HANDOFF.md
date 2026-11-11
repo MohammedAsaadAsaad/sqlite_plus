@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 23, indexed inner join access.** Item 22 is
+**Active item: 24, evaluate alternative join algorithms.** Item 23 is
+correctness-verified and not cost-accepted. An `INNER JOIN` whose `ON`
+equality names the leading column of a real index probes that index.
+`OR`, `LEFT JOIN`, a partial index, and an affinity mismatch stay scans.
+Rows, including NULL and an extra `AND`, match pinned SQLite 3.53.1. No
+AOT sample is recorded.
+
+Item 22 is
 correctness-verified and not cost-accepted. Two to four simple comma joins
 with `ORDER BY` are ordered by `sqlite_stat1` row count. Five sources stay in
 written order. The four-table result matches pinned SQLite 3.53.1. No AOT

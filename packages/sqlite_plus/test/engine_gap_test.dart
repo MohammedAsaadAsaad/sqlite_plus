@@ -544,6 +544,68 @@ void main() {
     }
   });
 
+  test('an indexed inner join seeks the leading column', () async {
+    final db = await MutableSqliteDatabase.create();
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE a(id INTEGER PRIMARY KEY, k INT)');
+    await db.execute('CREATE TABLE b(id INTEGER PRIMARY KEY, k INT, v TEXT)');
+    await db.execute('CREATE INDEX bk ON b(k)');
+    await db
+        .execute('INSERT INTO a VALUES (1, 10), (2, NULL), (3, 20), (4, 10)');
+    await db.execute(
+        "INSERT INTO b VALUES (1, 10, 'x'), (2, 10, 'y'), (3, NULL, 'n'), (4, 30, 'z')");
+    const query =
+        'SELECT a.id AS aid, b.id AS bid, b.v FROM a INNER JOIN b ON a.k = b.k '
+        'ORDER BY aid, bid';
+    final plan = await db.query('EXPLAIN QUERY PLAN $query');
+    expect(plan.rows.first[3].toString(), contains('SCAN a'));
+    expect(plan.rows.last[3].toString(), 'SEARCH b USING INDEX bk (k=?)');
+    const extra =
+        "SELECT a.id AS aid, b.id AS bid FROM a INNER JOIN b ON a.k = b.k AND b.v = 'x' "
+        'ORDER BY aid, bid';
+    expect(
+        (await db.query('EXPLAIN QUERY PLAN $extra')).rows.last[3].toString(),
+        'SEARCH b USING INDEX bk (k=?)');
+    const disjunction =
+        'SELECT a.id AS aid, b.id AS bid FROM a INNER JOIN b ON a.k = b.k OR a.id = b.id '
+        'ORDER BY aid, bid';
+    expect(
+        (await db.query('EXPLAIN QUERY PLAN $disjunction'))
+            .rows
+            .last[3]
+            .toString(),
+        contains('SCAN b'));
+    const leftJoin =
+        'SELECT a.id AS aid, b.v FROM a LEFT JOIN b ON a.k = b.k ORDER BY aid, b.id';
+    expect(
+        (await db.query('EXPLAIN QUERY PLAN $leftJoin'))
+            .rows
+            .last[3]
+            .toString(),
+        contains('SCAN b'));
+    const pinned = '/tmp/sqlite-build/sqlite3';
+    if (!File(pinned).existsSync()) return;
+    const setup = 'CREATE TABLE a(id INTEGER PRIMARY KEY, k INT); '
+        'CREATE TABLE b(id INTEGER PRIMARY KEY, k INT, v TEXT); '
+        'CREATE INDEX bk ON b(k); '
+        'INSERT INTO a VALUES (1, 10), (2, NULL), (3, 20), (4, 10); '
+        "INSERT INTO b VALUES (1, 10, 'x'), (2, 10, 'y'), (3, NULL, 'n'), (4, 30, 'z');";
+    for (final sql in [query, extra, disjunction, leftJoin]) {
+      final native =
+          await Process.run(pinned, ['-json', ':memory:', '$setup $sql;']);
+      expect(native.exitCode, 0, reason: native.stderr.toString());
+      final actual = await db.query(sql);
+      final expected = jsonDecode(native.stdout.toString()) as List;
+      expect(actual.rows.length, expected.length, reason: sql);
+      for (var i = 0; i < actual.rows.length; i++) {
+        expect([
+          for (final value in actual.rows[i])
+            value is BigInt ? value.toInt() : value
+        ], (expected[i] as Map).values.toList(), reason: sql);
+      }
+    }
+  });
+
   test('malformed UTF-8 and UTF-16 records are rejected', () {
     expect(
         () =>
