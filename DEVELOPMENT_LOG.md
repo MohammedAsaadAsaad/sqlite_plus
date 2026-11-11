@@ -1,5 +1,15 @@
 # Development log
 
+## 2026-11-11 — Resume optimizer item 3 with immediate checkpoint policy
+
+User confirmed PR #43 merged (main 056e9644) and requested a reusable client
+prompt, continued implementation and immediate upload/handoff updates after
+every completed item. Persisted the policy, active branch and partial state.
+Item 3 is investigating, not accepted; no runtime change in this checkpoint.
+Next: explicit diagnostic counter/plan-decision contract and frozen baseline,
+then implementation, correctness and OFF/ON performance/cost gates. No automatic
+merge or package publication.
+
 ## 2026-11-08 — GitHub synchronization and cross-client continuation checkpoint
 
 - User authorized synchronizing all pending local changes to GitHub, including

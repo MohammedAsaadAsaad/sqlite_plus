@@ -21,3 +21,8 @@ correctness/performance/cost gates, progress-update requirement, known control
 costs, exact next milestone and fresh-checkout commands. Do not infer completion
 from headline speedups or assume prior `/tmp` artifacts exist. Routine work on
 the approved roadmap is authorized; no repeated confirmation flow is required.
+
+The user also requires an immediate GitHub checkpoint after each completed
+optimizer item: update handoff/ledger/evidence, commit, upload and open/update
+its review PR before starting another item. If interrupted, upload an explicitly
+partial handoff with next commands. Do not auto-merge main or publish packages.

@@ -1,6 +1,6 @@
 # AI handoff — sqlite_plus optimizer and pending workspace integration
 
-Checkpoint: 2026-11-08. This document is the continuation entry point; no prior
+Checkpoint: 2026-11-11. This document is the continuation entry point; no prior
 chat, original execution machine, credentials or preserved `/tmp` directory is
 required. Read the current GitHub branch/PR and CI before making new claims.
 
@@ -8,24 +8,28 @@ required. Read the current GitHub branch/PR and CI before making new claims.
 
 Repository: https://github.com/MohammedAsaadAsaad/sqlite_plus
 
-Continuation branch: **feature/optimizer-handoff-20261108**. The changes in this
-checkpoint are on that branch, not necessarily on main. The upload is based on
-remote main `da665d7b621557fa2ab1c0ceb6f13c534bb7e56c`. Its tree matched the local
-starting tree `3ccfb572e819821e9c51d5bd150516859716d647`; existing upstream package
-versions were preserved. No publication or automatic merge is authorized by this
-handoff. The user explicitly authorized synchronizing ALL pending local work.
+PR #43 has been merged into `main` as
+`056e9644fafb94de180dc6b761545be31e4a83f3`. The original upload commit was
+`73617cdf23b3f0d76dbf985b7daaa0a1afe6473f`.
+
+**Active continuation:** `feature/optimizer-diagnostics-20261111`, item 3,
+**investigating / not accepted**. Start by inspecting this branch and its PR;
+main contains the completed previous checkpoint. Avoid simultaneous edits by
+multiple AI clients; inspect the latest handoff/commit before resuming.
 
 ```sh
 git clone https://github.com/MohammedAsaadAsaad/sqlite_plus.git
 cd sqlite_plus
-git switch --track origin/feature/optimizer-handoff-20261108
+git fetch origin
+git switch --track origin/feature/optimizer-diagnostics-20261111
 git status --short
 git rev-parse HEAD
 ```
 
-If already merged, inspect main and the merge commit, then continue from the
-actual latest integration state. Make a separate working branch for the next
-milestone; do not force-push or discard another contributor's work.
+If this active branch is already merged, read the newest main handoff instead.
+Make a separate working branch for the next milestone; do not force-push or
+discard another contributor's work. Package publication and automatic main
+merges remain outside the authorized scope.
 
 Read, in order:
 
@@ -44,6 +48,13 @@ an item before sufficient performance AND cost tests, and report progress
 regularly. The user subsequently acknowledged the initial measured result and
 asked to preserve all work and continuation instructions on GitHub.
 
+- **New user requirement (2026-11-11): upload every completed item immediately.**
+  Update this handoff and the stable-ID ledger, commit code/tests/raw evidence,
+  push the checkpoint and open/update its review PR before starting the next
+  item. Report actual CI status. Do not wait to accumulate several milestones.
+  When interrupted mid-item, upload an explicitly partial checkpoint with
+  completed checks, unresolved work and the exact next commands; never label
+  incomplete work accepted. Routine checkpoint uploads are authorized.
 - Work autonomously on the approved roadmap, one reviewable milestone at a time.
   Routine implementation/testing does not need repeated permission questions.
 - Give concise progress updates while working, normally at least once per minute:
@@ -70,7 +81,7 @@ The authoritative 42-row state table is [plans/OPTIMIZER.md](plans/OPTIMIZER.md)
 | --- | --- |
 | 1, audit | Complete |
 | 2, source baseline | Complete, reverse reconstruction verified |
-| 3, richer opt-in runtime diagnostics/plan decisions | **Queued; next milestone** |
+| 3, richer opt-in runtime diagnostics/plan decisions | **Investigating; active branch above; not accepted** |
 | 4, regression matrix | Initial matrix complete; must expand for later changes |
 | 5, bounded Top-K | Accepted **for tested scope and documented tradeoff** |
 | 6–41 | Queued; some underlying facilities existed earlier, extensions are not complete |
@@ -281,7 +292,7 @@ Detailed release/device/ownership limits remain in each package README.
 
 ## 8. Next concrete work
 
-Start **item 3**: design opt-in diagnostic instrumentation and plan-decision
+Resume **item 3**: design opt-in diagnostic instrumentation and plan-decision
 reporting. First audit existing QueryPlan/explain and Inspector capabilities;
 do not duplicate them or install unconditional per-row hooks. Define the schema
 for estimated vs actual work, unsupported/partial counters and lifetime/ownership.
@@ -301,3 +312,23 @@ STAT4/DISTINCT facilities complete just because a bounded sort is faster.
 > والذاكرة والقراءات والكلفة على المسارات الحالية. احتفظ بالنتائج السلبية
 > والقياسات القديمة، وحدّثني بالتقدم باستمرار. نفّذ ما هو مصرح به دون
 > طلب تأكيدات روتينية، ولا تنشر الحزم أو تدمج main تلقائيًا.
+
+## Active partial checkpoint — item 3 (2026-11-11)
+
+- Confirmed PR #43 merged; new working base is main 056e9644.
+- User's immediate-upload-after-each-item rule is now persisted in AGENTS/handoff.
+- Audited existing QueryPlan, read-only pager page counts and Inspector adapters.
+  Current Inspector already measures wrapper latency/output counts and explicit
+  snapshot plans; richer actual-work and plan-decision data must reuse those.
+- No item-3 production code or performance acceptance yet. Proposed boundary:
+  explicit ordinary read diagnostics with bounded trace metadata, current
+  bindings, source/filter/output work, page counts and clear unsupported/null
+  metrics. No SQL/binding capture by default, global observer registry or
+  unconditional per-row instrumentation on normal queries.
+- Before runtime edits, freeze current source as the new baseline. Then finalize
+  contract, implement a safe explicit diagnostic path, test native/ORM/callback/
+  lifetime/fallback semantics and measure diagnostics OFF vs before plus ON cost.
+- Next commands: inspect database.dart::_plan/_prepareQuery/_evaluate and the
+  Inspector connection/model code; write docs/plans/OPTIMIZER_DIAGNOSTICS.md with
+  counter definitions and limits. Rebuild the pinned native CLI if /tmp was lost.
+- Initial handoff-only checkpoint is deliberately not completion of item 3.

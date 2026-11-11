@@ -12,7 +12,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | --- | --- | --- |
 | 1 | Audit existing planning/execution paths | Complete; see AUDIT.md |
 | 2 | Preserve source baseline and reproducible workloads | Complete; reverse fixture verified |
-| 3 | Opt-in diagnostic instrumentation and plan decisions | Queued |
+| 3 | Opt-in diagnostic instrumentation and plan decisions | Investigating on feature/optimizer-diagnostics-20261111; not accepted |
 | 4 | Performance regression matrix | Initial matrix complete; expand per future item |
 | 5 | Bounded Top-K selection | Accepted for tested scope; measured control costs documented |
 | 6 | Use index ordering to avoid sorting | Queued |
@@ -109,3 +109,11 @@ as complete facilities or mark their extensions accepted without measurements.
 - Rich runtime diagnostics (3), index ordering (6) and all later extensions are
   NOT implemented/accepted by this milestone. Roadmap-wide/release acceptance
   remains queued. No push, publication or merge performed.
+
+## Continuation policy, 2026-11-11
+
+PR #43 merged into main 056e9644. Item 3 is active; item 5 remains accepted only
+for its documented scope/costs. The user requires immediate GitHub upload and
+handoff/ledger updates after EVERY completed item, before starting the next.
+Partial checkpoints must identify incomplete work and never imply acceptance.
+See docs/AI_HANDOFF.md for the active branch and exact next steps.
