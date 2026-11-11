@@ -55,6 +55,8 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
       'SELECT id FROM t ORDER BY id',
       'SELECT id FROM t ORDER BY id DESC',
       'SELECT id FROM t ORDER BY id DESC LIMIT 2',
+      'SELECT id FROM t ORDER BY id DESC LIMIT 1 OFFSET 1',
+      "SELECT id FROM t WHERE b = 'a' ORDER BY id LIMIT 1",
       'SELECT a, id FROM t ORDER BY a, id',
       'SELECT a FROM t ORDER BY a',
       'SELECT a FROM t ORDER BY a DESC',
@@ -128,6 +130,14 @@ INSERT INTO wide(id,a,b) VALUES (2,'z','m'),(1,'a','m'),(3,'a','a');
         isFalse);
     expect(reader.explain('SELECT id, a FROM t AS src ORDER BY src.a').access,
         isNot('secondary-index-scan'));
+    final limited =
+        await reader.diagnoseQuery('SELECT id FROM t ORDER BY id DESC LIMIT 1');
+    expect(limited.rowsLoaded, 1);
+    expect(limited.result.rows.single.single, BigInt.from(6));
+    final filtered = await reader
+        .diagnoseQuery("SELECT id FROM t WHERE b = 'a' ORDER BY id LIMIT 1");
+    expect(filtered.rowsLoaded, greaterThan(1));
+    expect(filtered.result.rows.single.single, BigInt.from(3));
   });
 }
 

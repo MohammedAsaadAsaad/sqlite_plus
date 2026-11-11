@@ -1477,10 +1477,7 @@ final class SqliteDatabase {
                 plan.access != 'index-tree-scan')) {
       return null;
     }
-    if (statement.order.isNotEmpty) {
-      final physical = _physicalScanOrder(statement, table);
-      if (physical == null || physical.any((term) => term.$2)) return null;
-    }
+    if (statement.order.isNotEmpty && !plan.scanSatisfiesOrder) return null;
     if (limit == 0) {
       return _evaluate(statement, bound, table, <RowValues>[]).materialize();
     }
@@ -1526,8 +1523,8 @@ final class SqliteDatabase {
     late final Stream<BtreeRecord> stream;
     if (resume == null) {
       stream = plan.access == 'index-tree-scan'
-          ? reader.scanIndex(plan.rootPage!)
-          : reader.scanTable(plan.rootPage!);
+          ? reader.scanIndex(plan.rootPage!, reverse: plan.scanReverse)
+          : reader.scanTable(plan.rootPage!, reverse: plan.scanReverse);
     } else {
       final boundRowid = resume.$1;
       final inclusive = resume.$2;
@@ -1723,6 +1720,8 @@ final class SqliteDatabase {
       final plan = _plan(statement, table, bound, diagnostics);
       scanSatisfiesOrder = plan.scanSatisfiesOrder;
       diagnostics?.planningClock.stop();
+      final orderedPrefix =
+          _orderedPrefixLimit(statement, bound, scanSatisfiesOrder);
       if (diagnostics != null) diagnostics.plan = SqlDiagnosticPlan._(plan);
       final stream = _planRecords(table, plan,
           where: statement.where,
@@ -1732,6 +1731,7 @@ final class SqliteDatabase {
           ftsText: _ftsQueryReadsText(statement, table));
       final stored = table.storageColumns;
       await for (final record in stream) {
+        if (orderedPrefix == 0) break;
         if (record.values.length > stored.length) {
           throw const FormatException(
               'More stored columns than catalog columns');
@@ -1763,6 +1763,7 @@ final class SqliteDatabase {
         }
         table.evaluateGenerated(row, _pager.header.textEncoding, lazy: true);
         input.add(row);
+        if (orderedPrefix != null && input.length >= orderedPrefix) break;
       }
     }
     diagnostics?.loaded = input.length;
@@ -1773,6 +1774,42 @@ final class SqliteDatabase {
     return _evaluate(statement, bound, table, input,
         inputOrdered: scanSatisfiesOrder || scanOrder != null,
         diagnostics: diagnostics);
+  }
+
+  /// Rows to read before [statement]'s `LIMIT`/`OFFSET` when [ordered] is true.
+  ///
+  /// A later `WHERE`, aggregate, window, or compound can reject a scanned row,
+  /// so those statements still read the whole input. A null return means no
+  /// early stop.
+  int? _orderedPrefixLimit(
+      SelectStatement statement, List<Object?> bound, bool ordered) {
+    if (!ordered ||
+        statement.where != null ||
+        statement.distinct ||
+        statement.groupBy.isNotEmpty ||
+        statement.having != null ||
+        statement.compounds.isNotEmpty ||
+        statement.ctes.isNotEmpty ||
+        statement.valuesQuery ||
+        statement.limit == null ||
+        statement.items.any((item) =>
+            item.expression?.containsAggregate == true ||
+            item.expression?.containsWindow == true)) {
+      return null;
+    }
+    final limit = _sqlCount(statement.limit, bound);
+    final offset =
+        statement.offset == null ? 0 : _sqlCount(statement.offset, bound);
+    if (limit == null ||
+        offset == null ||
+        limit < 0 ||
+        offset < 0 ||
+        limit > 0x3fffffff ||
+        offset > 0x3fffffff ||
+        offset + limit > 0x3fffffff) {
+      return null;
+    }
+    return offset + limit;
   }
 
   /// True when a forward primary scan already yields [query]'s order.

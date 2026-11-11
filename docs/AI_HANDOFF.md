@@ -27,7 +27,14 @@ pre-routing copy remains required. Parameter-list/BLOB mutation tests protect
 this boundary. Current reverse patch reconstructs the frozen baseline without
 old /tmp files; default portable verifier passes for the accepted source.
 
-**Active item: 8, safe early termination.** Item 7 is implemented and unaccepted.
+**Active item: 9, partial/block sorting.** Item 8 is accepted only for a scan
+that already yields `ORDER BY` and has no `WHERE`, aggregate, window,
+`DISTINCT`, grouping, compound, or CTE. On 10,000 rows, `ORDER BY id DESC
+LIMIT 1` median ratio is 0.011224 with separated ranges. The filtered control
+median is 1.014597 with overlapping ranges, so there is no zero-cost claim.
+Evidence: `benchmark_results/optimizer_early_stop/`.
+
+**Item 7 remains implemented and unaccepted.**
 A full scan can walk backward when `ORDER BY` is the exact reverse of the
 primary or covering index. Range seeks still sort. Pinned SQLite 3.53.1 matches
 the new DESC queries. 10,000-row AOT median ratios are 0.911461 for

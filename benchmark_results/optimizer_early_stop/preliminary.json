@@ -1,0 +1,201 @@
+{
+  "rows": 10000,
+  "pairs": 6,
+  "baseline": "3b16f19",
+  "summary": {
+    "ordered": {
+      "baseline_median_us": 49492.0,
+      "candidate_median_us": 555.5,
+      "median_ratio_candidate_over_baseline": 0.01122403620787198,
+      "baseline_min": 47905,
+      "baseline_max": 52367,
+      "candidate_min": 525,
+      "candidate_max": 709,
+      "checksums": [
+        10001
+      ]
+    },
+    "filtered": {
+      "baseline_median_us": 49292.5,
+      "candidate_median_us": 50012.0,
+      "median_ratio_candidate_over_baseline": 1.0145965410559417,
+      "baseline_min": 48519,
+      "baseline_max": 53586,
+      "candidate_min": 49156,
+      "candidate_max": 51636,
+      "checksums": [
+        0
+      ]
+    }
+  },
+  "samples": [
+    {
+      "mode": "ordered",
+      "pair": 0,
+      "label": "baseline",
+      "microseconds": 49286,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 0,
+      "label": "candidate",
+      "microseconds": 709,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 1,
+      "label": "candidate",
+      "microseconds": 533,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 1,
+      "label": "baseline",
+      "microseconds": 51180,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 2,
+      "label": "baseline",
+      "microseconds": 49698,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 2,
+      "label": "candidate",
+      "microseconds": 560,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 3,
+      "label": "candidate",
+      "microseconds": 551,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 3,
+      "label": "baseline",
+      "microseconds": 47905,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 4,
+      "label": "baseline",
+      "microseconds": 52367,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 4,
+      "label": "candidate",
+      "microseconds": 590,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 5,
+      "label": "candidate",
+      "microseconds": 525,
+      "checksum": 10001
+    },
+    {
+      "mode": "ordered",
+      "pair": 5,
+      "label": "baseline",
+      "microseconds": 48259,
+      "checksum": 10001
+    },
+    {
+      "mode": "filtered",
+      "pair": 0,
+      "label": "baseline",
+      "microseconds": 53586,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 0,
+      "label": "candidate",
+      "microseconds": 49683,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 1,
+      "label": "candidate",
+      "microseconds": 49156,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 1,
+      "label": "baseline",
+      "microseconds": 48519,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 2,
+      "label": "baseline",
+      "microseconds": 48946,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 2,
+      "label": "candidate",
+      "microseconds": 49742,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 3,
+      "label": "candidate",
+      "microseconds": 50282,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 3,
+      "label": "baseline",
+      "microseconds": 49016,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 4,
+      "label": "baseline",
+      "microseconds": 49569,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 4,
+      "label": "candidate",
+      "microseconds": 51636,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 5,
+      "label": "candidate",
+      "microseconds": 50371,
+      "checksum": 0
+    },
+    {
+      "mode": "filtered",
+      "pair": 5,
+      "label": "baseline",
+      "microseconds": 50939,
+      "checksum": 0
+    }
+  ]
+}

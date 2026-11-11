@@ -17,7 +17,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 5 | Bounded Top-K selection | Accepted for tested scope; measured control costs documented |
 | 6 | Use index ordering to avoid sorting | Implemented/unaccepted; direct-path forward order only; preliminary AOT recorded |
 | 7 | Reverse index scans | Implemented/unaccepted; full-scan reverse matches SQLite 3.53.1; AOT ranges overlap |
-| 8 | Safe early termination | Queued |
+| 8 | Safe early termination | Accepted for ordered LIMIT/OFFSET with no WHERE; filtered control median 1.0146 overlaps |
 | 9 | Partial/block sorting | Queued |
 | 10 | Table/index/lookup/sort cost comparison | Queued |
 | 11 | Broader covering-index reads and costing | Queued |
@@ -176,3 +176,15 @@ candidate slower than every baseline sample. Raw rows:
 
 Item 8 may start. Its early stop must preserve these orders. No package
 publication.
+
+## Item 8 accepted scope, 2026-11-11
+
+A scan that already yields `ORDER BY` stops after `OFFSET + LIMIT` when there
+is no `WHERE`, aggregate, window, `DISTINCT`, grouping, compound, or CTE.
+`ORDER BY id DESC LIMIT 1` on 10,000 rows has median ratio 0.011224 and the
+sample ranges do not overlap (47905–52367 vs 525–709 µs). The same limit with
+`WHERE b = 'v0'` has median ratio 1.014597 and overlapping ranges. That control
+is not zero cost. Evidence:
+`benchmark_results/optimizer_early_stop/preliminary.json`.
+
+Next is item 9. No package publication.

@@ -1,5 +1,13 @@
 # Development log
 
+## 2026-11-11 — Item 8 accepted for ordered LIMIT without WHERE
+
+An ordered direct scan stops after `OFFSET + LIMIT` when nothing later can
+reject a row. 10,000-row AOT median ratio for `ORDER BY id DESC LIMIT 1` is
+0.011224 with separated ranges. A filtered `LIMIT 1` median ratio is 1.014597
+with overlapping ranges and is not a zero-cost claim. Pinned comparisons cover
+the DESC offset and the filtered limit.
+
 ## 2026-11-11 — Item 7 partial, unaccepted reverse scans
 
 Full primary and covering-index scans can walk from the last key when every
