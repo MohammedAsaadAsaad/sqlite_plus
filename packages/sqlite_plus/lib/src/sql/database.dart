@@ -3141,8 +3141,7 @@ final class SqliteDatabase {
 
       final storeGroupRows = !aggregate ||
           windowed ||
-          (statement.having != null &&
-              referencesStoredRow(statement.having!)) ||
+          statement.having != null ||
           items.any((item) => referencesStoredRow(item.expression!)) ||
           order.any((term) => referencesStoredRow(term.expression));
       Iterable<EvalContext> prepare() sync* {

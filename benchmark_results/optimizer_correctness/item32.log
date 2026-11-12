@@ -1,0 +1,1810 @@
+00:00 +0: loading test/optimizer_aggregate_test.dart
+00:00 +0: test/optimizer_aggregate_test.dart: streamed aggregates preserve HAVING keys and NULL extrema 1
+00:00 +1: test/optimizer_aggregate_test.dart: streamed aggregates preserve HAVING keys and NULL extrema 2
+00:00 +2: test/optimizer_aggregate_test.dart: streamed aggregates preserve HAVING keys and NULL extrema 3
+00:00 +3: loading test/aggregate_evaluation_test.dart
+00:00 +3: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)),sum(visit(id)+0) FROM t encoding 1
+00:01 +4: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)),sum(visit(id)),count(visit(id)) FROM t encoding 1
+00:01 +5: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)),count(visit(v)),total(visit(v)) FROM t WHERE keep(id) encoding 1
+00:01 +6: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)) FILTER(WHERE keep(id)),count(visit(v)) FROM t encoding 1
+00:01 +7: test/aggregate_evaluation_test.dart: SELECT sum(DISTINCT visit(v)),count(visit(v)) FROM t encoding 1
+00:01 +8: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FROM t encoding 1
+00:01 +9: test/aggregate_evaluation_test.dart: SELECT id,max(visit(v)) FROM t encoding 1
+00:01 +10: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FILTER(WHERE keep(id)) FROM t encoding 1
+00:01 +11: test/aggregate_evaluation_test.dart: SELECT id,min(visit(NULL)) FROM t encoding 1
+00:01 +12: test/aggregate_evaluation_test.dart: SELECT id,min(DISTINCT visit(NULL)) FROM t encoding 1
+00:01 +13: test/aggregate_evaluation_test.dart: SELECT id,min(visit(NULL)) FILTER(WHERE id<3) FROM t encoding 1
+00:01 +14: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FILTER(WHERE 0) FROM t encoding 1
+00:01 +15: test/aggregate_evaluation_test.dart: SELECT id,min(DISTINCT visit(v)) FROM t encoding 1
+00:01 +16: test/aggregate_evaluation_test.dart: SELECT id,max(DISTINCT visit(v)) FROM t encoding 1
+00:01 +17: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FILTER(WHERE id=4) FROM t encoding 1
+00:01 +18: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v) ORDER BY id DESC) FROM t encoding 1
+00:01 +19: test/aggregate_evaluation_test.dart: SELECT visit(k),count(*) FROM t GROUP BY visit(k) encoding 1
+00:01 +20: test/aggregate_evaluation_test.dart: SELECT visit(k)||'!',count(*) FROM t GROUP BY visit(k) encoding 1
+00:01 +21: test/aggregate_evaluation_test.dart: SELECT visit(k) COLLATE NOCASE,count(*) FROM t GROUP BY visit(k) COLLATE NOCASE encoding 1
+00:01 +22: test/aggregate_evaluation_test.dart: SELECT k,fold_a(visit(v)),fold_b(visit(id)) FROM t GROUP BY k encoding 1
+00:01 +23: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t encoding 1
+00:01 +24: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),fold_a(visit(v)),fold_b(visit(v)) FROM t encoding 1
+00:01 +25: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t WHERE keep(id) encoding 1
+00:01 +26: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)) FILTER(WHERE keep(id)),fold_b(visit(id)) FROM t encoding 1
+00:01 +27: test/aggregate_evaluation_test.dart: SELECT fold_a(DISTINCT visit(v)),fold_b(visit(id)) FROM t encoding 1
+00:01 +28: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v) ORDER BY id DESC),fold_b(visit(id)) FROM t encoding 1
+00:01 +29: test/aggregate_evaluation_test.dart: SELECT fold_b(visit(id)),fold_a(visit(v) ORDER BY id DESC) FROM t encoding 1
+00:01 +30: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v) ORDER BY visit(id) DESC),fold_b(visit(id)) FROM t encoding 1
+00:01 +31: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t encoding 1
+00:01 +32: test/aggregate_evaluation_test.dart: SELECT fold_a(DISTINCT visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t encoding 1
+00:01 +33: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),tick() FROM t encoding 1
+00:01 +34: test/aggregate_evaluation_test.dart: SELECT k,fold_a(visit(v)),tick() FROM t GROUP BY k encoding 1
+00:01 +35: test/aggregate_evaluation_test.dart: SELECT k,count(visit(v)) FROM t WHERE keep(id) GROUP BY visit(k) encoding 1
+00:01 +36: test/aggregate_evaluation_test.dart: SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(v))>0 encoding 1
+00:01 +37: test/aggregate_evaluation_test.dart: SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(id))>0 encoding 1
+00:01 +38: test/aggregate_evaluation_test.dart: SELECT count(visit(v)),count(visit(v)) FROM t WHERE 0 encoding 1
+00:01 +39: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c encoding 1
+00:01 +40: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c encoding 1
+00:01 +41: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 1
+00:01 +42: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x encoding 1
+00:01 +43: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c encoding 1
+00:01 +44: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c encoding 1
+00:01 +45: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 1
+00:01 +46: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x encoding 1
+00:01 +47: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c encoding 1
+00:01 +48: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c encoding 1
+00:01 +49: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 1
+00:01 +50: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x encoding 1
+00:01 +51: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c encoding 1
+00:01 +52: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c encoding 1
+00:01 +53: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 1
+00:01 +54: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x encoding 1
+00:01 +55: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c encoding 1
+00:01 +56: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c encoding 1
+00:01 +57: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 1
+00:01 +58: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x encoding 1
+00:01 +59: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c encoding 1
+00:01 +60: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c encoding 1
+00:01 +61: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 1
+00:01 +62: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x encoding 1
+00:01 +63: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)),sum(visit(id)+0) FROM t encoding 2
+00:01 +64: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)),sum(visit(id)),count(visit(id)) FROM t encoding 2
+00:01 +65: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)),count(visit(v)),total(visit(v)) FROM t WHERE keep(id) encoding 2
+00:01 +66: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)) FILTER(WHERE keep(id)),count(visit(v)) FROM t encoding 2
+00:01 +67: test/aggregate_evaluation_test.dart: SELECT sum(DISTINCT visit(v)),count(visit(v)) FROM t encoding 2
+00:01 +68: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FROM t encoding 2
+00:01 +69: test/aggregate_evaluation_test.dart: SELECT id,max(visit(v)) FROM t encoding 2
+00:01 +70: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FILTER(WHERE keep(id)) FROM t encoding 2
+00:01 +71: test/aggregate_evaluation_test.dart: SELECT id,min(visit(NULL)) FROM t encoding 2
+00:01 +72: test/aggregate_evaluation_test.dart: SELECT id,min(DISTINCT visit(NULL)) FROM t encoding 2
+00:01 +73: test/aggregate_evaluation_test.dart: SELECT id,min(visit(NULL)) FILTER(WHERE id<3) FROM t encoding 2
+00:01 +74: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FILTER(WHERE 0) FROM t encoding 2
+00:01 +75: test/aggregate_evaluation_test.dart: SELECT id,min(DISTINCT visit(v)) FROM t encoding 2
+00:01 +76: test/aggregate_evaluation_test.dart: SELECT id,max(DISTINCT visit(v)) FROM t encoding 2
+00:01 +77: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FILTER(WHERE id=4) FROM t encoding 2
+00:01 +78: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v) ORDER BY id DESC) FROM t encoding 2
+00:01 +79: test/aggregate_evaluation_test.dart: SELECT visit(k),count(*) FROM t GROUP BY visit(k) encoding 2
+00:01 +80: test/aggregate_evaluation_test.dart: SELECT visit(k)||'!',count(*) FROM t GROUP BY visit(k) encoding 2
+00:01 +81: test/aggregate_evaluation_test.dart: SELECT visit(k) COLLATE NOCASE,count(*) FROM t GROUP BY visit(k) COLLATE NOCASE encoding 2
+00:01 +82: test/aggregate_evaluation_test.dart: SELECT k,fold_a(visit(v)),fold_b(visit(id)) FROM t GROUP BY k encoding 2
+00:01 +83: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t encoding 2
+00:01 +84: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),fold_a(visit(v)),fold_b(visit(v)) FROM t encoding 2
+00:01 +85: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t WHERE keep(id) encoding 2
+00:01 +86: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)) FILTER(WHERE keep(id)),fold_b(visit(id)) FROM t encoding 2
+00:01 +87: test/aggregate_evaluation_test.dart: SELECT fold_a(DISTINCT visit(v)),fold_b(visit(id)) FROM t encoding 2
+00:01 +88: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v) ORDER BY id DESC),fold_b(visit(id)) FROM t encoding 2
+00:01 +89: test/aggregate_evaluation_test.dart: SELECT fold_b(visit(id)),fold_a(visit(v) ORDER BY id DESC) FROM t encoding 2
+00:01 +90: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v) ORDER BY visit(id) DESC),fold_b(visit(id)) FROM t encoding 2
+00:01 +91: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t encoding 2
+00:01 +92: test/aggregate_evaluation_test.dart: SELECT fold_a(DISTINCT visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t encoding 2
+00:01 +93: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),tick() FROM t encoding 2
+00:01 +94: test/aggregate_evaluation_test.dart: SELECT k,fold_a(visit(v)),tick() FROM t GROUP BY k encoding 2
+00:01 +95: test/aggregate_evaluation_test.dart: SELECT k,count(visit(v)) FROM t WHERE keep(id) GROUP BY visit(k) encoding 2
+00:01 +96: test/aggregate_evaluation_test.dart: SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(v))>0 encoding 2
+00:02 +97: test/aggregate_evaluation_test.dart: SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(id))>0 encoding 2
+00:02 +98: test/aggregate_evaluation_test.dart: SELECT count(visit(v)),count(visit(v)) FROM t WHERE 0 encoding 2
+00:02 +99: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c encoding 2
+00:02 +100: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c encoding 2
+00:02 +101: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 2
+00:02 +102: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x encoding 2
+00:02 +103: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c encoding 2
+00:02 +104: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c encoding 2
+00:02 +105: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 2
+00:02 +106: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x encoding 2
+00:02 +107: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c encoding 2
+00:02 +108: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c encoding 2
+00:02 +109: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 2
+00:02 +110: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x encoding 2
+00:02 +111: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c encoding 2
+00:02 +112: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c encoding 2
+00:02 +113: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 2
+00:02 +114: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x encoding 2
+00:02 +115: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c encoding 2
+00:02 +116: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c encoding 2
+00:02 +117: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 2
+00:02 +118: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x encoding 2
+00:02 +119: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c encoding 2
+00:02 +120: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c encoding 2
+00:02 +121: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 2
+00:02 +122: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x encoding 2
+00:02 +123: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)),sum(visit(id)+0) FROM t encoding 3
+00:02 +124: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)),sum(visit(id)),count(visit(id)) FROM t encoding 3
+00:02 +125: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)),count(visit(v)),total(visit(v)) FROM t WHERE keep(id) encoding 3
+00:02 +126: test/aggregate_evaluation_test.dart: SELECT sum(visit(id)) FILTER(WHERE keep(id)),count(visit(v)) FROM t encoding 3
+00:02 +127: test/aggregate_evaluation_test.dart: SELECT sum(DISTINCT visit(v)),count(visit(v)) FROM t encoding 3
+00:02 +128: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FROM t encoding 3
+00:02 +129: test/aggregate_evaluation_test.dart: SELECT id,max(visit(v)) FROM t encoding 3
+00:02 +130: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FILTER(WHERE keep(id)) FROM t encoding 3
+00:02 +131: test/aggregate_evaluation_test.dart: SELECT id,min(visit(NULL)) FROM t encoding 3
+00:02 +132: test/aggregate_evaluation_test.dart: SELECT id,min(DISTINCT visit(NULL)) FROM t encoding 3
+00:02 +133: test/aggregate_evaluation_test.dart: SELECT id,min(visit(NULL)) FILTER(WHERE id<3) FROM t encoding 3
+00:02 +134: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FILTER(WHERE 0) FROM t encoding 3
+00:02 +135: test/aggregate_evaluation_test.dart: SELECT id,min(DISTINCT visit(v)) FROM t encoding 3
+00:02 +136: test/aggregate_evaluation_test.dart: SELECT id,max(DISTINCT visit(v)) FROM t encoding 3
+00:02 +137: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v)) FILTER(WHERE id=4) FROM t encoding 3
+00:02 +138: test/aggregate_evaluation_test.dart: SELECT id,min(visit(v) ORDER BY id DESC) FROM t encoding 3
+00:02 +139: test/aggregate_evaluation_test.dart: SELECT visit(k),count(*) FROM t GROUP BY visit(k) encoding 3
+00:02 +140: test/aggregate_evaluation_test.dart: SELECT visit(k)||'!',count(*) FROM t GROUP BY visit(k) encoding 3
+00:02 +141: test/aggregate_evaluation_test.dart: SELECT visit(k) COLLATE NOCASE,count(*) FROM t GROUP BY visit(k) COLLATE NOCASE encoding 3
+00:02 +142: test/aggregate_evaluation_test.dart: SELECT k,fold_a(visit(v)),fold_b(visit(id)) FROM t GROUP BY k encoding 3
+00:02 +143: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t encoding 3
+00:02 +144: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),fold_a(visit(v)),fold_b(visit(v)) FROM t encoding 3
+00:02 +145: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),fold_b(visit(id)) FROM t WHERE keep(id) encoding 3
+00:02 +146: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)) FILTER(WHERE keep(id)),fold_b(visit(id)) FROM t encoding 3
+00:02 +147: test/aggregate_evaluation_test.dart: SELECT fold_a(DISTINCT visit(v)),fold_b(visit(id)) FROM t encoding 3
+00:02 +148: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v) ORDER BY id DESC),fold_b(visit(id)) FROM t encoding 3
+00:02 +149: test/aggregate_evaluation_test.dart: SELECT fold_b(visit(id)),fold_a(visit(v) ORDER BY id DESC) FROM t encoding 3
+00:02 +150: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v) ORDER BY visit(id) DESC),fold_b(visit(id)) FROM t encoding 3
+00:02 +151: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t encoding 3
+00:02 +152: test/aggregate_evaluation_test.dart: SELECT fold_a(DISTINCT visit(v) ORDER BY visit(v)),fold_b(visit(id)) FROM t encoding 3
+00:02 +153: test/aggregate_evaluation_test.dart: SELECT fold_a(visit(v)),tick() FROM t encoding 3
+00:02 +154: test/aggregate_evaluation_test.dart: SELECT k,fold_a(visit(v)),tick() FROM t GROUP BY k encoding 3
+00:02 +155: test/aggregate_evaluation_test.dart: SELECT k,count(visit(v)) FROM t WHERE keep(id) GROUP BY visit(k) encoding 3
+00:02 +156: test/aggregate_evaluation_test.dart: SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(v))>0 encoding 3
+00:02 +157: test/aggregate_evaluation_test.dart: SELECT k,count(visit(v)) FROM t GROUP BY k HAVING count(visit(id))>0 encoding 3
+00:02 +158: test/aggregate_evaluation_test.dart: SELECT count(visit(v)),count(visit(v)) FROM t WHERE 0 encoding 3
+00:02 +159: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c encoding 3
+00:02 +160: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c encoding 3
+00:02 +161: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 3
+00:02 +162: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x encoding 3
+00:02 +163: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c encoding 3
+00:02 +164: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c encoding 3
+00:02 +165: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 3
+00:02 +166: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x encoding 3
+00:02 +167: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT sum(x),sum(x+0) FROM c encoding 3
+00:02 +168: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x),fold_b(x) FROM c encoding 3
+00:02 +169: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 3
+00:02 +170: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t) SELECT x,count(*) FROM c GROUP BY x encoding 3
+00:02 +171: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c encoding 3
+00:02 +172: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c encoding 3
+00:02 +173: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 3
+00:02 +174: test/aggregate_evaluation_test.dart: WITH c AS (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x encoding 3
+00:02 +175: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c encoding 3
+00:02 +176: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c encoding 3
+00:02 +177: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 3
+00:02 +178: test/aggregate_evaluation_test.dart: WITH c AS NOT MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x encoding 3
+00:02 +179: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT sum(x),sum(x+0) FROM c encoding 3
+00:02 +180: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x),fold_b(x) FROM c encoding 3
+00:02 +181: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT fold_a(x ORDER BY x DESC),fold_b(x) FROM c encoding 3
+00:02 +182: test/aggregate_evaluation_test.dart: WITH c AS MATERIALIZED (SELECT visit(id) AS x FROM t WHERE keep(id)) SELECT x,count(*) FROM c GROUP BY x encoding 3
+00:02 +183: loading test/insert_stream_test.dart
+00:02 +183: test/insert_stream_test.dart: single SELECT encoding 1
+00:03 +184: test/insert_stream_test.dart: simple table scan encoding 1
+00:03 +185: test/insert_stream_test.dart: projection and omitted defaults encoding 1
+00:03 +186: test/insert_stream_test.dart: single VALUES default precedes supplied later field encoding 1
+00:03 +187: test/insert_stream_test.dart: single VALUES RETURNING keeps destination order encoding 1
+00:03 +188: test/insert_stream_test.dart: single VALUES trigger keeps destination order encoding 1
+00:03 +189: test/insert_stream_test.dart: single VALUES evaluates reversed target fields encoding 1
+00:03 +190: test/insert_stream_test.dart: single VALUES RETURNING evaluates reversed target fields encoding 1
+00:03 +191: test/insert_stream_test.dart: single VALUES implicit rowid follows declared fields encoding 1
+00:03 +192: test/insert_stream_test.dart: single VALUES INTEGER PRIMARY KEY follows declared order encoding 1
+00:03 +193: test/insert_stream_test.dart: multi VALUES preserves input target order encoding 1
+00:03 +194: test/insert_stream_test.dart: multi VALUES RETURNING preserves input target order encoding 1
+00:03 +195: test/insert_stream_test.dart: VALUES input encoding 1
+00:03 +196: test/insert_stream_test.dart: WHERE filters between projected rows encoding 1
+00:03 +197: test/insert_stream_test.dart: WHERE and projection reuse separate calls encoding 1
+00:03 +198: test/insert_stream_test.dart: empty input encoding 1
+00:03 +199: test/insert_stream_test.dart: LIMIT zero suppresses input encoding 1
+00:03 +200: test/insert_stream_test.dart: LIMIT stops WHERE and projection encoding 1
+00:03 +201: test/insert_stream_test.dart: OFFSET skips only projections encoding 1
+00:03 +202: test/insert_stream_test.dart: bound LIMIT and OFFSET encoding 1
+00:03 +203: test/insert_stream_test.dart: negative LIMIT and OFFSET encoding 1
+00:03 +204: test/insert_stream_test.dart: rowid ascending order streams encoding 1
+00:03 +205: test/insert_stream_test.dart: rowid descending order streams encoding 1
+00:03 +206: test/insert_stream_test.dart: rowid descending projection values encoding 1
+00:03 +207: test/insert_stream_test.dart: aliased rowid descending LIMIT encoding 1
+00:03 +208: test/insert_stream_test.dart: qualified rowid descending LIMIT encoding 1
+00:03 +209: test/insert_stream_test.dart: implicit rowid descending LIMIT encoding 1
+00:03 +210: test/insert_stream_test.dart: rowid output alias descending LIMIT encoding 1
+00:03 +211: test/insert_stream_test.dart: rowid ordinal descending LIMIT encoding 1
+00:03 +212: test/insert_stream_test.dart: WITHOUT ROWID primary descending LIMIT encoding 1
+00:03 +213: test/insert_stream_test.dart: WITHOUT ROWID alias descending LIMIT encoding 1
+00:03 +214: test/insert_stream_test.dart: WITHOUT ROWID ascending OFFSET encoding 1
+00:03 +215: test/insert_stream_test.dart: WITHOUT ROWID primary output alias encoding 1
+00:03 +216: test/insert_stream_test.dart: WITHOUT ROWID primary prefix encoding 1
+00:03 +217: test/insert_stream_test.dart: WITHOUT ROWID reversed prefix encoding 1
+00:03 +218: test/insert_stream_test.dart: WITHOUT ROWID mixed primary direction encoding 1
+00:03 +219: test/insert_stream_test.dart: unindexed order buffers projection encoding 1
+00:03 +220: test/insert_stream_test.dart: projection order buffers projection encoding 1
+00:03 +221: test/insert_stream_test.dart: sort LIMIT buffers candidates encoding 1
+00:03 +222: test/insert_stream_test.dart: sort OFFSET buffers candidates encoding 1
+00:03 +223: test/insert_stream_test.dart: unbounded sort projection precedes callback key encoding 1
+00:03 +224: test/insert_stream_test.dart: sort LIMIT callback key precedes projection encoding 1
+00:03 +225: test/insert_stream_test.dart: sort LIMIT skips worse projection callbacks encoding 1
+00:03 +226: test/insert_stream_test.dart: sort LIMIT shared projection key encoding 1
+00:03 +227: test/insert_stream_test.dart: sort LIMIT retains two candidates encoding 1
+00:03 +228: test/insert_stream_test.dart: sort LIMIT OFFSET retains extra candidate encoding 1
+00:03 +229: test/insert_stream_test.dart: sort ascending LIMIT skips later ties encoding 1
+00:03 +230: test/insert_stream_test.dart: sort negative LIMIT still evaluates keys first encoding 1
+00:03 +231: test/insert_stream_test.dart: sort large LIMIT still evaluates keys first encoding 1
+00:03 +232: test/insert_stream_test.dart: DISTINCT streams unique projections encoding 1
+00:03 +233: test/insert_stream_test.dart: DISTINCT duplicate callbacks encoding 1
+00:03 +234: test/insert_stream_test.dart: DISTINCT LIMIT short circuits encoding 1
+00:03 +235: test/insert_stream_test.dart: DISTINCT OFFSET counts unique rows encoding 1
+00:03 +236: test/insert_stream_test.dart: UNION ALL constant branches encoding 1
+00:03 +237: test/insert_stream_test.dart: UNION ALL table branches encoding 1
+00:03 +238: test/insert_stream_test.dart: UNION ALL LIMIT skips later branch encoding 1
+00:03 +239: test/insert_stream_test.dart: UNION ALL OFFSET crosses branches encoding 1
+00:03 +240: test/insert_stream_test.dart: UNION set buffers projections encoding 1
+00:03 +241: test/insert_stream_test.dart: INTERSECT set buffers projections encoding 1
+00:03 +242: test/insert_stream_test.dart: EXCEPT set buffers projections encoding 1
+00:03 +243: test/insert_stream_test.dart: UNION ALL ordered tail encoding 1
+00:03 +244: test/insert_stream_test.dart: JOIN ON resumes between writes encoding 1
+00:03 +245: test/insert_stream_test.dart: LEFT JOIN ON resumes between writes encoding 1
+00:03 +246: test/insert_stream_test.dart: LEFT JOIN rowid bound precedes ON callback encoding 1
+00:03 +247: test/insert_stream_test.dart: JOIN WHERE resumes between writes encoding 1
+00:03 +248: test/insert_stream_test.dart: JOIN LIMIT short circuits predicates encoding 1
+00:03 +249: test/insert_stream_test.dart: GROUP BY projects one group at a time encoding 1
+00:04 +250: test/insert_stream_test.dart: GROUP BY aggregate arguments encoding 1
+00:04 +251: test/insert_stream_test.dart: HAVING callbacks precede each projection encoding 1
+00:04 +252: test/insert_stream_test.dart: aggregate without groups encoding 1
+00:04 +253: test/insert_stream_test.dart: empty aggregate projects once encoding 1
+00:04 +254: test/insert_stream_test.dart: window projection resumes between writes encoding 1
+00:04 +255: test/insert_stream_test.dart: window projection LIMIT stops callbacks encoding 1
+00:04 +256: test/insert_stream_test.dart: self source materializes encoding 1
+00:04 +257: test/insert_stream_test.dart: nested self read materializes encoding 1
+00:04 +258: test/insert_stream_test.dart: view self source materializes outer projection encoding 1
+00:04 +259: test/insert_stream_test.dart: nested view self source materializes outer projection encoding 1
+00:04 +260: test/insert_stream_test.dart: CTE target name shadow permits streaming encoding 1
+00:04 +261: test/insert_stream_test.dart: unused target reading CTE permits streaming encoding 1
+00:04 +262: test/insert_stream_test.dart: target AFTER trigger materializes encoding 1
+00:04 +263: test/insert_stream_test.dart: target BEFORE trigger materializes encoding 1
+00:04 +264: test/insert_stream_test.dart: target trigger materializes VALUES encoding 1
+00:04 +265: test/insert_stream_test.dart: target unrelated-event trigger permits streaming encoding 1
+00:04 +266: test/insert_stream_test.dart: trigger IGNORE skips row after materialization encoding 1
+00:04 +267: test/insert_stream_test.dart: RETURNING materializes input before defaults encoding 1
+00:04 +268: test/insert_stream_test.dart: RETURNING materializes VALUES before defaults encoding 1
+00:04 +269: test/insert_stream_test.dart: RETURNING callback follows default encoding 1
+00:04 +270: test/insert_stream_test.dart: OR IGNORE consumes remaining source encoding 1
+00:04 +271: test/insert_stream_test.dart: constraint ABORT stops source atomically encoding 1
+00:04 +272: test/insert_stream_test.dart: constraint FAIL preserves accepted prefix encoding 1
+00:04 +273: test/insert_stream_test.dart: UPSERT NOTHING consumes source after conflict encoding 1
+00:04 +274: test/insert_stream_test.dart: UPSERT UPDATE follows each source row encoding 1
+00:04 +275: test/insert_stream_test.dart: UPSERT NOTHING without RETURNING streams encoding 1
+00:04 +276: test/insert_stream_test.dart: UPSERT UPDATE without RETURNING streams encoding 1
+00:04 +277: test/insert_stream_test.dart: projection error stops after accepted prefix encoding 1
+00:04 +278: test/insert_stream_test.dart: projection error before first write encoding 1
+00:04 +279: test/insert_stream_test.dart: trigger materialization projection error precedes defaults encoding 1
+00:04 +280: test/insert_stream_test.dart: RETURNING materialization projection error precedes defaults encoding 1
+00:04 +281: test/insert_stream_test.dart: unused fatal default never executes encoding 1
+00:04 +282: test/insert_stream_test.dart: fatal default stops source after first projection encoding 1
+00:04 +283: test/insert_stream_test.dart: trigger materialization precedes fatal default encoding 1
+00:04 +284: test/insert_stream_test.dart: width failure on empty source is callback free encoding 1
+00:04 +285: test/insert_stream_test.dart: RETURNING preparation failure is callback free encoding 1
+00:04 +286: test/insert_stream_test.dart: trailing syntax failure is callback free encoding 1
+00:04 +287: test/insert_stream_test.dart: incorrect parameter count is callback free encoding 1
+00:04 +288: test/insert_stream_test.dart: invalid LIMIT is callback free encoding 1
+00:04 +289: test/insert_stream_test.dart: bound LIMIT zero does not execute callbacks encoding 1
+00:04 +290: test/insert_stream_test.dart: single SELECT encoding 2
+00:04 +291: test/insert_stream_test.dart: simple table scan encoding 2
+00:04 +292: test/insert_stream_test.dart: projection and omitted defaults encoding 2
+00:04 +293: test/insert_stream_test.dart: single VALUES default precedes supplied later field encoding 2
+00:04 +294: test/insert_stream_test.dart: single VALUES RETURNING keeps destination order encoding 2
+00:04 +295: test/insert_stream_test.dart: single VALUES trigger keeps destination order encoding 2
+00:04 +296: test/insert_stream_test.dart: single VALUES evaluates reversed target fields encoding 2
+00:04 +297: test/insert_stream_test.dart: single VALUES RETURNING evaluates reversed target fields encoding 2
+00:04 +298: test/insert_stream_test.dart: single VALUES implicit rowid follows declared fields encoding 2
+00:04 +299: test/insert_stream_test.dart: single VALUES INTEGER PRIMARY KEY follows declared order encoding 2
+00:04 +300: test/insert_stream_test.dart: multi VALUES preserves input target order encoding 2
+00:04 +301: test/insert_stream_test.dart: multi VALUES RETURNING preserves input target order encoding 2
+00:04 +302: test/insert_stream_test.dart: VALUES input encoding 2
+00:04 +303: test/insert_stream_test.dart: WHERE filters between projected rows encoding 2
+00:04 +304: test/insert_stream_test.dart: WHERE and projection reuse separate calls encoding 2
+00:04 +305: test/insert_stream_test.dart: empty input encoding 2
+00:04 +306: test/insert_stream_test.dart: LIMIT zero suppresses input encoding 2
+00:04 +307: test/insert_stream_test.dart: LIMIT stops WHERE and projection encoding 2
+00:04 +308: test/insert_stream_test.dart: OFFSET skips only projections encoding 2
+00:04 +309: test/insert_stream_test.dart: bound LIMIT and OFFSET encoding 2
+00:04 +310: test/insert_stream_test.dart: negative LIMIT and OFFSET encoding 2
+00:04 +311: test/insert_stream_test.dart: rowid ascending order streams encoding 2
+00:04 +312: test/insert_stream_test.dart: rowid descending order streams encoding 2
+00:04 +313: test/insert_stream_test.dart: rowid descending projection values encoding 2
+00:04 +314: test/insert_stream_test.dart: aliased rowid descending LIMIT encoding 2
+00:04 +315: test/insert_stream_test.dart: qualified rowid descending LIMIT encoding 2
+00:04 +316: test/insert_stream_test.dart: implicit rowid descending LIMIT encoding 2
+00:04 +317: test/insert_stream_test.dart: rowid output alias descending LIMIT encoding 2
+00:05 +318: test/insert_stream_test.dart: rowid ordinal descending LIMIT encoding 2
+00:05 +319: test/insert_stream_test.dart: WITHOUT ROWID primary descending LIMIT encoding 2
+00:05 +320: test/insert_stream_test.dart: WITHOUT ROWID alias descending LIMIT encoding 2
+00:05 +321: test/insert_stream_test.dart: WITHOUT ROWID ascending OFFSET encoding 2
+00:05 +322: test/insert_stream_test.dart: WITHOUT ROWID primary output alias encoding 2
+00:05 +323: test/insert_stream_test.dart: WITHOUT ROWID primary prefix encoding 2
+00:05 +324: test/insert_stream_test.dart: WITHOUT ROWID reversed prefix encoding 2
+00:05 +325: test/insert_stream_test.dart: WITHOUT ROWID mixed primary direction encoding 2
+00:05 +326: test/insert_stream_test.dart: unindexed order buffers projection encoding 2
+00:05 +327: test/insert_stream_test.dart: projection order buffers projection encoding 2
+00:05 +328: test/insert_stream_test.dart: sort LIMIT buffers candidates encoding 2
+00:05 +329: test/insert_stream_test.dart: sort OFFSET buffers candidates encoding 2
+00:05 +330: test/insert_stream_test.dart: unbounded sort projection precedes callback key encoding 2
+00:05 +331: test/insert_stream_test.dart: sort LIMIT callback key precedes projection encoding 2
+00:05 +332: test/insert_stream_test.dart: sort LIMIT skips worse projection callbacks encoding 2
+00:05 +333: test/insert_stream_test.dart: sort LIMIT shared projection key encoding 2
+00:05 +334: test/insert_stream_test.dart: sort LIMIT retains two candidates encoding 2
+00:05 +335: test/insert_stream_test.dart: sort LIMIT OFFSET retains extra candidate encoding 2
+00:05 +336: test/insert_stream_test.dart: sort ascending LIMIT skips later ties encoding 2
+00:06 +337: test/insert_stream_test.dart: sort negative LIMIT still evaluates keys first encoding 2
+00:06 +338: test/insert_stream_test.dart: sort large LIMIT still evaluates keys first encoding 2
+00:06 +339: test/insert_stream_test.dart: DISTINCT streams unique projections encoding 2
+00:06 +340: test/insert_stream_test.dart: DISTINCT duplicate callbacks encoding 2
+00:06 +341: test/insert_stream_test.dart: DISTINCT LIMIT short circuits encoding 2
+00:06 +342: test/insert_stream_test.dart: DISTINCT OFFSET counts unique rows encoding 2
+00:06 +343: test/insert_stream_test.dart: UNION ALL constant branches encoding 2
+00:06 +344: test/insert_stream_test.dart: UNION ALL table branches encoding 2
+00:06 +345: test/insert_stream_test.dart: UNION ALL LIMIT skips later branch encoding 2
+00:06 +346: test/insert_stream_test.dart: UNION ALL OFFSET crosses branches encoding 2
+00:06 +347: test/insert_stream_test.dart: UNION set buffers projections encoding 2
+00:06 +348: test/insert_stream_test.dart: INTERSECT set buffers projections encoding 2
+00:06 +349: test/insert_stream_test.dart: EXCEPT set buffers projections encoding 2
+00:06 +350: test/insert_stream_test.dart: UNION ALL ordered tail encoding 2
+00:06 +351: test/insert_stream_test.dart: JOIN ON resumes between writes encoding 2
+00:06 +352: test/insert_stream_test.dart: LEFT JOIN ON resumes between writes encoding 2
+00:07 +353: test/insert_stream_test.dart: LEFT JOIN rowid bound precedes ON callback encoding 2
+00:07 +354: test/insert_stream_test.dart: JOIN WHERE resumes between writes encoding 2
+00:07 +355: test/insert_stream_test.dart: JOIN LIMIT short circuits predicates encoding 2
+00:07 +356: test/insert_stream_test.dart: GROUP BY projects one group at a time encoding 2
+00:07 +357: test/insert_stream_test.dart: GROUP BY aggregate arguments encoding 2
+00:07 +358: test/insert_stream_test.dart: HAVING callbacks precede each projection encoding 2
+00:07 +359: test/insert_stream_test.dart: aggregate without groups encoding 2
+00:07 +360: test/insert_stream_test.dart: empty aggregate projects once encoding 2
+00:07 +361: test/insert_stream_test.dart: window projection resumes between writes encoding 2
+00:07 +362: test/insert_stream_test.dart: window projection LIMIT stops callbacks encoding 2
+00:07 +363: test/insert_stream_test.dart: self source materializes encoding 2
+00:07 +364: test/insert_stream_test.dart: nested self read materializes encoding 2
+00:07 +365: test/insert_stream_test.dart: view self source materializes outer projection encoding 2
+00:07 +366: test/insert_stream_test.dart: nested view self source materializes outer projection encoding 2
+00:07 +367: test/insert_stream_test.dart: CTE target name shadow permits streaming encoding 2
+00:07 +368: test/insert_stream_test.dart: unused target reading CTE permits streaming encoding 2
+00:07 +369: test/insert_stream_test.dart: target AFTER trigger materializes encoding 2
+00:07 +370: test/insert_stream_test.dart: target BEFORE trigger materializes encoding 2
+00:07 +371: test/insert_stream_test.dart: target trigger materializes VALUES encoding 2
+00:07 +372: test/insert_stream_test.dart: target unrelated-event trigger permits streaming encoding 2
+00:07 +373: test/insert_stream_test.dart: trigger IGNORE skips row after materialization encoding 2
+00:07 +374: test/insert_stream_test.dart: RETURNING materializes input before defaults encoding 2
+00:07 +375: test/insert_stream_test.dart: RETURNING materializes VALUES before defaults encoding 2
+00:07 +376: test/insert_stream_test.dart: RETURNING callback follows default encoding 2
+00:07 +377: test/insert_stream_test.dart: OR IGNORE consumes remaining source encoding 2
+00:07 +378: test/insert_stream_test.dart: constraint ABORT stops source atomically encoding 2
+00:07 +379: test/insert_stream_test.dart: constraint FAIL preserves accepted prefix encoding 2
+00:07 +380: test/insert_stream_test.dart: UPSERT NOTHING consumes source after conflict encoding 2
+00:07 +381: test/insert_stream_test.dart: UPSERT UPDATE follows each source row encoding 2
+00:07 +382: test/insert_stream_test.dart: UPSERT NOTHING without RETURNING streams encoding 2
+00:07 +383: test/insert_stream_test.dart: UPSERT UPDATE without RETURNING streams encoding 2
+00:07 +384: test/insert_stream_test.dart: projection error stops after accepted prefix encoding 2
+00:07 +385: test/insert_stream_test.dart: projection error before first write encoding 2
+00:07 +386: test/insert_stream_test.dart: trigger materialization projection error precedes defaults encoding 2
+00:07 +387: test/insert_stream_test.dart: RETURNING materialization projection error precedes defaults encoding 2
+00:07 +388: test/insert_stream_test.dart: unused fatal default never executes encoding 2
+00:07 +389: test/insert_stream_test.dart: fatal default stops source after first projection encoding 2
+00:07 +390: test/insert_stream_test.dart: trigger materialization precedes fatal default encoding 2
+00:07 +391: test/insert_stream_test.dart: width failure on empty source is callback free encoding 2
+00:07 +392: test/insert_stream_test.dart: RETURNING preparation failure is callback free encoding 2
+00:07 +393: test/insert_stream_test.dart: trailing syntax failure is callback free encoding 2
+00:07 +394: test/insert_stream_test.dart: incorrect parameter count is callback free encoding 2
+00:07 +395: test/insert_stream_test.dart: invalid LIMIT is callback free encoding 2
+00:07 +396: test/insert_stream_test.dart: bound LIMIT zero does not execute callbacks encoding 2
+00:07 +397: test/insert_stream_test.dart: single SELECT encoding 3
+00:07 +398: test/insert_stream_test.dart: simple table scan encoding 3
+00:07 +399: test/insert_stream_test.dart: projection and omitted defaults encoding 3
+00:07 +400: test/insert_stream_test.dart: single VALUES default precedes supplied later field encoding 3
+00:07 +401: test/insert_stream_test.dart: single VALUES RETURNING keeps destination order encoding 3
+00:07 +402: test/insert_stream_test.dart: single VALUES trigger keeps destination order encoding 3
+00:07 +403: test/insert_stream_test.dart: single VALUES evaluates reversed target fields encoding 3
+00:07 +404: test/insert_stream_test.dart: single VALUES RETURNING evaluates reversed target fields encoding 3
+00:07 +405: test/insert_stream_test.dart: single VALUES implicit rowid follows declared fields encoding 3
+00:07 +406: test/insert_stream_test.dart: single VALUES INTEGER PRIMARY KEY follows declared order encoding 3
+00:07 +407: test/insert_stream_test.dart: multi VALUES preserves input target order encoding 3
+00:07 +408: test/insert_stream_test.dart: multi VALUES RETURNING preserves input target order encoding 3
+00:07 +409: test/insert_stream_test.dart: VALUES input encoding 3
+00:07 +410: test/insert_stream_test.dart: WHERE filters between projected rows encoding 3
+00:07 +411: test/insert_stream_test.dart: WHERE and projection reuse separate calls encoding 3
+00:07 +412: test/insert_stream_test.dart: empty input encoding 3
+00:07 +413: test/insert_stream_test.dart: LIMIT zero suppresses input encoding 3
+00:07 +414: test/insert_stream_test.dart: LIMIT stops WHERE and projection encoding 3
+00:07 +415: test/insert_stream_test.dart: OFFSET skips only projections encoding 3
+00:07 +416: test/insert_stream_test.dart: bound LIMIT and OFFSET encoding 3
+00:07 +417: test/insert_stream_test.dart: negative LIMIT and OFFSET encoding 3
+00:07 +418: test/insert_stream_test.dart: rowid ascending order streams encoding 3
+00:07 +419: test/insert_stream_test.dart: rowid descending order streams encoding 3
+00:07 +420: test/insert_stream_test.dart: rowid descending projection values encoding 3
+00:07 +421: test/insert_stream_test.dart: aliased rowid descending LIMIT encoding 3
+00:07 +422: test/insert_stream_test.dart: qualified rowid descending LIMIT encoding 3
+00:07 +423: test/insert_stream_test.dart: implicit rowid descending LIMIT encoding 3
+00:07 +424: test/insert_stream_test.dart: rowid output alias descending LIMIT encoding 3
+00:07 +425: test/insert_stream_test.dart: rowid ordinal descending LIMIT encoding 3
+00:07 +426: test/insert_stream_test.dart: WITHOUT ROWID primary descending LIMIT encoding 3
+00:07 +427: test/insert_stream_test.dart: WITHOUT ROWID alias descending LIMIT encoding 3
+00:07 +428: test/insert_stream_test.dart: WITHOUT ROWID ascending OFFSET encoding 3
+00:07 +429: test/insert_stream_test.dart: WITHOUT ROWID primary output alias encoding 3
+00:07 +430: test/insert_stream_test.dart: WITHOUT ROWID primary prefix encoding 3
+00:07 +431: test/insert_stream_test.dart: WITHOUT ROWID reversed prefix encoding 3
+00:08 +432: test/insert_stream_test.dart: WITHOUT ROWID mixed primary direction encoding 3
+00:08 +433: test/insert_stream_test.dart: unindexed order buffers projection encoding 3
+00:08 +434: test/insert_stream_test.dart: projection order buffers projection encoding 3
+00:08 +435: test/insert_stream_test.dart: sort LIMIT buffers candidates encoding 3
+00:08 +436: test/insert_stream_test.dart: sort OFFSET buffers candidates encoding 3
+00:08 +437: test/insert_stream_test.dart: unbounded sort projection precedes callback key encoding 3
+00:08 +438: test/insert_stream_test.dart: sort LIMIT callback key precedes projection encoding 3
+00:08 +439: test/insert_stream_test.dart: sort LIMIT skips worse projection callbacks encoding 3
+00:08 +440: test/insert_stream_test.dart: sort LIMIT shared projection key encoding 3
+00:08 +441: test/insert_stream_test.dart: sort LIMIT retains two candidates encoding 3
+00:08 +442: test/insert_stream_test.dart: sort LIMIT OFFSET retains extra candidate encoding 3
+00:08 +443: test/insert_stream_test.dart: sort ascending LIMIT skips later ties encoding 3
+00:08 +444: test/insert_stream_test.dart: sort negative LIMIT still evaluates keys first encoding 3
+00:08 +445: test/insert_stream_test.dart: sort large LIMIT still evaluates keys first encoding 3
+00:08 +446: test/insert_stream_test.dart: DISTINCT streams unique projections encoding 3
+00:08 +447: test/insert_stream_test.dart: DISTINCT duplicate callbacks encoding 3
+00:08 +448: test/insert_stream_test.dart: DISTINCT LIMIT short circuits encoding 3
+00:08 +449: test/insert_stream_test.dart: DISTINCT OFFSET counts unique rows encoding 3
+00:08 +450: test/insert_stream_test.dart: UNION ALL constant branches encoding 3
+00:08 +451: test/insert_stream_test.dart: UNION ALL table branches encoding 3
+00:08 +452: test/insert_stream_test.dart: UNION ALL LIMIT skips later branch encoding 3
+00:08 +453: test/insert_stream_test.dart: UNION ALL OFFSET crosses branches encoding 3
+00:08 +454: test/insert_stream_test.dart: UNION set buffers projections encoding 3
+00:08 +455: test/insert_stream_test.dart: INTERSECT set buffers projections encoding 3
+00:08 +456: test/insert_stream_test.dart: EXCEPT set buffers projections encoding 3
+00:08 +457: test/insert_stream_test.dart: UNION ALL ordered tail encoding 3
+00:08 +458: test/insert_stream_test.dart: JOIN ON resumes between writes encoding 3
+00:08 +459: test/insert_stream_test.dart: LEFT JOIN ON resumes between writes encoding 3
+00:08 +460: test/insert_stream_test.dart: LEFT JOIN rowid bound precedes ON callback encoding 3
+00:08 +461: test/insert_stream_test.dart: JOIN WHERE resumes between writes encoding 3
+00:08 +462: test/insert_stream_test.dart: JOIN LIMIT short circuits predicates encoding 3
+00:08 +463: test/insert_stream_test.dart: GROUP BY projects one group at a time encoding 3
+00:08 +464: test/insert_stream_test.dart: GROUP BY aggregate arguments encoding 3
+00:08 +465: test/insert_stream_test.dart: HAVING callbacks precede each projection encoding 3
+00:08 +466: test/insert_stream_test.dart: aggregate without groups encoding 3
+00:08 +467: test/insert_stream_test.dart: empty aggregate projects once encoding 3
+00:08 +468: test/insert_stream_test.dart: window projection resumes between writes encoding 3
+00:08 +469: test/insert_stream_test.dart: window projection LIMIT stops callbacks encoding 3
+00:08 +470: test/insert_stream_test.dart: self source materializes encoding 3
+00:08 +471: test/insert_stream_test.dart: nested self read materializes encoding 3
+00:08 +472: test/insert_stream_test.dart: view self source materializes outer projection encoding 3
+00:08 +473: test/insert_stream_test.dart: nested view self source materializes outer projection encoding 3
+00:08 +474: test/insert_stream_test.dart: CTE target name shadow permits streaming encoding 3
+00:08 +475: test/insert_stream_test.dart: unused target reading CTE permits streaming encoding 3
+00:08 +476: test/insert_stream_test.dart: target AFTER trigger materializes encoding 3
+00:08 +477: test/insert_stream_test.dart: target BEFORE trigger materializes encoding 3
+00:08 +478: test/insert_stream_test.dart: target trigger materializes VALUES encoding 3
+00:08 +479: test/insert_stream_test.dart: target unrelated-event trigger permits streaming encoding 3
+00:08 +480: test/insert_stream_test.dart: trigger IGNORE skips row after materialization encoding 3
+00:08 +481: test/insert_stream_test.dart: RETURNING materializes input before defaults encoding 3
+00:08 +482: test/insert_stream_test.dart: RETURNING materializes VALUES before defaults encoding 3
+00:08 +483: test/insert_stream_test.dart: RETURNING callback follows default encoding 3
+00:08 +484: test/insert_stream_test.dart: OR IGNORE consumes remaining source encoding 3
+00:08 +485: test/insert_stream_test.dart: constraint ABORT stops source atomically encoding 3
+00:08 +486: test/insert_stream_test.dart: constraint FAIL preserves accepted prefix encoding 3
+00:08 +487: test/insert_stream_test.dart: UPSERT NOTHING consumes source after conflict encoding 3
+00:08 +488: test/insert_stream_test.dart: UPSERT UPDATE follows each source row encoding 3
+00:08 +489: test/insert_stream_test.dart: UPSERT NOTHING without RETURNING streams encoding 3
+00:08 +490: test/insert_stream_test.dart: UPSERT UPDATE without RETURNING streams encoding 3
+00:08 +491: test/insert_stream_test.dart: projection error stops after accepted prefix encoding 3
+00:08 +492: test/insert_stream_test.dart: projection error before first write encoding 3
+00:09 +493: test/insert_stream_test.dart: trigger materialization projection error precedes defaults encoding 3
+00:09 +494: test/insert_stream_test.dart: RETURNING materialization projection error precedes defaults encoding 3
+00:09 +495: test/insert_stream_test.dart: unused fatal default never executes encoding 3
+00:09 +496: test/insert_stream_test.dart: fatal default stops source after first projection encoding 3
+00:09 +497: test/insert_stream_test.dart: trigger materialization precedes fatal default encoding 3
+00:09 +498: test/insert_stream_test.dart: width failure on empty source is callback free encoding 3
+00:09 +499: test/insert_stream_test.dart: RETURNING preparation failure is callback free encoding 3
+00:09 +500: test/insert_stream_test.dart: trailing syntax failure is callback free encoding 3
+00:09 +501: test/insert_stream_test.dart: incorrect parameter count is callback free encoding 3
+00:09 +502: test/insert_stream_test.dart: invalid LIMIT is callback free encoding 3
+00:09 +503: test/insert_stream_test.dart: bound LIMIT zero does not execute callbacks encoding 3
+00:09 +504: loading test/row_value_test.dart
+00:09 +504: test/row_value_test.dart: (setUpAll)
+00:09 +504: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) = (NULL,NULL) AS result
+00:09 +505: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) == (NULL,NULL) AS result
+00:09 +506: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) != (NULL,NULL) AS result
+00:09 +507: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <> (NULL,NULL) AS result
+00:09 +508: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) < (NULL,NULL) AS result
+00:09 +509: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <= (NULL,NULL) AS result
+00:09 +510: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) > (NULL,NULL) AS result
+00:09 +511: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) >= (NULL,NULL) AS result
+00:09 +512: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS (NULL,NULL) AS result
+00:09 +513: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS NOT (NULL,NULL) AS result
+00:09 +514: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) = (NULL,0) AS result
+00:09 +515: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) == (NULL,0) AS result
+00:09 +516: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) != (NULL,0) AS result
+00:09 +517: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <> (NULL,0) AS result
+00:09 +518: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) < (NULL,0) AS result
+00:09 +519: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <= (NULL,0) AS result
+00:09 +520: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) > (NULL,0) AS result
+00:09 +521: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) >= (NULL,0) AS result
+00:09 +522: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS (NULL,0) AS result
+00:09 +523: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS NOT (NULL,0) AS result
+00:09 +524: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) = (NULL,1) AS result
+00:09 +525: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) == (NULL,1) AS result
+00:09 +526: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) != (NULL,1) AS result
+00:09 +527: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <> (NULL,1) AS result
+00:09 +528: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) < (NULL,1) AS result
+00:09 +529: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <= (NULL,1) AS result
+00:09 +530: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) > (NULL,1) AS result
+00:09 +531: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) >= (NULL,1) AS result
+00:09 +532: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS (NULL,1) AS result
+00:09 +533: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS NOT (NULL,1) AS result
+00:09 +534: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) = (0,NULL) AS result
+00:09 +535: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) == (0,NULL) AS result
+00:09 +536: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) != (0,NULL) AS result
+00:09 +537: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <> (0,NULL) AS result
+00:09 +538: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) < (0,NULL) AS result
+00:09 +539: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <= (0,NULL) AS result
+00:09 +540: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) > (0,NULL) AS result
+00:09 +541: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) >= (0,NULL) AS result
+00:09 +542: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS (0,NULL) AS result
+00:09 +543: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS NOT (0,NULL) AS result
+00:09 +544: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) = (0,0) AS result
+00:09 +545: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) == (0,0) AS result
+00:09 +546: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) != (0,0) AS result
+00:09 +547: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <> (0,0) AS result
+00:09 +548: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) < (0,0) AS result
+00:09 +549: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <= (0,0) AS result
+00:09 +550: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) > (0,0) AS result
+00:09 +551: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) >= (0,0) AS result
+00:09 +552: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS (0,0) AS result
+00:09 +553: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS NOT (0,0) AS result
+00:09 +554: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) = (0,1) AS result
+00:09 +555: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) == (0,1) AS result
+00:09 +556: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) != (0,1) AS result
+00:09 +557: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <> (0,1) AS result
+00:09 +558: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) < (0,1) AS result
+00:09 +559: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <= (0,1) AS result
+00:09 +560: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) > (0,1) AS result
+00:09 +561: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) >= (0,1) AS result
+00:09 +562: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS (0,1) AS result
+00:09 +563: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS NOT (0,1) AS result
+00:09 +564: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) = (1,NULL) AS result
+00:09 +565: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) == (1,NULL) AS result
+00:09 +566: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) != (1,NULL) AS result
+00:09 +567: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <> (1,NULL) AS result
+00:09 +568: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) < (1,NULL) AS result
+00:09 +569: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <= (1,NULL) AS result
+00:09 +570: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) > (1,NULL) AS result
+00:09 +571: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) >= (1,NULL) AS result
+00:09 +572: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS (1,NULL) AS result
+00:09 +573: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS NOT (1,NULL) AS result
+00:09 +574: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) = (1,0) AS result
+00:09 +575: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) == (1,0) AS result
+00:09 +576: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) != (1,0) AS result
+00:09 +577: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <> (1,0) AS result
+00:09 +578: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) < (1,0) AS result
+00:09 +579: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <= (1,0) AS result
+00:09 +580: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) > (1,0) AS result
+00:09 +581: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) >= (1,0) AS result
+00:09 +582: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS (1,0) AS result
+00:09 +583: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS NOT (1,0) AS result
+00:09 +584: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) = (1,1) AS result
+00:09 +585: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) == (1,1) AS result
+00:09 +586: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) != (1,1) AS result
+00:09 +587: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <> (1,1) AS result
+00:09 +588: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) < (1,1) AS result
+00:09 +589: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) <= (1,1) AS result
+00:09 +590: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) > (1,1) AS result
+00:09 +591: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) >= (1,1) AS result
+00:09 +592: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS (1,1) AS result
+00:09 +593: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IS NOT (1,1) AS result
+00:09 +594: test/row_value_test.dart: pinned row value: SELECT (NULL,0) = (NULL,NULL) AS result
+00:09 +595: test/row_value_test.dart: pinned row value: SELECT (NULL,0) == (NULL,NULL) AS result
+00:09 +596: test/row_value_test.dart: pinned row value: SELECT (NULL,0) != (NULL,NULL) AS result
+00:09 +597: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <> (NULL,NULL) AS result
+00:09 +598: test/row_value_test.dart: pinned row value: SELECT (NULL,0) < (NULL,NULL) AS result
+00:09 +599: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <= (NULL,NULL) AS result
+00:09 +600: test/row_value_test.dart: pinned row value: SELECT (NULL,0) > (NULL,NULL) AS result
+00:09 +601: test/row_value_test.dart: pinned row value: SELECT (NULL,0) >= (NULL,NULL) AS result
+00:09 +602: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS (NULL,NULL) AS result
+00:09 +603: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS NOT (NULL,NULL) AS result
+00:09 +604: test/row_value_test.dart: pinned row value: SELECT (NULL,0) = (NULL,0) AS result
+00:09 +605: test/row_value_test.dart: pinned row value: SELECT (NULL,0) == (NULL,0) AS result
+00:09 +606: test/row_value_test.dart: pinned row value: SELECT (NULL,0) != (NULL,0) AS result
+00:09 +607: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <> (NULL,0) AS result
+00:09 +608: test/row_value_test.dart: pinned row value: SELECT (NULL,0) < (NULL,0) AS result
+00:09 +609: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <= (NULL,0) AS result
+00:09 +610: test/row_value_test.dart: pinned row value: SELECT (NULL,0) > (NULL,0) AS result
+00:09 +611: test/row_value_test.dart: pinned row value: SELECT (NULL,0) >= (NULL,0) AS result
+00:09 +612: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS (NULL,0) AS result
+00:09 +613: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS NOT (NULL,0) AS result
+00:09 +614: test/row_value_test.dart: pinned row value: SELECT (NULL,0) = (NULL,1) AS result
+00:09 +615: test/row_value_test.dart: pinned row value: SELECT (NULL,0) == (NULL,1) AS result
+00:09 +616: test/row_value_test.dart: pinned row value: SELECT (NULL,0) != (NULL,1) AS result
+00:09 +617: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <> (NULL,1) AS result
+00:09 +618: test/row_value_test.dart: pinned row value: SELECT (NULL,0) < (NULL,1) AS result
+00:09 +619: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <= (NULL,1) AS result
+00:09 +620: test/row_value_test.dart: pinned row value: SELECT (NULL,0) > (NULL,1) AS result
+00:09 +621: test/row_value_test.dart: pinned row value: SELECT (NULL,0) >= (NULL,1) AS result
+00:09 +622: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS (NULL,1) AS result
+00:09 +623: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS NOT (NULL,1) AS result
+00:09 +624: test/row_value_test.dart: pinned row value: SELECT (NULL,0) = (0,NULL) AS result
+00:09 +625: test/row_value_test.dart: pinned row value: SELECT (NULL,0) == (0,NULL) AS result
+00:09 +626: test/row_value_test.dart: pinned row value: SELECT (NULL,0) != (0,NULL) AS result
+00:09 +627: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <> (0,NULL) AS result
+00:09 +628: test/row_value_test.dart: pinned row value: SELECT (NULL,0) < (0,NULL) AS result
+00:09 +629: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <= (0,NULL) AS result
+00:09 +630: test/row_value_test.dart: pinned row value: SELECT (NULL,0) > (0,NULL) AS result
+00:09 +631: test/row_value_test.dart: pinned row value: SELECT (NULL,0) >= (0,NULL) AS result
+00:09 +632: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS (0,NULL) AS result
+00:09 +633: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS NOT (0,NULL) AS result
+00:09 +634: test/row_value_test.dart: pinned row value: SELECT (NULL,0) = (0,0) AS result
+00:09 +635: test/row_value_test.dart: pinned row value: SELECT (NULL,0) == (0,0) AS result
+00:09 +636: test/row_value_test.dart: pinned row value: SELECT (NULL,0) != (0,0) AS result
+00:09 +637: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <> (0,0) AS result
+00:09 +638: test/row_value_test.dart: pinned row value: SELECT (NULL,0) < (0,0) AS result
+00:09 +639: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <= (0,0) AS result
+00:09 +640: test/row_value_test.dart: pinned row value: SELECT (NULL,0) > (0,0) AS result
+00:09 +641: test/row_value_test.dart: pinned row value: SELECT (NULL,0) >= (0,0) AS result
+00:09 +642: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS (0,0) AS result
+00:09 +643: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS NOT (0,0) AS result
+00:09 +644: test/row_value_test.dart: pinned row value: SELECT (NULL,0) = (0,1) AS result
+00:09 +645: test/row_value_test.dart: pinned row value: SELECT (NULL,0) == (0,1) AS result
+00:09 +646: test/row_value_test.dart: pinned row value: SELECT (NULL,0) != (0,1) AS result
+00:09 +647: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <> (0,1) AS result
+00:09 +648: test/row_value_test.dart: pinned row value: SELECT (NULL,0) < (0,1) AS result
+00:09 +649: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <= (0,1) AS result
+00:09 +650: test/row_value_test.dart: pinned row value: SELECT (NULL,0) > (0,1) AS result
+00:09 +651: test/row_value_test.dart: pinned row value: SELECT (NULL,0) >= (0,1) AS result
+00:09 +652: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS (0,1) AS result
+00:09 +653: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS NOT (0,1) AS result
+00:09 +654: test/row_value_test.dart: pinned row value: SELECT (NULL,0) = (1,NULL) AS result
+00:09 +655: test/row_value_test.dart: pinned row value: SELECT (NULL,0) == (1,NULL) AS result
+00:09 +656: test/row_value_test.dart: pinned row value: SELECT (NULL,0) != (1,NULL) AS result
+00:09 +657: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <> (1,NULL) AS result
+00:09 +658: test/row_value_test.dart: pinned row value: SELECT (NULL,0) < (1,NULL) AS result
+00:09 +659: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <= (1,NULL) AS result
+00:09 +660: test/row_value_test.dart: pinned row value: SELECT (NULL,0) > (1,NULL) AS result
+00:09 +661: test/row_value_test.dart: pinned row value: SELECT (NULL,0) >= (1,NULL) AS result
+00:09 +662: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS (1,NULL) AS result
+00:09 +663: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS NOT (1,NULL) AS result
+00:09 +664: test/row_value_test.dart: pinned row value: SELECT (NULL,0) = (1,0) AS result
+00:09 +665: test/row_value_test.dart: pinned row value: SELECT (NULL,0) == (1,0) AS result
+00:09 +666: test/row_value_test.dart: pinned row value: SELECT (NULL,0) != (1,0) AS result
+00:09 +667: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <> (1,0) AS result
+00:09 +668: test/row_value_test.dart: pinned row value: SELECT (NULL,0) < (1,0) AS result
+00:09 +669: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <= (1,0) AS result
+00:09 +670: test/row_value_test.dart: pinned row value: SELECT (NULL,0) > (1,0) AS result
+00:09 +671: test/row_value_test.dart: pinned row value: SELECT (NULL,0) >= (1,0) AS result
+00:09 +672: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS (1,0) AS result
+00:09 +673: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS NOT (1,0) AS result
+00:09 +674: test/row_value_test.dart: pinned row value: SELECT (NULL,0) = (1,1) AS result
+00:09 +675: test/row_value_test.dart: pinned row value: SELECT (NULL,0) == (1,1) AS result
+00:09 +676: test/row_value_test.dart: pinned row value: SELECT (NULL,0) != (1,1) AS result
+00:09 +677: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <> (1,1) AS result
+00:09 +678: test/row_value_test.dart: pinned row value: SELECT (NULL,0) < (1,1) AS result
+00:09 +679: test/row_value_test.dart: pinned row value: SELECT (NULL,0) <= (1,1) AS result
+00:09 +680: test/row_value_test.dart: pinned row value: SELECT (NULL,0) > (1,1) AS result
+00:09 +681: test/row_value_test.dart: pinned row value: SELECT (NULL,0) >= (1,1) AS result
+00:09 +682: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS (1,1) AS result
+00:09 +683: test/row_value_test.dart: pinned row value: SELECT (NULL,0) IS NOT (1,1) AS result
+00:09 +684: test/row_value_test.dart: pinned row value: SELECT (NULL,1) = (NULL,NULL) AS result
+00:09 +685: test/row_value_test.dart: pinned row value: SELECT (NULL,1) == (NULL,NULL) AS result
+00:09 +686: test/row_value_test.dart: pinned row value: SELECT (NULL,1) != (NULL,NULL) AS result
+00:09 +687: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <> (NULL,NULL) AS result
+00:09 +688: test/row_value_test.dart: pinned row value: SELECT (NULL,1) < (NULL,NULL) AS result
+00:09 +689: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <= (NULL,NULL) AS result
+00:09 +690: test/row_value_test.dart: pinned row value: SELECT (NULL,1) > (NULL,NULL) AS result
+00:09 +691: test/row_value_test.dart: pinned row value: SELECT (NULL,1) >= (NULL,NULL) AS result
+00:09 +692: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS (NULL,NULL) AS result
+00:09 +693: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS NOT (NULL,NULL) AS result
+00:09 +694: test/row_value_test.dart: pinned row value: SELECT (NULL,1) = (NULL,0) AS result
+00:09 +695: test/row_value_test.dart: pinned row value: SELECT (NULL,1) == (NULL,0) AS result
+00:09 +696: test/row_value_test.dart: pinned row value: SELECT (NULL,1) != (NULL,0) AS result
+00:09 +697: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <> (NULL,0) AS result
+00:09 +698: test/row_value_test.dart: pinned row value: SELECT (NULL,1) < (NULL,0) AS result
+00:09 +699: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <= (NULL,0) AS result
+00:09 +700: test/row_value_test.dart: pinned row value: SELECT (NULL,1) > (NULL,0) AS result
+00:09 +701: test/row_value_test.dart: pinned row value: SELECT (NULL,1) >= (NULL,0) AS result
+00:09 +702: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS (NULL,0) AS result
+00:09 +703: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS NOT (NULL,0) AS result
+00:09 +704: test/row_value_test.dart: pinned row value: SELECT (NULL,1) = (NULL,1) AS result
+00:09 +705: test/row_value_test.dart: pinned row value: SELECT (NULL,1) == (NULL,1) AS result
+00:09 +706: test/row_value_test.dart: pinned row value: SELECT (NULL,1) != (NULL,1) AS result
+00:09 +707: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <> (NULL,1) AS result
+00:09 +708: test/row_value_test.dart: pinned row value: SELECT (NULL,1) < (NULL,1) AS result
+00:09 +709: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <= (NULL,1) AS result
+00:09 +710: test/row_value_test.dart: pinned row value: SELECT (NULL,1) > (NULL,1) AS result
+00:09 +711: test/row_value_test.dart: pinned row value: SELECT (NULL,1) >= (NULL,1) AS result
+00:09 +712: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS (NULL,1) AS result
+00:09 +713: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS NOT (NULL,1) AS result
+00:09 +714: test/row_value_test.dart: pinned row value: SELECT (NULL,1) = (0,NULL) AS result
+00:09 +715: test/row_value_test.dart: pinned row value: SELECT (NULL,1) == (0,NULL) AS result
+00:09 +716: test/row_value_test.dart: pinned row value: SELECT (NULL,1) != (0,NULL) AS result
+00:09 +717: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <> (0,NULL) AS result
+00:09 +718: test/row_value_test.dart: pinned row value: SELECT (NULL,1) < (0,NULL) AS result
+00:09 +719: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <= (0,NULL) AS result
+00:09 +720: test/row_value_test.dart: pinned row value: SELECT (NULL,1) > (0,NULL) AS result
+00:09 +721: test/row_value_test.dart: pinned row value: SELECT (NULL,1) >= (0,NULL) AS result
+00:09 +722: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS (0,NULL) AS result
+00:09 +723: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS NOT (0,NULL) AS result
+00:09 +724: test/row_value_test.dart: pinned row value: SELECT (NULL,1) = (0,0) AS result
+00:09 +725: test/row_value_test.dart: pinned row value: SELECT (NULL,1) == (0,0) AS result
+00:09 +726: test/row_value_test.dart: pinned row value: SELECT (NULL,1) != (0,0) AS result
+00:09 +727: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <> (0,0) AS result
+00:09 +728: test/row_value_test.dart: pinned row value: SELECT (NULL,1) < (0,0) AS result
+00:09 +729: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <= (0,0) AS result
+00:09 +730: test/row_value_test.dart: pinned row value: SELECT (NULL,1) > (0,0) AS result
+00:09 +731: test/row_value_test.dart: pinned row value: SELECT (NULL,1) >= (0,0) AS result
+00:09 +732: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS (0,0) AS result
+00:09 +733: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS NOT (0,0) AS result
+00:09 +734: test/row_value_test.dart: pinned row value: SELECT (NULL,1) = (0,1) AS result
+00:09 +735: test/row_value_test.dart: pinned row value: SELECT (NULL,1) == (0,1) AS result
+00:09 +736: test/row_value_test.dart: pinned row value: SELECT (NULL,1) != (0,1) AS result
+00:09 +737: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <> (0,1) AS result
+00:09 +738: test/row_value_test.dart: pinned row value: SELECT (NULL,1) < (0,1) AS result
+00:09 +739: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <= (0,1) AS result
+00:09 +740: test/row_value_test.dart: pinned row value: SELECT (NULL,1) > (0,1) AS result
+00:09 +741: test/row_value_test.dart: pinned row value: SELECT (NULL,1) >= (0,1) AS result
+00:09 +742: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS (0,1) AS result
+00:09 +743: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS NOT (0,1) AS result
+00:10 +744: test/row_value_test.dart: pinned row value: SELECT (NULL,1) = (1,NULL) AS result
+00:10 +745: test/row_value_test.dart: pinned row value: SELECT (NULL,1) == (1,NULL) AS result
+00:10 +746: test/row_value_test.dart: pinned row value: SELECT (NULL,1) != (1,NULL) AS result
+00:10 +747: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <> (1,NULL) AS result
+00:10 +748: test/row_value_test.dart: pinned row value: SELECT (NULL,1) < (1,NULL) AS result
+00:10 +749: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <= (1,NULL) AS result
+00:10 +750: test/row_value_test.dart: pinned row value: SELECT (NULL,1) > (1,NULL) AS result
+00:10 +751: test/row_value_test.dart: pinned row value: SELECT (NULL,1) >= (1,NULL) AS result
+00:10 +752: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS (1,NULL) AS result
+00:10 +753: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS NOT (1,NULL) AS result
+00:10 +754: test/row_value_test.dart: pinned row value: SELECT (NULL,1) = (1,0) AS result
+00:10 +755: test/row_value_test.dart: pinned row value: SELECT (NULL,1) == (1,0) AS result
+00:10 +756: test/row_value_test.dart: pinned row value: SELECT (NULL,1) != (1,0) AS result
+00:10 +757: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <> (1,0) AS result
+00:10 +758: test/row_value_test.dart: pinned row value: SELECT (NULL,1) < (1,0) AS result
+00:10 +759: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <= (1,0) AS result
+00:10 +760: test/row_value_test.dart: pinned row value: SELECT (NULL,1) > (1,0) AS result
+00:10 +761: test/row_value_test.dart: pinned row value: SELECT (NULL,1) >= (1,0) AS result
+00:10 +762: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS (1,0) AS result
+00:10 +763: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS NOT (1,0) AS result
+00:10 +764: test/row_value_test.dart: pinned row value: SELECT (NULL,1) = (1,1) AS result
+00:10 +765: test/row_value_test.dart: pinned row value: SELECT (NULL,1) == (1,1) AS result
+00:10 +766: test/row_value_test.dart: pinned row value: SELECT (NULL,1) != (1,1) AS result
+00:10 +767: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <> (1,1) AS result
+00:10 +768: test/row_value_test.dart: pinned row value: SELECT (NULL,1) < (1,1) AS result
+00:10 +769: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <= (1,1) AS result
+00:10 +770: test/row_value_test.dart: pinned row value: SELECT (NULL,1) > (1,1) AS result
+00:10 +771: test/row_value_test.dart: pinned row value: SELECT (NULL,1) >= (1,1) AS result
+00:10 +772: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS (1,1) AS result
+00:10 +773: test/row_value_test.dart: pinned row value: SELECT (NULL,1) IS NOT (1,1) AS result
+00:10 +774: test/row_value_test.dart: pinned row value: SELECT (0,NULL) = (NULL,NULL) AS result
+00:10 +775: test/row_value_test.dart: pinned row value: SELECT (0,NULL) == (NULL,NULL) AS result
+00:10 +776: test/row_value_test.dart: pinned row value: SELECT (0,NULL) != (NULL,NULL) AS result
+00:10 +777: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <> (NULL,NULL) AS result
+00:10 +778: test/row_value_test.dart: pinned row value: SELECT (0,NULL) < (NULL,NULL) AS result
+00:10 +779: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <= (NULL,NULL) AS result
+00:10 +780: test/row_value_test.dart: pinned row value: SELECT (0,NULL) > (NULL,NULL) AS result
+00:10 +781: test/row_value_test.dart: pinned row value: SELECT (0,NULL) >= (NULL,NULL) AS result
+00:10 +782: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS (NULL,NULL) AS result
+00:10 +783: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS NOT (NULL,NULL) AS result
+00:10 +784: test/row_value_test.dart: pinned row value: SELECT (0,NULL) = (NULL,0) AS result
+00:10 +785: test/row_value_test.dart: pinned row value: SELECT (0,NULL) == (NULL,0) AS result
+00:10 +786: test/row_value_test.dart: pinned row value: SELECT (0,NULL) != (NULL,0) AS result
+00:10 +787: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <> (NULL,0) AS result
+00:10 +788: test/row_value_test.dart: pinned row value: SELECT (0,NULL) < (NULL,0) AS result
+00:10 +789: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <= (NULL,0) AS result
+00:10 +790: test/row_value_test.dart: pinned row value: SELECT (0,NULL) > (NULL,0) AS result
+00:10 +791: test/row_value_test.dart: pinned row value: SELECT (0,NULL) >= (NULL,0) AS result
+00:10 +792: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS (NULL,0) AS result
+00:10 +793: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS NOT (NULL,0) AS result
+00:10 +794: test/row_value_test.dart: pinned row value: SELECT (0,NULL) = (NULL,1) AS result
+00:10 +795: test/row_value_test.dart: pinned row value: SELECT (0,NULL) == (NULL,1) AS result
+00:10 +796: test/row_value_test.dart: pinned row value: SELECT (0,NULL) != (NULL,1) AS result
+00:10 +797: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <> (NULL,1) AS result
+00:10 +798: test/row_value_test.dart: pinned row value: SELECT (0,NULL) < (NULL,1) AS result
+00:10 +799: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <= (NULL,1) AS result
+00:10 +800: test/row_value_test.dart: pinned row value: SELECT (0,NULL) > (NULL,1) AS result
+00:10 +801: test/row_value_test.dart: pinned row value: SELECT (0,NULL) >= (NULL,1) AS result
+00:10 +802: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS (NULL,1) AS result
+00:10 +803: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS NOT (NULL,1) AS result
+00:10 +804: test/row_value_test.dart: pinned row value: SELECT (0,NULL) = (0,NULL) AS result
+00:10 +805: test/row_value_test.dart: pinned row value: SELECT (0,NULL) == (0,NULL) AS result
+00:10 +806: test/row_value_test.dart: pinned row value: SELECT (0,NULL) != (0,NULL) AS result
+00:10 +807: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <> (0,NULL) AS result
+00:10 +808: test/row_value_test.dart: pinned row value: SELECT (0,NULL) < (0,NULL) AS result
+00:10 +809: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <= (0,NULL) AS result
+00:10 +810: test/row_value_test.dart: pinned row value: SELECT (0,NULL) > (0,NULL) AS result
+00:10 +811: test/row_value_test.dart: pinned row value: SELECT (0,NULL) >= (0,NULL) AS result
+00:10 +812: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS (0,NULL) AS result
+00:10 +813: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS NOT (0,NULL) AS result
+00:10 +814: test/row_value_test.dart: pinned row value: SELECT (0,NULL) = (0,0) AS result
+00:10 +815: test/row_value_test.dart: pinned row value: SELECT (0,NULL) == (0,0) AS result
+00:10 +816: test/row_value_test.dart: pinned row value: SELECT (0,NULL) != (0,0) AS result
+00:10 +817: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <> (0,0) AS result
+00:10 +818: test/row_value_test.dart: pinned row value: SELECT (0,NULL) < (0,0) AS result
+00:10 +819: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <= (0,0) AS result
+00:10 +820: test/row_value_test.dart: pinned row value: SELECT (0,NULL) > (0,0) AS result
+00:10 +821: test/row_value_test.dart: pinned row value: SELECT (0,NULL) >= (0,0) AS result
+00:10 +822: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS (0,0) AS result
+00:10 +823: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS NOT (0,0) AS result
+00:10 +824: test/row_value_test.dart: pinned row value: SELECT (0,NULL) = (0,1) AS result
+00:10 +825: test/row_value_test.dart: pinned row value: SELECT (0,NULL) == (0,1) AS result
+00:10 +826: test/row_value_test.dart: pinned row value: SELECT (0,NULL) != (0,1) AS result
+00:10 +827: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <> (0,1) AS result
+00:10 +828: test/row_value_test.dart: pinned row value: SELECT (0,NULL) < (0,1) AS result
+00:10 +829: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <= (0,1) AS result
+00:10 +830: test/row_value_test.dart: pinned row value: SELECT (0,NULL) > (0,1) AS result
+00:10 +831: test/row_value_test.dart: pinned row value: SELECT (0,NULL) >= (0,1) AS result
+00:10 +832: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS (0,1) AS result
+00:10 +833: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS NOT (0,1) AS result
+00:10 +834: test/row_value_test.dart: pinned row value: SELECT (0,NULL) = (1,NULL) AS result
+00:10 +835: test/row_value_test.dart: pinned row value: SELECT (0,NULL) == (1,NULL) AS result
+00:10 +836: test/row_value_test.dart: pinned row value: SELECT (0,NULL) != (1,NULL) AS result
+00:10 +837: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <> (1,NULL) AS result
+00:10 +838: test/row_value_test.dart: pinned row value: SELECT (0,NULL) < (1,NULL) AS result
+00:10 +839: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <= (1,NULL) AS result
+00:10 +840: test/row_value_test.dart: pinned row value: SELECT (0,NULL) > (1,NULL) AS result
+00:10 +841: test/row_value_test.dart: pinned row value: SELECT (0,NULL) >= (1,NULL) AS result
+00:10 +842: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS (1,NULL) AS result
+00:10 +843: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS NOT (1,NULL) AS result
+00:10 +844: test/row_value_test.dart: pinned row value: SELECT (0,NULL) = (1,0) AS result
+00:10 +845: test/row_value_test.dart: pinned row value: SELECT (0,NULL) == (1,0) AS result
+00:10 +846: test/row_value_test.dart: pinned row value: SELECT (0,NULL) != (1,0) AS result
+00:10 +847: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <> (1,0) AS result
+00:10 +848: test/row_value_test.dart: pinned row value: SELECT (0,NULL) < (1,0) AS result
+00:10 +849: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <= (1,0) AS result
+00:10 +850: test/row_value_test.dart: pinned row value: SELECT (0,NULL) > (1,0) AS result
+00:10 +851: test/row_value_test.dart: pinned row value: SELECT (0,NULL) >= (1,0) AS result
+00:10 +852: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS (1,0) AS result
+00:10 +853: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS NOT (1,0) AS result
+00:10 +854: test/row_value_test.dart: pinned row value: SELECT (0,NULL) = (1,1) AS result
+00:10 +855: test/row_value_test.dart: pinned row value: SELECT (0,NULL) == (1,1) AS result
+00:10 +856: test/row_value_test.dart: pinned row value: SELECT (0,NULL) != (1,1) AS result
+00:10 +857: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <> (1,1) AS result
+00:10 +858: test/row_value_test.dart: pinned row value: SELECT (0,NULL) < (1,1) AS result
+00:10 +859: test/row_value_test.dart: pinned row value: SELECT (0,NULL) <= (1,1) AS result
+00:10 +860: test/row_value_test.dart: pinned row value: SELECT (0,NULL) > (1,1) AS result
+00:10 +861: test/row_value_test.dart: pinned row value: SELECT (0,NULL) >= (1,1) AS result
+00:10 +862: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS (1,1) AS result
+00:10 +863: test/row_value_test.dart: pinned row value: SELECT (0,NULL) IS NOT (1,1) AS result
+00:10 +864: test/row_value_test.dart: pinned row value: SELECT (0,0) = (NULL,NULL) AS result
+00:10 +865: test/row_value_test.dart: pinned row value: SELECT (0,0) == (NULL,NULL) AS result
+00:10 +866: test/row_value_test.dart: pinned row value: SELECT (0,0) != (NULL,NULL) AS result
+00:10 +867: test/row_value_test.dart: pinned row value: SELECT (0,0) <> (NULL,NULL) AS result
+00:10 +868: test/row_value_test.dart: pinned row value: SELECT (0,0) < (NULL,NULL) AS result
+00:10 +869: test/row_value_test.dart: pinned row value: SELECT (0,0) <= (NULL,NULL) AS result
+00:10 +870: test/row_value_test.dart: pinned row value: SELECT (0,0) > (NULL,NULL) AS result
+00:10 +871: test/row_value_test.dart: pinned row value: SELECT (0,0) >= (NULL,NULL) AS result
+00:10 +872: test/row_value_test.dart: pinned row value: SELECT (0,0) IS (NULL,NULL) AS result
+00:10 +873: test/row_value_test.dart: pinned row value: SELECT (0,0) IS NOT (NULL,NULL) AS result
+00:10 +874: test/row_value_test.dart: pinned row value: SELECT (0,0) = (NULL,0) AS result
+00:10 +875: test/row_value_test.dart: pinned row value: SELECT (0,0) == (NULL,0) AS result
+00:10 +876: test/row_value_test.dart: pinned row value: SELECT (0,0) != (NULL,0) AS result
+00:10 +877: test/row_value_test.dart: pinned row value: SELECT (0,0) <> (NULL,0) AS result
+00:10 +878: test/row_value_test.dart: pinned row value: SELECT (0,0) < (NULL,0) AS result
+00:10 +879: test/row_value_test.dart: pinned row value: SELECT (0,0) <= (NULL,0) AS result
+00:10 +880: test/row_value_test.dart: pinned row value: SELECT (0,0) > (NULL,0) AS result
+00:10 +881: test/row_value_test.dart: pinned row value: SELECT (0,0) >= (NULL,0) AS result
+00:10 +882: test/row_value_test.dart: pinned row value: SELECT (0,0) IS (NULL,0) AS result
+00:10 +883: test/row_value_test.dart: pinned row value: SELECT (0,0) IS NOT (NULL,0) AS result
+00:10 +884: test/row_value_test.dart: pinned row value: SELECT (0,0) = (NULL,1) AS result
+00:10 +885: test/row_value_test.dart: pinned row value: SELECT (0,0) == (NULL,1) AS result
+00:10 +886: test/row_value_test.dart: pinned row value: SELECT (0,0) != (NULL,1) AS result
+00:10 +887: test/row_value_test.dart: pinned row value: SELECT (0,0) <> (NULL,1) AS result
+00:10 +888: test/row_value_test.dart: pinned row value: SELECT (0,0) < (NULL,1) AS result
+00:10 +889: test/row_value_test.dart: pinned row value: SELECT (0,0) <= (NULL,1) AS result
+00:10 +890: test/row_value_test.dart: pinned row value: SELECT (0,0) > (NULL,1) AS result
+00:10 +891: test/row_value_test.dart: pinned row value: SELECT (0,0) >= (NULL,1) AS result
+00:10 +892: test/row_value_test.dart: pinned row value: SELECT (0,0) IS (NULL,1) AS result
+00:10 +893: test/row_value_test.dart: pinned row value: SELECT (0,0) IS NOT (NULL,1) AS result
+00:10 +894: test/row_value_test.dart: pinned row value: SELECT (0,0) = (0,NULL) AS result
+00:10 +895: test/row_value_test.dart: pinned row value: SELECT (0,0) == (0,NULL) AS result
+00:10 +896: test/row_value_test.dart: pinned row value: SELECT (0,0) != (0,NULL) AS result
+00:10 +897: test/row_value_test.dart: pinned row value: SELECT (0,0) <> (0,NULL) AS result
+00:10 +898: test/row_value_test.dart: pinned row value: SELECT (0,0) < (0,NULL) AS result
+00:10 +899: test/row_value_test.dart: pinned row value: SELECT (0,0) <= (0,NULL) AS result
+00:10 +900: test/row_value_test.dart: pinned row value: SELECT (0,0) > (0,NULL) AS result
+00:10 +901: test/row_value_test.dart: pinned row value: SELECT (0,0) >= (0,NULL) AS result
+00:10 +902: test/row_value_test.dart: pinned row value: SELECT (0,0) IS (0,NULL) AS result
+00:10 +903: test/row_value_test.dart: pinned row value: SELECT (0,0) IS NOT (0,NULL) AS result
+00:10 +904: test/row_value_test.dart: pinned row value: SELECT (0,0) = (0,0) AS result
+00:10 +905: test/row_value_test.dart: pinned row value: SELECT (0,0) == (0,0) AS result
+00:10 +906: test/row_value_test.dart: pinned row value: SELECT (0,0) != (0,0) AS result
+00:10 +907: test/row_value_test.dart: pinned row value: SELECT (0,0) <> (0,0) AS result
+00:10 +908: test/row_value_test.dart: pinned row value: SELECT (0,0) < (0,0) AS result
+00:10 +909: test/row_value_test.dart: pinned row value: SELECT (0,0) <= (0,0) AS result
+00:10 +910: test/row_value_test.dart: pinned row value: SELECT (0,0) > (0,0) AS result
+00:10 +911: test/row_value_test.dart: pinned row value: SELECT (0,0) >= (0,0) AS result
+00:10 +912: test/row_value_test.dart: pinned row value: SELECT (0,0) IS (0,0) AS result
+00:10 +913: test/row_value_test.dart: pinned row value: SELECT (0,0) IS NOT (0,0) AS result
+00:10 +914: test/row_value_test.dart: pinned row value: SELECT (0,0) = (0,1) AS result
+00:10 +915: test/row_value_test.dart: pinned row value: SELECT (0,0) == (0,1) AS result
+00:10 +916: test/row_value_test.dart: pinned row value: SELECT (0,0) != (0,1) AS result
+00:10 +917: test/row_value_test.dart: pinned row value: SELECT (0,0) <> (0,1) AS result
+00:10 +918: test/row_value_test.dart: pinned row value: SELECT (0,0) < (0,1) AS result
+00:10 +919: test/row_value_test.dart: pinned row value: SELECT (0,0) <= (0,1) AS result
+00:10 +920: test/row_value_test.dart: pinned row value: SELECT (0,0) > (0,1) AS result
+00:10 +921: test/row_value_test.dart: pinned row value: SELECT (0,0) >= (0,1) AS result
+00:10 +922: test/row_value_test.dart: pinned row value: SELECT (0,0) IS (0,1) AS result
+00:10 +923: test/row_value_test.dart: pinned row value: SELECT (0,0) IS NOT (0,1) AS result
+00:10 +924: test/row_value_test.dart: pinned row value: SELECT (0,0) = (1,NULL) AS result
+00:10 +925: test/row_value_test.dart: pinned row value: SELECT (0,0) == (1,NULL) AS result
+00:10 +926: test/row_value_test.dart: pinned row value: SELECT (0,0) != (1,NULL) AS result
+00:10 +927: test/row_value_test.dart: pinned row value: SELECT (0,0) <> (1,NULL) AS result
+00:10 +928: test/row_value_test.dart: pinned row value: SELECT (0,0) < (1,NULL) AS result
+00:10 +929: test/row_value_test.dart: pinned row value: SELECT (0,0) <= (1,NULL) AS result
+00:10 +930: test/row_value_test.dart: pinned row value: SELECT (0,0) > (1,NULL) AS result
+00:10 +931: test/row_value_test.dart: pinned row value: SELECT (0,0) >= (1,NULL) AS result
+00:10 +932: test/row_value_test.dart: pinned row value: SELECT (0,0) IS (1,NULL) AS result
+00:10 +933: test/row_value_test.dart: pinned row value: SELECT (0,0) IS NOT (1,NULL) AS result
+00:10 +934: test/row_value_test.dart: pinned row value: SELECT (0,0) = (1,0) AS result
+00:10 +935: test/row_value_test.dart: pinned row value: SELECT (0,0) == (1,0) AS result
+00:10 +936: test/row_value_test.dart: pinned row value: SELECT (0,0) != (1,0) AS result
+00:10 +937: test/row_value_test.dart: pinned row value: SELECT (0,0) <> (1,0) AS result
+00:10 +938: test/row_value_test.dart: pinned row value: SELECT (0,0) < (1,0) AS result
+00:10 +939: test/row_value_test.dart: pinned row value: SELECT (0,0) <= (1,0) AS result
+00:10 +940: test/row_value_test.dart: pinned row value: SELECT (0,0) > (1,0) AS result
+00:10 +941: test/row_value_test.dart: pinned row value: SELECT (0,0) >= (1,0) AS result
+00:10 +942: test/row_value_test.dart: pinned row value: SELECT (0,0) IS (1,0) AS result
+00:10 +943: test/row_value_test.dart: pinned row value: SELECT (0,0) IS NOT (1,0) AS result
+00:10 +944: test/row_value_test.dart: pinned row value: SELECT (0,0) = (1,1) AS result
+00:10 +945: test/row_value_test.dart: pinned row value: SELECT (0,0) == (1,1) AS result
+00:10 +946: test/row_value_test.dart: pinned row value: SELECT (0,0) != (1,1) AS result
+00:10 +947: test/row_value_test.dart: pinned row value: SELECT (0,0) <> (1,1) AS result
+00:10 +948: test/row_value_test.dart: pinned row value: SELECT (0,0) < (1,1) AS result
+00:10 +949: test/row_value_test.dart: pinned row value: SELECT (0,0) <= (1,1) AS result
+00:10 +950: test/row_value_test.dart: pinned row value: SELECT (0,0) > (1,1) AS result
+00:10 +951: test/row_value_test.dart: pinned row value: SELECT (0,0) >= (1,1) AS result
+00:10 +952: test/row_value_test.dart: pinned row value: SELECT (0,0) IS (1,1) AS result
+00:10 +953: test/row_value_test.dart: pinned row value: SELECT (0,0) IS NOT (1,1) AS result
+00:10 +954: test/row_value_test.dart: pinned row value: SELECT (0,1) = (NULL,NULL) AS result
+00:10 +955: test/row_value_test.dart: pinned row value: SELECT (0,1) == (NULL,NULL) AS result
+00:10 +956: test/row_value_test.dart: pinned row value: SELECT (0,1) != (NULL,NULL) AS result
+00:10 +957: test/row_value_test.dart: pinned row value: SELECT (0,1) <> (NULL,NULL) AS result
+00:10 +958: test/row_value_test.dart: pinned row value: SELECT (0,1) < (NULL,NULL) AS result
+00:10 +959: test/row_value_test.dart: pinned row value: SELECT (0,1) <= (NULL,NULL) AS result
+00:10 +960: test/row_value_test.dart: pinned row value: SELECT (0,1) > (NULL,NULL) AS result
+00:10 +961: test/row_value_test.dart: pinned row value: SELECT (0,1) >= (NULL,NULL) AS result
+00:10 +962: test/row_value_test.dart: pinned row value: SELECT (0,1) IS (NULL,NULL) AS result
+00:10 +963: test/row_value_test.dart: pinned row value: SELECT (0,1) IS NOT (NULL,NULL) AS result
+00:10 +964: test/row_value_test.dart: pinned row value: SELECT (0,1) = (NULL,0) AS result
+00:10 +965: test/row_value_test.dart: pinned row value: SELECT (0,1) == (NULL,0) AS result
+00:10 +966: test/row_value_test.dart: pinned row value: SELECT (0,1) != (NULL,0) AS result
+00:10 +967: test/row_value_test.dart: pinned row value: SELECT (0,1) <> (NULL,0) AS result
+00:10 +968: test/row_value_test.dart: pinned row value: SELECT (0,1) < (NULL,0) AS result
+00:10 +969: test/row_value_test.dart: pinned row value: SELECT (0,1) <= (NULL,0) AS result
+00:10 +970: test/row_value_test.dart: pinned row value: SELECT (0,1) > (NULL,0) AS result
+00:10 +971: test/row_value_test.dart: pinned row value: SELECT (0,1) >= (NULL,0) AS result
+00:10 +972: test/row_value_test.dart: pinned row value: SELECT (0,1) IS (NULL,0) AS result
+00:10 +973: test/row_value_test.dart: pinned row value: SELECT (0,1) IS NOT (NULL,0) AS result
+00:10 +974: test/row_value_test.dart: pinned row value: SELECT (0,1) = (NULL,1) AS result
+00:10 +975: test/row_value_test.dart: pinned row value: SELECT (0,1) == (NULL,1) AS result
+00:10 +976: test/row_value_test.dart: pinned row value: SELECT (0,1) != (NULL,1) AS result
+00:10 +977: test/row_value_test.dart: pinned row value: SELECT (0,1) <> (NULL,1) AS result
+00:10 +978: test/row_value_test.dart: pinned row value: SELECT (0,1) < (NULL,1) AS result
+00:10 +979: test/row_value_test.dart: pinned row value: SELECT (0,1) <= (NULL,1) AS result
+00:10 +980: test/row_value_test.dart: pinned row value: SELECT (0,1) > (NULL,1) AS result
+00:10 +981: test/row_value_test.dart: pinned row value: SELECT (0,1) >= (NULL,1) AS result
+00:10 +982: test/row_value_test.dart: pinned row value: SELECT (0,1) IS (NULL,1) AS result
+00:10 +983: test/row_value_test.dart: pinned row value: SELECT (0,1) IS NOT (NULL,1) AS result
+00:10 +984: test/row_value_test.dart: pinned row value: SELECT (0,1) = (0,NULL) AS result
+00:10 +985: test/row_value_test.dart: pinned row value: SELECT (0,1) == (0,NULL) AS result
+00:10 +986: test/row_value_test.dart: pinned row value: SELECT (0,1) != (0,NULL) AS result
+00:10 +987: test/row_value_test.dart: pinned row value: SELECT (0,1) <> (0,NULL) AS result
+00:10 +988: test/row_value_test.dart: pinned row value: SELECT (0,1) < (0,NULL) AS result
+00:10 +989: test/row_value_test.dart: pinned row value: SELECT (0,1) <= (0,NULL) AS result
+00:10 +990: test/row_value_test.dart: pinned row value: SELECT (0,1) > (0,NULL) AS result
+00:10 +991: test/row_value_test.dart: pinned row value: SELECT (0,1) >= (0,NULL) AS result
+00:10 +992: test/row_value_test.dart: pinned row value: SELECT (0,1) IS (0,NULL) AS result
+00:10 +993: test/row_value_test.dart: pinned row value: SELECT (0,1) IS NOT (0,NULL) AS result
+00:10 +994: test/row_value_test.dart: pinned row value: SELECT (0,1) = (0,0) AS result
+00:10 +995: test/row_value_test.dart: pinned row value: SELECT (0,1) == (0,0) AS result
+00:10 +996: test/row_value_test.dart: pinned row value: SELECT (0,1) != (0,0) AS result
+00:10 +997: test/row_value_test.dart: pinned row value: SELECT (0,1) <> (0,0) AS result
+00:10 +998: test/row_value_test.dart: pinned row value: SELECT (0,1) < (0,0) AS result
+00:10 +999: test/row_value_test.dart: pinned row value: SELECT (0,1) <= (0,0) AS result
+00:10 +1000: test/row_value_test.dart: pinned row value: SELECT (0,1) > (0,0) AS result
+00:10 +1001: test/row_value_test.dart: pinned row value: SELECT (0,1) >= (0,0) AS result
+00:10 +1002: test/row_value_test.dart: pinned row value: SELECT (0,1) IS (0,0) AS result
+00:10 +1003: test/row_value_test.dart: pinned row value: SELECT (0,1) IS NOT (0,0) AS result
+00:10 +1004: test/row_value_test.dart: pinned row value: SELECT (0,1) = (0,1) AS result
+00:10 +1005: test/row_value_test.dart: pinned row value: SELECT (0,1) == (0,1) AS result
+00:10 +1006: test/row_value_test.dart: pinned row value: SELECT (0,1) != (0,1) AS result
+00:10 +1007: test/row_value_test.dart: pinned row value: SELECT (0,1) <> (0,1) AS result
+00:10 +1008: test/row_value_test.dart: pinned row value: SELECT (0,1) < (0,1) AS result
+00:10 +1009: test/row_value_test.dart: pinned row value: SELECT (0,1) <= (0,1) AS result
+00:10 +1010: test/row_value_test.dart: pinned row value: SELECT (0,1) > (0,1) AS result
+00:10 +1011: test/row_value_test.dart: pinned row value: SELECT (0,1) >= (0,1) AS result
+00:10 +1012: test/row_value_test.dart: pinned row value: SELECT (0,1) IS (0,1) AS result
+00:10 +1013: test/row_value_test.dart: pinned row value: SELECT (0,1) IS NOT (0,1) AS result
+00:10 +1014: test/row_value_test.dart: pinned row value: SELECT (0,1) = (1,NULL) AS result
+00:10 +1015: test/row_value_test.dart: pinned row value: SELECT (0,1) == (1,NULL) AS result
+00:10 +1016: test/row_value_test.dart: pinned row value: SELECT (0,1) != (1,NULL) AS result
+00:10 +1017: test/row_value_test.dart: pinned row value: SELECT (0,1) <> (1,NULL) AS result
+00:10 +1018: test/row_value_test.dart: pinned row value: SELECT (0,1) < (1,NULL) AS result
+00:10 +1019: test/row_value_test.dart: pinned row value: SELECT (0,1) <= (1,NULL) AS result
+00:10 +1020: test/row_value_test.dart: pinned row value: SELECT (0,1) > (1,NULL) AS result
+00:10 +1021: test/row_value_test.dart: pinned row value: SELECT (0,1) >= (1,NULL) AS result
+00:10 +1022: test/row_value_test.dart: pinned row value: SELECT (0,1) IS (1,NULL) AS result
+00:10 +1023: test/row_value_test.dart: pinned row value: SELECT (0,1) IS NOT (1,NULL) AS result
+00:10 +1024: test/row_value_test.dart: pinned row value: SELECT (0,1) = (1,0) AS result
+00:10 +1025: test/row_value_test.dart: pinned row value: SELECT (0,1) == (1,0) AS result
+00:10 +1026: test/row_value_test.dart: pinned row value: SELECT (0,1) != (1,0) AS result
+00:10 +1027: test/row_value_test.dart: pinned row value: SELECT (0,1) <> (1,0) AS result
+00:10 +1028: test/row_value_test.dart: pinned row value: SELECT (0,1) < (1,0) AS result
+00:10 +1029: test/row_value_test.dart: pinned row value: SELECT (0,1) <= (1,0) AS result
+00:10 +1030: test/row_value_test.dart: pinned row value: SELECT (0,1) > (1,0) AS result
+00:10 +1031: test/row_value_test.dart: pinned row value: SELECT (0,1) >= (1,0) AS result
+00:10 +1032: test/row_value_test.dart: pinned row value: SELECT (0,1) IS (1,0) AS result
+00:10 +1033: test/row_value_test.dart: pinned row value: SELECT (0,1) IS NOT (1,0) AS result
+00:10 +1034: test/row_value_test.dart: pinned row value: SELECT (0,1) = (1,1) AS result
+00:10 +1035: test/row_value_test.dart: pinned row value: SELECT (0,1) == (1,1) AS result
+00:10 +1036: test/row_value_test.dart: pinned row value: SELECT (0,1) != (1,1) AS result
+00:10 +1037: test/row_value_test.dart: pinned row value: SELECT (0,1) <> (1,1) AS result
+00:10 +1038: test/row_value_test.dart: pinned row value: SELECT (0,1) < (1,1) AS result
+00:10 +1039: test/row_value_test.dart: pinned row value: SELECT (0,1) <= (1,1) AS result
+00:10 +1040: test/row_value_test.dart: pinned row value: SELECT (0,1) > (1,1) AS result
+00:10 +1041: test/row_value_test.dart: pinned row value: SELECT (0,1) >= (1,1) AS result
+00:10 +1042: test/row_value_test.dart: pinned row value: SELECT (0,1) IS (1,1) AS result
+00:10 +1043: test/row_value_test.dart: pinned row value: SELECT (0,1) IS NOT (1,1) AS result
+00:10 +1044: test/row_value_test.dart: pinned row value: SELECT (1,NULL) = (NULL,NULL) AS result
+00:10 +1045: test/row_value_test.dart: pinned row value: SELECT (1,NULL) == (NULL,NULL) AS result
+00:10 +1046: test/row_value_test.dart: pinned row value: SELECT (1,NULL) != (NULL,NULL) AS result
+00:10 +1047: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <> (NULL,NULL) AS result
+00:10 +1048: test/row_value_test.dart: pinned row value: SELECT (1,NULL) < (NULL,NULL) AS result
+00:10 +1049: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <= (NULL,NULL) AS result
+00:10 +1050: test/row_value_test.dart: pinned row value: SELECT (1,NULL) > (NULL,NULL) AS result
+00:10 +1051: test/row_value_test.dart: pinned row value: SELECT (1,NULL) >= (NULL,NULL) AS result
+00:10 +1052: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS (NULL,NULL) AS result
+00:10 +1053: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS NOT (NULL,NULL) AS result
+00:10 +1054: test/row_value_test.dart: pinned row value: SELECT (1,NULL) = (NULL,0) AS result
+00:10 +1055: test/row_value_test.dart: pinned row value: SELECT (1,NULL) == (NULL,0) AS result
+00:10 +1056: test/row_value_test.dart: pinned row value: SELECT (1,NULL) != (NULL,0) AS result
+00:10 +1057: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <> (NULL,0) AS result
+00:10 +1058: test/row_value_test.dart: pinned row value: SELECT (1,NULL) < (NULL,0) AS result
+00:10 +1059: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <= (NULL,0) AS result
+00:10 +1060: test/row_value_test.dart: pinned row value: SELECT (1,NULL) > (NULL,0) AS result
+00:10 +1061: test/row_value_test.dart: pinned row value: SELECT (1,NULL) >= (NULL,0) AS result
+00:10 +1062: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS (NULL,0) AS result
+00:10 +1063: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS NOT (NULL,0) AS result
+00:10 +1064: test/row_value_test.dart: pinned row value: SELECT (1,NULL) = (NULL,1) AS result
+00:10 +1065: test/row_value_test.dart: pinned row value: SELECT (1,NULL) == (NULL,1) AS result
+00:10 +1066: test/row_value_test.dart: pinned row value: SELECT (1,NULL) != (NULL,1) AS result
+00:10 +1067: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <> (NULL,1) AS result
+00:10 +1068: test/row_value_test.dart: pinned row value: SELECT (1,NULL) < (NULL,1) AS result
+00:10 +1069: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <= (NULL,1) AS result
+00:10 +1070: test/row_value_test.dart: pinned row value: SELECT (1,NULL) > (NULL,1) AS result
+00:10 +1071: test/row_value_test.dart: pinned row value: SELECT (1,NULL) >= (NULL,1) AS result
+00:10 +1072: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS (NULL,1) AS result
+00:10 +1073: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS NOT (NULL,1) AS result
+00:10 +1074: test/row_value_test.dart: pinned row value: SELECT (1,NULL) = (0,NULL) AS result
+00:10 +1075: test/row_value_test.dart: pinned row value: SELECT (1,NULL) == (0,NULL) AS result
+00:10 +1076: test/row_value_test.dart: pinned row value: SELECT (1,NULL) != (0,NULL) AS result
+00:10 +1077: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <> (0,NULL) AS result
+00:10 +1078: test/row_value_test.dart: pinned row value: SELECT (1,NULL) < (0,NULL) AS result
+00:10 +1079: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <= (0,NULL) AS result
+00:10 +1080: test/row_value_test.dart: pinned row value: SELECT (1,NULL) > (0,NULL) AS result
+00:10 +1081: test/row_value_test.dart: pinned row value: SELECT (1,NULL) >= (0,NULL) AS result
+00:10 +1082: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS (0,NULL) AS result
+00:10 +1083: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS NOT (0,NULL) AS result
+00:10 +1084: test/row_value_test.dart: pinned row value: SELECT (1,NULL) = (0,0) AS result
+00:10 +1085: test/row_value_test.dart: pinned row value: SELECT (1,NULL) == (0,0) AS result
+00:10 +1086: test/row_value_test.dart: pinned row value: SELECT (1,NULL) != (0,0) AS result
+00:10 +1087: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <> (0,0) AS result
+00:10 +1088: test/row_value_test.dart: pinned row value: SELECT (1,NULL) < (0,0) AS result
+00:10 +1089: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <= (0,0) AS result
+00:10 +1090: test/row_value_test.dart: pinned row value: SELECT (1,NULL) > (0,0) AS result
+00:10 +1091: test/row_value_test.dart: pinned row value: SELECT (1,NULL) >= (0,0) AS result
+00:10 +1092: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS (0,0) AS result
+00:10 +1093: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS NOT (0,0) AS result
+00:10 +1094: test/row_value_test.dart: pinned row value: SELECT (1,NULL) = (0,1) AS result
+00:10 +1095: test/row_value_test.dart: pinned row value: SELECT (1,NULL) == (0,1) AS result
+00:10 +1096: test/row_value_test.dart: pinned row value: SELECT (1,NULL) != (0,1) AS result
+00:10 +1097: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <> (0,1) AS result
+00:10 +1098: test/row_value_test.dart: pinned row value: SELECT (1,NULL) < (0,1) AS result
+00:10 +1099: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <= (0,1) AS result
+00:10 +1100: test/row_value_test.dart: pinned row value: SELECT (1,NULL) > (0,1) AS result
+00:10 +1101: test/row_value_test.dart: pinned row value: SELECT (1,NULL) >= (0,1) AS result
+00:10 +1102: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS (0,1) AS result
+00:10 +1103: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS NOT (0,1) AS result
+00:10 +1104: test/row_value_test.dart: pinned row value: SELECT (1,NULL) = (1,NULL) AS result
+00:10 +1105: test/row_value_test.dart: pinned row value: SELECT (1,NULL) == (1,NULL) AS result
+00:10 +1106: test/row_value_test.dart: pinned row value: SELECT (1,NULL) != (1,NULL) AS result
+00:10 +1107: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <> (1,NULL) AS result
+00:10 +1108: test/row_value_test.dart: pinned row value: SELECT (1,NULL) < (1,NULL) AS result
+00:10 +1109: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <= (1,NULL) AS result
+00:10 +1110: test/row_value_test.dart: pinned row value: SELECT (1,NULL) > (1,NULL) AS result
+00:10 +1111: test/row_value_test.dart: pinned row value: SELECT (1,NULL) >= (1,NULL) AS result
+00:10 +1112: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS (1,NULL) AS result
+00:10 +1113: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS NOT (1,NULL) AS result
+00:10 +1114: test/row_value_test.dart: pinned row value: SELECT (1,NULL) = (1,0) AS result
+00:10 +1115: test/row_value_test.dart: pinned row value: SELECT (1,NULL) == (1,0) AS result
+00:10 +1116: test/row_value_test.dart: pinned row value: SELECT (1,NULL) != (1,0) AS result
+00:10 +1117: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <> (1,0) AS result
+00:10 +1118: test/row_value_test.dart: pinned row value: SELECT (1,NULL) < (1,0) AS result
+00:10 +1119: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <= (1,0) AS result
+00:10 +1120: test/row_value_test.dart: pinned row value: SELECT (1,NULL) > (1,0) AS result
+00:10 +1121: test/row_value_test.dart: pinned row value: SELECT (1,NULL) >= (1,0) AS result
+00:10 +1122: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS (1,0) AS result
+00:10 +1123: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS NOT (1,0) AS result
+00:10 +1124: test/row_value_test.dart: pinned row value: SELECT (1,NULL) = (1,1) AS result
+00:10 +1125: test/row_value_test.dart: pinned row value: SELECT (1,NULL) == (1,1) AS result
+00:10 +1126: test/row_value_test.dart: pinned row value: SELECT (1,NULL) != (1,1) AS result
+00:10 +1127: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <> (1,1) AS result
+00:10 +1128: test/row_value_test.dart: pinned row value: SELECT (1,NULL) < (1,1) AS result
+00:10 +1129: test/row_value_test.dart: pinned row value: SELECT (1,NULL) <= (1,1) AS result
+00:10 +1130: test/row_value_test.dart: pinned row value: SELECT (1,NULL) > (1,1) AS result
+00:10 +1131: test/row_value_test.dart: pinned row value: SELECT (1,NULL) >= (1,1) AS result
+00:10 +1132: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS (1,1) AS result
+00:10 +1133: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS NOT (1,1) AS result
+00:10 +1134: test/row_value_test.dart: pinned row value: SELECT (1,0) = (NULL,NULL) AS result
+00:10 +1135: test/row_value_test.dart: pinned row value: SELECT (1,0) == (NULL,NULL) AS result
+00:10 +1136: test/row_value_test.dart: pinned row value: SELECT (1,0) != (NULL,NULL) AS result
+00:10 +1137: test/row_value_test.dart: pinned row value: SELECT (1,0) <> (NULL,NULL) AS result
+00:10 +1138: test/row_value_test.dart: pinned row value: SELECT (1,0) < (NULL,NULL) AS result
+00:10 +1139: test/row_value_test.dart: pinned row value: SELECT (1,0) <= (NULL,NULL) AS result
+00:10 +1140: test/row_value_test.dart: pinned row value: SELECT (1,0) > (NULL,NULL) AS result
+00:10 +1141: test/row_value_test.dart: pinned row value: SELECT (1,0) >= (NULL,NULL) AS result
+00:10 +1142: test/row_value_test.dart: pinned row value: SELECT (1,0) IS (NULL,NULL) AS result
+00:10 +1143: test/row_value_test.dart: pinned row value: SELECT (1,0) IS NOT (NULL,NULL) AS result
+00:10 +1144: test/row_value_test.dart: pinned row value: SELECT (1,0) = (NULL,0) AS result
+00:10 +1145: test/row_value_test.dart: pinned row value: SELECT (1,0) == (NULL,0) AS result
+00:10 +1146: test/row_value_test.dart: pinned row value: SELECT (1,0) != (NULL,0) AS result
+00:10 +1147: test/row_value_test.dart: pinned row value: SELECT (1,0) <> (NULL,0) AS result
+00:10 +1148: test/row_value_test.dart: pinned row value: SELECT (1,0) < (NULL,0) AS result
+00:10 +1149: test/row_value_test.dart: pinned row value: SELECT (1,0) <= (NULL,0) AS result
+00:10 +1150: test/row_value_test.dart: pinned row value: SELECT (1,0) > (NULL,0) AS result
+00:10 +1151: test/row_value_test.dart: pinned row value: SELECT (1,0) >= (NULL,0) AS result
+00:10 +1152: test/row_value_test.dart: pinned row value: SELECT (1,0) IS (NULL,0) AS result
+00:10 +1153: test/row_value_test.dart: pinned row value: SELECT (1,0) IS NOT (NULL,0) AS result
+00:10 +1154: test/row_value_test.dart: pinned row value: SELECT (1,0) = (NULL,1) AS result
+00:10 +1155: test/row_value_test.dart: pinned row value: SELECT (1,0) == (NULL,1) AS result
+00:10 +1156: test/row_value_test.dart: pinned row value: SELECT (1,0) != (NULL,1) AS result
+00:10 +1157: test/row_value_test.dart: pinned row value: SELECT (1,0) <> (NULL,1) AS result
+00:10 +1158: test/row_value_test.dart: pinned row value: SELECT (1,0) < (NULL,1) AS result
+00:10 +1159: test/row_value_test.dart: pinned row value: SELECT (1,0) <= (NULL,1) AS result
+00:10 +1160: test/row_value_test.dart: pinned row value: SELECT (1,0) > (NULL,1) AS result
+00:10 +1161: test/row_value_test.dart: pinned row value: SELECT (1,0) >= (NULL,1) AS result
+00:10 +1162: test/row_value_test.dart: pinned row value: SELECT (1,0) IS (NULL,1) AS result
+00:10 +1163: test/row_value_test.dart: pinned row value: SELECT (1,0) IS NOT (NULL,1) AS result
+00:10 +1164: test/row_value_test.dart: pinned row value: SELECT (1,0) = (0,NULL) AS result
+00:10 +1165: test/row_value_test.dart: pinned row value: SELECT (1,0) == (0,NULL) AS result
+00:10 +1166: test/row_value_test.dart: pinned row value: SELECT (1,0) != (0,NULL) AS result
+00:10 +1167: test/row_value_test.dart: pinned row value: SELECT (1,0) <> (0,NULL) AS result
+00:10 +1168: test/row_value_test.dart: pinned row value: SELECT (1,0) < (0,NULL) AS result
+00:10 +1169: test/row_value_test.dart: pinned row value: SELECT (1,0) <= (0,NULL) AS result
+00:10 +1170: test/row_value_test.dart: pinned row value: SELECT (1,0) > (0,NULL) AS result
+00:10 +1171: test/row_value_test.dart: pinned row value: SELECT (1,0) >= (0,NULL) AS result
+00:10 +1172: test/row_value_test.dart: pinned row value: SELECT (1,0) IS (0,NULL) AS result
+00:10 +1173: test/row_value_test.dart: pinned row value: SELECT (1,0) IS NOT (0,NULL) AS result
+00:10 +1174: test/row_value_test.dart: pinned row value: SELECT (1,0) = (0,0) AS result
+00:10 +1175: test/row_value_test.dart: pinned row value: SELECT (1,0) == (0,0) AS result
+00:10 +1176: test/row_value_test.dart: pinned row value: SELECT (1,0) != (0,0) AS result
+00:10 +1177: test/row_value_test.dart: pinned row value: SELECT (1,0) <> (0,0) AS result
+00:10 +1178: test/row_value_test.dart: pinned row value: SELECT (1,0) < (0,0) AS result
+00:10 +1179: test/row_value_test.dart: pinned row value: SELECT (1,0) <= (0,0) AS result
+00:10 +1180: test/row_value_test.dart: pinned row value: SELECT (1,0) > (0,0) AS result
+00:10 +1181: test/row_value_test.dart: pinned row value: SELECT (1,0) >= (0,0) AS result
+00:10 +1182: test/row_value_test.dart: pinned row value: SELECT (1,0) IS (0,0) AS result
+00:10 +1183: test/row_value_test.dart: pinned row value: SELECT (1,0) IS NOT (0,0) AS result
+00:10 +1184: test/row_value_test.dart: pinned row value: SELECT (1,0) = (0,1) AS result
+00:10 +1185: test/row_value_test.dart: pinned row value: SELECT (1,0) == (0,1) AS result
+00:10 +1186: test/row_value_test.dart: pinned row value: SELECT (1,0) != (0,1) AS result
+00:10 +1187: test/row_value_test.dart: pinned row value: SELECT (1,0) <> (0,1) AS result
+00:10 +1188: test/row_value_test.dart: pinned row value: SELECT (1,0) < (0,1) AS result
+00:10 +1189: test/row_value_test.dart: pinned row value: SELECT (1,0) <= (0,1) AS result
+00:10 +1190: test/row_value_test.dart: pinned row value: SELECT (1,0) > (0,1) AS result
+00:10 +1191: test/row_value_test.dart: pinned row value: SELECT (1,0) >= (0,1) AS result
+00:10 +1192: test/row_value_test.dart: pinned row value: SELECT (1,0) IS (0,1) AS result
+00:10 +1193: test/row_value_test.dart: pinned row value: SELECT (1,0) IS NOT (0,1) AS result
+00:10 +1194: test/row_value_test.dart: pinned row value: SELECT (1,0) = (1,NULL) AS result
+00:10 +1195: test/row_value_test.dart: pinned row value: SELECT (1,0) == (1,NULL) AS result
+00:10 +1196: test/row_value_test.dart: pinned row value: SELECT (1,0) != (1,NULL) AS result
+00:10 +1197: test/row_value_test.dart: pinned row value: SELECT (1,0) <> (1,NULL) AS result
+00:10 +1198: test/row_value_test.dart: pinned row value: SELECT (1,0) < (1,NULL) AS result
+00:10 +1199: test/row_value_test.dart: pinned row value: SELECT (1,0) <= (1,NULL) AS result
+00:10 +1200: test/row_value_test.dart: pinned row value: SELECT (1,0) > (1,NULL) AS result
+00:10 +1201: test/row_value_test.dart: pinned row value: SELECT (1,0) >= (1,NULL) AS result
+00:10 +1202: test/row_value_test.dart: pinned row value: SELECT (1,0) IS (1,NULL) AS result
+00:10 +1203: test/row_value_test.dart: pinned row value: SELECT (1,0) IS NOT (1,NULL) AS result
+00:10 +1204: test/row_value_test.dart: pinned row value: SELECT (1,0) = (1,0) AS result
+00:10 +1205: test/row_value_test.dart: pinned row value: SELECT (1,0) == (1,0) AS result
+00:10 +1206: test/row_value_test.dart: pinned row value: SELECT (1,0) != (1,0) AS result
+00:10 +1207: test/row_value_test.dart: pinned row value: SELECT (1,0) <> (1,0) AS result
+00:10 +1208: test/row_value_test.dart: pinned row value: SELECT (1,0) < (1,0) AS result
+00:10 +1209: test/row_value_test.dart: pinned row value: SELECT (1,0) <= (1,0) AS result
+00:10 +1210: test/row_value_test.dart: pinned row value: SELECT (1,0) > (1,0) AS result
+00:10 +1211: test/row_value_test.dart: pinned row value: SELECT (1,0) >= (1,0) AS result
+00:10 +1212: test/row_value_test.dart: pinned row value: SELECT (1,0) IS (1,0) AS result
+00:10 +1213: test/row_value_test.dart: pinned row value: SELECT (1,0) IS NOT (1,0) AS result
+00:10 +1214: test/row_value_test.dart: pinned row value: SELECT (1,0) = (1,1) AS result
+00:10 +1215: test/row_value_test.dart: pinned row value: SELECT (1,0) == (1,1) AS result
+00:10 +1216: test/row_value_test.dart: pinned row value: SELECT (1,0) != (1,1) AS result
+00:10 +1217: test/row_value_test.dart: pinned row value: SELECT (1,0) <> (1,1) AS result
+00:10 +1218: test/row_value_test.dart: pinned row value: SELECT (1,0) < (1,1) AS result
+00:10 +1219: test/row_value_test.dart: pinned row value: SELECT (1,0) <= (1,1) AS result
+00:10 +1220: test/row_value_test.dart: pinned row value: SELECT (1,0) > (1,1) AS result
+00:10 +1221: test/row_value_test.dart: pinned row value: SELECT (1,0) >= (1,1) AS result
+00:10 +1222: test/row_value_test.dart: pinned row value: SELECT (1,0) IS (1,1) AS result
+00:10 +1223: test/row_value_test.dart: pinned row value: SELECT (1,0) IS NOT (1,1) AS result
+00:10 +1224: test/row_value_test.dart: pinned row value: SELECT (1,1) = (NULL,NULL) AS result
+00:10 +1225: test/row_value_test.dart: pinned row value: SELECT (1,1) == (NULL,NULL) AS result
+00:10 +1226: test/row_value_test.dart: pinned row value: SELECT (1,1) != (NULL,NULL) AS result
+00:10 +1227: test/row_value_test.dart: pinned row value: SELECT (1,1) <> (NULL,NULL) AS result
+00:10 +1228: test/row_value_test.dart: pinned row value: SELECT (1,1) < (NULL,NULL) AS result
+00:10 +1229: test/row_value_test.dart: pinned row value: SELECT (1,1) <= (NULL,NULL) AS result
+00:10 +1230: test/row_value_test.dart: pinned row value: SELECT (1,1) > (NULL,NULL) AS result
+00:10 +1231: test/row_value_test.dart: pinned row value: SELECT (1,1) >= (NULL,NULL) AS result
+00:10 +1232: test/row_value_test.dart: pinned row value: SELECT (1,1) IS (NULL,NULL) AS result
+00:10 +1233: test/row_value_test.dart: pinned row value: SELECT (1,1) IS NOT (NULL,NULL) AS result
+00:10 +1234: test/row_value_test.dart: pinned row value: SELECT (1,1) = (NULL,0) AS result
+00:10 +1235: test/row_value_test.dart: pinned row value: SELECT (1,1) == (NULL,0) AS result
+00:10 +1236: test/row_value_test.dart: pinned row value: SELECT (1,1) != (NULL,0) AS result
+00:10 +1237: test/row_value_test.dart: pinned row value: SELECT (1,1) <> (NULL,0) AS result
+00:10 +1238: test/row_value_test.dart: pinned row value: SELECT (1,1) < (NULL,0) AS result
+00:10 +1239: test/row_value_test.dart: pinned row value: SELECT (1,1) <= (NULL,0) AS result
+00:10 +1240: test/row_value_test.dart: pinned row value: SELECT (1,1) > (NULL,0) AS result
+00:10 +1241: test/row_value_test.dart: pinned row value: SELECT (1,1) >= (NULL,0) AS result
+00:10 +1242: test/row_value_test.dart: pinned row value: SELECT (1,1) IS (NULL,0) AS result
+00:10 +1243: test/row_value_test.dart: pinned row value: SELECT (1,1) IS NOT (NULL,0) AS result
+00:10 +1244: test/row_value_test.dart: pinned row value: SELECT (1,1) = (NULL,1) AS result
+00:10 +1245: test/row_value_test.dart: pinned row value: SELECT (1,1) == (NULL,1) AS result
+00:10 +1246: test/row_value_test.dart: pinned row value: SELECT (1,1) != (NULL,1) AS result
+00:10 +1247: test/row_value_test.dart: pinned row value: SELECT (1,1) <> (NULL,1) AS result
+00:10 +1248: test/row_value_test.dart: pinned row value: SELECT (1,1) < (NULL,1) AS result
+00:10 +1249: test/row_value_test.dart: pinned row value: SELECT (1,1) <= (NULL,1) AS result
+00:10 +1250: test/row_value_test.dart: pinned row value: SELECT (1,1) > (NULL,1) AS result
+00:10 +1251: test/row_value_test.dart: pinned row value: SELECT (1,1) >= (NULL,1) AS result
+00:10 +1252: test/row_value_test.dart: pinned row value: SELECT (1,1) IS (NULL,1) AS result
+00:10 +1253: test/row_value_test.dart: pinned row value: SELECT (1,1) IS NOT (NULL,1) AS result
+00:10 +1254: test/row_value_test.dart: pinned row value: SELECT (1,1) = (0,NULL) AS result
+00:10 +1255: test/row_value_test.dart: pinned row value: SELECT (1,1) == (0,NULL) AS result
+00:10 +1256: test/row_value_test.dart: pinned row value: SELECT (1,1) != (0,NULL) AS result
+00:10 +1257: test/row_value_test.dart: pinned row value: SELECT (1,1) <> (0,NULL) AS result
+00:10 +1258: test/row_value_test.dart: pinned row value: SELECT (1,1) < (0,NULL) AS result
+00:10 +1259: test/row_value_test.dart: pinned row value: SELECT (1,1) <= (0,NULL) AS result
+00:10 +1260: test/row_value_test.dart: pinned row value: SELECT (1,1) > (0,NULL) AS result
+00:10 +1261: test/row_value_test.dart: pinned row value: SELECT (1,1) >= (0,NULL) AS result
+00:10 +1262: test/row_value_test.dart: pinned row value: SELECT (1,1) IS (0,NULL) AS result
+00:10 +1263: test/row_value_test.dart: pinned row value: SELECT (1,1) IS NOT (0,NULL) AS result
+00:10 +1264: test/row_value_test.dart: pinned row value: SELECT (1,1) = (0,0) AS result
+00:10 +1265: test/row_value_test.dart: pinned row value: SELECT (1,1) == (0,0) AS result
+00:10 +1266: test/row_value_test.dart: pinned row value: SELECT (1,1) != (0,0) AS result
+00:10 +1267: test/row_value_test.dart: pinned row value: SELECT (1,1) <> (0,0) AS result
+00:10 +1268: test/row_value_test.dart: pinned row value: SELECT (1,1) < (0,0) AS result
+00:10 +1269: test/row_value_test.dart: pinned row value: SELECT (1,1) <= (0,0) AS result
+00:10 +1270: test/row_value_test.dart: pinned row value: SELECT (1,1) > (0,0) AS result
+00:10 +1271: test/row_value_test.dart: pinned row value: SELECT (1,1) >= (0,0) AS result
+00:10 +1272: test/row_value_test.dart: pinned row value: SELECT (1,1) IS (0,0) AS result
+00:10 +1273: test/row_value_test.dart: pinned row value: SELECT (1,1) IS NOT (0,0) AS result
+00:10 +1274: test/row_value_test.dart: pinned row value: SELECT (1,1) = (0,1) AS result
+00:10 +1275: test/row_value_test.dart: pinned row value: SELECT (1,1) == (0,1) AS result
+00:10 +1276: test/row_value_test.dart: pinned row value: SELECT (1,1) != (0,1) AS result
+00:10 +1277: test/row_value_test.dart: pinned row value: SELECT (1,1) <> (0,1) AS result
+00:10 +1278: test/row_value_test.dart: pinned row value: SELECT (1,1) < (0,1) AS result
+00:10 +1279: test/row_value_test.dart: pinned row value: SELECT (1,1) <= (0,1) AS result
+00:10 +1280: test/row_value_test.dart: pinned row value: SELECT (1,1) > (0,1) AS result
+00:10 +1281: test/row_value_test.dart: pinned row value: SELECT (1,1) >= (0,1) AS result
+00:10 +1282: test/row_value_test.dart: pinned row value: SELECT (1,1) IS (0,1) AS result
+00:10 +1283: test/row_value_test.dart: pinned row value: SELECT (1,1) IS NOT (0,1) AS result
+00:10 +1284: test/row_value_test.dart: pinned row value: SELECT (1,1) = (1,NULL) AS result
+00:10 +1285: test/row_value_test.dart: pinned row value: SELECT (1,1) == (1,NULL) AS result
+00:10 +1286: test/row_value_test.dart: pinned row value: SELECT (1,1) != (1,NULL) AS result
+00:10 +1287: test/row_value_test.dart: pinned row value: SELECT (1,1) <> (1,NULL) AS result
+00:10 +1288: test/row_value_test.dart: pinned row value: SELECT (1,1) < (1,NULL) AS result
+00:10 +1289: test/row_value_test.dart: pinned row value: SELECT (1,1) <= (1,NULL) AS result
+00:10 +1290: test/row_value_test.dart: pinned row value: SELECT (1,1) > (1,NULL) AS result
+00:10 +1291: test/row_value_test.dart: pinned row value: SELECT (1,1) >= (1,NULL) AS result
+00:10 +1292: test/row_value_test.dart: pinned row value: SELECT (1,1) IS (1,NULL) AS result
+00:10 +1293: test/row_value_test.dart: pinned row value: SELECT (1,1) IS NOT (1,NULL) AS result
+00:10 +1294: test/row_value_test.dart: pinned row value: SELECT (1,1) = (1,0) AS result
+00:10 +1295: test/row_value_test.dart: pinned row value: SELECT (1,1) == (1,0) AS result
+00:10 +1296: test/row_value_test.dart: pinned row value: SELECT (1,1) != (1,0) AS result
+00:10 +1297: test/row_value_test.dart: pinned row value: SELECT (1,1) <> (1,0) AS result
+00:10 +1298: test/row_value_test.dart: pinned row value: SELECT (1,1) < (1,0) AS result
+00:10 +1299: test/row_value_test.dart: pinned row value: SELECT (1,1) <= (1,0) AS result
+00:10 +1300: test/row_value_test.dart: pinned row value: SELECT (1,1) > (1,0) AS result
+00:10 +1301: test/row_value_test.dart: pinned row value: SELECT (1,1) >= (1,0) AS result
+00:10 +1302: test/row_value_test.dart: pinned row value: SELECT (1,1) IS (1,0) AS result
+00:10 +1303: test/row_value_test.dart: pinned row value: SELECT (1,1) IS NOT (1,0) AS result
+00:10 +1304: test/row_value_test.dart: pinned row value: SELECT (1,1) = (1,1) AS result
+00:10 +1305: test/row_value_test.dart: pinned row value: SELECT (1,1) == (1,1) AS result
+00:10 +1306: test/row_value_test.dart: pinned row value: SELECT (1,1) != (1,1) AS result
+00:10 +1307: test/row_value_test.dart: pinned row value: SELECT (1,1) <> (1,1) AS result
+00:10 +1308: test/row_value_test.dart: pinned row value: SELECT (1,1) < (1,1) AS result
+00:10 +1309: test/row_value_test.dart: pinned row value: SELECT (1,1) <= (1,1) AS result
+00:10 +1310: test/row_value_test.dart: pinned row value: SELECT (1,1) > (1,1) AS result
+00:10 +1311: test/row_value_test.dart: pinned row value: SELECT (1,1) >= (1,1) AS result
+00:10 +1312: test/row_value_test.dart: pinned row value: SELECT (1,1) IS (1,1) AS result
+00:10 +1313: test/row_value_test.dart: pinned row value: SELECT (1,1) IS NOT (1,1) AS result
+00:10 +1314: test/row_value_test.dart: pinned row value: SELECT (NULL,'A') != (-1,'a') AS result
+00:10 +1315: test/row_value_test.dart: pinned row value: SELECT ('A',1) == (X'31','A') AS result
+00:10 +1316: test/row_value_test.dart: pinned row value: SELECT (NULL,1) <= (1.0,-1) AS result
+00:10 +1317: test/row_value_test.dart: pinned row value: SELECT ('A',1) <> (X'31','1') AS result
+00:10 +1318: test/row_value_test.dart: pinned row value: SELECT ('a',9223372036854775807) IS NOT (X'31',9223372036854775807) AS result
+00:10 +1319: test/row_value_test.dart: pinned row value: SELECT (1,9223372036854775807) IS NOT (1.0,NULL) AS result
+00:10 +1320: test/row_value_test.dart: pinned row value: SELECT ('1',1.0) IS ('a',NULL) AS result
+00:10 +1321: test/row_value_test.dart: pinned row value: SELECT (1.0,1) >= ('a',1.0) AS result
+00:10 +1322: test/row_value_test.dart: pinned row value: SELECT (NULL,'a') IS NOT (X'31',-1) AS result
+00:10 +1323: test/row_value_test.dart: pinned row value: SELECT (-1,1.0) == ('a',-1) AS result
+00:10 +1324: test/row_value_test.dart: pinned row value: SELECT (1,X'31') == ('a',1) AS result
+00:10 +1325: test/row_value_test.dart: pinned row value: SELECT (1,NULL) IS ('A',-1) AS result
+00:10 +1326: test/row_value_test.dart: pinned row value: SELECT ('1',X'31') <= (X'31',NULL) AS result
+00:10 +1327: test/row_value_test.dart: pinned row value: SELECT (X'31',NULL) <> ('a',-1) AS result
+00:10 +1328: test/row_value_test.dart: pinned row value: SELECT (1,1.0) > ('a','1') AS result
+00:10 +1329: test/row_value_test.dart: pinned row value: SELECT (1,1) = (1,'1') AS result
+00:10 +1330: test/row_value_test.dart: pinned row value: SELECT (1,9223372036854775807) == (NULL,1.0) AS result
+00:10 +1331: test/row_value_test.dart: pinned row value: SELECT (X'31',9223372036854775807) < ('a','a') AS result
+00:10 +1332: test/row_value_test.dart: pinned row value: SELECT (-1,-1) IS ('a',1) AS result
+00:10 +1333: test/row_value_test.dart: pinned row value: SELECT (X'31',9223372036854775807) > (NULL,1) AS result
+00:10 +1334: test/row_value_test.dart: pinned row value: SELECT (1.0,1) IS (NULL,'A') AS result
+00:10 +1335: test/row_value_test.dart: pinned row value: SELECT (1.0,1.0) > (X'31',NULL) AS result
+00:10 +1336: test/row_value_test.dart: pinned row value: SELECT ('a',NULL) IS NOT (1,9223372036854775807) AS result
+00:10 +1337: test/row_value_test.dart: pinned row value: SELECT ('a','a') IS (-1,'A') AS result
+00:10 +1338: test/row_value_test.dart: pinned row value: SELECT (NULL,'1') < (9223372036854775807,-1) AS result
+00:10 +1339: test/row_value_test.dart: pinned row value: SELECT ('a','A') <> (X'31',1.0) AS result
+00:10 +1340: test/row_value_test.dart: pinned row value: SELECT ('1','a') != ('a',1) AS result
+00:10 +1341: test/row_value_test.dart: pinned row value: SELECT (1.0,1) == (1.0,9223372036854775807) AS result
+00:10 +1342: test/row_value_test.dart: pinned row value: SELECT ('a','A') <> (1.0,9223372036854775807) AS result
+00:10 +1343: test/row_value_test.dart: pinned row value: SELECT (-1,'1') <= (NULL,'1') AS result
+00:10 +1344: test/row_value_test.dart: pinned row value: SELECT (NULL,1) > (1.0,1.0) AS result
+00:10 +1345: test/row_value_test.dart: pinned row value: SELECT (NULL,1.0) < (NULL,-1) AS result
+00:10 +1346: test/row_value_test.dart: pinned row value: SELECT ('a',X'31') = (1,'a') AS result
+00:10 +1347: test/row_value_test.dart: pinned row value: SELECT ('1',X'31') <= (-1,NULL) AS result
+00:10 +1348: test/row_value_test.dart: pinned row value: SELECT ('A','A') > (9223372036854775807,'A') AS result
+00:10 +1349: test/row_value_test.dart: pinned row value: SELECT ('A','1') <> (-1,NULL) AS result
+00:11 +1350: test/row_value_test.dart: pinned row value: SELECT (X'31','A') IS (9223372036854775807,9223372036854775807) AS result
+00:11 +1351: test/row_value_test.dart: pinned row value: SELECT ('A',NULL) IS NOT (9223372036854775807,-1) AS result
+00:11 +1352: test/row_value_test.dart: pinned row value: SELECT (9223372036854775807,-1) <> ('1',NULL) AS result
+00:11 +1353: test/row_value_test.dart: pinned row value: SELECT (-1,'1') <> (X'31','A') AS result
+00:11 +1354: test/row_value_test.dart: pinned row value: SELECT (1.0,'A') >= ('A','a') AS result
+00:11 +1355: test/row_value_test.dart: pinned row value: SELECT ('a',1.0) <= ('a',NULL) AS result
+00:11 +1356: test/row_value_test.dart: pinned row value: SELECT (X'31','a') = (-1,'1') AS result
+00:11 +1357: test/row_value_test.dart: pinned row value: SELECT (1,X'31') > (1.0,-1) AS result
+00:11 +1358: test/row_value_test.dart: pinned row value: SELECT (-1,1.0) != (X'31',1.0) AS result
+00:11 +1359: test/row_value_test.dart: pinned row value: SELECT ('1',X'31') <= (NULL,1) AS result
+00:11 +1360: test/row_value_test.dart: pinned row value: SELECT (X'31',9223372036854775807) < ('1',X'31') AS result
+00:11 +1361: test/row_value_test.dart: pinned row value: SELECT (X'31','A') IS (1,-1) AS result
+00:11 +1362: test/row_value_test.dart: pinned row value: SELECT (9223372036854775807,9223372036854775807) <= ('1',9223372036854775807) AS result
+00:11 +1363: test/row_value_test.dart: pinned row value: SELECT ('A',1) <= (NULL,-1) AS result
+00:11 +1364: test/row_value_test.dart: pinned row value: SELECT (1.0,'1') == ('1',-1) AS result
+00:11 +1365: test/row_value_test.dart: pinned row value: SELECT ('a','1') > (1.0,9223372036854775807) AS result
+00:11 +1366: test/row_value_test.dart: pinned row value: SELECT ('A',1.0) >= (-1,1) AS result
+00:11 +1367: test/row_value_test.dart: pinned row value: SELECT (-1,'a') IS NOT (NULL,1) AS result
+00:11 +1368: test/row_value_test.dart: pinned row value: SELECT ('A','1') <= (NULL,1) AS result
+00:11 +1369: test/row_value_test.dart: pinned row value: SELECT (9223372036854775807,X'31') > (1,-1) AS result
+00:11 +1370: test/row_value_test.dart: pinned row value: SELECT (X'31','a') > (X'31',-1) AS result
+00:11 +1371: test/row_value_test.dart: pinned row value: SELECT ('A','a') >= (-1,'a') AS result
+00:11 +1372: test/row_value_test.dart: pinned row value: SELECT ('1','a') = (1.0,X'31') AS result
+00:11 +1373: test/row_value_test.dart: pinned row value: SELECT (NULL,1.0) <= ('1',1) AS result
+00:11 +1374: test/row_value_test.dart: pinned row value: SELECT ('A','1') IS NOT (1.0,'A') AS result
+00:11 +1375: test/row_value_test.dart: pinned row value: SELECT (1,1.0) >= ('A',9223372036854775807) AS result
+00:11 +1376: test/row_value_test.dart: pinned row value: SELECT (1,'A') != (X'31','a') AS result
+00:11 +1377: test/row_value_test.dart: pinned row value: SELECT (NULL,1.0) == (9223372036854775807,'A') AS result
+00:11 +1378: test/row_value_test.dart: pinned row value: SELECT (1.0,NULL) IS NOT (1,9223372036854775807) AS result
+00:11 +1379: test/row_value_test.dart: pinned row value: SELECT ('1',X'31') IS ('A',-1) AS result
+00:11 +1380: test/row_value_test.dart: pinned row value: SELECT (1,1) IS NOT (1,X'31') AS result
+00:11 +1381: test/row_value_test.dart: pinned row value: SELECT (X'31','1') <> (NULL,'1') AS result
+00:11 +1382: test/row_value_test.dart: pinned row value: SELECT ('A',NULL) IS NOT ('a',-1) AS result
+00:11 +1383: test/row_value_test.dart: pinned row value: SELECT ('1',9223372036854775807) <> (1.0,X'31') AS result
+00:11 +1384: test/row_value_test.dart: pinned row value: SELECT (NULL,'a') IS ('A',9223372036854775807) AS result
+00:11 +1385: test/row_value_test.dart: pinned row value: SELECT (9223372036854775807,'a') > ('A',1) AS result
+00:11 +1386: test/row_value_test.dart: pinned row value: SELECT (9223372036854775807,1) = ('a','a') AS result
+00:11 +1387: test/row_value_test.dart: pinned row value: SELECT (-1,1.0) <= (-1,1.0) AS result
+00:11 +1388: test/row_value_test.dart: pinned row value: SELECT (-1,1) = (NULL,X'31') AS result
+00:11 +1389: test/row_value_test.dart: pinned row value: SELECT (9223372036854775807,1.0) > (X'31',NULL) AS result
+00:11 +1390: test/row_value_test.dart: pinned row value: SELECT (1,NULL) > ('1','A') AS result
+00:11 +1391: test/row_value_test.dart: pinned row value: SELECT (1,1.0) <= (-1,'A') AS result
+00:11 +1392: test/row_value_test.dart: pinned row value: SELECT (NULL,'1') < ('a','1') AS result
+00:11 +1393: test/row_value_test.dart: pinned row value: SELECT ('a',-1) > ('A','a') AS result
+00:11 +1394: test/row_value_test.dart: pinned row value: SELECT (X'31',NULL) == ('1',1) AS result
+00:11 +1395: test/row_value_test.dart: pinned row value: SELECT ('a',1.0) == ('1','A') AS result
+00:11 +1396: test/row_value_test.dart: pinned row value: SELECT ('A',-1) IS NOT ('1',X'31') AS result
+00:11 +1397: test/row_value_test.dart: pinned row value: SELECT (NULL,1) = (-1,'A') AS result
+00:11 +1398: test/row_value_test.dart: pinned row value: SELECT (X'31',X'31') > ('1',-1) AS result
+00:11 +1399: test/row_value_test.dart: pinned row value: SELECT (9223372036854775807,'1') <> ('a','A') AS result
+00:11 +1400: test/row_value_test.dart: pinned row value: SELECT (X'31','A') != ('1','a') AS result
+00:11 +1401: test/row_value_test.dart: pinned row value: SELECT ('A',1) >= ('1',X'31') AS result
+00:11 +1402: test/row_value_test.dart: pinned row value: SELECT ('1',1) >= (1.0,1.0) AS result
+00:11 +1403: test/row_value_test.dart: pinned row value: SELECT (X'31',X'31') >= ('a',1.0) AS result
+00:11 +1404: test/row_value_test.dart: pinned row value: SELECT (9223372036854775807,1.0) < ('1','1') AS result
+00:11 +1405: test/row_value_test.dart: pinned row value: SELECT ('a','a') >= (1,-1) AS result
+00:11 +1406: test/row_value_test.dart: pinned row value: SELECT ('a',X'31') = ('1',NULL) AS result
+00:11 +1407: test/row_value_test.dart: pinned row value: SELECT (9223372036854775807,'A') <= (9223372036854775807,-1) AS result
+00:11 +1408: test/row_value_test.dart: pinned row value: SELECT (9223372036854775807,1) == (X'31',NULL) AS result
+00:11 +1409: test/row_value_test.dart: pinned row value: SELECT ('1',1) == (NULL,'a') AS result
+00:11 +1410: test/row_value_test.dart: pinned row value: SELECT ('a',-1) <> (X'31',1.0) AS result
+00:11 +1411: test/row_value_test.dart: pinned row value: SELECT ('1','A') > (NULL,NULL) AS result
+00:11 +1412: test/row_value_test.dart: pinned row value: SELECT (NULL,-1) == (NULL,X'31') AS result
+00:11 +1413: test/row_value_test.dart: pinned row value: SELECT ('1',NULL) <= ('1','a') AS result
+00:11 +1414: test/row_value_test.dart: pinned row value: SELECT (1,2,3)=(1,2,3) AS result
+00:11 +1415: test/row_value_test.dart: pinned row value: SELECT (1,NULL,3)<(1,2,0) AS result
+00:11 +1416: test/row_value_test.dart: pinned row value: SELECT (1,NULL,3)=(1,2,4) AS result
+00:11 +1417: test/row_value_test.dart: pinned row value: SELECT (1,2) IS DISTINCT FROM (1,NULL) AS result
+00:11 +1418: test/row_value_test.dart: pinned row value: SELECT (1,2) IS NOT DISTINCT FROM (1,2) AS result
+00:11 +1419: test/row_value_test.dart: pinned row value: SELECT (1,2)=(SELECT 1,2) AS result
+00:11 +1420: test/row_value_test.dart: pinned row value: SELECT (SELECT 1,2)=(1,2) AS result
+00:11 +1421: test/row_value_test.dart: pinned row value: SELECT (SELECT 1,2)=(SELECT 1,2) AS result
+00:11 +1422: test/row_value_test.dart: pinned row value: SELECT (1,2)=(SELECT 1,2 WHERE 0) AS result
+00:11 +1423: test/row_value_test.dart: pinned row value: SELECT (1,2)=(VALUES(1,2),(3,4)) AS result
+00:11 +1424: test/row_value_test.dart: pinned row value: SELECT (SELECT 1,2 WHERE 0) IS (NULL,NULL) AS result
+00:11 +1425: test/row_value_test.dart: pinned row value: SELECT (1,2) IN ((1,2),(3,4)) AS result
+00:11 +1426: test/row_value_test.dart: pinned row value: SELECT (1,2) NOT IN ((1,NULL),(3,4)) AS result
+00:11 +1427: test/row_value_test.dart: pinned row value: SELECT (1,2) IN ((NULL,3),(2,NULL)) AS result
+00:11 +1428: test/row_value_test.dart: pinned row value: SELECT (NULL,2) IN ((1,3),(2,3)) AS result
+00:11 +1429: test/row_value_test.dart: pinned row value: SELECT (NULL,2) IN ((1,2),(2,3)) AS result
+00:11 +1430: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) IN () AS result
+00:11 +1431: test/row_value_test.dart: pinned row value: SELECT (NULL,NULL) NOT IN () AS result
+00:11 +1432: test/row_value_test.dart: pinned row value: SELECT (1,2) IN ((SELECT 1,2)) AS result
+00:11 +1433: test/row_value_test.dart: pinned row value: SELECT (1,2) IN (SELECT 1,2) AS result
+00:11 +1434: test/row_value_test.dart: pinned row value: SELECT (1,2) NOT IN (SELECT 1,NULL) AS result
+00:11 +1435: test/row_value_test.dart: pinned row value: SELECT (NULL,2) IN (SELECT 1,3) AS result
+00:11 +1436: test/row_value_test.dart: pinned row value: SELECT (NULL,2) IN (SELECT 1,2) AS result
+00:11 +1437: test/row_value_test.dart: pinned row value: SELECT (NULL,2) IN (SELECT 1,2 WHERE 0) AS result
+00:11 +1438: test/row_value_test.dart: pinned row value: SELECT (1,2) IN (VALUES(3,4),(1,2)) AS result
+00:11 +1439: test/row_value_test.dart: pinned row value: SELECT (1,2) IN (WITH c(a,b) AS(VALUES(1,2)) SELECT * FROM c) AS result
+00:11 +1440: test/row_value_test.dart: pinned row value: SELECT (1,2) BETWEEN (1,0) AND (1,3) AS result
+00:11 +1441: test/row_value_test.dart: pinned row value: SELECT (1,NULL) BETWEEN (0,0) AND (2,0) AS result
+00:11 +1442: test/row_value_test.dart: pinned row value: SELECT (1,NULL) NOT BETWEEN (1,0) AND (1,3) AS result
+00:11 +1443: test/row_value_test.dart: pinned row value: SELECT (1,2) BETWEEN (1,0) AND (SELECT 1,3) AS result
+00:11 +1444: test/row_value_test.dart: pinned row value: SELECT CASE (1,2) WHEN (1,3) THEN 0 WHEN (1,2) THEN 1 ELSE 2 END AS result
+00:11 +1445: test/row_value_test.dart: pinned row value: SELECT CASE (NULL,2) WHEN (NULL,2) THEN 1 ELSE 0 END AS result
+00:11 +1446: test/row_value_test.dart: pinned row value: SELECT CASE (SELECT 1,2) WHEN (1,2) THEN 1 ELSE 0 END AS result
+00:11 +1447: test/row_value_test.dart: pinned row value: SELECT (1,abs(-9223372036854775808))<(2,2) AS result
+00:11 +1448: test/row_value_test.dart: pinned row value: SELECT (1,abs(-9223372036854775808))=(2,2) AS result
+00:11 +1449: test/row_value_test.dart: pinned row value: SELECT (1,abs(-9223372036854775808))!=(2,2) AS result
+00:11 +1450: test/row_value_test.dart: pinned row value: SELECT (NULL,abs(-9223372036854775808))<(2,2) AS result
+00:11 +1451: test/row_value_test.dart: pinned row value: SELECT (1,2) BETWEEN (3,abs(-9223372036854775808)) AND (4,5) AS result
+00:11 +1452: test/row_value_test.dart: pinned row value: SELECT (abs(-9223372036854775808),2) IN () AS result
+00:11 +1453: test/row_value_test.dart: pinned row value: SELECT (1,(2,3)) IN () AS result
+00:11 +1454: test/row_value_test.dart: pinned row value: SELECT (missing,2) IN () AS result
+00:11 +1455: test/row_value_test.dart: pinned row value: SELECT ('A' COLLATE NOCASE,'a ' COLLATE RTRIM)=('a','a') AS result
+00:11 +1456: test/row_value_test.dart: pinned row value: SELECT ('A','b')=('a' COLLATE NOCASE,'B' COLLATE NOCASE) AS result
+00:11 +1457: test/row_value_test.dart: pinned row value: SELECT ('A' COLLATE BINARY,'b')=('a' COLLATE NOCASE,'b') AS result
+00:11 +1458: test/row_value_test.dart: pinned row value: SELECT id,(t,n)=('a','2') AS result FROM pairs ORDER BY id
+00:11 +1459: test/row_value_test.dart: pinned row value: SELECT id,(t,n) IN (('a','2'),('x',0)) AS result FROM pairs ORDER BY id
+00:11 +1460: test/row_value_test.dart: pinned row value: SELECT id,(t,n) IN (SELECT 'a','2') AS result FROM pairs ORDER BY id
+00:11 +1461: test/row_value_test.dart: pinned row value: SELECT id,('a','2') IN (SELECT t,n FROM pairs) AS result FROM pairs ORDER BY id
+00:11 +1462: test/row_value_test.dart: pinned row value: SELECT id,(t,b)=('a',2) AS result FROM pairs ORDER BY id
+00:11 +1463: test/row_value_test.dart: pinned row value: SELECT id,(t,b) IN (('a',2)) AS result FROM pairs ORDER BY id
+00:11 +1464: test/row_value_test.dart: pinned row value: SELECT id,(t,b) IN (SELECT 'a',2) AS result FROM pairs ORDER BY id
+00:11 +1465: test/row_value_test.dart: pinned row value: SELECT id,(t,n)=(SELECT t,n FROM pairs WHERE id=1) AS result FROM pairs ORDER BY id
+00:11 +1466: test/row_value_test.dart: pinned row value: SELECT id,(t,n)=(SELECT * FROM (SELECT t,n FROM pairs WHERE id=1)) AS result FROM pairs ORDER BY id
+00:11 +1467: test/row_value_test.dart: pinned row value: SELECT id,(t,n) IN (SELECT p.t,p.n FROM pairs p WHERE p.id=pairs.id) AS result FROM pairs ORDER BY id
+00:11 +1468: test/row_value_test.dart: pinned row value: SELECT id,(t,n) BETWEEN ('a','1') AND ('c','3') AS result FROM pairs ORDER BY id
+00:11 +1469: test/row_value_test.dart: pinned row value: SELECT id,(t,r)=('a','a') AS result FROM pairs ORDER BY id
+00:11 +1470: test/row_value_test.dart: pinned row value: SELECT id,('a','a') IN (SELECT t,r FROM pairs) AS result FROM pairs ORDER BY id
+00:11 +1471: test/row_value_test.dart: pinned row value: SELECT id,(t COLLATE BINARY,n)=('a','2') AS result FROM pairs ORDER BY id
+00:11 +1472: test/row_value_test.dart: pinned row value: SELECT id,(t,n)=('a' COLLATE BINARY,'2') AS result FROM pairs ORDER BY id
+00:11 +1473: test/row_value_test.dart: pinned row value: SELECT id,(t,n) IN (('a' COLLATE BINARY,'2')) AS result FROM pairs ORDER BY id
+00:11 +1474: test/row_value_test.dart: pinned row value: SELECT id,(t,n) IN (SELECT 'a' COLLATE BINARY,'2') AS result FROM pairs ORDER BY id
+00:11 +1475: test/row_value_test.dart: pinned row value: SELECT id,(t,n)=(SELECT 'a' COLLATE BINARY,'2') AS result FROM pairs ORDER BY id
+00:11 +1476: test/row_value_test.dart: pinned row value: SELECT id,(t,n) IN ((t,n)) AS result FROM pairs ORDER BY id
+00:11 +1477: test/row_value_test.dart: pinned row value: SELECT id,(t,n) IN (SELECT t,n FROM pairs WHERE 0) AS result FROM pairs ORDER BY id
+00:11 +1478: test/row_value_test.dart: pinned row value: SELECT id,(t,n) IN (SELECT t,n FROM pairs WHERE id<3) AS result FROM pairs ORDER BY id
+00:11 +1479: test/row_value_test.dart: pinned row value: SELECT id,(t,n) NOT IN (SELECT t,n FROM pairs WHERE id<3) AS result FROM pairs ORDER BY id
+00:11 +1480: test/row_value_test.dart: pinned row value: SELECT (1,1)=(1,1) AS result FROM affinity ORDER BY rowid
+00:11 +1481: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((1,1)) AS result FROM affinity ORDER BY rowid
+00:11 +1482: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((1,1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1483: test/row_value_test.dart: pinned row value: SELECT (1,1) IN (SELECT 1,1) AS result FROM affinity ORDER BY rowid
+00:11 +1484: test/row_value_test.dart: pinned row value: SELECT (1,1)=('1',1) AS result FROM affinity ORDER BY rowid
+00:11 +1485: test/row_value_test.dart: pinned row value: SELECT (1,1) IN (('1',1)) AS result FROM affinity ORDER BY rowid
+00:11 +1486: test/row_value_test.dart: pinned row value: SELECT (1,1) IN (('1',1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1487: test/row_value_test.dart: pinned row value: SELECT (1,1) IN (SELECT '1',1) AS result FROM affinity ORDER BY rowid
+00:11 +1488: test/row_value_test.dart: pinned row value: SELECT (1,1)=(1,'1') AS result FROM affinity ORDER BY rowid
+00:11 +1489: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((1,'1')) AS result FROM affinity ORDER BY rowid
+00:11 +1490: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((1,'1'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1491: test/row_value_test.dart: pinned row value: SELECT (1,1) IN (SELECT 1,'1') AS result FROM affinity ORDER BY rowid
+00:11 +1492: test/row_value_test.dart: pinned row value: SELECT (1,1)=(a,b) AS result FROM affinity ORDER BY rowid
+00:11 +1493: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((a,b)) AS result FROM affinity ORDER BY rowid
+00:11 +1494: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((a,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1495: test/row_value_test.dart: pinned row value: SELECT (1,1) IN (SELECT a,b) AS result FROM affinity ORDER BY rowid
+00:11 +1496: test/row_value_test.dart: pinned row value: SELECT (1,1)=(b,a) AS result FROM affinity ORDER BY rowid
+00:11 +1497: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((b,a)) AS result FROM affinity ORDER BY rowid
+00:11 +1498: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((b,a),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1499: test/row_value_test.dart: pinned row value: SELECT (1,1) IN (SELECT b,a) AS result FROM affinity ORDER BY rowid
+00:11 +1500: test/row_value_test.dart: pinned row value: SELECT (1,1)=(a,c) AS result FROM affinity ORDER BY rowid
+00:11 +1501: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((a,c)) AS result FROM affinity ORDER BY rowid
+00:11 +1502: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((a,c),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1503: test/row_value_test.dart: pinned row value: SELECT (1,1) IN (SELECT a,c) AS result FROM affinity ORDER BY rowid
+00:11 +1504: test/row_value_test.dart: pinned row value: SELECT (1,1)=(c,b) AS result FROM affinity ORDER BY rowid
+00:11 +1505: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((c,b)) AS result FROM affinity ORDER BY rowid
+00:11 +1506: test/row_value_test.dart: pinned row value: SELECT (1,1) IN ((c,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1507: test/row_value_test.dart: pinned row value: SELECT (1,1) IN (SELECT c,b) AS result FROM affinity ORDER BY rowid
+00:11 +1508: test/row_value_test.dart: pinned row value: SELECT ('1',1)=(1,1) AS result FROM affinity ORDER BY rowid
+00:11 +1509: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((1,1)) AS result FROM affinity ORDER BY rowid
+00:11 +1510: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((1,1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1511: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN (SELECT 1,1) AS result FROM affinity ORDER BY rowid
+00:11 +1512: test/row_value_test.dart: pinned row value: SELECT ('1',1)=('1',1) AS result FROM affinity ORDER BY rowid
+00:11 +1513: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN (('1',1)) AS result FROM affinity ORDER BY rowid
+00:11 +1514: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN (('1',1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1515: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN (SELECT '1',1) AS result FROM affinity ORDER BY rowid
+00:11 +1516: test/row_value_test.dart: pinned row value: SELECT ('1',1)=(1,'1') AS result FROM affinity ORDER BY rowid
+00:11 +1517: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((1,'1')) AS result FROM affinity ORDER BY rowid
+00:11 +1518: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((1,'1'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1519: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN (SELECT 1,'1') AS result FROM affinity ORDER BY rowid
+00:11 +1520: test/row_value_test.dart: pinned row value: SELECT ('1',1)=(a,b) AS result FROM affinity ORDER BY rowid
+00:11 +1521: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((a,b)) AS result FROM affinity ORDER BY rowid
+00:11 +1522: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((a,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1523: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN (SELECT a,b) AS result FROM affinity ORDER BY rowid
+00:11 +1524: test/row_value_test.dart: pinned row value: SELECT ('1',1)=(b,a) AS result FROM affinity ORDER BY rowid
+00:11 +1525: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((b,a)) AS result FROM affinity ORDER BY rowid
+00:11 +1526: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((b,a),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1527: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN (SELECT b,a) AS result FROM affinity ORDER BY rowid
+00:11 +1528: test/row_value_test.dart: pinned row value: SELECT ('1',1)=(a,c) AS result FROM affinity ORDER BY rowid
+00:11 +1529: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((a,c)) AS result FROM affinity ORDER BY rowid
+00:11 +1530: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((a,c),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1531: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN (SELECT a,c) AS result FROM affinity ORDER BY rowid
+00:11 +1532: test/row_value_test.dart: pinned row value: SELECT ('1',1)=(c,b) AS result FROM affinity ORDER BY rowid
+00:11 +1533: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((c,b)) AS result FROM affinity ORDER BY rowid
+00:11 +1534: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN ((c,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1535: test/row_value_test.dart: pinned row value: SELECT ('1',1) IN (SELECT c,b) AS result FROM affinity ORDER BY rowid
+00:11 +1536: test/row_value_test.dart: pinned row value: SELECT (1,'1')=(1,1) AS result FROM affinity ORDER BY rowid
+00:11 +1537: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((1,1)) AS result FROM affinity ORDER BY rowid
+00:11 +1538: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((1,1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1539: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN (SELECT 1,1) AS result FROM affinity ORDER BY rowid
+00:11 +1540: test/row_value_test.dart: pinned row value: SELECT (1,'1')=('1',1) AS result FROM affinity ORDER BY rowid
+00:11 +1541: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN (('1',1)) AS result FROM affinity ORDER BY rowid
+00:11 +1542: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN (('1',1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1543: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN (SELECT '1',1) AS result FROM affinity ORDER BY rowid
+00:11 +1544: test/row_value_test.dart: pinned row value: SELECT (1,'1')=(1,'1') AS result FROM affinity ORDER BY rowid
+00:11 +1545: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((1,'1')) AS result FROM affinity ORDER BY rowid
+00:11 +1546: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((1,'1'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1547: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN (SELECT 1,'1') AS result FROM affinity ORDER BY rowid
+00:11 +1548: test/row_value_test.dart: pinned row value: SELECT (1,'1')=(a,b) AS result FROM affinity ORDER BY rowid
+00:11 +1549: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((a,b)) AS result FROM affinity ORDER BY rowid
+00:11 +1550: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((a,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:11 +1551: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN (SELECT a,b) AS result FROM affinity ORDER BY rowid
+00:11 +1552: test/row_value_test.dart: pinned row value: SELECT (1,'1')=(b,a) AS result FROM affinity ORDER BY rowid
+00:11 +1553: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((b,a)) AS result FROM affinity ORDER BY rowid
+00:11 +1554: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((b,a),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1555: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN (SELECT b,a) AS result FROM affinity ORDER BY rowid
+00:12 +1556: test/row_value_test.dart: pinned row value: SELECT (1,'1')=(a,c) AS result FROM affinity ORDER BY rowid
+00:12 +1557: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((a,c)) AS result FROM affinity ORDER BY rowid
+00:12 +1558: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((a,c),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1559: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN (SELECT a,c) AS result FROM affinity ORDER BY rowid
+00:12 +1560: test/row_value_test.dart: pinned row value: SELECT (1,'1')=(c,b) AS result FROM affinity ORDER BY rowid
+00:12 +1561: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((c,b)) AS result FROM affinity ORDER BY rowid
+00:12 +1562: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN ((c,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1563: test/row_value_test.dart: pinned row value: SELECT (1,'1') IN (SELECT c,b) AS result FROM affinity ORDER BY rowid
+00:12 +1564: test/row_value_test.dart: pinned row value: SELECT (a,b)=(1,1) AS result FROM affinity ORDER BY rowid
+00:12 +1565: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((1,1)) AS result FROM affinity ORDER BY rowid
+00:12 +1566: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((1,1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1567: test/row_value_test.dart: pinned row value: SELECT (a,b) IN (SELECT 1,1) AS result FROM affinity ORDER BY rowid
+00:12 +1568: test/row_value_test.dart: pinned row value: SELECT (a,b)=('1',1) AS result FROM affinity ORDER BY rowid
+00:12 +1569: test/row_value_test.dart: pinned row value: SELECT (a,b) IN (('1',1)) AS result FROM affinity ORDER BY rowid
+00:12 +1570: test/row_value_test.dart: pinned row value: SELECT (a,b) IN (('1',1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1571: test/row_value_test.dart: pinned row value: SELECT (a,b) IN (SELECT '1',1) AS result FROM affinity ORDER BY rowid
+00:12 +1572: test/row_value_test.dart: pinned row value: SELECT (a,b)=(1,'1') AS result FROM affinity ORDER BY rowid
+00:12 +1573: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((1,'1')) AS result FROM affinity ORDER BY rowid
+00:12 +1574: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((1,'1'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1575: test/row_value_test.dart: pinned row value: SELECT (a,b) IN (SELECT 1,'1') AS result FROM affinity ORDER BY rowid
+00:12 +1576: test/row_value_test.dart: pinned row value: SELECT (a,b)=(a,b) AS result FROM affinity ORDER BY rowid
+00:12 +1577: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((a,b)) AS result FROM affinity ORDER BY rowid
+00:12 +1578: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((a,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1579: test/row_value_test.dart: pinned row value: SELECT (a,b) IN (SELECT a,b) AS result FROM affinity ORDER BY rowid
+00:12 +1580: test/row_value_test.dart: pinned row value: SELECT (a,b)=(b,a) AS result FROM affinity ORDER BY rowid
+00:12 +1581: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((b,a)) AS result FROM affinity ORDER BY rowid
+00:12 +1582: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((b,a),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1583: test/row_value_test.dart: pinned row value: SELECT (a,b) IN (SELECT b,a) AS result FROM affinity ORDER BY rowid
+00:12 +1584: test/row_value_test.dart: pinned row value: SELECT (a,b)=(a,c) AS result FROM affinity ORDER BY rowid
+00:12 +1585: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((a,c)) AS result FROM affinity ORDER BY rowid
+00:12 +1586: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((a,c),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1587: test/row_value_test.dart: pinned row value: SELECT (a,b) IN (SELECT a,c) AS result FROM affinity ORDER BY rowid
+00:12 +1588: test/row_value_test.dart: pinned row value: SELECT (a,b)=(c,b) AS result FROM affinity ORDER BY rowid
+00:12 +1589: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((c,b)) AS result FROM affinity ORDER BY rowid
+00:12 +1590: test/row_value_test.dart: pinned row value: SELECT (a,b) IN ((c,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1591: test/row_value_test.dart: pinned row value: SELECT (a,b) IN (SELECT c,b) AS result FROM affinity ORDER BY rowid
+00:12 +1592: test/row_value_test.dart: pinned row value: SELECT (b,a)=(1,1) AS result FROM affinity ORDER BY rowid
+00:12 +1593: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((1,1)) AS result FROM affinity ORDER BY rowid
+00:12 +1594: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((1,1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1595: test/row_value_test.dart: pinned row value: SELECT (b,a) IN (SELECT 1,1) AS result FROM affinity ORDER BY rowid
+00:12 +1596: test/row_value_test.dart: pinned row value: SELECT (b,a)=('1',1) AS result FROM affinity ORDER BY rowid
+00:12 +1597: test/row_value_test.dart: pinned row value: SELECT (b,a) IN (('1',1)) AS result FROM affinity ORDER BY rowid
+00:12 +1598: test/row_value_test.dart: pinned row value: SELECT (b,a) IN (('1',1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1599: test/row_value_test.dart: pinned row value: SELECT (b,a) IN (SELECT '1',1) AS result FROM affinity ORDER BY rowid
+00:12 +1600: test/row_value_test.dart: pinned row value: SELECT (b,a)=(1,'1') AS result FROM affinity ORDER BY rowid
+00:12 +1601: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((1,'1')) AS result FROM affinity ORDER BY rowid
+00:12 +1602: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((1,'1'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1603: test/row_value_test.dart: pinned row value: SELECT (b,a) IN (SELECT 1,'1') AS result FROM affinity ORDER BY rowid
+00:12 +1604: test/row_value_test.dart: pinned row value: SELECT (b,a)=(a,b) AS result FROM affinity ORDER BY rowid
+00:12 +1605: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((a,b)) AS result FROM affinity ORDER BY rowid
+00:12 +1606: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((a,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1607: test/row_value_test.dart: pinned row value: SELECT (b,a) IN (SELECT a,b) AS result FROM affinity ORDER BY rowid
+00:12 +1608: test/row_value_test.dart: pinned row value: SELECT (b,a)=(b,a) AS result FROM affinity ORDER BY rowid
+00:12 +1609: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((b,a)) AS result FROM affinity ORDER BY rowid
+00:12 +1610: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((b,a),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1611: test/row_value_test.dart: pinned row value: SELECT (b,a) IN (SELECT b,a) AS result FROM affinity ORDER BY rowid
+00:12 +1612: test/row_value_test.dart: pinned row value: SELECT (b,a)=(a,c) AS result FROM affinity ORDER BY rowid
+00:12 +1613: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((a,c)) AS result FROM affinity ORDER BY rowid
+00:12 +1614: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((a,c),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1615: test/row_value_test.dart: pinned row value: SELECT (b,a) IN (SELECT a,c) AS result FROM affinity ORDER BY rowid
+00:12 +1616: test/row_value_test.dart: pinned row value: SELECT (b,a)=(c,b) AS result FROM affinity ORDER BY rowid
+00:12 +1617: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((c,b)) AS result FROM affinity ORDER BY rowid
+00:12 +1618: test/row_value_test.dart: pinned row value: SELECT (b,a) IN ((c,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1619: test/row_value_test.dart: pinned row value: SELECT (b,a) IN (SELECT c,b) AS result FROM affinity ORDER BY rowid
+00:12 +1620: test/row_value_test.dart: pinned row value: SELECT (a,c)=(1,1) AS result FROM affinity ORDER BY rowid
+00:12 +1621: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((1,1)) AS result FROM affinity ORDER BY rowid
+00:12 +1622: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((1,1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1623: test/row_value_test.dart: pinned row value: SELECT (a,c) IN (SELECT 1,1) AS result FROM affinity ORDER BY rowid
+00:12 +1624: test/row_value_test.dart: pinned row value: SELECT (a,c)=('1',1) AS result FROM affinity ORDER BY rowid
+00:12 +1625: test/row_value_test.dart: pinned row value: SELECT (a,c) IN (('1',1)) AS result FROM affinity ORDER BY rowid
+00:12 +1626: test/row_value_test.dart: pinned row value: SELECT (a,c) IN (('1',1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1627: test/row_value_test.dart: pinned row value: SELECT (a,c) IN (SELECT '1',1) AS result FROM affinity ORDER BY rowid
+00:12 +1628: test/row_value_test.dart: pinned row value: SELECT (a,c)=(1,'1') AS result FROM affinity ORDER BY rowid
+00:12 +1629: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((1,'1')) AS result FROM affinity ORDER BY rowid
+00:12 +1630: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((1,'1'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1631: test/row_value_test.dart: pinned row value: SELECT (a,c) IN (SELECT 1,'1') AS result FROM affinity ORDER BY rowid
+00:12 +1632: test/row_value_test.dart: pinned row value: SELECT (a,c)=(a,b) AS result FROM affinity ORDER BY rowid
+00:12 +1633: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((a,b)) AS result FROM affinity ORDER BY rowid
+00:12 +1634: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((a,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1635: test/row_value_test.dart: pinned row value: SELECT (a,c) IN (SELECT a,b) AS result FROM affinity ORDER BY rowid
+00:12 +1636: test/row_value_test.dart: pinned row value: SELECT (a,c)=(b,a) AS result FROM affinity ORDER BY rowid
+00:12 +1637: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((b,a)) AS result FROM affinity ORDER BY rowid
+00:12 +1638: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((b,a),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1639: test/row_value_test.dart: pinned row value: SELECT (a,c) IN (SELECT b,a) AS result FROM affinity ORDER BY rowid
+00:12 +1640: test/row_value_test.dart: pinned row value: SELECT (a,c)=(a,c) AS result FROM affinity ORDER BY rowid
+00:12 +1641: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((a,c)) AS result FROM affinity ORDER BY rowid
+00:12 +1642: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((a,c),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1643: test/row_value_test.dart: pinned row value: SELECT (a,c) IN (SELECT a,c) AS result FROM affinity ORDER BY rowid
+00:12 +1644: test/row_value_test.dart: pinned row value: SELECT (a,c)=(c,b) AS result FROM affinity ORDER BY rowid
+00:12 +1645: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((c,b)) AS result FROM affinity ORDER BY rowid
+00:12 +1646: test/row_value_test.dart: pinned row value: SELECT (a,c) IN ((c,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1647: test/row_value_test.dart: pinned row value: SELECT (a,c) IN (SELECT c,b) AS result FROM affinity ORDER BY rowid
+00:12 +1648: test/row_value_test.dart: pinned row value: SELECT (c,b)=(1,1) AS result FROM affinity ORDER BY rowid
+00:12 +1649: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((1,1)) AS result FROM affinity ORDER BY rowid
+00:12 +1650: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((1,1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1651: test/row_value_test.dart: pinned row value: SELECT (c,b) IN (SELECT 1,1) AS result FROM affinity ORDER BY rowid
+00:12 +1652: test/row_value_test.dart: pinned row value: SELECT (c,b)=('1',1) AS result FROM affinity ORDER BY rowid
+00:12 +1653: test/row_value_test.dart: pinned row value: SELECT (c,b) IN (('1',1)) AS result FROM affinity ORDER BY rowid
+00:12 +1654: test/row_value_test.dart: pinned row value: SELECT (c,b) IN (('1',1),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1655: test/row_value_test.dart: pinned row value: SELECT (c,b) IN (SELECT '1',1) AS result FROM affinity ORDER BY rowid
+00:12 +1656: test/row_value_test.dart: pinned row value: SELECT (c,b)=(1,'1') AS result FROM affinity ORDER BY rowid
+00:12 +1657: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((1,'1')) AS result FROM affinity ORDER BY rowid
+00:12 +1658: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((1,'1'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1659: test/row_value_test.dart: pinned row value: SELECT (c,b) IN (SELECT 1,'1') AS result FROM affinity ORDER BY rowid
+00:12 +1660: test/row_value_test.dart: pinned row value: SELECT (c,b)=(a,b) AS result FROM affinity ORDER BY rowid
+00:12 +1661: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((a,b)) AS result FROM affinity ORDER BY rowid
+00:12 +1662: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((a,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1663: test/row_value_test.dart: pinned row value: SELECT (c,b) IN (SELECT a,b) AS result FROM affinity ORDER BY rowid
+00:12 +1664: test/row_value_test.dart: pinned row value: SELECT (c,b)=(b,a) AS result FROM affinity ORDER BY rowid
+00:12 +1665: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((b,a)) AS result FROM affinity ORDER BY rowid
+00:12 +1666: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((b,a),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1667: test/row_value_test.dart: pinned row value: SELECT (c,b) IN (SELECT b,a) AS result FROM affinity ORDER BY rowid
+00:12 +1668: test/row_value_test.dart: pinned row value: SELECT (c,b)=(a,c) AS result FROM affinity ORDER BY rowid
+00:12 +1669: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((a,c)) AS result FROM affinity ORDER BY rowid
+00:12 +1670: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((a,c),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1671: test/row_value_test.dart: pinned row value: SELECT (c,b) IN (SELECT a,c) AS result FROM affinity ORDER BY rowid
+00:12 +1672: test/row_value_test.dart: pinned row value: SELECT (c,b)=(c,b) AS result FROM affinity ORDER BY rowid
+00:12 +1673: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((c,b)) AS result FROM affinity ORDER BY rowid
+00:12 +1674: test/row_value_test.dart: pinned row value: SELECT (c,b) IN ((c,b),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1675: test/row_value_test.dart: pinned row value: SELECT (c,b) IN (SELECT c,b) AS result FROM affinity ORDER BY rowid
+00:12 +1676: test/row_value_test.dart: pinned row value: SELECT ('a','a')=('a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1677: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN (('a','a')) AS result FROM affinity ORDER BY rowid
+00:12 +1678: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN (('a','a'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1679: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN (SELECT 'a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1680: test/row_value_test.dart: pinned row value: SELECT ('a','a')=(SELECT 'a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1681: test/row_value_test.dart: pinned row value: SELECT ('a','a')=(d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1682: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN ((d,e)) AS result FROM affinity ORDER BY rowid
+00:12 +1683: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN ((d,e),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1684: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN (SELECT d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1685: test/row_value_test.dart: pinned row value: SELECT ('a','a')=(SELECT d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1686: test/row_value_test.dart: pinned row value: SELECT ('a','a')=('a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1687: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN (('a' COLLATE BINARY,'a' COLLATE BINARY)) AS result FROM affinity ORDER BY rowid
+00:12 +1688: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN (('a' COLLATE BINARY,'a' COLLATE BINARY),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1689: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN (SELECT 'a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1690: test/row_value_test.dart: pinned row value: SELECT ('a','a')=(SELECT 'a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1691: test/row_value_test.dart: pinned row value: SELECT ('a','a')=('a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1692: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN (('a' COLLATE NOCASE,'a' COLLATE RTRIM)) AS result FROM affinity ORDER BY rowid
+00:12 +1693: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN (('a' COLLATE NOCASE,'a' COLLATE RTRIM),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1694: test/row_value_test.dart: pinned row value: SELECT ('a','a') IN (SELECT 'a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1695: test/row_value_test.dart: pinned row value: SELECT ('a','a')=(SELECT 'a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1696: test/row_value_test.dart: pinned row value: SELECT (d,e)=('a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1697: test/row_value_test.dart: pinned row value: SELECT (d,e) IN (('a','a')) AS result FROM affinity ORDER BY rowid
+00:12 +1698: test/row_value_test.dart: pinned row value: SELECT (d,e) IN (('a','a'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1699: test/row_value_test.dart: pinned row value: SELECT (d,e) IN (SELECT 'a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1700: test/row_value_test.dart: pinned row value: SELECT (d,e)=(SELECT 'a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1701: test/row_value_test.dart: pinned row value: SELECT (d,e)=(d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1702: test/row_value_test.dart: pinned row value: SELECT (d,e) IN ((d,e)) AS result FROM affinity ORDER BY rowid
+00:12 +1703: test/row_value_test.dart: pinned row value: SELECT (d,e) IN ((d,e),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1704: test/row_value_test.dart: pinned row value: SELECT (d,e) IN (SELECT d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1705: test/row_value_test.dart: pinned row value: SELECT (d,e)=(SELECT d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1706: test/row_value_test.dart: pinned row value: SELECT (d,e)=('a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1707: test/row_value_test.dart: pinned row value: SELECT (d,e) IN (('a' COLLATE BINARY,'a' COLLATE BINARY)) AS result FROM affinity ORDER BY rowid
+00:12 +1708: test/row_value_test.dart: pinned row value: SELECT (d,e) IN (('a' COLLATE BINARY,'a' COLLATE BINARY),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1709: test/row_value_test.dart: pinned row value: SELECT (d,e) IN (SELECT 'a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1710: test/row_value_test.dart: pinned row value: SELECT (d,e)=(SELECT 'a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1711: test/row_value_test.dart: pinned row value: SELECT (d,e)=('a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1712: test/row_value_test.dart: pinned row value: SELECT (d,e) IN (('a' COLLATE NOCASE,'a' COLLATE RTRIM)) AS result FROM affinity ORDER BY rowid
+00:12 +1713: test/row_value_test.dart: pinned row value: SELECT (d,e) IN (('a' COLLATE NOCASE,'a' COLLATE RTRIM),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1714: test/row_value_test.dart: pinned row value: SELECT (d,e) IN (SELECT 'a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1715: test/row_value_test.dart: pinned row value: SELECT (d,e)=(SELECT 'a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1716: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY)=('a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1717: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN (('a','a')) AS result FROM affinity ORDER BY rowid
+00:12 +1718: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN (('a','a'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1719: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN (SELECT 'a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1720: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY)=(SELECT 'a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1721: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY)=(d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1722: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN ((d,e)) AS result FROM affinity ORDER BY rowid
+00:12 +1723: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN ((d,e),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1724: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN (SELECT d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1725: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY)=(SELECT d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1726: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY)=('a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1727: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN (('a' COLLATE BINARY,'a' COLLATE BINARY)) AS result FROM affinity ORDER BY rowid
+00:12 +1728: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN (('a' COLLATE BINARY,'a' COLLATE BINARY),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1729: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN (SELECT 'a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1730: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY)=(SELECT 'a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1731: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY)=('a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1732: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN (('a' COLLATE NOCASE,'a' COLLATE RTRIM)) AS result FROM affinity ORDER BY rowid
+00:12 +1733: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN (('a' COLLATE NOCASE,'a' COLLATE RTRIM),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1734: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY) IN (SELECT 'a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1735: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE BINARY,'a' COLLATE BINARY)=(SELECT 'a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1736: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM)=('a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1737: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN (('a','a')) AS result FROM affinity ORDER BY rowid
+00:12 +1738: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN (('a','a'),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1739: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN (SELECT 'a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1740: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM)=(SELECT 'a','a') AS result FROM affinity ORDER BY rowid
+00:12 +1741: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM)=(d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1742: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN ((d,e)) AS result FROM affinity ORDER BY rowid
+00:12 +1743: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN ((d,e),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1744: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN (SELECT d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1745: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM)=(SELECT d,e) AS result FROM affinity ORDER BY rowid
+00:12 +1746: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM)=('a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1747: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN (('a' COLLATE BINARY,'a' COLLATE BINARY)) AS result FROM affinity ORDER BY rowid
+00:12 +1748: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN (('a' COLLATE BINARY,'a' COLLATE BINARY),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1749: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN (SELECT 'a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1750: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM)=(SELECT 'a' COLLATE BINARY,'a' COLLATE BINARY) AS result FROM affinity ORDER BY rowid
+00:12 +1751: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM)=('a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1752: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN (('a' COLLATE NOCASE,'a' COLLATE RTRIM)) AS result FROM affinity ORDER BY rowid
+00:12 +1753: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN (('a' COLLATE NOCASE,'a' COLLATE RTRIM),(NULL,NULL)) AS result FROM affinity ORDER BY rowid
+00:12 +1754: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM) IN (SELECT 'a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1755: test/row_value_test.dart: pinned row value: SELECT ('a' COLLATE NOCASE,'a' COLLATE RTRIM)=(SELECT 'a' COLLATE NOCASE,'a' COLLATE RTRIM) AS result FROM affinity ORDER BY rowid
+00:12 +1756: test/row_value_test.dart: pinned row value: SELECT id FROM pairs WHERE (t,n) IN (SELECT t,n FROM pairs WHERE id<3) ORDER BY id
+00:12 +1757: test/row_value_test.dart: pinned row value: SELECT (SELECT t FROM pairs WHERE id=1)='a' AS result
+00:12 +1758: test/row_value_test.dart: pinned row value: SELECT (SELECT n FROM pairs WHERE id=1)='2' AS result
+00:12 +1759: test/row_value_test.dart: pinned row value: SELECT (SELECT b FROM pairs WHERE id=1)=2 AS result
+00:12 +1760: test/row_value_test.dart: pinned row value: SELECT id FROM pairs GROUP BY id HAVING (id,max(n))>=(1,2) ORDER BY id
+00:12 +1761: test/row_value_test.dart: pinned row value: SELECT (1,2)
+00:12 +1762: test/row_value_test.dart: pinned row value: SELECT (1,2) FROM empty
+00:12 +1763: test/row_value_test.dart: pinned row value: SELECT (SELECT 1,2)
+00:12 +1764: test/row_value_test.dart: pinned row value: SELECT (SELECT 1,2) FROM empty
+00:12 +1765: test/row_value_test.dart: pinned row value: SELECT (1,2)=1 FROM empty
+00:12 +1766: test/row_value_test.dart: pinned row value: SELECT (1,2)=(1,2,3) FROM empty
+00:12 +1767: test/row_value_test.dart: pinned row value: SELECT (1,(2,3))=(1,(2,3))
+00:12 +1768: test/row_value_test.dart: pinned row value: SELECT abs((1,2)) FROM empty
+00:12 +1769: test/row_value_test.dart: pinned row value: SELECT (1,2)+1 FROM empty
+00:12 +1770: test/row_value_test.dart: pinned row value: SELECT NOT (1,2) FROM empty
+00:12 +1771: test/row_value_test.dart: pinned row value: SELECT (1,2) IS NULL FROM empty
+00:12 +1772: test/row_value_test.dart: pinned row value: SELECT (1,2) IS TRUE FROM empty
+00:12 +1773: test/row_value_test.dart: pinned row value: SELECT ((1,2) COLLATE NOCASE)=(1,2) FROM empty
+00:12 +1774: test/row_value_test.dart: pinned row value: SELECT (1,2) IN (1,2) FROM empty
+00:12 +1775: test/row_value_test.dart: pinned row value: SELECT 1 IN ((1,2)) FROM empty
+00:12 +1776: test/row_value_test.dart: pinned row value: SELECT (1,2) IN ((1,2,3)) FROM empty
+00:12 +1777: test/row_value_test.dart: pinned row value: SELECT (1,2) IN (SELECT 1) FROM empty
+00:12 +1778: test/row_value_test.dart: pinned row value: SELECT (1,2) IN ((SELECT 1,2),(SELECT 3,4))
+00:12 +1779: test/row_value_test.dart: pinned row value: SELECT (1,2) BETWEEN (1,0) AND 3 FROM empty
+00:12 +1780: test/row_value_test.dart: pinned row value: SELECT CASE (1,2) WHEN 1 THEN 1 END FROM empty
+00:12 +1781: test/row_value_test.dart: pinned row value: SELECT CASE WHEN 1 THEN (1,2) END FROM empty
+00:12 +1782: test/row_value_test.dart: pinned row value: SELECT 1 FROM empty ORDER BY (1,2)
+00:12 +1783: test/row_value_test.dart: pinned row value: SELECT 1 FROM empty GROUP BY (1,2)
+00:12 +1784: test/row_value_test.dart: pinned row value: SELECT 1 FROM empty WHERE (1,2)
+00:12 +1785: test/row_value_test.dart: pinned row value: SELECT (1,2) LIMIT 0
+00:12 +1786: test/row_value_test.dart: pinned row value: SELECT (1,2) IN ((3,abs(-9223372036854775808)))
+00:12 +1787: test/row_value_test.dart: pinned row value: SELECT (1,2) IN ((1,2),(3,abs(-9223372036854775808)))
+00:12 +1788: test/row_value_test.dart: pinned row value: SELECT (1,2) IN (SELECT 1,2 WHERE 0)
+00:12 +1789: test/row_value_test.dart: pinned row value: SELECT (abs(-9223372036854775808),2) IN (SELECT 1,2 WHERE 0)
+00:12 +1790: test/row_value_test.dart: pinned row value: SELECT (row_counter(),row_counter())<(2,0) AS result
+00:12 +1791: test/row_value_test.dart: pinned row value: SELECT (row_counter(),row_counter())=(2,0) AS result
+00:12 +1792: test/row_value_test.dart: pinned row value: SELECT (row_counter(),row_counter())=(1,2) AS result
+00:12 +1793: test/row_value_test.dart: pinned row value: SELECT (row_counter(),row_counter())!=(2,0) AS result
+00:12 +1794: test/row_value_test.dart: pinned row value: SELECT (row_counter(),row_counter()) BETWEEN (1,0) AND (1,3) AS result
+00:12 +1795: test/row_value_test.dart: pinned row value: SELECT (row_counter(),row_counter()) IN ((1,2),(3,row_counter())) AS result
+00:12 +1796: test/row_value_test.dart: pinned row value: SELECT (row_counter(),row_counter()) IN ((1,row_counter())) AS result
+00:12 +1797: test/row_value_test.dart: pinned row value: SELECT (SELECT 1,row_counter())<(0,0) AS result
+00:12 +1798: test/row_value_test.dart: pinned row value: SELECT (row_counter(),row_counter()) IN () AS result
+00:12 +1799: test/row_value_test.dart: pinned row value: SELECT (row_counter(),row_counter()) IN (SELECT 1,2 WHERE 0) AS result
+00:12 +1800: test/row_value_test.dart: pinned row value: SELECT (row_counter(),row_counter()) IN (SELECT 1,row_counter()) AS result
+00:12 +1801: test/row_value_test.dart: pinned row value: SELECT CASE (row_counter(),row_counter()) WHEN (1,3) THEN 0 WHEN (1,2) THEN 1 END AS result
+00:12 +1802: test/row_value_test.dart: row comparison evaluates each necessary field once
+00:12 +1803: test/row_value_test.dart: (tearDownAll)
+00:12 +1803: All tests passed!

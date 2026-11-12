@@ -802,7 +802,13 @@ final class PreparedSqlAggregate {
       return;
     }
     final value = args.single;
-    if (value == null) return;
+    if (value == null) {
+      // Until a non-NULL extremum exists, SQLite copies each accepted row.
+      if ((key == 'min' || key == 'max') && _extreme == null) {
+        representative = row.row;
+      }
+      return;
+    }
     if (key == 'min' || key == 'max') {
       final comparison = _extreme == null
           ? 0

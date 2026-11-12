@@ -24,10 +24,21 @@
         "packages/sqlite_plus/test/optimizer_constants_test.dart": "659ba7541dd0ba5069f04686efd4139cbf9fb84bc74a0e9b9569ac870fbb99e4"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 32,
+      "description": "Preserve HAVING group keys and NULL extremum representatives",
+      "focused_test_log": "item32.log",
+      "parent_commit": "3f4646a9110519efbedb3b4eb8f63e4f4a0dd5ec",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "d14c28ac42c6155418093875046a8883a233e8d00252aa8e2f3155e75ff361cb",
+        "packages/sqlite_plus/lib/src/sql/functions.dart": "60ebe544f9f9a7766b1445ffd6718017a2ea495fd0b3fc25fcedea4b27ddc3c5",
+        "packages/sqlite_plus/test/optimizer_aggregate_test.dart": "732b74448470c4c734d7a8b4d6ed98d4e4347258fb244be3640caa6cbf0b98dd"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
   "pending": [
-    32,
     37,
     21,
     11,
