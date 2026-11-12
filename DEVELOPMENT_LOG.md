@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Prepare sqlite_plus_jobs and document the planner
+
+`sqlite_plus_jobs` 0.0.1-dev.1 no longer sets `publish_to: none`. The changelog says it is prepared and not uploaded, and that `sqlite_plus` 0.1.14 must be uploaded first. The engine, workspace, ORM, inspector, and jobs READMEs now show the planner with the plans this tree returns: a covering index seek, a two-table inner join, one-end `MAX`, folded arithmetic, and a contradictory filter. Neither package was uploaded.
+
 ## 2026-11-12 — Prepare sqlite_plus 0.1.14 for publication
 
 `sqlite_plus` is `0.1.14`. The changelog states the planner behavior that is in the tree, the shapes that stay on the previous path, and the suites that passed on Linux x64. In-repo packages now require `sqlite_plus` ^0.1.14. Their own version numbers are unchanged. M9 and item 108 stay open. This version is not uploaded.

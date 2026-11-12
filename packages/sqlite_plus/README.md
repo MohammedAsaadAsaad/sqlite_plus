@@ -575,21 +575,77 @@ Optional reusable query syntax and typed ORM integration are documented in
 [Prepared statements](doc/PREPARED.md). Existing APIs remain available; the ORM
 automatic cache defaults to disabled.
 
-## Optimizer progress
+## The query planner
 
-Eligible `ORDER BY … LIMIT` selection now uses a bounded heap automatically.
-See [scope and measured costs](doc/OPTIMIZER.md); the full optimizer roadmap
-remains in progress.
+`sqlite_plus` 0.1.14 chooses an access path for the SQL you already write. There is no new hint API. The examples below are the plans this tree returns on an in-memory connection. The same SQL uses the same planner on a file. This version is not uploaded. The plans are not a claim that every choice matches the SQLite optimizer.
 
-### Explicit query diagnostics (unreleased)
+```dart
+import 'package:sqlite_plus/sqlite_plus.dart';
 
-`db.diagnoseQuery('SELECT name FROM products WHERE id=?', parameters: [42])`
-returns `.result` plus bounded planner decisions, timings and actual row/page
-counts. It executes once and supports scalar ordinary single-source/constant
-SELECT; unsupported shapes reject. Normal query calls never enable profiling.
-Metadata `.toJson()` excludes SQL, parameters and result values; unavailable
-counters remain null. Loan a read-only reader exclusively while diagnosing.
-Mutable diagnosis preserves temp/attached routing through a private reader.
-Inspector's explicit `.profile` also supports ORM ownership rules. Tested scope,
-nonzero enabled costs and disabled-control tradeoffs are documented in the
-workspace `benchmark_results/optimizer_diagnostics/README.md`.
+final db = await openInMemory();
+await db.execute('CREATE TABLE t(id INTEGER PRIMARY KEY, a INT, b INT)');
+await db.execute('CREATE INDEX ia ON t(a)');
+await db.execute('INSERT INTO t VALUES (1, 10, 1), (2, 20, 2), (3, 10, 3)');
+
+final rows = await db.query('SELECT id FROM t WHERE a = ? ORDER BY id', [10]);
+final plan = await db.query(
+  'EXPLAIN QUERY PLAN SELECT id FROM t WHERE a = 10',
+);
+```
+
+`rows.rows` is `[[1], [3]]`. Each id is a `BigInt`. `plan.rows.single.last` is `SEARCH t USING COVERING INDEX ia (a=?)`. The selected column is the integer primary key, so the lookup does not read the table row.
+
+Selecting a column the index does not hold still seeks, then reads the table row:
+
+```dart
+final wider = await db.query(
+  'EXPLAIN QUERY PLAN SELECT b FROM t WHERE a = 10',
+);
+```
+
+`wider.rows.single.last` is `SEARCH t USING INDEX ia (a=?)`.
+
+A two-table inner join seeks the inner index for each distinct outer key when both tables are ordinary rowid tables, the join is one equality on a single-column index, and the affinities and collations agree. The snippets below continue on the same connection:
+
+```dart
+await db.execute('CREATE TABLE u(id INTEGER PRIMARY KEY, k INT, v TEXT)');
+await db.execute('CREATE INDEX uk ON u(k)');
+await db.execute(
+  "INSERT INTO u VALUES (1, 10, 'x'), (2, 10, 'y'), (3, 30, 'z')",
+);
+final join = await db.query(
+  'EXPLAIN QUERY PLAN SELECT t.id, u.v FROM t INNER JOIN u ON t.a = u.k',
+);
+final matched = await db.query(
+  'SELECT t.id, u.v FROM t INNER JOIN u ON t.a = u.k ORDER BY t.id, u.id',
+);
+```
+
+The plan details are `SCAN t` and `SEARCH u USING INDEX uk (k=?)`. `matched.rows` is `[[1, x], [1, y], [3, x], [3, y]]`. The text values are `String`. The ids are `BigInt`. A composite index, a partial index, `WITHOUT ROWID`, a self join, or a third table stays on the existing scan or temporary lookup. After `ANALYZE`, a dense index whose average equal-key fanout is at least a quarter of the index stays a scan unless `INDEXED BY` names it.
+
+`diagnoseQuery` runs the statement once and records the decision. It accepts a simple scalar `SELECT`, a one-end `MIN` or `MAX` of an unshadowed integer primary key, and a plain two-table inner join. A join that calls a function rejects before the function runs. An ordinary `query` never turns this recording on.
+
+```dart
+final sought = await db.diagnoseQuery('SELECT id FROM t WHERE a = 10');
+final extreme = await db.diagnoseQuery('SELECT MAX(id) FROM t');
+final sum = await db.query('SELECT 1 + 2');
+final empty = await db.query(
+  'SELECT count(*) FROM t WHERE a > 1 AND a < 1',
+);
+await db.close();
+```
+
+`sought.plan.access` is `secondary-index-lookup` and `sought.plan.indexName` is `ia`. `extreme.result.rows` is `[[3]]`. One recorded decision is `primary-key-extreme` with reason `max`. `SELECT abs(t.id) FROM t INNER JOIN u ON t.a = u.k` throws `UnsupportedError` (`Diagnosis requires a simple scalar SELECT`). `sum.rows` is `[[3]]`: the arithmetic has no column, parameter, or function, so it is folded. `empty.rows` is `[[0]]`: the numeric filter cannot match, the scan is skipped, and `count(*)` is 0. A function inside that filter still runs.
+
+Also in this version:
+
+- A direct forward index scan can satisfy `ORDER BY`. A full reverse scan can satisfy descending order. An ordered `LIMIT` with no `WHERE` stops early. An unordered scan with `LIMIT` and no `WHERE` stops. A filter still reads the rows it has to check. Eligible `ORDER BY … LIMIT` selection uses a bounded heap; the measured scope is [doc/OPTIMIZER.md](doc/OPTIMIZER.md).
+- `WHERE a = ?` still chooses the index after the value is bound. Plans are not cached. `ANALYZE` affects the next statement.
+- A leading `IN` list, or an `OR` of constants on the same column, seeks each distinct value, up to 32, when collation and affinity agree.
+- An automatic partial index is used when a numeric comparison is stronger and the affinity is numeric. `INDEXED BY` still needs the exact predicate.
+- `sqlite_stat1` range estimates are floored at the next equality average. Stat text longer than 65536 characters is ignored. Recorded table cardinality is not inflated by a sibling index. `sqlite_stat4` is stored and is not used for planning.
+- Two to four simple cross joins with table statistics are ordered smallest first. Five stay in the written order.
+
+Not implemented: `STAT4` planning, skip-scan, index intersection, hash join, and flattening a correlated subquery. A correlated subquery still runs once per outer row. There is no schema or file-format change. Plans can differ from 0.1.13. M9 and item 108 stay open. The statement of scope is [CHANGELOG.md](CHANGELOG.md) under 0.1.14 and [docs/plans/OPTIMIZER.md](../../docs/plans/OPTIMIZER.md).
+
+A typed ORM filter becomes SQL and uses this planner. Inspector `explain` and `profile` report these decisions. Neither package keeps a second planner.

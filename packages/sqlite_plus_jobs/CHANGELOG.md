@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.0.1-dev.1 (unreleased workspace)
+## 0.0.1-dev.1
+
+Prepared for pub.dev. Not uploaded. Requires `sqlite_plus` ^0.1.14, which is
+also not uploaded. Upload the engine first. pub.dev cannot resolve this package
+until that version exists.
 
 - Require `sqlite_plus` ^0.1.14.
 - Explicit durable queue with queue-scoped dedup, priority/delay, random-token
