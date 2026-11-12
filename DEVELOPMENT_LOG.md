@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Optimizer correctness final gate
+
+Repaired the 12 reviewed defective IDs plus the compound ORDER BY folding follow-up. Final core/ORM/Inspector tests, static analysis, 374 independent comparisons, VM/JS assertions, and scoped AOT controls are recorded in `benchmark_results/optimizer_correctness/REPORT.md`. Item 23 remains partial; individual roadmap performance gates remain open. No merge or publication.
+
 ## 2026-11-12 — Correctness checkpoint for optimizer item 33
 
 Preserve compound ORDER BY expression identity during constant folding. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item33.log`. Full-tree regressions and performance acceptance remain pending.

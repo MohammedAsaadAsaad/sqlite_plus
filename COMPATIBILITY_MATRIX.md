@@ -1,7 +1,7 @@
 # SQLite compatibility matrix
 
 <!-- optimizer-repairs -->
-Correctness repairs are in progress on `fix/optimizer-correctness-20261112`. The previous verified baseline does not imply the optimizer closeout passes all regressions. See `docs/AI_HANDOFF.md` and per-item evidence. Full verification of the repaired tree remains pending.
+The 12 optimizer correctness repairs passed final core/ORM/Inspector regressions and 374 independent semantic-reference comparisons. See `benchmark_results/optimizer_correctness/REPORT.md`. This is scoped correctness evidence, not full SQLite compatibility or acceptance of every roadmap performance gate. Item 23 remains partial.
 <!-- /optimizer-repairs -->
 
 Reference: **SQLite 3.53.1**, source ID

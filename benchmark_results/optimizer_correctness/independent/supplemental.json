@@ -1,0 +1,561 @@
+{
+  "total": 28,
+  "passed": 28,
+  "failed": 0,
+  "cases": [
+    {
+      "item": 21,
+      "sql": "SELECT 1 OR abs(-9223372036854775808) AS v",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          1
+        ]
+      ],
+      "actual": [
+        [
+          1
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 21,
+      "sql": "SELECT 1 OR abs(-9223372036854775808) AS v",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          1
+        ]
+      ],
+      "actual": [
+        [
+          1
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 21,
+      "sql": "SELECT 0 AND abs(-9223372036854775808) AS v",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          0
+        ]
+      ],
+      "actual": [
+        [
+          0
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 21,
+      "sql": "SELECT 0 AND abs(-9223372036854775808) AS v",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          0
+        ]
+      ],
+      "actual": [
+        [
+          0
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 21,
+      "sql": "SELECT NULL OR abs(-9223372036854775808) AS v",
+      "api": "mutable",
+      "nativeError": true,
+      "expected": null,
+      "nativeErrorText": "Error in 3rd command line argument: integer overflow\n",
+      "error": "SqlException: integer overflow",
+      "pass": true
+    },
+    {
+      "item": 21,
+      "sql": "SELECT NULL OR abs(-9223372036854775808) AS v",
+      "api": "readOnly",
+      "nativeError": true,
+      "expected": null,
+      "nativeErrorText": "Error in 3rd command line argument: integer overflow\n",
+      "error": "SqlException: integer overflow",
+      "pass": true
+    },
+    {
+      "item": 33,
+      "sql": "SELECT v FROM (SELECT CAST(1 AS INTEGER) AS v) WHERE v='1'",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          1
+        ]
+      ],
+      "actual": [
+        [
+          1
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 33,
+      "sql": "SELECT v FROM (SELECT CAST(1 AS INTEGER) AS v) WHERE v='1'",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          1
+        ]
+      ],
+      "actual": [
+        [
+          1
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 33,
+      "sql": "SELECT v FROM (SELECT CAST(1 AS TEXT) AS v) WHERE v=1",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          "1"
+        ]
+      ],
+      "actual": [
+        [
+          "1"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 33,
+      "sql": "SELECT v FROM (SELECT CAST(1 AS TEXT) AS v) WHERE v=1",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          "1"
+        ]
+      ],
+      "actual": [
+        [
+          "1"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 33,
+      "sql": "SELECT v FROM (SELECT 'A' COLLATE NOCASE AS v) WHERE v='a'",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          "A"
+        ]
+      ],
+      "actual": [
+        [
+          "A"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 33,
+      "sql": "SELECT v FROM (SELECT 'A' COLLATE NOCASE AS v) WHERE v='a'",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          "A"
+        ]
+      ],
+      "actual": [
+        [
+          "A"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 33,
+      "sql": "WITH x AS MATERIALIZED(SELECT CAST(1 AS INTEGER) AS v) SELECT v FROM x WHERE v='1'",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          1
+        ]
+      ],
+      "actual": [
+        [
+          1
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 33,
+      "sql": "WITH x AS MATERIALIZED(SELECT CAST(1 AS INTEGER) AS v) SELECT v FROM x WHERE v='1'",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          1
+        ]
+      ],
+      "actual": [
+        [
+          1
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 35,
+      "sql": "SELECT x.a,(SELECT x.b) AS v FROM (SELECT a,b FROM t LIMIT 2 OFFSET 0) AS x ORDER BY x.a",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          "A",
+          30
+        ],
+        [
+          "B",
+          10
+        ]
+      ],
+      "actual": [
+        [
+          "A",
+          30
+        ],
+        [
+          "B",
+          10
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 35,
+      "sql": "SELECT x.a,(SELECT x.b) AS v FROM (SELECT a,b FROM t LIMIT 2 OFFSET 0) AS x ORDER BY x.a",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          "A",
+          30
+        ],
+        [
+          "B",
+          10
+        ]
+      ],
+      "actual": [
+        [
+          "A",
+          30
+        ],
+        [
+          "B",
+          10
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 35,
+      "sql": "SELECT x.a,(SELECT x.b+1) AS v FROM (SELECT a,b FROM t LIMIT 2 OFFSET 0) AS x ORDER BY x.a",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          "A",
+          31
+        ],
+        [
+          "B",
+          11
+        ]
+      ],
+      "actual": [
+        [
+          "A",
+          31
+        ],
+        [
+          "B",
+          11
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 35,
+      "sql": "SELECT x.a,(SELECT x.b+1) AS v FROM (SELECT a,b FROM t LIMIT 2 OFFSET 0) AS x ORDER BY x.a",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          "A",
+          31
+        ],
+        [
+          "B",
+          11
+        ]
+      ],
+      "actual": [
+        [
+          "A",
+          31
+        ],
+        [
+          "B",
+          11
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 30,
+      "sql": "SELECT DISTINCT a COLLATE NOCASE AS v FROM t ORDER BY a COLLATE BINARY",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          "A"
+        ],
+        [
+          "B"
+        ]
+      ],
+      "actual": [
+        [
+          "A"
+        ],
+        [
+          "B"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 30,
+      "sql": "SELECT DISTINCT a COLLATE NOCASE AS v FROM t ORDER BY a COLLATE BINARY",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          "A"
+        ],
+        [
+          "B"
+        ]
+      ],
+      "actual": [
+        [
+          "A"
+        ],
+        [
+          "B"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 30,
+      "sql": "SELECT DISTINCT a COLLATE NOCASE AS v FROM t ORDER BY v COLLATE BINARY",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          "A"
+        ],
+        [
+          "B"
+        ]
+      ],
+      "actual": [
+        [
+          "A"
+        ],
+        [
+          "B"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 30,
+      "sql": "SELECT DISTINCT a COLLATE NOCASE AS v FROM t ORDER BY v COLLATE BINARY",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          "A"
+        ],
+        [
+          "B"
+        ]
+      ],
+      "actual": [
+        [
+          "A"
+        ],
+        [
+          "B"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 30,
+      "sql": "SELECT a,count(*) AS n FROM t GROUP BY a COLLATE NOCASE ORDER BY a COLLATE NOCASE",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          "A",
+          2
+        ],
+        [
+          "B",
+          2
+        ]
+      ],
+      "actual": [
+        [
+          "A",
+          2
+        ],
+        [
+          "B",
+          2
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 30,
+      "sql": "SELECT a,count(*) AS n FROM t GROUP BY a COLLATE NOCASE ORDER BY a COLLATE NOCASE",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          "A",
+          2
+        ],
+        [
+          "B",
+          2
+        ]
+      ],
+      "actual": [
+        [
+          "A",
+          2
+        ],
+        [
+          "B",
+          2
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 37,
+      "sql": "SELECT (SELECT 1 AS v) AS x,(SELECT '1' AS v) AS y",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          1,
+          "1"
+        ]
+      ],
+      "actual": [
+        [
+          1,
+          "1"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 37,
+      "sql": "SELECT (SELECT 1 AS v) AS x,(SELECT '1' AS v) AS y",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          1,
+          "1"
+        ]
+      ],
+      "actual": [
+        [
+          1,
+          "1"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 37,
+      "sql": "SELECT (SELECT a FROM t ORDER BY a NULLS FIRST LIMIT 1) AS x,(SELECT a FROM t ORDER BY a NULLS LAST LIMIT 1) AS y",
+      "api": "mutable",
+      "nativeError": false,
+      "expected": [
+        [
+          "A",
+          "A"
+        ]
+      ],
+      "actual": [
+        [
+          "A",
+          "A"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "item": 37,
+      "sql": "SELECT (SELECT a FROM t ORDER BY a NULLS FIRST LIMIT 1) AS x,(SELECT a FROM t ORDER BY a NULLS LAST LIMIT 1) AS y",
+      "api": "readOnly",
+      "nativeError": false,
+      "expected": [
+        [
+          "A",
+          "A"
+        ]
+      ],
+      "actual": [
+        [
+          "A",
+          "A"
+        ]
+      ],
+      "pass": true
+    }
+  ]
+}

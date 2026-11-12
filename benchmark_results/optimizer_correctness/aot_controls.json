@@ -1,0 +1,97 @@
+{
+  "baseline_commit": "91a85454354e4610919688de82221086edd86b35",
+  "samples": 50,
+  "summary": {
+    "small_k": {
+      "baseline_median_us": 356313,
+      "repaired_median_us": 378857,
+      "ratio": 1.063270214670809,
+      "baseline_range_us": [
+        340247,
+        371152
+      ],
+      "repaired_range_us": [
+        300579,
+        468037
+      ],
+      "baseline_peak_rss_median": 51593216,
+      "repaired_peak_rss_median": 51924992,
+      "baseline_explain_us_median": 176,
+      "repaired_explain_us_median": 163
+    },
+    "large_k": {
+      "baseline_median_us": 356487,
+      "repaired_median_us": 383339,
+      "ratio": 1.0753239248556048,
+      "baseline_range_us": [
+        289651,
+        504151
+      ],
+      "repaired_range_us": [
+        315040,
+        569445
+      ],
+      "baseline_peak_rss_median": 51765248,
+      "repaired_peak_rss_median": 51863552,
+      "baseline_explain_us_median": 154,
+      "repaired_explain_us_median": 167
+    },
+    "unlimited": {
+      "baseline_median_us": 367795,
+      "repaired_median_us": 352562,
+      "ratio": 0.9585829062385296,
+      "baseline_range_us": [
+        328766,
+        426054
+      ],
+      "repaired_range_us": [
+        324834,
+        460716
+      ],
+      "baseline_peak_rss_median": 54231040,
+      "repaired_peak_rss_median": 54775808,
+      "baseline_explain_us_median": 152,
+      "repaired_explain_us_median": 161
+    },
+    "point": {
+      "baseline_median_us": 285,
+      "repaired_median_us": 341,
+      "ratio": 1.1964912280701754,
+      "baseline_range_us": [
+        266,
+        579
+      ],
+      "repaired_range_us": [
+        293,
+        549
+      ],
+      "baseline_peak_rss_median": 12451840,
+      "repaired_peak_rss_median": 12451840,
+      "baseline_explain_us_median": 99,
+      "repaired_explain_us_median": 97
+    },
+    "callbacks": {
+      "baseline_median_us": 329309,
+      "repaired_median_us": 261131,
+      "ratio": 0.7929664843657477,
+      "baseline_range_us": [
+        226442,
+        370685
+      ],
+      "repaired_range_us": [
+        221624,
+        434689
+      ],
+      "baseline_peak_rss_median": 51777536,
+      "repaired_peak_rss_median": 51654656,
+      "baseline_explain_us_median": 156,
+      "repaired_explain_us_median": 193
+    }
+  },
+  "binary_sha256": {
+    "baseline": "4d5d8dec0a1fe367d22197348c337fd6bf2223d2847e5a5e38ffa17335f82167",
+    "repaired": "99a20b9442ddc9804a3e100cd33501f38ced7df80044f5d329e17c31dbf1bbcb"
+  },
+  "image_sha256": "4a8692ad438456e7adb1a19a5abb097b5c71084366cc77583e84effe199236a3",
+  "limitation": "Linux x64 AOT, five alternating fresh-process pairs per case; timing includes query planning. Scoped controls only, not acceptance of every roadmap optimization or a universal no-overhead claim."
+}

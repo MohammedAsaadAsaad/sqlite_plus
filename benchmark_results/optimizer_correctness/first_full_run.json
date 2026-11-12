@@ -1,0 +1,26 @@
+{
+  "phase": "first full repaired-tree run, before compound ORDER BY follow-up",
+  "actual_tests": 10778,
+  "passed": 10773,
+  "failed": 4,
+  "skipped": 1,
+  "failures": [
+    {
+      "name": "M6 differential 512 SELECT 1+1 AS x UNION ALL SELECT 2+2 ORDER BY 1+1 DESC",
+      "error": "SqlException: Compound ORDER BY must name an output expression"
+    },
+    {
+      "name": "M6 differential 4096 SELECT 1+1 AS x UNION ALL SELECT 2+2 ORDER BY 1+1 DESC",
+      "error": "SqlException: Compound ORDER BY must name an output expression"
+    },
+    {
+      "name": "M6 differential 65536 SELECT 1+1 AS x UNION ALL SELECT 2+2 ORDER BY 1+1 DESC",
+      "error": "SqlException: Compound ORDER BY must name an output expression"
+    },
+    {
+      "name": "shutdown rolls back an abandoned transaction; clients cannot shut owner",
+      "error": "Bad state: SocketException: Failed to create server socket (OS Error: Address already in use, errno = 98), address = 127.0.0.1, port = 24456"
+    }
+  ],
+  "followup": "da9b0f3; 1883 focused/semantics tests passed, followed by a successful complete core rerun (core_summary.json)"
+}

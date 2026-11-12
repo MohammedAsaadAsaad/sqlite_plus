@@ -9,13 +9,17 @@ extension _RelationalQueries on SqliteDatabase {
         query.ctes.isNotEmpty ||
         query.compounds.isNotEmpty ||
         query.windowDefinitions.isNotEmpty ||
-        query.sources.length > 1) return null;
+        query.sources.length > 1) {
+      return null;
+    }
     if (query.sources.isNotEmpty) {
       final source = query.sources.single;
       if (source.table == null ||
           source.query != null ||
           source.group.isNotEmpty ||
-          source.pragmaArguments != null) return null;
+          source.pragmaArguments != null) {
+        return null;
+      }
       final name = asciiLower(source.table!);
       final input = cache[name] ?? cache['main.$name'];
       // CTEs/views may hide callbacks or depend on a different WITH frame.
@@ -24,8 +28,9 @@ extension _RelationalQueries on SqliteDatabase {
           input.$1.columns
               .any((column) => column.generatedExpression != null) ||
           !catalog.entries.any((entry) =>
-              entry.type == 'table' && asciiLower(entry.name) == name))
+              entry.type == 'table' && asciiLower(entry.name) == name)) {
         return null;
+      }
     }
     String? signature(Expr expr) => expressionSignature(expr,
         columnKey: (column) => jsonEncode([
@@ -46,7 +51,9 @@ extension _RelationalQueries on SqliteDatabase {
     // The shared structural matcher preserves types, CAST/COLLATE, flags and
     // nested expression details. Unknown nodes (including parameters) fall back.
     if (query.items.any((item) => item.expression == null) ||
-        expressions.any((expr) => signature(expr) == null)) return null;
+        expressions.any((expr) => signature(expr) == null)) {
+      return null;
+    }
     return jsonEncode([
       query.distinct,
       query.valuesQuery,

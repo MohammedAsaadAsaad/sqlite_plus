@@ -1,0 +1,12 @@
+{
+  "packages/sqlite_plus/lib/src/sql/database.dart": "6a520a4dd3f7634a4f9c90f25fc70e1746aec1b414ee7c17b84a2d21bcd4904b",
+  "packages/sqlite_plus/lib/src/sql/expressions.dart": "a2a6d3a697e448a5bc2d88d0602c31fb6d1767a475eba9291e5e95cd883b6c56",
+  "packages/sqlite_plus/lib/src/sql/functions.dart": "91e168f11daac2dd387b0d29c3ac59c0bd6621c25835dbde25f8bf606ca1ae19",
+  "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "2a80b37d7fe127af6dccedacbf3f11846857440e582e2f4e680a286a07500db3",
+  "packages/sqlite_plus/lib/src/sql/index_definition.dart": "23a5f3efa63be636a632240204811c28a37603acf8b2df3da672bfa8e25f2aeb",
+  "packages/sqlite_plus/lib/src/sql/lazy_views.dart": "10e5f506e868359b45c8fd9530be07d5e628b1d851db5565670da143fe02c433",
+  "packages/sqlite_plus/lib/src/sql/parser.dart": "1f6b97a6069e3c7e5fbdee537bcc627fb0ce99ce3c7b16ced54503e8bb21784a",
+  "packages/sqlite_plus/lib/src/sql/relational.dart": "70ba6f72f27a81de524e02af2190f3055f80dace7e33e7b3c368fcfde8d40eb5",
+  "packages/sqlite_plus/lib/src/sql/search_mutations.dart": "3fccdfa06805341f96be77b729661a6ee1c776a4c2c9422e38a28dacb284e87e",
+  "packages/sqlite_plus/lib/src/sql/windows.dart": "df25e4ef01729913d363e8adc834d2eae03f84669521a059b3c6fae0b170e66a"
+}

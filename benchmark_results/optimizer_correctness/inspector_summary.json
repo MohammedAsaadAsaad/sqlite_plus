@@ -1,0 +1,9 @@
+{
+  "actual_tests": 55,
+  "passed": 55,
+  "failed": 0,
+  "skipped": 0,
+  "success": true,
+  "duration_seconds": 52.279,
+  "raw_log_sha256": "c2225fadc81a2bac6722f1ff4d1b1ce862dee56990319b1c6af506b295876b32"
+}

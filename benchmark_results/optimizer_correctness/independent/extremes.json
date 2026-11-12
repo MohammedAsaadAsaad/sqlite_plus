@@ -1,0 +1,410 @@
+[
+  {
+    "item": 31,
+    "encoding": 1,
+    "api": "mutable",
+    "sql": "SELECT min(rowid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 1,
+    "api": "readOnly",
+    "sql": "SELECT min(rowid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 1,
+    "api": "mutable",
+    "sql": "SELECT max(rowid) AS v FROM t",
+    "expected": [
+      [
+        "z"
+      ]
+    ],
+    "actual": [
+      [
+        "z"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 1,
+    "api": "readOnly",
+    "sql": "SELECT max(rowid) AS v FROM t",
+    "expected": [
+      [
+        "z"
+      ]
+    ],
+    "actual": [
+      [
+        "z"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 1,
+    "api": "mutable",
+    "sql": "SELECT min(oid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 1,
+    "api": "readOnly",
+    "sql": "SELECT min(oid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 1,
+    "api": "mutable",
+    "sql": "SELECT max(_rowid_) AS v FROM t",
+    "expected": [
+      [
+        "u"
+      ]
+    ],
+    "actual": [
+      [
+        "u"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 1,
+    "api": "readOnly",
+    "sql": "SELECT max(_rowid_) AS v FROM t",
+    "expected": [
+      [
+        "u"
+      ]
+    ],
+    "actual": [
+      [
+        "u"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 2,
+    "api": "mutable",
+    "sql": "SELECT min(rowid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 2,
+    "api": "readOnly",
+    "sql": "SELECT min(rowid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 2,
+    "api": "mutable",
+    "sql": "SELECT max(rowid) AS v FROM t",
+    "expected": [
+      [
+        "z"
+      ]
+    ],
+    "actual": [
+      [
+        "z"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 2,
+    "api": "readOnly",
+    "sql": "SELECT max(rowid) AS v FROM t",
+    "expected": [
+      [
+        "z"
+      ]
+    ],
+    "actual": [
+      [
+        "z"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 2,
+    "api": "mutable",
+    "sql": "SELECT min(oid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 2,
+    "api": "readOnly",
+    "sql": "SELECT min(oid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 2,
+    "api": "mutable",
+    "sql": "SELECT max(_rowid_) AS v FROM t",
+    "expected": [
+      [
+        "u"
+      ]
+    ],
+    "actual": [
+      [
+        "u"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 2,
+    "api": "readOnly",
+    "sql": "SELECT max(_rowid_) AS v FROM t",
+    "expected": [
+      [
+        "u"
+      ]
+    ],
+    "actual": [
+      [
+        "u"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 3,
+    "api": "mutable",
+    "sql": "SELECT min(rowid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 3,
+    "api": "readOnly",
+    "sql": "SELECT min(rowid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 3,
+    "api": "mutable",
+    "sql": "SELECT max(rowid) AS v FROM t",
+    "expected": [
+      [
+        "z"
+      ]
+    ],
+    "actual": [
+      [
+        "z"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 3,
+    "api": "readOnly",
+    "sql": "SELECT max(rowid) AS v FROM t",
+    "expected": [
+      [
+        "z"
+      ]
+    ],
+    "actual": [
+      [
+        "z"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 3,
+    "api": "mutable",
+    "sql": "SELECT min(oid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 3,
+    "api": "readOnly",
+    "sql": "SELECT min(oid) AS v FROM t",
+    "expected": [
+      [
+        "a"
+      ]
+    ],
+    "actual": [
+      [
+        "a"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 3,
+    "api": "mutable",
+    "sql": "SELECT max(_rowid_) AS v FROM t",
+    "expected": [
+      [
+        "u"
+      ]
+    ],
+    "actual": [
+      [
+        "u"
+      ]
+    ],
+    "pass": true
+  },
+  {
+    "item": 31,
+    "encoding": 3,
+    "api": "readOnly",
+    "sql": "SELECT max(_rowid_) AS v FROM t",
+    "expected": [
+      [
+        "u"
+      ]
+    ],
+    "actual": [
+      [
+        "u"
+      ]
+    ],
+    "pass": true
+  }
+]

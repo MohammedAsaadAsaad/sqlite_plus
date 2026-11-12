@@ -1,0 +1,154 @@
+[
+  {
+    "item": 21,
+    "sql": "SELECT a OR probe() AS v FROM flags ORDER BY rowid",
+    "api": "mutable",
+    "expectedRows": [
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "actualRows": [
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "expectedCalls": [
+      "probe",
+      "probe",
+      "probe"
+    ],
+    "actualCalls": [
+      "probe",
+      "probe",
+      "probe"
+    ],
+    "pass": true
+  },
+  {
+    "item": 21,
+    "sql": "SELECT a OR probe() AS v FROM flags ORDER BY rowid",
+    "api": "readOnly",
+    "expectedRows": [
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "actualRows": [
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        1
+      ]
+    ],
+    "expectedCalls": [
+      "probe",
+      "probe",
+      "probe"
+    ],
+    "actualCalls": [
+      "probe",
+      "probe",
+      "probe"
+    ],
+    "pass": true
+  },
+  {
+    "item": 21,
+    "sql": "SELECT a AND probe() AS v FROM flags ORDER BY rowid",
+    "api": "mutable",
+    "expectedRows": [
+      [
+        1
+      ],
+      [
+        0
+      ],
+      [
+        null
+      ]
+    ],
+    "actualRows": [
+      [
+        1
+      ],
+      [
+        0
+      ],
+      [
+        null
+      ]
+    ],
+    "expectedCalls": [
+      "probe",
+      "probe",
+      "probe"
+    ],
+    "actualCalls": [
+      "probe",
+      "probe",
+      "probe"
+    ],
+    "pass": true
+  },
+  {
+    "item": 21,
+    "sql": "SELECT a AND probe() AS v FROM flags ORDER BY rowid",
+    "api": "readOnly",
+    "expectedRows": [
+      [
+        1
+      ],
+      [
+        0
+      ],
+      [
+        null
+      ]
+    ],
+    "actualRows": [
+      [
+        1
+      ],
+      [
+        0
+      ],
+      [
+        null
+      ]
+    ],
+    "expectedCalls": [
+      "probe",
+      "probe",
+      "probe"
+    ],
+    "actualCalls": [
+      "probe",
+      "probe",
+      "probe"
+    ],
+    "pass": true
+  }
+]

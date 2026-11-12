@@ -5,9 +5,9 @@
 Branch: `fix/optimizer-correctness-20261112`. Baseline: `91a8545`.
 The independent review found correctness regressions; the earlier closeout is historical, not a current passing gate.
 Correctness checkpoints: 35, 32, 11, 31, 13, 14, 34, 22, 29, 21, 37, 33.
-Still under repair: none; final verification pending.
+All 12 reviewed defective IDs are repaired; final correctness verification passed.
 Each checkpoint has focused/native regressions in `benchmark_results/optimizer_correctness/`.
-Full final regressions and cost acceptance are separate and pending; no merge or publication is authorized by a checkpoint.
+Final correctness gate passed; see `benchmark_results/optimizer_correctness/REPORT.md`. Individual roadmap performance acceptance remains separate. No merge or publication is authorized by a checkpoint.
 
 Checkpoint: 2026-11-11. This document is the continuation entry point; no prior
 chat, original execution machine, credentials or preserved `/tmp` directory is

@@ -1,3 +1,6 @@
+@TestOn('linux')
+library;
+
 import 'package:sqlite_plus/sqlite_plus.dart';
 import 'package:test/test.dart';
 import 'support/optimizer_oracle.dart';
