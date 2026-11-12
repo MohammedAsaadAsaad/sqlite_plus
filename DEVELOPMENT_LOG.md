@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Correctness checkpoint for optimizer item 13
+
+Require numeric affinity before strengthening partial-index proofs. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item13.log`. Full-tree regressions and performance acceptance remain pending.
+
 ## 2026-11-12 — Correctness checkpoint for optimizer item 31
 
 Restrict extremum shortcuts to unshadowed built-in integer keys. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item31.log`. Full-tree regressions and performance acceptance remain pending.

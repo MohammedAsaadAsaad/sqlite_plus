@@ -81,10 +81,21 @@
         "packages/sqlite_plus/test/optimizer_extreme_test.dart": "d04dff74019a452b7cb7adf86fc652d87e7d5d8e97da8d736fc86c81637a8b66"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 13,
+      "description": "Require numeric affinity before strengthening partial-index proofs",
+      "focused_test_log": "item13.log",
+      "parent_commit": "093696d1cb3a0d0d755f518a5d83eb7d908e1aa1",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "28038ea7f9f78590d24ab495ae2dacf657a4299d927b92c66b63eaacbcad86d9",
+        "packages/sqlite_plus/lib/src/sql/index_definition.dart": "23a5f3efa63be636a632240204811c28a37603acf8b2df3da672bfa8e25f2aeb",
+        "packages/sqlite_plus/test/optimizer_partial_test.dart": "fa234ae22a0d08f1468090a03f69023a73eba39f651a70701c09e2092e8789ca"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
   "pending": [
-    13,
     14,
     34,
     22,

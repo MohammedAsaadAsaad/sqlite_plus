@@ -1,0 +1,10 @@
+00:00 +0: loading test/optimizer_partial_test.dart
+00:00 +0: test/optimizer_partial_test.dart: partial implication follows TEXT affinity
+00:00 +1: test/optimizer_partial_test.dart: partial implication follows INT affinity
+00:00 +2: loading test/index_order_test.dart
+00:00 +2: test/index_order_test.dart: forward index and primary order match the CLI without changing ties
+00:01 +3: test/index_order_test.dart: a stronger numeric bound proves a partial index predicate
+00:01 +4: test/index_order_test.dart: constant IN and same-column OR seek the index once per value
+00:01 +5: test/index_order_test.dart: a WITHOUT ROWID secondary index supports equality and range
+00:02 +6: test/index_order_test.dart: an unconstrained leading column is not skip-scanned
+00:02 +7: All tests passed!

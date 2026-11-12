@@ -808,7 +808,8 @@ final class SqliteDatabase {
               ? null
               : IndexDefinition.parse(entry.sql!, table);
           if (!impliesIndexPredicate(statement.where, parsed?.predicate,
-              strongerNumeric: true)) {
+              strongerNumeric: true,
+              operandAffinity: (expr) => expr.affinity(context))) {
             diagnostics?.record(
                 'secondary-index', 'partial-predicate-not-proved',
                 index: entry.name, eligible: false);
@@ -2621,6 +2622,10 @@ final class SqliteDatabase {
   QueryPlan? _coveringIndexOrderPlan(SelectStatement statement,
       CatalogTable table, _SqlDiagnosticTrace? diagnostics) {
     if (table.virtual || !_queryCanReuseIndexOrder(statement)) return null;
+    final predicateContext = EvalContext({}, {
+      for (final column in table.columns)
+        asciiLower(column.name): column.affinity,
+    }, const [], _pager.header.textEncoding);
     QueryPlan? best;
     var bestWidth = 1 << 30;
     var bestName = '';
@@ -2651,7 +2656,8 @@ final class SqliteDatabase {
       final delivery = _indexScanDelivery(statement, table, definition, 0);
       if (definition.terms.any((term) => term.columnName == null) ||
           !impliesIndexPredicate(statement.where, definition.predicate,
-              strongerNumeric: true) ||
+              strongerNumeric: true,
+              operandAffinity: (expr) => expr.affinity(predicateContext)) ||
           delivery == null) {
         continue;
       }
