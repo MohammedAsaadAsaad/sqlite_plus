@@ -59,10 +59,20 @@
         "packages/sqlite_plus/test/optimizer_boolean_test.dart": "ee9e447e46df82e6f8d2befe1bb2c1c6c5bf07ccac0838f816f673df1a0f67c4"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 11,
+      "description": "Require complete covering dependencies and genuine rowid aliases",
+      "focused_test_log": "item11.log",
+      "parent_commit": "4cf9da12be223e659609dd3c7e9b6358fd13c0ba",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "78d3d4835fe64f0d3aeddf319e4ed611cd0b56f4647062e03c112403eb599300",
+        "packages/sqlite_plus/test/optimizer_covering_test.dart": "678c86485a7c826b1ddbdeb462ee84206321e18078a2c2074c8e43f2254cff7d"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
   "pending": [
-    11,
     31,
     13,
     14,

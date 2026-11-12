@@ -1,0 +1,19 @@
+00:00 +0: loading test/optimizer_covering_test.dart
+00:00 +0: test/optimizer_covering_test.dart: covering requires all consumer columns and genuine rowids 1
+00:00 +1: test/optimizer_covering_test.dart: covering requires all consumer columns and genuine rowids 2
+00:01 +2: test/optimizer_covering_test.dart: covering requires all consumer columns and genuine rowids 3
+00:01 +3: loading test/index_order_test.dart
+00:01 +3: test/index_order_test.dart: forward index and primary order match the CLI without changing ties
+00:02 +4: test/index_order_test.dart: a stronger numeric bound proves a partial index predicate
+00:02 +5: test/index_order_test.dart: constant IN and same-column OR seek the index once per value
+00:03 +6: test/index_order_test.dart: a WITHOUT ROWID secondary index supports equality and range
+00:03 +7: test/index_order_test.dart: an unconstrained leading column is not skip-scanned
+00:03 +8: loading test/expression_index_test.dart
+00:03 +8: test/expression_index_test.dart: index expressions observe REAL affinity even for integer record storage
+00:03 +9: test/expression_index_test.dart: expression keys preserve Unicode and blobs across all file encodings
+00:03 +10: test/expression_index_test.dart: expression and partial indexes maintain keys, uniqueness and membership
+00:04 +11: test/expression_index_test.dart: non-determinism and evaluation errors are not ignored as constraints
+00:04 +12: test/expression_index_test.dart: WITHOUT ROWID indexes retain PK fields when collations differ
+00:04 +13: test/expression_index_test.dart: conflict expression matching preserves real tokens and boolean nodes
+00:04 +14: test/expression_index_test.dart: only proven partial predicates and matching expression trees use indexes
+00:04 +15: All tests passed!

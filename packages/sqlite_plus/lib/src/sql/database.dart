@@ -393,17 +393,29 @@ final class SqliteDatabase {
 
   bool _coveredByIndex(SelectStatement statement, CatalogTable table,
       List<String> indexColumns) {
-    if (statement.items.any((item) => item.expression == null)) return false;
-    if (table.columns.any((column) => column.generatedExpression != null)) {
+    if (statement.items.any((item) => item.expression == null) ||
+        statement.windowDefinitions.isNotEmpty ||
+        table.columns.any((column) => column.generatedExpression != null)) {
       return false;
     }
     final available = indexColumns.toSet();
     final referenced = <String>{};
-    void walk(Expr? expression) {
-      if (expression == null) return;
+    var unknownScope = false;
+    void walk(Expr expression) {
+      if (expression is SubqueryExpr ||
+          expression is InSelectExpr ||
+          expression.containsWindow) {
+        unknownScope = true;
+        return;
+      }
+      if (expression is BoolNameExpr && expression.resolvedLiteral != true) {
+        referenced.add(expression.key);
+      }
       if (expression is ColumnExpr) {
-        final key = expression.key;
-        referenced.add(key.contains('.') ? key.split('.').last : key);
+        final qualifier = expression.qualifier;
+        referenced.add(qualifier == null
+            ? expression.key
+            : asciiLower(expression.name.substring(qualifier.length + 1)));
         return;
       }
       for (final child in expression.children) {
@@ -411,20 +423,22 @@ final class SqliteDatabase {
       }
     }
 
-    for (final item in statement.items) {
-      walk(item.expression);
+    for (final expression in _expressions(statement)) {
+      walk(expression);
     }
-    walk(statement.where);
-    final rowids = {
-      'rowid',
-      '_rowid_',
-      'oid',
-      if (table.rowidAlias != null) asciiLower(table.rowidAlias!)
+    if (statement.limit != null) walk(statement.limit!);
+    if (statement.offset != null) walk(statement.offset!);
+    if (unknownScope) return false;
+    final declared = {
+      for (final column in table.columns) asciiLower(column.name)
     };
-    for (final name in referenced) {
-      if (!available.contains(name) && !rowids.contains(name)) return false;
-    }
-    return true;
+    final rowids = {
+      for (final name in ['rowid', '_rowid_', 'oid'])
+        if (!declared.contains(name)) name,
+      if (table.rowidAlias != null) asciiLower(table.rowidAlias!),
+    };
+    return referenced
+        .every((name) => available.contains(name) || rowids.contains(name));
   }
 
   /// Distinct inner keys kept for one join probe. Past this, the join scans.
