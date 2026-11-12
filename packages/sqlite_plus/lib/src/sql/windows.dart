@@ -92,8 +92,7 @@ final class _WindowState {
         .map((argument) => argument.evaluate(ctx))
         .toList();
     final filter = expression.function.filter;
-    final accepted =
-        filter == null || truth(filter.evaluate(ctx), ctx.encoding) == true;
+    final accepted = filter == null || sqlPredicate(filter, ctx);
     inputs[row] = _WindowInput(args, accepted);
   }
 

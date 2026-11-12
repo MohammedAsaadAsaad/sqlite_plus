@@ -362,6 +362,42 @@ final class TruthExpr extends Expr {
   }
 }
 
+/// Evaluate a SQL jump condition. Scalar boolean values still evaluate both
+/// operands; WHERE/ON/WHEN/FILTER can stop once the requested truth is decided.
+/// NULL never matches either requested truth; NOT reverses the requested truth.
+bool sqlPredicate(Expr expression, EvalContext context,
+    {bool expected = true}) {
+  if (expression is UnaryExpr && expression.op == 'NOT') {
+    return sqlPredicate(expression.operand, context, expected: !expected);
+  }
+  if (expression is BinaryExpr) {
+    if (expression.op == 'OR' &&
+        [expression.left, expression.right].any((expr) =>
+            expr is Literal &&
+            expr.integerBoolean &&
+            expr.value != BigInt.zero)) {
+      return expected;
+    }
+    if (expression.op == 'AND') {
+      if (expected) {
+        return sqlPredicate(expression.left, context) &&
+            sqlPredicate(expression.right, context);
+      }
+      return sqlPredicate(expression.left, context, expected: false) ||
+          sqlPredicate(expression.right, context, expected: false);
+    }
+    if (expression.op == 'OR') {
+      if (expected) {
+        return sqlPredicate(expression.left, context) ||
+            sqlPredicate(expression.right, context);
+      }
+      return sqlPredicate(expression.left, context, expected: false) &&
+          sqlPredicate(expression.right, context, expected: false);
+    }
+  }
+  return truth(expression.evaluate(context), context.encoding) == expected;
+}
+
 final class BinaryExpr extends Expr {
   BinaryExpr(this.op, this.left, this.right);
   final String op;

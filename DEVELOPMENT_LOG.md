@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Correctness checkpoint for optimizer item 21
+
+Preserve scalar and predicate boolean evaluation contexts. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item21.log`. Full-tree regressions and performance acceptance remain pending.
+
 ## 2026-11-12 — Correctness checkpoint for optimizer item 29
 
 Preserve CTE flattening choices and inner ordered windows. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item29.log`. Full-tree regressions and performance acceptance remain pending.

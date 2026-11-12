@@ -290,7 +290,7 @@ extension _RelationalQueries on SqliteDatabase {
     final context =
         EvalContext(visible, affinities, parameters, _pager.header.textEncoding)
           ..collations = collations;
-    return truth(where.evaluate(context), _pager.header.textEncoding) == true;
+    return sqlPredicate(where, context);
   }
 
   bool _tableUsedOutside(SelectStatement parent, SelectStatement existsQuery) {
@@ -1043,17 +1043,8 @@ extension _RelationalQueries on SqliteDatabase {
         ..subquery = subquery;
     }
 
-    bool matchesOn(Expr expression, EvalContext context) {
-      if (expression is BinaryExpr && expression.op == 'AND') {
-        return matchesOn(expression.left, context) &&
-            matchesOn(expression.right, context);
-      }
-      if (expression is BinaryExpr && expression.op == 'OR') {
-        return matchesOn(expression.left, context) ||
-            matchesOn(expression.right, context);
-      }
-      return truth(expression.evaluate(context), context.encoding) == true;
-    }
+    bool matchesOn(Expr expression, EvalContext context) =>
+        sqlPredicate(expression, context);
 
     for (var index = 0; index < sources.length; index++) {
       final source = sources[index];
@@ -1527,10 +1518,8 @@ extension _RelationalQueries on SqliteDatabase {
               r++;
               final combined = merge({...left, ...rightRow});
               if (scanBounds.isNotEmpty &&
-                  scanBounds.any((bound) =>
-                      truth(bound.evaluate(onContext(combined)),
-                          _pager.header.textEncoding) !=
-                      true)) {
+                  scanBounds.any(
+                      (bound) => !sqlPredicate(bound, onContext(combined)))) {
                 continue;
               }
               var equal = true;

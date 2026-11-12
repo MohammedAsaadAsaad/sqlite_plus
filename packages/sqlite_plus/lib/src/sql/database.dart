@@ -3123,9 +3123,7 @@ final class SqliteDatabase {
               ..subquery = subquery
               ..columnAliases = aliasExpressions
               ..collations = collations;
-        return statement.where == null ||
-            truth(statement.where!.evaluate(ctx), _pager.header.textEncoding) ==
-                true;
+        return statement.where == null || sqlPredicate(statement.where!, ctx);
       });
       final matching =
           diagnostics == null ? selected : diagnostics.matches(selected);
@@ -3282,9 +3280,7 @@ final class SqliteDatabase {
             }
           }
           if (statement.having != null &&
-              truth(statement.having!.evaluate(ctx),
-                      _pager.header.textEncoding) !=
-                  true) {
+              !sqlPredicate(statement.having!, ctx)) {
             continue;
           }
           if (windowed) {

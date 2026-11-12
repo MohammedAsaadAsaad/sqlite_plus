@@ -50,17 +50,6 @@
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     },
     {
-      "item": 21,
-      "description": "Restore required scalar boolean operand evaluation",
-      "focused_test_log": "item21.log",
-      "parent_commit": "e219e29492882ce3170d1e1ee49b8b69ba68d785",
-      "files_sha256": {
-        "packages/sqlite_plus/lib/src/sql/parser.dart": "ccdf1b8f01585088ee56c8eb8ef3f44b53054c04d1da4f7d45c120104a949826",
-        "packages/sqlite_plus/test/optimizer_boolean_test.dart": "ee9e447e46df82e6f8d2befe1bb2c1c6c5bf07ccac0838f816f673df1a0f67c4"
-      },
-      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
-    },
-    {
       "item": 11,
       "description": "Require complete covering dependencies and genuine rowid aliases",
       "focused_test_log": "item11.log",
@@ -137,6 +126,24 @@
         "packages/sqlite_plus/lib/src/sql/lazy_views.dart": "10e5f506e868359b45c8fd9530be07d5e628b1d851db5565670da143fe02c433",
         "packages/sqlite_plus/lib/src/sql/relational.dart": "c4e484a25497862f0dc4f2842d647d85d2783024de61e5329c5b140310183515",
         "packages/sqlite_plus/test/optimizer_cte_test.dart": "26d02919f823150f1384da83e59a7dc66aea2d29916f206312d2021032d0d8b3"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 21,
+      "description": "Preserve scalar and predicate boolean evaluation contexts",
+      "focused_test_log": "item21.log",
+      "parent_commit": "cfff023729eb622829bbc0df48e840fa5b9008ad",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/parser.dart": "1f6b97a6069e3c7e5fbdee537bcc627fb0ce99ce3c7b16ced54503e8bb21784a",
+        "packages/sqlite_plus/lib/src/sql/database.dart": "5fb387bea25d6637fd032d66722f831b8ed46eb73b77f196caeb9d2367e92157",
+        "packages/sqlite_plus/lib/src/sql/relational.dart": "c40e6cb9a5f70c043419a7b5c3488c78bf70e1e6ec9ab19866c8b97f3df852e3",
+        "packages/sqlite_plus/lib/src/sql/functions.dart": "91e168f11daac2dd387b0d29c3ac59c0bd6621c25835dbde25f8bf606ca1ae19",
+        "packages/sqlite_plus/lib/src/sql/windows.dart": "df25e4ef01729913d363e8adc834d2eae03f84669521a059b3c6fae0b170e66a",
+        "packages/sqlite_plus/lib/src/sql/expressions.dart": "a2a6d3a697e448a5bc2d88d0602c31fb6d1767a475eba9291e5e95cd883b6c56",
+        "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "2a80b37d7fe127af6dccedacbf3f11846857440e582e2f4e680a286a07500db3",
+        "packages/sqlite_plus/lib/src/sql/search_mutations.dart": "3fccdfa06805341f96be77b729661a6ee1c776a4c2c9422e38a28dacb284e87e",
+        "packages/sqlite_plus/test/optimizer_boolean_test.dart": "93e86fd6b0ca45da136b739e4eb2ccb798ff0b2f5cec4f7c23d586b0deeedfd3"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
