@@ -40,5 +40,7 @@
   },
   "aot_samples": 60,
   "broader_coverage": "fallback; not claimed physical",
-  "remaining": "other roadmap cost gates and four reopened, unimplemented proposals"
+  "remaining": "other roadmap cost gates and four reopened, unimplemented proposals",
+  "review_url": "https://github.com/MohammedAsaadAsaad/sqlite_plus/pull/85",
+  "review_state": "open; no automatic merge"
 }

@@ -1,5 +1,7 @@
 # Item 23 — physical indexed inner joins
 
+Review: [PR #85](https://github.com/MohammedAsaadAsaad/sqlite_plus/pull/85) (not merged).
+
 Baseline: `322c2b0dd5c867301858e67b42eba726e3dcbe4d`, the user-approved merge
 of PR #84. All previous correctness repairs are now on main. GitHub Actions
 was queued at that merge; no hosted CI success is claimed. This checkpoint
