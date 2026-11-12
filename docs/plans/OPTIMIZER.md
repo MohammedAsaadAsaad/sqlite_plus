@@ -4,8 +4,8 @@
 
 Branch: `fix/optimizer-correctness-20261112`. Baseline: `91a8545`.
 The independent review found correctness regressions; the earlier closeout is historical, not a current passing gate.
-Correctness checkpoints: 35, 33, 32, 37, 21, 11, 31, 13, 14.
-Still under repair: 34, 22, 29.
+Correctness checkpoints: 35, 33, 32, 37, 21, 11, 31, 13, 14, 34.
+Still under repair: 22, 29.
 Each checkpoint has focused/native regressions in `benchmark_results/optimizer_correctness/`.
 Full final regressions and cost acceptance are separate and pending; no merge or publication is authorized by a checkpoint.
 
@@ -52,7 +52,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 31 | MIN/MAX/COUNT shortcuts | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
 | 32 | Streaming aggregation | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
 | 33 | Safe constant-expression simplification | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
-| 34 | Predicate simplification/contradictions | Implemented/unaccepted; a false direct-table filter skips the scan; count stays 0; functions still run; no AOT sample |
+| 34 | Predicate simplification/contradictions | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
 | 35 | Intermediate projection pruning | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
 | 36 | Broader streaming execution | Implemented/unaccepted; an unordered table scan stops after LIMIT; a filter still scans; no AOT sample |
 | 37 | Safe per-execution common work reuse | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |

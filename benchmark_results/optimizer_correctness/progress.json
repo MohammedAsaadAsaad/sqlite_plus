@@ -105,10 +105,20 @@
         "benchmark_results/optimizer_correctness/native_or_collation.json": "0472800babd15bb5f3c8ddfab2699fd6540ba2d6350ae02d22d21f9c7acabd33"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 34,
+      "description": "Prove contradictions only for safe numeric source columns",
+      "focused_test_log": "item34.log",
+      "parent_commit": "be66eb8d087311af793d8c10233db111dc11f719",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "28ea3d7a966aefdef28df55abf8c04078175a48a50ee4230aa80609780dcce24",
+        "packages/sqlite_plus/test/optimizer_contradiction_test.dart": "fd0164b349d34bfddef4ca27ffbc0ac3da506f9d79519ebf8c2945a2a966f1c6"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
   "pending": [
-    34,
     22,
     29
   ]

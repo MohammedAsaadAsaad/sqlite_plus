@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Correctness checkpoint for optimizer item 34
+
+Prove contradictions only for safe numeric source columns. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item34.log`. Full-tree regressions and performance acceptance remain pending.
+
 ## 2026-11-12 — Correctness checkpoint for optimizer item 14
 
 Match probe collation and comparison affinity before multiple seeks. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item14.log`. Full-tree regressions and performance acceptance remain pending.

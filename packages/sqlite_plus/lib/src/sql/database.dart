@@ -2121,7 +2121,7 @@ final class SqliteDatabase {
             'primary-key-extreme', primaryExtreme ? 'max' : 'min',
             chosen: true);
       }
-      if (_whereIsFalse(statement.where)) {
+      if (_whereIsFalse(statement.where, table)) {
         // A proved false filter yields no rows. Aggregates still run on
         // the empty input below, so count(*) stays 0.
       } else {
@@ -2258,9 +2258,19 @@ final class SqliteDatabase {
       expression.children.any(_constantImpure);
 
   /// True when [where] cannot match a row and has no function or parameter.
-  bool _whereIsFalse(Expr? where) {
+  bool _whereIsFalse(Expr? where, CatalogTable table) {
     if (where == null || _whereHasCall(where)) return false;
-    return _provesFalse(where);
+    final declared = {
+      for (final column in table.columns) asciiLower(column.name)
+    };
+    final context = EvalContext({}, {
+      for (final column in table.columns)
+        if (column.generatedExpression == null)
+          asciiLower(column.name): column.affinity,
+      for (final name in ['rowid', 'oid', '_rowid_'])
+        if (!declared.contains(name)) name: 'numeric',
+    }, const [], _pager.header.textEncoding);
+    return _provesFalse(where, context);
   }
 
   bool _whereHasCall(Expr expression) =>
@@ -2272,22 +2282,24 @@ final class SqliteDatabase {
       expression.containsWindow ||
       expression.children.any(_whereHasCall);
 
-  bool _provesFalse(Expr expression) {
+  bool _provesFalse(Expr expression, EvalContext context) {
     if (expression is Literal) {
       return truth(expression.value, _pager.header.textEncoding) == false;
     }
     if (expression is BinaryExpr && expression.op == 'OR') {
-      return _provesFalse(expression.left) && _provesFalse(expression.right);
+      return _provesFalse(expression.left, context) &&
+          _provesFalse(expression.right, context);
     }
     final bounds = <String, _ColumnBound>{};
-    if (!_andBounds(expression, bounds)) return false;
+    if (!_andBounds(expression, bounds, context)) return false;
     return bounds.values.any((bound) => bound.empty);
   }
 
-  bool _andBounds(Expr expression, Map<String, _ColumnBound> bounds) {
+  bool _andBounds(
+      Expr expression, Map<String, _ColumnBound> bounds, EvalContext context) {
     if (expression is BinaryExpr && expression.op == 'AND') {
-      return _andBounds(expression.left, bounds) &&
-          _andBounds(expression.right, bounds);
+      return _andBounds(expression.left, bounds, context) &&
+          _andBounds(expression.right, bounds, context);
     }
     if (expression is Literal) {
       if (truth(expression.value, _pager.header.textEncoding) == false) {
@@ -2296,7 +2308,11 @@ final class SqliteDatabase {
       return true;
     }
     final comparison = _simpleComparison(expression);
-    if (comparison == null) return false;
+    if (comparison == null ||
+        context.affinities[comparison.$1] != 'numeric' ||
+        !(comparison.$3 is BigInt ||
+            comparison.$3 is double && (comparison.$3 as double).isFinite))
+      return false;
     final bound = bounds.putIfAbsent(comparison.$1, _ColumnBound.new);
     return bound.tighten(
         comparison.$2, comparison.$3, _pager.header.textEncoding);
