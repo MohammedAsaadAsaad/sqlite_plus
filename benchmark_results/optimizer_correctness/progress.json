@@ -1,0 +1,31 @@
+{
+  "baseline": "91a85454354e4610919688de82221086edd86b35",
+  "branch": "fix/optimizer-correctness-20261112",
+  "repairs": [
+    {
+      "item": 35,
+      "description": "Preserve correlated and renamed projection dependencies",
+      "focused_test_log": "item35.log",
+      "parent_commit": "91a85454354e4610919688de82221086edd86b35",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/lazy_views.dart": "8ea0482bf15e807b71239f14329b5f312d46a00985c692053efe10a56e1cc82f",
+        "packages/sqlite_plus/test/optimizer_projection_test.dart": "038b32f75329a059862ce1153c735d95c4c51fd7393d25b3102708288b17cb13",
+        "packages/sqlite_plus/test/support/optimizer_oracle.dart": "588534f4bfcd6dc39e27e6964d137133a6136943330e232b9da60859e2fff859"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    }
+  ],
+  "pending": [
+    33,
+    32,
+    37,
+    21,
+    11,
+    31,
+    13,
+    14,
+    34,
+    22,
+    29
+  ]
+}

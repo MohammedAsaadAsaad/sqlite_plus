@@ -1,5 +1,14 @@
 # Optimizer roadmap and acceptance ledger
 
+## Active correctness repairs — 2026-11-12
+
+Branch: `fix/optimizer-correctness-20261112`. Baseline: `91a8545`.
+The independent review found correctness regressions; the earlier closeout is historical, not a current passing gate.
+Correctness checkpoints: 35.
+Still under repair: 33, 32, 37, 21, 11, 31, 13, 14, 34, 22, 29.
+Each checkpoint has focused/native regressions in `benchmark_results/optimizer_correctness/`.
+Full final regressions and cost acceptance are separate and pending; no merge or publication is authorized by a checkpoint.
+
 Continuation entry point: [AI handoff](../AI_HANDOFF.md).
 
 Authorized roadmap: correctness plus measured execution/planning/memory/IO cost
@@ -44,7 +53,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 32 | Streaming aggregation | Implemented/unaccepted; count/sum/avg/total/min/max keep a running value; bare columns still retain the group; no AOT sample |
 | 33 | Safe constant-expression simplification | Implemented/unaccepted; pure arithmetic is replaced by its value; functions stay; no AOT sample |
 | 34 | Predicate simplification/contradictions | Implemented/unaccepted; a false direct-table filter skips the scan; count stays 0; functions still run; no AOT sample |
-| 35 | Intermediate projection pruning | Implemented/unaccepted; an unused bare derived column becomes NULL; functions stay; no AOT sample |
+| 35 | Intermediate projection pruning | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
 | 36 | Broader streaming execution | Implemented/unaccepted; an unordered table scan stops after LIMIT; a filter still scans; no AOT sample |
 | 37 | Safe per-execution common work reuse | Implemented/unaccepted; identical uncorrelated scalars are reused; probe stays separate; no AOT sample |
 | 38 | Bound planning complexity | Implemented/unaccepted; IN stays capped at 32 and join reorder at 4 sources; rows match SQLite; no AOT sample |

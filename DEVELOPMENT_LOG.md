@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Correctness checkpoint for optimizer item 35
+
+Preserve correlated and renamed projection dependencies. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item35.log`. Full-tree regressions and performance acceptance remain pending.
+
 ## 2026-11-11 — Item 42 closes the optimizer ledger
 
 The 42-item ledger is closed at the statuses in `docs/plans/OPTIMIZER.md`.

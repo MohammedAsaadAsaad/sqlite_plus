@@ -240,15 +240,16 @@ extension _DeferredQuerySources on SqliteDatabase {
     if (used == null) return query;
     final inner = _innerOutputNames(query);
     final items = [
-      for (final item in query.items)
-        if (item.expression is ColumnExpr &&
-            !used.contains(asciiLower(item.label)) &&
-            !inner.contains(asciiLower(item.label)))
+      for (var i = 0; i < query.items.length; i++)
+        if (query.items[i] case final item
+            when item.expression is ColumnExpr &&
+                !used.contains(asciiLower(names[i])) &&
+                !inner.contains(asciiLower(item.label)))
           SelectItem(Literal(null), item.label,
               explicitAlias: item.explicitAlias,
               qualifierOffset: item.qualifierOffset)
         else
-          item
+          query.items[i]
     ];
     return _relationQuery(query, items: items);
   }
@@ -258,8 +259,14 @@ extension _DeferredQuerySources on SqliteDatabase {
     if (consumer.items.any((item) => item.expression == null)) return null;
     final known = {for (final name in names) asciiLower(name)};
     final used = <String>{};
+    var nestedConsumer = false;
     void take(Expr? expression) {
       if (expression == null) return;
+      if (expression is SubqueryExpr || expression is InSelectExpr) {
+        // A nested scope can correlate to any projected input column.
+        nestedConsumer = true;
+        return;
+      }
       if (expression is ColumnExpr) {
         if (expression.qualifier != null &&
             asciiLower(expression.qualifier!) == alias) {
@@ -278,7 +285,7 @@ extension _DeferredQuerySources on SqliteDatabase {
     for (final expression in _expressions(consumer)) {
       take(expression);
     }
-    return used;
+    return nestedConsumer ? null : used;
   }
 
   Set<String> _innerOutputNames(SelectStatement query) {
