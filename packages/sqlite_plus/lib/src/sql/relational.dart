@@ -3,9 +3,79 @@ part of 'database.dart';
 extension _RelationalQueries on SqliteDatabase {
   /// Identical uncorrelated subqueries share one result. A user function or
   /// a non-deterministic built-in stays out of that key.
-  String? _reusableSubqueryKey(SelectStatement query) {
-    if (_subqueryHasSideEffect(query)) return null;
-    return _subqueryShape(query);
+  String? _reusableSubqueryKey(SelectStatement query,
+      Map<String, (CatalogTable, List<RowValues>)> cache) {
+    if (_subqueryHasSideEffect(query) ||
+        query.ctes.isNotEmpty ||
+        query.compounds.isNotEmpty ||
+        query.windowDefinitions.isNotEmpty ||
+        query.sources.length > 1) return null;
+    if (query.sources.isNotEmpty) {
+      final source = query.sources.single;
+      if (source.table == null ||
+          source.query != null ||
+          source.group.isNotEmpty ||
+          source.pragmaArguments != null) return null;
+      final name = asciiLower(source.table!);
+      final input = cache[name] ?? cache['main.$name'];
+      // CTEs/views may hide callbacks or depend on a different WITH frame.
+      if (input == null ||
+          input.$1.rootPage <= 0 ||
+          input.$1.columns
+              .any((column) => column.generatedExpression != null) ||
+          !catalog.entries.any((entry) =>
+              entry.type == 'table' && asciiLower(entry.name) == name))
+        return null;
+    }
+    final expressions = <Expr>[
+      for (final item in query.items)
+        if (item.expression != null) item.expression!,
+      if (query.where != null) query.where!,
+      ...query.groupBy,
+      if (query.having != null) query.having!,
+      for (final term in query.order) term.expression,
+      if (query.limit != null) query.limit!,
+      if (query.offset != null) query.offset!,
+    ];
+    // The shared structural matcher preserves types, CAST/COLLATE, flags and
+    // nested expression details. Unknown nodes (including parameters) fall back.
+    if (query.items.any((item) => item.expression == null) ||
+        expressions.any((expr) => expressionSignature(expr) == null))
+      return null;
+    return jsonEncode([
+      query.distinct,
+      query.valuesQuery,
+      query.tableInShorthand,
+      query.subqueryFirstRowOnly,
+      query.subqueryExists,
+      [
+        for (final item in query.items)
+          [item.label, expressionSignature(item.expression!)]
+      ],
+      [
+        for (final source in query.sources)
+          [
+            source.schema,
+            source.table,
+            source.alias,
+            source.indexedBy,
+            source.notIndexed
+          ]
+      ],
+      query.where == null ? null : expressionSignature(query.where!),
+      [for (final expr in query.groupBy) expressionSignature(expr)],
+      query.having == null ? null : expressionSignature(query.having!),
+      [
+        for (final term in query.order)
+          [
+            expressionSignature(term.expression),
+            term.descending,
+            term.nullsFirst
+          ]
+      ],
+      query.limit == null ? null : expressionSignature(query.limit!),
+      query.offset == null ? null : expressionSignature(query.offset!),
+    ]);
   }
 
   bool _subqueryHasSideEffect(SelectStatement query) {
@@ -48,40 +118,6 @@ extension _RelationalQueries on SqliteDatabase {
       sideEffect = sideEffect || _subqueryHasSideEffect(part.$2);
     }
     return sideEffect;
-  }
-
-  String _subqueryShape(SelectStatement query) => [
-        query.distinct,
-        for (final item in query.items)
-          '${item.label}:${_exprShape(item.expression)}',
-        for (final source in query.sources)
-          '${source.schema}.${source.table}.${source.alias}.${source.join}.${_exprShape(source.on)}.${source.query == null ? '' : _subqueryShape(source.query!)}',
-        _exprShape(query.where),
-        for (final group in query.groupBy) _exprShape(group),
-        _exprShape(query.having),
-        for (final term in query.order)
-          '${_exprShape(term.expression)}:${term.descending}',
-        for (final part in query.compounds)
-          '${part.$1}:${_subqueryShape(part.$2)}',
-      ].join('\u0001');
-
-  String _exprShape(Expr? expression) {
-    if (expression == null) return '';
-    if (expression is Literal) return 'L${expression.value}';
-    if (expression is ColumnExpr) return 'C${expression.name}';
-    if (expression is FunctionExpr) {
-      return 'F${expression.key}(${expression.arguments.map(_exprShape).join(',')})';
-    }
-    if (expression is BinaryExpr) {
-      return 'B${expression.op}(${_exprShape(expression.left)},${_exprShape(expression.right)})';
-    }
-    if (expression is UnaryExpr) {
-      return 'U${expression.op}(${_exprShape(expression.operand)})';
-    }
-    if (expression is SubqueryExpr) {
-      return 'S(${_subqueryShape(expression.statement)})';
-    }
-    return '${expression.runtimeType}(${expression.children.map(_exprShape).join(',')})';
   }
 
   Iterable<Expr> _expressions(SelectStatement s) sync* {
@@ -602,7 +638,7 @@ extension _RelationalQueries on SqliteDatabase {
       final correlated =
           _mutationCorrelated(query, cache, context.row.keys.toSet());
       if (!correlated && once.containsKey(query)) return once[query]!;
-      final key = correlated ? null : _reusableSubqueryKey(query);
+      final key = correlated ? null : _reusableSubqueryKey(query, cache);
       if (key != null && shared.containsKey(key)) return shared[key]!;
       final result = evaluate(query, cache, context);
       if (!correlated) {

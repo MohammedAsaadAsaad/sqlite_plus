@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Correctness checkpoint for optimizer item 37
+
+Use complete conservative semantic keys for subquery reuse. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item37.log`. Full-tree regressions and performance acceptance remain pending.
+
 ## 2026-11-12 — Correctness checkpoint for optimizer item 32
 
 Preserve HAVING group keys and NULL extremum representatives. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item32.log`. Full-tree regressions and performance acceptance remain pending.

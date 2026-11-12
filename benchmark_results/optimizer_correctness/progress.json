@@ -36,10 +36,21 @@
         "packages/sqlite_plus/test/optimizer_aggregate_test.dart": "732b74448470c4c734d7a8b4d6ed98d4e4347258fb244be3640caa6cbf0b98dd"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 37,
+      "description": "Use complete conservative semantic keys for subquery reuse",
+      "focused_test_log": "item37.log",
+      "parent_commit": "318fd1f57e35de770bb018459fa33bef92a32fc2",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "38f112debd6cf86e148ef3b56d65a30320220c4a731e8f66f3a66aedc6f6a0ec",
+        "packages/sqlite_plus/lib/src/sql/relational.dart": "8ffd68a73f9a01204182f17ca0012f10054173ab7703956ece5c29cdf4241ab2",
+        "packages/sqlite_plus/test/optimizer_reuse_test.dart": "5750250b239092affbd5dc01a82387713572eecfd928d6d53d4a8a68778259a1"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
   "pending": [
-    37,
     21,
     11,
     31,
