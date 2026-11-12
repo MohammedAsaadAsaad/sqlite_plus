@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Correctness checkpoint for optimizer item 33
+
+Preserve compound ORDER BY expression identity during constant folding. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item33.log`. Full-tree regressions and performance acceptance remain pending.
+
 ## 2026-11-12 — Correctness checkpoint for optimizer item 37
 
 Guard subquery reuse against limit callbacks and identifier collisions. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item37.log`. Full-tree regressions and performance acceptance remain pending.

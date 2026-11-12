@@ -297,7 +297,9 @@ final class SqliteDatabase {
       final affinity = column.affinity(context);
       final other = constant.affinity(context);
       if (other == 'numeric' && affinity != 'numeric' ||
-          other == 'text' && affinity == 'none') return null;
+          other == 'text' && affinity == 'none') {
+        return null;
+      }
       final value =
           applyAffinity(constant.evaluate(context), column.affinity(context));
       if (value == null) continue;
@@ -2198,13 +2200,16 @@ final class SqliteDatabase {
   /// value. A function stays in place so its side effect still runs.
   void _foldConstants(SelectStatement statement) {
     final seen = <SelectStatement>{};
-    void fold(SelectStatement query) {
+    void fold(SelectStatement query, {bool preserveProjection = false}) {
       if (!seen.add(query)) return;
+      // Compound ORDER BY resolves by structural identity against every arm.
+      // Keep those expressions until name/ordinal resolution has completed.
+      preserveProjection = preserveProjection || query.compounds.isNotEmpty;
       final encoding = _pager.header.textEncoding;
       for (var i = 0; i < query.items.length; i++) {
         final item = query.items[i];
         final expression = item.expression;
-        if (expression == null) continue;
+        if (expression == null || preserveProjection) continue;
         final folded = _foldedLiteral(expression, encoding);
         if (folded == null) continue;
         query.items[i] = SelectItem(folded, item.label,
@@ -2219,7 +2224,7 @@ final class SqliteDatabase {
         if (source.query != null) fold(source.query!);
       }
       for (final part in query.compounds) {
-        fold(part.$2);
+        fold(part.$2, preserveProjection: true);
       }
       for (final cte in query.ctes.values) {
         fold(cte.$2);
@@ -2315,8 +2320,9 @@ final class SqliteDatabase {
     if (comparison == null ||
         context.affinities[comparison.$1] != 'numeric' ||
         !(comparison.$3 is BigInt ||
-            comparison.$3 is double && (comparison.$3 as double).isFinite))
+            comparison.$3 is double && (comparison.$3 as double).isFinite)) {
       return false;
+    }
     final bound = bounds.putIfAbsent(comparison.$1, _ColumnBound.new);
     return bound.tighten(
         comparison.$2, comparison.$3, _pager.header.textEncoding);

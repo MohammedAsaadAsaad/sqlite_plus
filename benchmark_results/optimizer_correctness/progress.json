@@ -15,17 +15,6 @@
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     },
     {
-      "item": 33,
-      "description": "Retain CAST affinity and explicit collation during folding",
-      "focused_test_log": "item33.log",
-      "parent_commit": "2a704be8dad0d1c6eaf6cb92bcf2f767cb959445",
-      "files_sha256": {
-        "packages/sqlite_plus/lib/src/sql/database.dart": "1f83379690712da1fd2124a1377db47199ef843f86598640f95e514b9b62b490",
-        "packages/sqlite_plus/test/optimizer_constants_test.dart": "659ba7541dd0ba5069f04686efd4139cbf9fb84bc74a0e9b9569ac870fbb99e4"
-      },
-      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
-    },
-    {
       "item": 32,
       "description": "Preserve HAVING group keys and NULL extremum representatives",
       "focused_test_log": "item32.log",
@@ -143,6 +132,17 @@
       "files_sha256": {
         "packages/sqlite_plus/lib/src/sql/relational.dart": "3e9af9c54a47627f99d99b7cf1477be235c3e323646fccca58c1194af0af5e1c",
         "packages/sqlite_plus/test/optimizer_reuse_test.dart": "e6f3e35f0974179576da838e104dce997f66c91cead0044ccaa4316336584609"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 33,
+      "description": "Preserve compound ORDER BY expression identity during constant folding",
+      "focused_test_log": "item33.log",
+      "parent_commit": "b452e78bb93738e4e03b51597c464104de97f21c",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "6a520a4dd3f7634a4f9c90f25fc70e1746aec1b414ee7c17b84a2d21bcd4904b",
+        "packages/sqlite_plus/test/optimizer_constants_test.dart": "42f5cad5daa7f094b42918f36d9eaa0fe00426af039b48cbcee0559e9c05ae87"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
