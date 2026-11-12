@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Item 23 physical indexed inner joins
+
+Merged prior correctness PR #84 by explicit user confirmation (`322c2b0`). Implemented real secondary B-tree probes for the verified two-table rowid/single-column scope, with per-execution replay and truthful temporary-lookup labels. Initial dense IO regression led to a STAT1 fallback. Full core/ORM/Inspector, 425 new native comparisons, VM/JS, static analysis and 60 fresh-process AOT samples are recorded in `benchmark_results/optimizer_item23/README.md`; small-table IO and broader-scope limits remain explicit. Reopened four unimplemented proposals for evidence-based evaluation; no publication or automatic merge of this checkpoint.
+
 ## 2026-11-12 — Optimizer correctness final gate
 
 Repaired the 12 reviewed defective IDs plus the compound ORDER BY folding follow-up. Final core/ORM/Inspector tests, static analysis, 374 independent comparisons, VM/JS assertions, and scoped AOT controls are recorded in `benchmark_results/optimizer_correctness/REPORT.md`. Item 23 remains partial; individual roadmap performance gates remain open. No merge or publication.

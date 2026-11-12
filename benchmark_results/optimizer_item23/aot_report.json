@@ -1,0 +1,238 @@
+{
+  "baseline_commit": "322c2b0dd5c867301858e67b42eba726e3dcbe4d",
+  "samples": 60,
+  "binary_sha256": {
+    "before": "6b0727a90c72bf3641b7b78da05dcddd594305fb55d7db622f5acbd4ff7a2471",
+    "after": "3767e0f7fa3dedefcd80f1e862bed4d9918345dcf69088de439ba76901ac187f"
+  },
+  "image_sha256": {
+    "sparse": "3f1bb97ee19896540a870cb86d07a91076c67875dd573dd0ef773503b091dba3",
+    "small": "15e4b288fe8c66fd0227c728eba46f29fdcd5ce05e533414b256f04d0216780f",
+    "dense": "58c4893be230c20f08843dd49dcb78d18e9c90051e95236402ff9d07f957268b"
+  },
+  "summary": {
+    "sparse": {
+      "before": {
+        "duration_us": 1833475,
+        "explain_us": 506,
+        "reads": 280,
+        "read_bytes": 1146880,
+        "peak_rss": 53121024,
+        "duration_range_us": [
+          1380385,
+          2733519
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SCAN b"
+          ]
+        ]
+      },
+      "after": {
+        "duration_us": 6272,
+        "explain_us": 632,
+        "reads": 11,
+        "read_bytes": 45056,
+        "peak_rss": 14094336,
+        "duration_range_us": [
+          4513,
+          29323
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SEARCH b USING INDEX bk (k=?)"
+          ]
+        ]
+      },
+      "ratio_after_before": 0.0034208265724921254
+    },
+    "small": {
+      "before": {
+        "duration_us": 12323,
+        "explain_us": 313,
+        "reads": 4,
+        "read_bytes": 16384,
+        "peak_rss": 13438976,
+        "duration_range_us": [
+          10867,
+          17458
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SEARCH b USING INDEX bk (k=?)"
+          ]
+        ]
+      },
+      "after": {
+        "duration_us": 2964,
+        "explain_us": 556,
+        "reads": 8,
+        "read_bytes": 32768,
+        "peak_rss": 12582912,
+        "duration_range_us": [
+          2762,
+          8577
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SEARCH b USING INDEX bk (k=?)"
+          ]
+        ]
+      },
+      "ratio_after_before": 0.24052584597906354
+    },
+    "dense_fallback": {
+      "before": {
+        "duration_us": 1119585,
+        "explain_us": 216,
+        "reads": 84,
+        "read_bytes": 344064,
+        "peak_rss": 50065408,
+        "duration_range_us": [
+          801764,
+          1353216
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SCAN b"
+          ]
+        ]
+      },
+      "after": {
+        "duration_us": 674882,
+        "explain_us": 627,
+        "reads": 84,
+        "read_bytes": 344064,
+        "peak_rss": 50462720,
+        "duration_range_us": [
+          624182,
+          1404860
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SCAN b"
+          ]
+        ]
+      },
+      "ratio_after_before": 0.6027965719440685
+    },
+    "scan_control": {
+      "before": {
+        "duration_us": 2367876,
+        "explain_us": 118,
+        "reads": 280,
+        "read_bytes": 1146880,
+        "peak_rss": 53161984,
+        "duration_range_us": [
+          2094080,
+          11666353
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SCAN b"
+          ]
+        ]
+      },
+      "after": {
+        "duration_us": 2505099,
+        "explain_us": 154,
+        "reads": 280,
+        "read_bytes": 1146880,
+        "peak_rss": 53100544,
+        "duration_range_us": [
+          1515512,
+          4866179
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SCAN b"
+          ]
+        ]
+      },
+      "ratio_after_before": 1.0579519366723595
+    },
+    "empty": {
+      "before": {
+        "duration_us": 1309451,
+        "explain_us": 378,
+        "reads": 280,
+        "read_bytes": 1146880,
+        "peak_rss": 53202944,
+        "duration_range_us": [
+          1161377,
+          1734740
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SCAN b"
+          ]
+        ]
+      },
+      "after": {
+        "duration_us": 4137,
+        "explain_us": 739,
+        "reads": 11,
+        "read_bytes": 45056,
+        "peak_rss": 14024704,
+        "duration_range_us": [
+          3621,
+          6440
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SEARCH b USING INDEX bk (k=?)"
+          ]
+        ]
+      },
+      "ratio_after_before": 0.0031593392956284732
+    },
+    "callback_control": {
+      "before": {
+        "duration_us": 1478913,
+        "explain_us": 205,
+        "reads": 280,
+        "read_bytes": 1146880,
+        "peak_rss": 53370880,
+        "duration_range_us": [
+          1278909,
+          1596561
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SCAN b"
+          ]
+        ]
+      },
+      "after": {
+        "duration_us": 1419189,
+        "explain_us": 252,
+        "reads": 280,
+        "read_bytes": 1146880,
+        "peak_rss": 53223424,
+        "duration_range_us": [
+          1359064,
+          1608718
+        ],
+        "plans": [
+          [
+            "SCAN a",
+            "SCAN b"
+          ]
+        ]
+      },
+      "ratio_after_before": 0.9596162857450032
+    }
+  },
+  "limitations": "Linux x64 Dart 3.13.7 AOT, five alternating fresh-process pairs per case, memory-backed image. Query timer includes planning/evaluation; explain_us times the public explain separately and is not isolated internal planning. RSS is whole-process peak. No universal zero-overhead or full-roadmap acceptance claim."
+}

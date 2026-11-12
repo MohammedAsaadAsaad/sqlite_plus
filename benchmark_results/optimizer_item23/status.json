@@ -1,0 +1,46 @@
+{
+  "item": 23,
+  "baseline": "322c2b0dd5c867301858e67b42eba726e3dcbe4d",
+  "status": "Accepted for tested two-table rowid/single-column-index scope and documented control tradeoffs; real B-tree seeks, native/full regressions and AOT/IO/RSS evidence; other shapes retain fallback",
+  "scope": "two distinct ordinary rowid tables, unqualified main-schema sources, single-column explicit secondary index, safe equality and built-in collations",
+  "validation": {
+    "core": {
+      "actual": 10812,
+      "passed": 10811,
+      "failed": 0,
+      "skipped": 1,
+      "duration_seconds": 578.913,
+      "raw_sha256": "61650987af908e121ed32b01392b16917ec78903fc9ee99c5cb2078b3801c1f9"
+    },
+    "orm": {
+      "actual": 259,
+      "passed": 259,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 97.132,
+      "raw_sha256": "fd1772108a3f041be1032559f7f206006d1f3d27a9ab57882cc1a8a4877469d0"
+    },
+    "inspector": {
+      "actual": 55,
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 39.526,
+      "raw_sha256": "a7a032698e7e16eb5c30af1cb52e80c0629f99eeb0414821fccac3950382995b"
+    },
+    "native_result_comparisons": 425,
+    "new_tests": 34,
+    "baseline": "322c2b0dd5c867301858e67b42eba726e3dcbe4d",
+    "previous_pr": {
+      "number": 84,
+      "merged": true,
+      "merge_sha": "322c2b0dd5c867301858e67b42eba726e3dcbe4d",
+      "github_actions": "queued when explicitly user-approved merge was performed; no hosted CI success claimed"
+    }
+  },
+  "aot_samples": 60,
+  "broader_coverage": "fallback; not claimed physical",
+  "remaining": "other roadmap cost gates and four reopened, unimplemented proposals",
+  "review_url": "https://github.com/MohammedAsaadAsaad/sqlite_plus/pull/85",
+  "review_state": "open; no automatic merge"
+}

@@ -1282,7 +1282,8 @@ final class SqliteDatabase {
   /// The equality has to sit in the `AND` spine. An `OR`, a partial index, or
   /// an expression index stays a scan.
   ({String index, String column, Expr equality, String leftKey})?
-      _innerJoinIndex(QuerySource source, [List<QuerySource>? sources]) {
+      _innerJoinIndex(QuerySource source,
+          [List<QuerySource>? sources, bool physical = false]) {
     if (source.join != 'INNER' ||
         source.on == null ||
         source.notIndexed ||
@@ -1301,7 +1302,9 @@ final class SqliteDatabase {
     for (final entry in catalog.entries) {
       if (entry.type != 'index' ||
           asciiLower(entry.tableName) != asciiLower(table.name) ||
-          entry.sql == null) {
+          entry.sql == null ||
+          source.indexedBy != null &&
+              asciiLower(entry.name) != asciiLower(source.indexedBy!)) {
         continue;
       }
       IndexDefinition parsed;
@@ -1311,6 +1314,14 @@ final class SqliteDatabase {
         continue;
       }
       final term = parsed.terms.firstOrNull;
+      if (physical &&
+          (parsed.terms.length != 1 ||
+              term == null ||
+              !const {'binary', 'nocase', 'rtrim'}
+                  .contains(asciiLower(term.collation)))) {
+        continue;
+      }
+
       if (parsed.predicate != null ||
           term == null ||
           term.columnName == null ||
@@ -1328,7 +1339,9 @@ final class SqliteDatabase {
         }
       }
       final entries = _statistics.indexEntries(table.name, entry.name);
-      if (entries != null && entries > _maxJoinLookupKeys) continue;
+      if (!physical && entries != null && entries > _maxJoinLookupKeys) {
+        continue;
+      }
       return (
         index: entry.name,
         column: found.column,
@@ -1337,6 +1350,91 @@ final class SqliteDatabase {
       );
     }
     return null;
+  }
+
+  /// Physical seeks currently cover two ordinary rowid tables and a single
+  /// indexed equality column. Other shapes retain the bounded temporary lookup.
+  ({
+    QuerySource left,
+    QuerySource right,
+    CatalogTable inner,
+    CatalogEntry index,
+    IndexTerm term,
+    String leftColumn
+  })? _physicalInnerJoin(SelectStatement statement) {
+    final sources = statement.normalizedSources;
+    if (sources.length != 2 ||
+        statement.ctes.isNotEmpty ||
+        statement.compounds.isNotEmpty ||
+        _subqueryHasSideEffect(statement) ||
+        _expressions(statement).any((expr) => _nested(expr).isNotEmpty)) {
+      return null;
+    }
+    for (final source in sources) {
+      if (source.table == null ||
+          source.schema != null ||
+          source.query != null ||
+          source.group.isNotEmpty ||
+          source.pragmaArguments != null ||
+          source.natural ||
+          source.using.isNotEmpty ||
+          (source.alias?.contains('.') ?? false) ||
+          !catalog.entries.any((entry) =>
+              entry.type == 'table' &&
+              asciiLower(entry.name) == asciiLower(source.table!))) {
+        return null;
+      }
+      final table = catalog.table(source.table!);
+      if (table.virtual ||
+          table.withoutRowid ||
+          table.rootPage <= 0 ||
+          table.columns.any((column) => column.generatedExpression != null)) {
+        return null;
+      }
+    }
+    final left = sources.first, right = sources.last;
+    if (asciiLower(left.table!) == asciiLower(right.table!)) return null;
+    final candidate = _innerJoinIndex(right, sources, true);
+    if (candidate == null) return null;
+    final leftAlias = asciiLower(left.alias ?? left.table!);
+    if (!candidate.leftKey.startsWith('$leftAlias.')) return null;
+    final entry = catalog.entries.firstWhere((entry) =>
+        entry.type == 'index' &&
+        asciiLower(entry.name) == asciiLower(candidate.index));
+    final table = catalog.table(right.table!);
+    final definition = IndexDefinition.parse(entry.sql!, table);
+    final entries = _statistics.indexEntries(table.name, entry.name);
+    final average = _statistics.estimate(table.name, entry.name,
+        columns: 1, equalities: 1, rangeBounds: 0, unique: definition.unique);
+    // Repeated rowid fetches can churn the pager when one key covers much of
+    // the inner table. Statistics affect strategy only, never matching rows.
+    if (right.indexedBy == null &&
+        entries != null &&
+        entries > 0 &&
+        average != null &&
+        average >= entries / 4) {
+      return null;
+    }
+    final term = definition.terms.singleOrNull;
+    if (term == null ||
+        !const {'binary', 'nocase', 'rtrim'}
+            .contains(asciiLower(term.collation))) {
+      return null;
+    }
+    final column = _joinColumn(sources,
+        '${asciiLower(right.alias ?? right.table!)}.${candidate.column}');
+    if (column == null ||
+        asciiLower(column.collation) != asciiLower(term.collation)) {
+      return null;
+    }
+    return (
+      left: left,
+      right: right,
+      inner: table,
+      index: entry,
+      term: term,
+      leftColumn: candidate.leftKey.substring(leftAlias.length + 1)
+    );
   }
 
   CatalogColumn? _joinColumn(List<QuerySource> sources, String key) {
@@ -1396,6 +1494,7 @@ final class SqliteDatabase {
   List<ExplainPlanRow> _explainQueryPlan(String sql) {
     final statement = SqlParser(sql).select();
     final sources = _orderedJoinSources(statement);
+    final physical = sources.length == 2 ? _physicalInnerJoin(statement) : null;
     if (sources.length > 1) {
       return [
         for (final source in sources)
@@ -1406,9 +1505,11 @@ final class SqliteDatabase {
                 2,
                 0,
                 _defaultRowLogEst + 16,
-                indexed == null
-                    ? 'SCAN $label'
-                    : 'SEARCH $label USING INDEX ${indexed.index} (${indexed.column}=?)');
+                physical != null && identical(source, physical.right)
+                    ? 'SEARCH $label USING INDEX ${physical.index.name} (${physical.term.columnName}=?)'
+                    : indexed == null
+                        ? 'SCAN $label'
+                        : 'SEARCH $label USING TEMPORARY LOOKUP (${indexed.column}=?)');
           }()
       ];
     }
@@ -2053,7 +2154,10 @@ final class SqliteDatabase {
     final bound = parameters.map(sqlValue).toList();
     if (outer != null || _needsRelational(statement)) {
       final cache = <String, (CatalogTable, List<RowValues>)>{};
-      await _loadRelations(statement, cache, <String>{}, const {}, bound);
+      if (outer != null ||
+          !await _loadIndexedInnerJoin(statement, cache, bound)) {
+        await _loadRelations(statement, cache, <String>{}, const {}, bound);
+      }
       prepareSubqueryWidths(statement, {
         for (final entry in cache.entries)
           for (final name in {

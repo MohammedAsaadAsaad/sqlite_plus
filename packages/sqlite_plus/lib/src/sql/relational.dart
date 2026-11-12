@@ -363,6 +363,117 @@ extension _RelationalQueries on SqliteDatabase {
     }
   }
 
+  RowValues _relationRecord(CatalogTable table, BtreeRecord record) {
+    final row = <String, Object?>{};
+    final stored = table.storageColumns;
+    if (record.values.length > stored.length) {
+      throw const FormatException('Catalog record width mismatch');
+    }
+    for (var i = 0; i < stored.length; i++) {
+      final c = stored[i];
+      var value = c.name == table.rowidAlias
+          ? record.rowId
+          : i < record.values.length
+              ? record.values[i]
+              : c.defaultValue;
+      if (value is double && value.isNaN) value = null;
+      if (value is BigInt &&
+          !c.declaredType.toUpperCase().contains('INT') &&
+          ['REAL', 'FLOA', 'DOUB'].any(c.declaredType.toUpperCase().contains)) {
+        value = value.toDouble();
+      }
+      row[asciiLower(c.name)] = value;
+    }
+    if (!table.withoutRowid) {
+      for (final id in ['rowid', '_rowid_', 'oid']) {
+        row.putIfAbsent(id, () => record.rowId);
+      }
+    }
+    table.evaluateGenerated(row, _pager.header.textEncoding, lazy: true);
+    return row;
+  }
+
+  /// Seek each distinct outer key before synchronous relational evaluation.
+  /// Only matching inner records are fetched. The per-key lists retain the
+  /// index's rowid tie order and duplicate outer rows replay the same list.
+  Future<bool> _loadIndexedInnerJoin(
+      SelectStatement statement,
+      Map<String, (CatalogTable, List<RowValues>)> cache,
+      List<Object?> parameters) async {
+    final plan = _physicalInnerJoin(statement);
+    if (plan == null) return false;
+    final outerQuery = SelectStatement(
+        [], null, null, [], null, null, false, statement.parameterCount)
+      ..sources.add(plan.left);
+    await _loadRelations(outerQuery, cache, <String>{}, const {}, parameters);
+    final outerRows = cache[asciiLower(plan.left.table!)]!.$2;
+    final token = '\u0000relationJoinProbe${identityHashCode(statement)}';
+    final groups = <String, List<RowValues>>{};
+    final rows = <RowValues>[];
+    final reader = BtreeReader(_pager);
+    final affinity = _joinColumn(statement.normalizedSources,
+            '${asciiLower(plan.left.alias ?? plan.left.table!)}.${plan.leftColumn}')!
+        .affinity;
+    for (final outer in outerRows) {
+      final value = applyAffinity(outer[plan.leftColumn], affinity);
+      if (value == null) continue;
+      final key = _joinProbeKey(value, plan.term.collation);
+      final reused = groups[key];
+      if (reused != null) {
+        outer[token] = reused;
+        continue;
+      }
+      final matches = <RowValues>[];
+      await for (final entry in reader.seekIndex(plan.index.rootPage, (values) {
+        if (values.isEmpty) {
+          throw const FormatException('Empty join index record');
+        }
+        final result = compareValues(values.first, value,
+            _pager.header.textEncoding, plan.term.collation);
+        return plan.term.descending ? -result : result;
+      })) {
+        final rowid = entry.values.last;
+        if (rowid is! BigInt) {
+          throw const FormatException('Secondary index rowid missing');
+        }
+        final record = await reader.findRowid(plan.inner.rootPage, rowid);
+        if (record == null) {
+          throw const FormatException(
+              'Secondary index references missing rowid');
+        }
+        final row = _relationRecord(plan.inner, record);
+        matches.add(row);
+        rows.add(row);
+      }
+      final result = matches.isEmpty ? const <RowValues>[] : matches;
+      outer[token] = result;
+      // Cache successful probes for replay; bound missing-key cache growth.
+      // Uncached misses share the immutable empty result list.
+      if (matches.isNotEmpty ||
+          groups.length < SqliteDatabase._maxJoinLookupKeys) {
+        groups[key] = result;
+      }
+    }
+    final innerRows = _IndexedJoinRows(rows, token);
+    final key = asciiLower(plan.right.table!);
+    cache[key] = (plan.inner, innerRows);
+    cache['main.$key'] = cache[key]!;
+    return true;
+  }
+
+  String _joinProbeKey(Object value, String collation) {
+    if (value is BigInt) return 'n:$value';
+    if (value is double) {
+      if (value.isFinite && value == value.truncateToDouble()) {
+        return 'n:${BigInt.from(value)}';
+      }
+      return 'n:$value';
+    }
+    if (value is Uint8List) return 'b:${base64Encode(value)}';
+    final text = value as String;
+    return 't:${asciiLower(collation) == 'nocase' ? asciiLower(text) : asciiLower(collation) == 'rtrim' ? text.replaceFirst(RegExp(r' +$'), '') : text}';
+  }
+
   Future<void> _loadRelations(SelectStatement s,
       Map<String, (CatalogTable, List<RowValues>)> cache, Set<String> loading,
       [Set<String> cteNames = const {},
@@ -509,34 +620,7 @@ extension _RelationalQueries on SqliteDatabase {
                   ? reader.scanIndex(table.rootPage)
                   : reader.scanTable(table.rootPage);
           await for (final record in records) {
-            final row = <String, Object?>{};
-            final stored = table.storageColumns;
-            if (record.values.length > stored.length) {
-              throw const FormatException('Catalog record width mismatch');
-            }
-            for (var i = 0; i < stored.length; i++) {
-              final c = stored[i];
-              var value = c.name == table.rowidAlias
-                  ? record.rowId
-                  : i < record.values.length
-                      ? record.values[i]
-                      : c.defaultValue;
-              if (value is double && value.isNaN) value = null;
-              if (value is BigInt &&
-                  !c.declaredType.toUpperCase().contains('INT') &&
-                  ['REAL', 'FLOA', 'DOUB']
-                      .any(c.declaredType.toUpperCase().contains)) {
-                value = value.toDouble();
-              }
-              row[asciiLower(c.name)] = value;
-            }
-            if (!table.withoutRowid) {
-              for (final id in ['rowid', '_rowid_', 'oid']) {
-                row.putIfAbsent(id, () => record.rowId);
-              }
-            }
-            table.evaluateGenerated(row, _pager.header.textEncoding,
-                lazy: true);
+            final row = _relationRecord(table, record);
             if (stopAfter != null && !stopAfter(table, row)) continue;
             rows.add(row);
             if (stopAfter != null) break;
@@ -1494,6 +1578,9 @@ extension _RelationalQueries on SqliteDatabase {
         List<List<RowValues>>? indexGroups;
         var lookupAbandoned = false;
         Iterable<RowValues> innerRows(RowValues left) {
+          if (rows is _IndexedJoinRows) {
+            return qualifyRows(rows.forOuter(left));
+          }
           if (lookupAbandoned ||
               indexed == null ||
               !sameComparison ||

@@ -1,5 +1,26 @@
 part of 'database.dart';
 
+/// Only records reached by physical index probes, grouped by outer SQL value.
+final class _IndexedJoinRows extends ListBase<RowValues> {
+  _IndexedJoinRows(this.rows, this.token);
+  final List<RowValues> rows;
+  final String token;
+  Iterable<RowValues> forOuter(RowValues outer) {
+    final matches = outer[token];
+    return matches is List<RowValues> ? matches : const <RowValues>[];
+  }
+
+  @override
+  int get length => rows.length;
+  @override
+  set length(int value) => throw UnsupportedError('Read-only join rows');
+  @override
+  RowValues operator [](int index) => rows[index];
+  @override
+  void operator []=(int index, RowValues value) =>
+      throw UnsupportedError('Read-only join rows');
+}
+
 /// Relation rows resume on demand. Repeated scans replay the already produced
 /// prefix without forcing later callbacks, as a SQLite coroutine does.
 final class _DeferredRelationRows extends ListBase<RowValues> {

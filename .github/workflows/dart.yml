@@ -75,6 +75,9 @@ jobs:
           dart run tool/optimizer_benchmark/assertions.dart
           dart compile js tool/optimizer_benchmark/assertions.dart -o /tmp/optimizer_assertions.js
           node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/optimizer_assertions.js
+          dart run tool/optimizer_benchmark/indexed_join_assertions.dart
+          dart compile js tool/optimizer_benchmark/indexed_join_assertions.dart -o /tmp/indexed_join_assertions.js
+          node -e 'globalThis.self=globalThis;require(process.argv[1])' /tmp/indexed_join_assertions.js
       - name: Compile browser storage JavaScript
         if: matrix.package == 'sqlite_plus'
         run: dart compile js tool/browser_storage_compile.dart -o /tmp/sqlite_plus_browser_storage.js
