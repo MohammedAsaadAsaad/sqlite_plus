@@ -193,7 +193,9 @@ final class IndexDefinition {
 /// Conservative implication: conjuncts, matching OR terms and null-rejecting
 /// comparisons. An unproved predicate retains the complete-table path.
 bool impliesIndexPredicate(Expr? query, Expr? predicate,
-    {String Function(ColumnExpr)? columnKey, bool strongerNumeric = false}) {
+    {String Function(ColumnExpr)? columnKey,
+    bool strongerNumeric = false,
+    String Function(Expr)? operandAffinity}) {
   if (predicate == null) return true;
   if (query == null) return false;
   final conjuncts = <Expr>[];
@@ -230,7 +232,8 @@ bool impliesIndexPredicate(Expr? query, Expr? predicate,
     }
     if (strongerNumeric &&
         needed is BinaryExpr &&
-        conjuncts.any((term) => _numericRangeImplies(term, needed))) {
+        conjuncts.any(
+            (term) => _numericRangeImplies(term, needed, operandAffinity))) {
       return true;
     }
     return needed is BoolNameExpr && needed.resolvedLiteral == true
@@ -244,10 +247,13 @@ bool impliesIndexPredicate(Expr? query, Expr? predicate,
 /// A numeric query bound implies a numeric index bound when every value the
 /// query accepts also satisfies the index predicate. Text and COLLATE terms
 /// stay on the exact-expression check above.
-bool _numericRangeImplies(Expr query, Expr needed) {
+bool _numericRangeImplies(
+    Expr query, Expr needed, String Function(Expr)? operandAffinity) {
   final left = _numericComparison(query);
   final right = _numericComparison(needed);
   if (left == null || right == null) return false;
+  // Numeric literal order is not the comparison order of a TEXT column.
+  if (operandAffinity?.call(left.operand) != 'numeric') return false;
   if (_containsCollate(query) || _containsCollate(needed)) return false;
   if (!sameExpression(left.operand, right.operand)) return false;
   final compared = compareValues(left.number, right.number, 1, 'binary');

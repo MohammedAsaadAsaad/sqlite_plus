@@ -1,5 +1,9 @@
 # SQLite compatibility matrix
 
+<!-- optimizer-repairs -->
+The 12 optimizer correctness repairs passed final core/ORM/Inspector regressions and 374 independent semantic-reference comparisons. See `benchmark_results/optimizer_correctness/REPORT.md`. This is scoped correctness evidence, not full SQLite compatibility or acceptance of every roadmap performance gate. Item 23 remains partial.
+<!-- /optimizer-repairs -->
+
 Reference: **SQLite 3.53.1**, source ID
 `2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9`.
 Exact compile options and fixture hashes are recorded in
@@ -753,3 +757,7 @@ limits, enabled cost, source/binary evidence and disabled Inspector control
 tradeoff (paired ratio1.0108) are documented in
 benchmark_results/optimizer_diagnostics/README.md. Not zero-overhead, device/
 file-durability, complete optimizer or release certification; CI remains separate.
+
+## Optimizer OR/COLLATE reference difference
+
+SQLite 3.53.1 can drop an uppercase match when its indexed OR-to-IN rewrite loses a RHS `COLLATE NOCASE`; the same query with `NOT INDEXED` returns it. The repaired planner preserves the comparison/scan results rather than reproducing that native indexed mismatch. Exact SQL and both native outputs are in `benchmark_results/optimizer_correctness/native_or_collation.json`. Native optimizer equivalence is not claimed.

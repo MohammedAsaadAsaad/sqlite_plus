@@ -610,7 +610,7 @@ extension _SearchMutations on ImageMutations {
       for (final row in rows) {
         final context = EvalContext(_shapeValues(spec, row),
             const <String, String>{}, parameters, encoding);
-        if (where != null && truth(where.evaluate(context), encoding) != true) {
+        if (where != null && !sqlPredicate(where, context)) {
           kept.add(row);
           continue;
         }
@@ -1459,11 +1459,10 @@ extension _SearchMutations on ImageMutations {
   bool _matches(
       Fts5Spec spec, _SearchDoc doc, Expr? where, List<Object?> parameters) {
     if (where == null) return true;
-    return truth(
-            where.evaluate(EvalContext(_ftsRow(spec, doc),
-                const <String, String>{}, parameters, encoding)),
-            encoding) ==
-        true;
+    return sqlPredicate(
+        where,
+        EvalContext(_ftsRow(spec, doc), const <String, String>{}, parameters,
+            encoding));
   }
 
   bool _ftsRowidName(Fts5Spec spec, String key) =>

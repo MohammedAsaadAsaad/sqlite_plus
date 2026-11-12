@@ -402,10 +402,12 @@ final class CaseExpr extends Expr {
     }
     final left = base == null ? null : _snapshotRow(base!, context);
     for (final branch in branches) {
-      final condition = left == null
-          ? branch.$1.evaluate(context)
-          : BinaryExpr('=', left, branch.$1).evaluate(context);
-      if (truth(condition, context.encoding) == true) {
+      final matches = left == null
+          ? sqlPredicate(branch.$1, context)
+          : truth(BinaryExpr('=', left, branch.$1).evaluate(context),
+                  context.encoding) ==
+              true;
+      if (matches) {
         return branch.$2.evaluate(context);
       }
     }

@@ -1,0 +1,191 @@
+{
+  "baseline": "91a85454354e4610919688de82221086edd86b35",
+  "branch": "fix/optimizer-correctness-20261112",
+  "repairs": [
+    {
+      "item": 35,
+      "description": "Preserve correlated and renamed projection dependencies",
+      "focused_test_log": "item35.log",
+      "parent_commit": "91a85454354e4610919688de82221086edd86b35",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/lazy_views.dart": "8ea0482bf15e807b71239f14329b5f312d46a00985c692053efe10a56e1cc82f",
+        "packages/sqlite_plus/test/optimizer_projection_test.dart": "038b32f75329a059862ce1153c735d95c4c51fd7393d25b3102708288b17cb13",
+        "packages/sqlite_plus/test/support/optimizer_oracle.dart": "588534f4bfcd6dc39e27e6964d137133a6136943330e232b9da60859e2fff859"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 32,
+      "description": "Preserve HAVING group keys and NULL extremum representatives",
+      "focused_test_log": "item32.log",
+      "parent_commit": "3f4646a9110519efbedb3b4eb8f63e4f4a0dd5ec",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "d14c28ac42c6155418093875046a8883a233e8d00252aa8e2f3155e75ff361cb",
+        "packages/sqlite_plus/lib/src/sql/functions.dart": "60ebe544f9f9a7766b1445ffd6718017a2ea495fd0b3fc25fcedea4b27ddc3c5",
+        "packages/sqlite_plus/test/optimizer_aggregate_test.dart": "732b74448470c4c734d7a8b4d6ed98d4e4347258fb244be3640caa6cbf0b98dd"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 11,
+      "description": "Require complete covering dependencies and genuine rowid aliases",
+      "focused_test_log": "item11.log",
+      "parent_commit": "4cf9da12be223e659609dd3c7e9b6358fd13c0ba",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "78d3d4835fe64f0d3aeddf319e4ed611cd0b56f4647062e03c112403eb599300",
+        "packages/sqlite_plus/test/optimizer_covering_test.dart": "678c86485a7c826b1ddbdeb462ee84206321e18078a2c2074c8e43f2254cff7d"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 31,
+      "description": "Restrict extremum shortcuts to unshadowed built-in integer keys",
+      "focused_test_log": "item31.log",
+      "parent_commit": "1eb2e52675218f4693f950e4068dba86010433c4",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "eb86bc03a0e21c136284dec4ec8267c4cd8916c4962f6ed3914911d764b744f9",
+        "packages/sqlite_plus/test/optimizer_extreme_test.dart": "d04dff74019a452b7cb7adf86fc652d87e7d5d8e97da8d736fc86c81637a8b66"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 13,
+      "description": "Require numeric affinity before strengthening partial-index proofs",
+      "focused_test_log": "item13.log",
+      "parent_commit": "093696d1cb3a0d0d755f518a5d83eb7d908e1aa1",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "28038ea7f9f78590d24ab495ae2dacf657a4299d927b92c66b63eaacbcad86d9",
+        "packages/sqlite_plus/lib/src/sql/index_definition.dart": "23a5f3efa63be636a632240204811c28a37603acf8b2df3da672bfa8e25f2aeb",
+        "packages/sqlite_plus/test/optimizer_partial_test.dart": "fa234ae22a0d08f1468090a03f69023a73eba39f651a70701c09e2092e8789ca"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 14,
+      "description": "Match probe collation and comparison affinity before multiple seeks",
+      "focused_test_log": "item14.log",
+      "parent_commit": "88768185968b186897590105a1734c570556a3da",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "7f92c587acf2437dc9288fd286dfdd9387d0cc642c770f253b560e2733e61da2",
+        "packages/sqlite_plus/test/optimizer_multiseek_test.dart": "b817a2d5ae6f4d6cfe8301d1824c27303d2f91f040cf08751d554bef88d812dd",
+        "benchmark_results/optimizer_correctness/native_or_collation.json": "0472800babd15bb5f3c8ddfab2699fd6540ba2d6350ae02d22d21f9c7acabd33"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 34,
+      "description": "Prove contradictions only for safe numeric source columns",
+      "focused_test_log": "item34.log",
+      "parent_commit": "be66eb8d087311af793d8c10233db111dc11f719",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "28ea3d7a966aefdef28df55abf8c04078175a48a50ee4230aa80609780dcce24",
+        "packages/sqlite_plus/test/optimizer_contradiction_test.dart": "fd0164b349d34bfddef4ca27ffbc0ac3da506f9d79519ebf8c2945a2a966f1c6"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 22,
+      "description": "Keep wildcard expansion and ordinal binding in written source order",
+      "focused_test_log": "item22.log",
+      "parent_commit": "b07a4f198a3f9acf4af5ac10cda2bba4716ab7b6",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "e18742e07eec6d79c2d4d99ea51905916ac1dad8ccf3aa48ace2d24600d87a85",
+        "packages/sqlite_plus/test/optimizer_join_order_test.dart": "edd997760768081cf9ccebdbe5e2fe0501cd3f8e40932210788407d0daddd7ff"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 29,
+      "description": "Preserve CTE flattening choices and inner ordered windows",
+      "focused_test_log": "item29.log",
+      "parent_commit": "d817e2f612fa0dcc6c92282e778d43eda17d7492",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/lazy_views.dart": "10e5f506e868359b45c8fd9530be07d5e628b1d851db5565670da143fe02c433",
+        "packages/sqlite_plus/lib/src/sql/relational.dart": "c4e484a25497862f0dc4f2842d647d85d2783024de61e5329c5b140310183515",
+        "packages/sqlite_plus/test/optimizer_cte_test.dart": "26d02919f823150f1384da83e59a7dc66aea2d29916f206312d2021032d0d8b3"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 21,
+      "description": "Preserve scalar and predicate boolean evaluation contexts",
+      "focused_test_log": "item21.log",
+      "parent_commit": "cfff023729eb622829bbc0df48e840fa5b9008ad",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/parser.dart": "1f6b97a6069e3c7e5fbdee537bcc627fb0ce99ce3c7b16ced54503e8bb21784a",
+        "packages/sqlite_plus/lib/src/sql/database.dart": "5fb387bea25d6637fd032d66722f831b8ed46eb73b77f196caeb9d2367e92157",
+        "packages/sqlite_plus/lib/src/sql/relational.dart": "c40e6cb9a5f70c043419a7b5c3488c78bf70e1e6ec9ab19866c8b97f3df852e3",
+        "packages/sqlite_plus/lib/src/sql/functions.dart": "91e168f11daac2dd387b0d29c3ac59c0bd6621c25835dbde25f8bf606ca1ae19",
+        "packages/sqlite_plus/lib/src/sql/windows.dart": "df25e4ef01729913d363e8adc834d2eae03f84669521a059b3c6fae0b170e66a",
+        "packages/sqlite_plus/lib/src/sql/expressions.dart": "a2a6d3a697e448a5bc2d88d0602c31fb6d1767a475eba9291e5e95cd883b6c56",
+        "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "2a80b37d7fe127af6dccedacbf3f11846857440e582e2f4e680a286a07500db3",
+        "packages/sqlite_plus/lib/src/sql/search_mutations.dart": "3fccdfa06805341f96be77b729661a6ee1c776a4c2c9422e38a28dacb284e87e",
+        "packages/sqlite_plus/test/optimizer_boolean_test.dart": "93e86fd6b0ca45da136b739e4eb2ccb798ff0b2f5cec4f7c23d586b0deeedfd3"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 37,
+      "description": "Guard subquery reuse against limit callbacks and identifier collisions",
+      "focused_test_log": "item37.log",
+      "parent_commit": "70c7bf967fdc34cc57782548979a54efd089f206",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/relational.dart": "3e9af9c54a47627f99d99b7cf1477be235c3e323646fccca58c1194af0af5e1c",
+        "packages/sqlite_plus/test/optimizer_reuse_test.dart": "e6f3e35f0974179576da838e104dce997f66c91cead0044ccaa4316336584609"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    },
+    {
+      "item": 33,
+      "description": "Preserve compound ORDER BY expression identity during constant folding",
+      "focused_test_log": "item33.log",
+      "parent_commit": "b452e78bb93738e4e03b51597c464104de97f21c",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "6a520a4dd3f7634a4f9c90f25fc70e1746aec1b414ee7c17b84a2d21bcd4904b",
+        "packages/sqlite_plus/test/optimizer_constants_test.dart": "42f5cad5daa7f094b42918f36d9eaa0fe00426af039b48cbcee0559e9c05ae87"
+      },
+      "status": "correctness repaired; final core/ORM/Inspector and native comparisons pass; individual performance acceptance remains separate"
+    }
+  ],
+  "pending": [],
+  "final_gate": {
+    "suites": {
+      "core": {
+        "actual_tests": 10778,
+        "passed": 10777,
+        "failed": 0,
+        "skipped": 1,
+        "success": true,
+        "duration_seconds": 511.818,
+        "raw_log_sha256": "ab29ff25485a862b05c0de4434b685a027c7b1ddb141603e108889d26bfa7e0b"
+      },
+      "orm": {
+        "actual_tests": 259,
+        "passed": 259,
+        "failed": 0,
+        "skipped": 0,
+        "success": true,
+        "duration_seconds": 107.688,
+        "raw_log_sha256": "1fb432040fc7510a129a1fc827c50a461e96b20865887a00d6f109b8a3340858"
+      },
+      "inspector": {
+        "actual_tests": 55,
+        "passed": 55,
+        "failed": 0,
+        "skipped": 0,
+        "success": true,
+        "duration_seconds": 52.279,
+        "raw_log_sha256": "c2225fadc81a2bac6722f1ff4d1b1ce862dee56990319b1c6af506b295876b32"
+      }
+    },
+    "independent_checks": {
+      "passed": 374,
+      "failed": 0
+    },
+    "vm_assertions": "pass",
+    "js_assertions": "pass",
+    "static_analysis": "core/orm/inspector pass",
+    "cost_acceptance": "Scoped controls only; individual roadmap performance gates remain open",
+    "known_partial_item": 23
+  }
+}

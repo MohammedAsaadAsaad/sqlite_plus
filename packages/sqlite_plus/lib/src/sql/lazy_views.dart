@@ -63,15 +63,12 @@ final class _DeferredRelationRows extends ListBase<RowValues> {
 /// substitute expressions or requires a coroutine/materialization boundary.
 final class _QueryRelationRows extends ListBase<RowValues> {
   _QueryRelationRows(this.query, this.names, this.execute,
-      {this.materialized = false,
-      this.shareUses = true,
-      this.cte = false,
-      required this.describe});
+      {this.materialized = false, this.cte = false, required this.describe});
   final SelectStatement query;
   final List<String> names;
   final _QueryExecution Function(SelectStatement, bool) execute;
   final List<CatalogColumn> Function(SelectStatement) describe;
-  final bool materialized, shareUses, cte;
+  final bool materialized, cte;
   late final List<RowValues> values = _DeferredRelationRows(
       () => rows(execute(query, false)).toList(growable: false));
 
@@ -240,15 +237,16 @@ extension _DeferredQuerySources on SqliteDatabase {
     if (used == null) return query;
     final inner = _innerOutputNames(query);
     final items = [
-      for (final item in query.items)
-        if (item.expression is ColumnExpr &&
-            !used.contains(asciiLower(item.label)) &&
-            !inner.contains(asciiLower(item.label)))
+      for (var i = 0; i < query.items.length; i++)
+        if (query.items[i] case final item
+            when item.expression is ColumnExpr &&
+                !used.contains(asciiLower(names[i])) &&
+                !inner.contains(asciiLower(item.label)))
           SelectItem(Literal(null), item.label,
               explicitAlias: item.explicitAlias,
               qualifierOffset: item.qualifierOffset)
         else
-          item
+          query.items[i]
     ];
     return _relationQuery(query, items: items);
   }
@@ -258,8 +256,14 @@ extension _DeferredQuerySources on SqliteDatabase {
     if (consumer.items.any((item) => item.expression == null)) return null;
     final known = {for (final name in names) asciiLower(name)};
     final used = <String>{};
+    var nestedConsumer = false;
     void take(Expr? expression) {
       if (expression == null) return;
+      if (expression is SubqueryExpr || expression is InSelectExpr) {
+        // A nested scope can correlate to any projected input column.
+        nestedConsumer = true;
+        return;
+      }
       if (expression is ColumnExpr) {
         if (expression.qualifier != null &&
             asciiLower(expression.qualifier!) == alias) {
@@ -278,7 +282,7 @@ extension _DeferredQuerySources on SqliteDatabase {
     for (final expression in _expressions(consumer)) {
       take(expression);
     }
-    return used;
+    return nestedConsumer ? null : used;
   }
 
   Set<String> _innerOutputNames(SelectStatement query) {
@@ -323,6 +327,12 @@ extension _DeferredQuerySources on SqliteDatabase {
     }
     if (source.join == 'LEFT' &&
         (query.normalizedSources.length > 1 || consumer.distinct)) {
+      return false;
+    }
+    if (query.limit != null &&
+        query.order.isNotEmpty &&
+        consumer.order.isNotEmpty) {
+      // The inner ordered window must select its rows before the outer sort.
       return false;
     }
     if (query.limit != null &&
@@ -432,7 +442,7 @@ extension _DeferredQuerySources on SqliteDatabase {
                           asciiLower(source.table ?? ''))
                   .length >
               1;
-      if (multiple && relation.shareUses) return (relation.values, null);
+      if (multiple) return (relation.values, null);
       query =
           _pushRelationPredicate(relation, query, consumer, alias, subquery);
       bool usesSourceValue(Expr expression) =>

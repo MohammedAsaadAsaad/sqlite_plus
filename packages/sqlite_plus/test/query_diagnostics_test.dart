@@ -50,11 +50,15 @@ void main() {
     expect(report.result.rows, [
       [BigInt.from(6)]
     ]);
-    expect(report.rowsLoaded, 100);
+    expect(report.rowsLoaded, 6);
     expect(report.rowsVisited, 6);
     expect(report.rowsMatched, 6);
     expect(report.sortStrategy, 'none');
     expect(report.peakSortRows, 0);
+    final filtered = await reader
+        .diagnoseQuery('SELECT id FROM t WHERE id>0 LIMIT 1 OFFSET 5');
+    expect(filtered.rowsLoaded, 100);
+    expect(filtered.rowsVisited, 6);
     final zero =
         await reader.diagnoseQuery('SELECT id FROM t ORDER BY n LIMIT 0');
     expect(zero.rowsVisited, 0);

@@ -1417,11 +1417,11 @@ void main() {
     await db.execute('INSERT INTO d VALUES (1)');
     await db.execute('INSERT INTO e VALUES (1),(2)');
     await db.execute('ANALYZE');
-    final four = await db
-        .query('EXPLAIN QUERY PLAN SELECT * FROM a, b, c, d ORDER BY a.v');
+    final four = await db.query(
+        'EXPLAIN QUERY PLAN SELECT a.v,b.v,c.v,d.v FROM a, b, c, d ORDER BY a.v');
     expect(four.rows.first[3].toString(), 'SCAN d');
-    final five = await db
-        .query('EXPLAIN QUERY PLAN SELECT * FROM a, b, c, d, e ORDER BY a.v');
+    final five = await db.query(
+        'EXPLAIN QUERY PLAN SELECT a.v,b.v,c.v,d.v,e.v FROM a, b, c, d, e ORDER BY a.v');
     expect([for (final row in five.rows) row[3].toString()],
         ['SCAN a', 'SCAN b', 'SCAN c', 'SCAN d', 'SCAN e']);
     const pinned = '/tmp/sqlite-build/sqlite3';

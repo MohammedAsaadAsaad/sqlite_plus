@@ -1,0 +1,15 @@
+00:00 +0: loading test/optimizer_projection_test.dart
+00:00 +0: test/optimizer_projection_test.dart: pruning preserves named CTE fields and nested correlations 1
+00:00 +1: test/optimizer_projection_test.dart: pruning preserves named CTE fields and nested correlations 2
+00:00 +2: test/optimizer_projection_test.dart: pruning preserves named CTE fields and nested correlations 3
+00:00 +3: loading test/advanced_trigger_test.dart
+00:00 +3: test/advanced_trigger_test.dart: foreign-key violations override FAIL and roll back the statement
+00:01 +4: test/advanced_trigger_test.dart: RAISE FAIL preserves prior rows and BEFORE/AFTER effects
+00:01 +5: test/advanced_trigger_test.dart: RAISE ROLLBACK ends transactions and clears savepoints
+00:01 +6: test/advanced_trigger_test.dart: FAIL partial images cross the pager boundary and I/O failure poisons the writer
+00:01 +7: test/advanced_trigger_test.dart: OLD/NEW preserve values and collation but have no comparison affinity
+00:01 +8: test/advanced_trigger_test.dart: BEFORE insert sees undefined auto rowids and allocation follows trigger writes
+00:01 +9: test/advanced_trigger_test.dart: trigger SELECT sources, subqueries, CTEs and limits retain RAISE context
+00:01 +10: test/advanced_trigger_test.dart: recursive_triggers is connection state and defaults off
+00:02 +11: test/advanced_trigger_test.dart: recursive trigger depth errors roll back the complete statement
+00:05 +12: All tests passed!

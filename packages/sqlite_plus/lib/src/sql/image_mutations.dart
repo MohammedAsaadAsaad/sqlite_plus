@@ -774,11 +774,8 @@ final class ImageMutations {
   bool _includes(_Index index, _Table table, TableRow row) {
     final predicate = index.definition?.predicate;
     return predicate == null ||
-        truth(
-                predicate.evaluate(
-                    _context(table, row, [])..schemaExpression = true),
-                encoding) ==
-            true;
+        sqlPredicate(
+            predicate, _context(table, row, [])..schemaExpression = true);
   }
 
   bool _containsPrimary(
@@ -1105,7 +1102,7 @@ final class ImageMutations {
           ...table.schema.checks,
           ...table.schema.columns.expand((c) => c.checks)
         ]) {
-          if (truth(check.evaluate(ctx), encoding) == false) {
+          if (sqlPredicate(check, ctx, expected: false)) {
             throw const SqlConstraintException('CHECK constraint failed');
           }
         }
@@ -3644,9 +3641,7 @@ final class ImageMutations {
         }
       }
       final matched = found != null &&
-          (soleExact ||
-              truth(where!.evaluate(_context(table, found, bound)), encoding) ==
-                  true);
+          (soleExact || sqlPredicate(where!, _context(table, found, bound)));
       if (found != null && !matched || found == null && !soleExact) {
         // The folded integer and the real comparison disagreed, or a coerced
         // constant named a missing row. Walk every row with that comparison.
@@ -3930,7 +3925,7 @@ final class ImageMutations {
         if (rowChecks.isNotEmpty) {
           final candidateContext = _context(table, next, bound);
           for (final check in rowChecks) {
-            if (truth(check.evaluate(candidateContext), encoding) == false) {
+            if (sqlPredicate(check, candidateContext, expected: false)) {
               throw const SqlConstraintException('CHECK constraint failed');
             }
           }
@@ -4220,8 +4215,7 @@ final class ImageMutations {
           context.collations['excluded.${asciiLower(col.name)}'] =
               col.collation;
         }
-        if (clause.where != null &&
-            truth(clause.where!.evaluate(context), encoding) != true) {
+        if (clause.where != null && !sqlPredicate(clause.where!, context)) {
           return true;
         }
         final values = _row(table, conflict);
@@ -4379,11 +4373,8 @@ final class ImageMutations {
               queries(where).any(readsTarget)
           ? {
               for (final row in originalRows)
-                if (truth(
-                        where.evaluate(_context(table, row, bound)
-                          ..subquery = snapshotSubquery),
-                        encoding) ==
-                    true)
+                if (sqlPredicate(where,
+                    _context(table, row, bound)..subquery = snapshotSubquery))
                   row
             }
           : null;
@@ -4418,8 +4409,7 @@ final class ImageMutations {
             ? !fromAssignments.containsKey(row)
             : selected != null
                 ? !selected.contains(row)
-                : where != null &&
-                    truth(where.evaluate(context), encoding) != true) {
+                : where != null && !sqlPredicate(where, context)) {
           continue;
         }
         if (!bulkDelete && !table.rows.contains(row)) continue;

@@ -1,5 +1,14 @@
 # Optimizer roadmap and acceptance ledger
 
+## Active correctness repairs — 2026-11-12
+
+Branch: `fix/optimizer-correctness-20261112`. Baseline: `91a8545`.
+The independent review found correctness regressions; the earlier closeout is historical, not a current passing gate.
+Correctness checkpoints: 35, 32, 11, 31, 13, 14, 34, 22, 29, 21, 37, 33.
+All 12 reviewed defective IDs are repaired; final correctness verification passed.
+Each checkpoint has focused/native regressions in `benchmark_results/optimizer_correctness/`.
+Final correctness gate passed; see `benchmark_results/optimizer_correctness/REPORT.md`. Individual roadmap performance acceptance remains separate. No merge or publication is authorized by a checkpoint.
+
 Continuation entry point: [AI handoff](../AI_HANDOFF.md).
 
 Authorized roadmap: correctness plus measured execution/planning/memory/IO cost
@@ -20,33 +29,33 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 8 | Safe early termination | Accepted for ordered LIMIT/OFFSET with no WHERE; filtered control median 1.0146 overlaps |
 | 9 | Partial/block sorting | Correctness verified for a unique key tail and an index-prefix block sort; cost not yet separated |
 | 10 | Table/index/lookup/sort cost comparison | Implemented/unaccepted; non-covering full-index visits stay on the table scan; no AOT sample |
-| 11 | Broader covering-index reads and costing | Implemented/unaccepted; equal-estimate ties prefer order, then covering; no AOT sample |
+| 11 | Broader covering-index reads and costing | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
 | 12 | Composite equality/range/order planning | Implemented/unaccepted; inclusive BETWEEN becomes index bounds; no AOT sample |
-| 13 | Partial/expression index eligibility | Implemented/unaccepted; stronger numeric bounds prove a partial predicate for automatic plans; no AOT sample |
-| 14 | IN/OR multiple-seek/union paths | Implemented/unaccepted; constant IN and same-column OR seek each value; no AOT sample |
+| 13 | Partial/expression index eligibility | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
+| 14 | IN/OR multiple-seek/union paths | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
 | 15 | WITHOUT ROWID access planning | Implemented/unaccepted; secondary equality and range seeks; primary tree is not pretended to be a seek; no AOT sample |
 | 16 | Evaluate intersection and skip-scan | Rejected; a non-leading column stays a table scan, and two indexes are not intersected |
 | 17 | Improve STAT1 estimates | Implemented/unaccepted; a range estimate is at least the next equality average; no AOT sample |
 | 18 | Evaluate skew-aware/STAT4 samples | Rejected; sqlite_stat4 is stored and ignored, stat1 remains the estimate |
 | 19 | Stale/missing statistics safeguards | Implemented/unaccepted; a recorded table cardinality is not inflated by a sibling index; no AOT sample |
 | 20 | Statistics gathering/loading cost | Implemented/unaccepted; stat text longer than 65536 is ignored; no loading AOT sample |
-| 21 | Broader safe predicate pushdown | Implemented/unaccepted; AND/OR skip the right side once the left side decides; no AOT sample |
-| 22 | Bounded join-order search | Implemented/unaccepted; stat1 reorder covers 2–4 cross joins; 5 stays written order; no AOT sample |
-| 23 | Indexed inner join access | Implemented/unaccepted; INNER JOIN equality on a leading index column seeks; OR and LEFT stay scans; no AOT sample |
+| 21 | Broader safe predicate pushdown | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
+| 22 | Bounded join-order search | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
+| 23 | Indexed inner join access | Partial/unaccepted: equality joins group the materialized inner input in memory; the existing SEARCH label does not prove physical B-tree seeks. Real indexed inner-row access and its AOT gate remain open. |
 | 24 | Evaluate alternative join algorithms | Rejected; nested-loop order matches SQLite 3.53.1, so a hash join is not used |
 | 25 | Bounded temporary lookup structures | Implemented/unaccepted; inner-join lookup keeps at most 1024 distinct keys; no AOT sample |
 | 26 | EXISTS early exit | Implemented/unaccepted; uncorrelated single-table EXISTS stops at the first match; no AOT sample |
 | 27 | Safe reuse of uncorrelated subqueries | Implemented/unaccepted; an uncorrelated scalar subquery runs once; correlated counts stay per row; no AOT sample |
 | 28 | Correlated query transformations | Rejected; a correlated subquery stays per outer row and is not flattened into a join |
-| 29 | CTE/derived pushdown and materialization choices | Implemented/unaccepted; a repeated CTE runs once, NOT MATERIALIZED runs per use, derived LIMIT stays inside; no AOT sample |
+| 29 | CTE/derived pushdown and materialization choices | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
 | 30 | Ordered DISTINCT/GROUP BY | Implemented/unaccepted; ordered DISTINCT compares the previous row, and GROUP BY sorts only when a group arrives out of order; no AOT sample |
-| 31 | MIN/MAX/COUNT shortcuts | Implemented/unaccepted; MIN/MAX of an integer primary key read one end; COUNT and filtered MIN stay full reads; no AOT sample |
-| 32 | Streaming aggregation | Implemented/unaccepted; count/sum/avg/total/min/max keep a running value; bare columns still retain the group; no AOT sample |
-| 33 | Safe constant-expression simplification | Implemented/unaccepted; pure arithmetic is replaced by its value; functions stay; no AOT sample |
-| 34 | Predicate simplification/contradictions | Implemented/unaccepted; a false direct-table filter skips the scan; count stays 0; functions still run; no AOT sample |
-| 35 | Intermediate projection pruning | Implemented/unaccepted; an unused bare derived column becomes NULL; functions stay; no AOT sample |
+| 31 | MIN/MAX/COUNT shortcuts | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
+| 32 | Streaming aggregation | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
+| 33 | Safe constant-expression simplification | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
+| 34 | Predicate simplification/contradictions | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
+| 35 | Intermediate projection pruning | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
 | 36 | Broader streaming execution | Implemented/unaccepted; an unordered table scan stops after LIMIT; a filter still scans; no AOT sample |
-| 37 | Safe per-execution common work reuse | Implemented/unaccepted; identical uncorrelated scalars are reused; probe stays separate; no AOT sample |
+| 37 | Safe per-execution common work reuse | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
 | 38 | Bound planning complexity | Implemented/unaccepted; IN stays capped at 32 and join reorder at 4 sources; rows match SQLite; no AOT sample |
 | 39 | Prepared statement integration | Implemented/unaccepted; a bound `a = ?` still chooses the index; rows match SQLite; no AOT sample |
 | 40 | Evaluate plan caching, default off | Implemented/unaccepted; plans are not stored; ANALYZE changes the next explain; no AOT sample |

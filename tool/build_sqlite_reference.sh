@@ -8,6 +8,8 @@ unzip -q "$sqlite_reference_dir/source.zip" -d "$sqlite_reference_dir"
 mkdir -p /tmp/sqlite-build
 cc -O2 -DSQLITE_ENABLE_FTS3 -DSQLITE_ENABLE_FTS4 -DSQLITE_ENABLE_FTS5 \
   -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_MATH_FUNCTIONS \
+  -DSQLITE_ENABLE_DBSTAT_VTAB -DSQLITE_ENABLE_FTS3_PARENTHESIS \
+  -DSQLITE_ENABLE_GEOPOLY -DSQLITE_ENABLE_PERCENTILE \
   "$sqlite_reference_dir/sqlite-amalgamation-3530100/shell.c" \
   "$sqlite_reference_dir/sqlite-amalgamation-3530100/sqlite3.c" \
   -ldl -lpthread -lm -o /tmp/sqlite-build/sqlite3

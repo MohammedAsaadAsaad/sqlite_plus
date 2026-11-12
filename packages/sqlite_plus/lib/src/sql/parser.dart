@@ -362,6 +362,42 @@ final class TruthExpr extends Expr {
   }
 }
 
+/// Evaluate a SQL jump condition. Scalar boolean values still evaluate both
+/// operands; WHERE/ON/WHEN/FILTER can stop once the requested truth is decided.
+/// NULL never matches either requested truth; NOT reverses the requested truth.
+bool sqlPredicate(Expr expression, EvalContext context,
+    {bool expected = true}) {
+  if (expression is UnaryExpr && expression.op == 'NOT') {
+    return sqlPredicate(expression.operand, context, expected: !expected);
+  }
+  if (expression is BinaryExpr) {
+    if (expression.op == 'OR' &&
+        [expression.left, expression.right].any((expr) =>
+            expr is Literal &&
+            expr.integerBoolean &&
+            expr.value != BigInt.zero)) {
+      return expected;
+    }
+    if (expression.op == 'AND') {
+      if (expected) {
+        return sqlPredicate(expression.left, context) &&
+            sqlPredicate(expression.right, context);
+      }
+      return sqlPredicate(expression.left, context, expected: false) ||
+          sqlPredicate(expression.right, context, expected: false);
+    }
+    if (expression.op == 'OR') {
+      if (expected) {
+        return sqlPredicate(expression.left, context) ||
+            sqlPredicate(expression.right, context);
+      }
+      return sqlPredicate(expression.left, context, expected: false) &&
+          sqlPredicate(expression.right, context, expected: false);
+    }
+  }
+  return truth(expression.evaluate(context), context.encoding) == expected;
+}
+
 final class BinaryExpr extends Expr {
   BinaryExpr(this.op, this.left, this.right);
   final String op;
@@ -408,17 +444,17 @@ final class BinaryExpr extends Expr {
     }
     if (op == 'AND' || op == 'OR') {
       final aa = truth(left.evaluate(context), context.encoding);
-      if (op == 'AND' && aa == false) return BigInt.zero;
-      if (op == 'OR' && aa == true) return BigInt.one;
+      // Scalar expressions evaluate both operands; only the explicit
+      // integer-literal simplifications above/in the parser may elide them.
       final bb = truth(right.evaluate(context), context.encoding);
       if (op == 'AND') {
-        return bb == false
+        return aa == false || bb == false
             ? BigInt.zero
             : aa == null || bb == null
                 ? null
                 : BigInt.one;
       }
-      return bb == true
+      return aa == true || bb == true
           ? BigInt.one
           : aa == null || bb == null
               ? null

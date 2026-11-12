@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 import 'dart:collection';
 import 'dart:typed_data';
@@ -259,12 +260,46 @@ final class SqliteDatabase {
   /// form returns null so the ordinary filter remains responsible.
   List<Object?>? _constantEqualityProbes(
       Expr? where, Expr column, String collation, EvalContext context) {
+    bool matches(Expr operand) =>
+        sameExpression(indexOperand(operand), indexOperand(column));
+    bool compatible(Expr? expr) {
+      if (expr == null) return true;
+      if (expr is InExpr && matches(expr.operand)) {
+        final actual = expr.operand.explicitCollation(context) ??
+            expr.operand.collation(context) ??
+            'binary';
+        if (actual != collation) return false;
+        if (expr.values
+            .any((value) => value.explicitCollation(context) != null)) {
+          return false;
+        }
+      }
+      if (expr is BinaryExpr &&
+          (expr.op == '=' || expr.op == '==') &&
+          (matches(expr.left) || matches(expr.right))) {
+        final actual = expr.left.explicitCollation(context) ??
+            expr.right.explicitCollation(context) ??
+            expr.left.collation(context) ??
+            expr.right.collation(context) ??
+            'binary';
+        if (actual != collation) return false;
+      }
+      return expr.children.every(compatible);
+    }
+
+    if (!compatible(where)) return null;
     final constants =
         _inConstants(where, column) ?? _orConstants(where, column);
     if (constants == null || constants.length > 32) return null;
     final values = <Object?>[];
     for (final constant in constants) {
       if (!_planningConstant(constant)) return null;
+      final affinity = column.affinity(context);
+      final other = constant.affinity(context);
+      if (other == 'numeric' && affinity != 'numeric' ||
+          other == 'text' && affinity == 'none') {
+        return null;
+      }
       final value =
           applyAffinity(constant.evaluate(context), column.affinity(context));
       if (value == null) continue;
@@ -392,17 +427,29 @@ final class SqliteDatabase {
 
   bool _coveredByIndex(SelectStatement statement, CatalogTable table,
       List<String> indexColumns) {
-    if (statement.items.any((item) => item.expression == null)) return false;
-    if (table.columns.any((column) => column.generatedExpression != null)) {
+    if (statement.items.any((item) => item.expression == null) ||
+        statement.windowDefinitions.isNotEmpty ||
+        table.columns.any((column) => column.generatedExpression != null)) {
       return false;
     }
     final available = indexColumns.toSet();
     final referenced = <String>{};
-    void walk(Expr? expression) {
-      if (expression == null) return;
+    var unknownScope = false;
+    void walk(Expr expression) {
+      if (expression is SubqueryExpr ||
+          expression is InSelectExpr ||
+          expression.containsWindow) {
+        unknownScope = true;
+        return;
+      }
+      if (expression is BoolNameExpr && expression.resolvedLiteral != true) {
+        referenced.add(expression.key);
+      }
       if (expression is ColumnExpr) {
-        final key = expression.key;
-        referenced.add(key.contains('.') ? key.split('.').last : key);
+        final qualifier = expression.qualifier;
+        referenced.add(qualifier == null
+            ? expression.key
+            : asciiLower(expression.name.substring(qualifier.length + 1)));
         return;
       }
       for (final child in expression.children) {
@@ -410,20 +457,22 @@ final class SqliteDatabase {
       }
     }
 
-    for (final item in statement.items) {
-      walk(item.expression);
+    for (final expression in _expressions(statement)) {
+      walk(expression);
     }
-    walk(statement.where);
-    final rowids = {
-      'rowid',
-      '_rowid_',
-      'oid',
-      if (table.rowidAlias != null) asciiLower(table.rowidAlias!)
+    if (statement.limit != null) walk(statement.limit!);
+    if (statement.offset != null) walk(statement.offset!);
+    if (unknownScope) return false;
+    final declared = {
+      for (final column in table.columns) asciiLower(column.name)
     };
-    for (final name in referenced) {
-      if (!available.contains(name) && !rowids.contains(name)) return false;
-    }
-    return true;
+    final rowids = {
+      for (final name in ['rowid', '_rowid_', 'oid'])
+        if (!declared.contains(name)) name,
+      if (table.rowidAlias != null) asciiLower(table.rowidAlias!),
+    };
+    return referenced
+        .every((name) => available.contains(name) || rowids.contains(name));
   }
 
   /// Distinct inner keys kept for one join probe. Past this, the join scans.
@@ -460,7 +509,11 @@ final class SqliteDatabase {
 
   List<QuerySource> _orderedJoinSources(SelectStatement statement) {
     final sources = [...statement.normalizedSources];
-    if (statement.order.isEmpty || sources.length < 2 || sources.length > 4) {
+    // Source order also defines wildcard expansion and ORDER BY ordinals.
+    if (statement.items.any((item) => item.expression == null) ||
+        statement.order.isEmpty ||
+        sources.length < 2 ||
+        sources.length > 4) {
       return sources;
     }
     if (sources.any((source) =>
@@ -793,7 +846,8 @@ final class SqliteDatabase {
               ? null
               : IndexDefinition.parse(entry.sql!, table);
           if (!impliesIndexPredicate(statement.where, parsed?.predicate,
-              strongerNumeric: true)) {
+              strongerNumeric: true,
+              operandAffinity: (expr) => expr.affinity(context))) {
             diagnostics?.record(
                 'secondary-index', 'partial-predicate-not-proved',
                 index: entry.name, eligible: false);
@@ -2073,7 +2127,7 @@ final class SqliteDatabase {
             'primary-key-extreme', primaryExtreme ? 'max' : 'min',
             chosen: true);
       }
-      if (_whereIsFalse(statement.where)) {
+      if (_whereIsFalse(statement.where, table)) {
         // A proved false filter yields no rows. Aggregates still run on
         // the empty input below, so count(*) stays 0.
       } else {
@@ -2146,13 +2200,16 @@ final class SqliteDatabase {
   /// value. A function stays in place so its side effect still runs.
   void _foldConstants(SelectStatement statement) {
     final seen = <SelectStatement>{};
-    void fold(SelectStatement query) {
+    void fold(SelectStatement query, {bool preserveProjection = false}) {
       if (!seen.add(query)) return;
+      // Compound ORDER BY resolves by structural identity against every arm.
+      // Keep those expressions until name/ordinal resolution has completed.
+      preserveProjection = preserveProjection || query.compounds.isNotEmpty;
       final encoding = _pager.header.textEncoding;
       for (var i = 0; i < query.items.length; i++) {
         final item = query.items[i];
         final expression = item.expression;
-        if (expression == null) continue;
+        if (expression == null || preserveProjection) continue;
         final folded = _foldedLiteral(expression, encoding);
         if (folded == null) continue;
         query.items[i] = SelectItem(folded, item.label,
@@ -2167,7 +2224,7 @@ final class SqliteDatabase {
         if (source.query != null) fold(source.query!);
       }
       for (final part in query.compounds) {
-        fold(part.$2);
+        fold(part.$2, preserveProjection: true);
       }
       for (final cte in query.ctes.values) {
         fold(cte.$2);
@@ -2197,6 +2254,9 @@ final class SqliteDatabase {
   }
 
   bool _constantImpure(Expr expression) =>
+      // Preserve expression-level affinity and collation in derived scopes.
+      expression is CastExpr ||
+      expression is CollateExpr ||
       expression is FunctionExpr ||
       expression is ColumnExpr ||
       expression is ParameterExpr ||
@@ -2207,9 +2267,19 @@ final class SqliteDatabase {
       expression.children.any(_constantImpure);
 
   /// True when [where] cannot match a row and has no function or parameter.
-  bool _whereIsFalse(Expr? where) {
+  bool _whereIsFalse(Expr? where, CatalogTable table) {
     if (where == null || _whereHasCall(where)) return false;
-    return _provesFalse(where);
+    final declared = {
+      for (final column in table.columns) asciiLower(column.name)
+    };
+    final context = EvalContext({}, {
+      for (final column in table.columns)
+        if (column.generatedExpression == null)
+          asciiLower(column.name): column.affinity,
+      for (final name in ['rowid', 'oid', '_rowid_'])
+        if (!declared.contains(name)) name: 'numeric',
+    }, const [], _pager.header.textEncoding);
+    return _provesFalse(where, context);
   }
 
   bool _whereHasCall(Expr expression) =>
@@ -2221,22 +2291,24 @@ final class SqliteDatabase {
       expression.containsWindow ||
       expression.children.any(_whereHasCall);
 
-  bool _provesFalse(Expr expression) {
+  bool _provesFalse(Expr expression, EvalContext context) {
     if (expression is Literal) {
       return truth(expression.value, _pager.header.textEncoding) == false;
     }
     if (expression is BinaryExpr && expression.op == 'OR') {
-      return _provesFalse(expression.left) && _provesFalse(expression.right);
+      return _provesFalse(expression.left, context) &&
+          _provesFalse(expression.right, context);
     }
     final bounds = <String, _ColumnBound>{};
-    if (!_andBounds(expression, bounds)) return false;
+    if (!_andBounds(expression, bounds, context)) return false;
     return bounds.values.any((bound) => bound.empty);
   }
 
-  bool _andBounds(Expr expression, Map<String, _ColumnBound> bounds) {
+  bool _andBounds(
+      Expr expression, Map<String, _ColumnBound> bounds, EvalContext context) {
     if (expression is BinaryExpr && expression.op == 'AND') {
-      return _andBounds(expression.left, bounds) &&
-          _andBounds(expression.right, bounds);
+      return _andBounds(expression.left, bounds, context) &&
+          _andBounds(expression.right, bounds, context);
     }
     if (expression is Literal) {
       if (truth(expression.value, _pager.header.textEncoding) == false) {
@@ -2245,7 +2317,12 @@ final class SqliteDatabase {
       return true;
     }
     final comparison = _simpleComparison(expression);
-    if (comparison == null) return false;
+    if (comparison == null ||
+        context.affinities[comparison.$1] != 'numeric' ||
+        !(comparison.$3 is BigInt ||
+            comparison.$3 is double && (comparison.$3 as double).isFinite)) {
+      return false;
+    }
     final bound = bounds.putIfAbsent(comparison.$1, _ColumnBound.new);
     return bound.tighten(
         comparison.$2, comparison.$3, _pager.header.textEncoding);
@@ -2306,6 +2383,9 @@ final class SqliteDatabase {
     }
     final expression = statement.items.single.expression;
     if (expression is! FunctionExpr ||
+        expression.registered != null ||
+        !expression.isAggregate ||
+        expression.order.isNotEmpty ||
         expression.distinct ||
         expression.star ||
         expression.filter != null ||
@@ -2318,7 +2398,9 @@ final class SqliteDatabase {
     final name = asciiLower(argument.name);
     final alias =
         table.rowidAlias == null ? null : asciiLower(table.rowidAlias!);
-    if (name != alias && !const {'rowid', 'oid', '_rowid_'}.contains(name)) {
+    if (name != alias &&
+        (!const {'rowid', 'oid', '_rowid_'}.contains(name) ||
+            table.columns.any((column) => asciiLower(column.name) == name))) {
       return null;
     }
     return expression.key == 'max';
@@ -2598,6 +2680,10 @@ final class SqliteDatabase {
   QueryPlan? _coveringIndexOrderPlan(SelectStatement statement,
       CatalogTable table, _SqlDiagnosticTrace? diagnostics) {
     if (table.virtual || !_queryCanReuseIndexOrder(statement)) return null;
+    final predicateContext = EvalContext({}, {
+      for (final column in table.columns)
+        asciiLower(column.name): column.affinity,
+    }, const [], _pager.header.textEncoding);
     QueryPlan? best;
     var bestWidth = 1 << 30;
     var bestName = '';
@@ -2628,7 +2714,8 @@ final class SqliteDatabase {
       final delivery = _indexScanDelivery(statement, table, definition, 0);
       if (definition.terms.any((term) => term.columnName == null) ||
           !impliesIndexPredicate(statement.where, definition.predicate,
-              strongerNumeric: true) ||
+              strongerNumeric: true,
+              operandAffinity: (expr) => expr.affinity(predicateContext)) ||
           delivery == null) {
         continue;
       }
@@ -3042,9 +3129,7 @@ final class SqliteDatabase {
               ..subquery = subquery
               ..columnAliases = aliasExpressions
               ..collations = collations;
-        return statement.where == null ||
-            truth(statement.where!.evaluate(ctx), _pager.header.textEncoding) ==
-                true;
+        return statement.where == null || sqlPredicate(statement.where!, ctx);
       });
       final matching =
           diagnostics == null ? selected : diagnostics.matches(selected);
@@ -3138,8 +3223,7 @@ final class SqliteDatabase {
 
       final storeGroupRows = !aggregate ||
           windowed ||
-          (statement.having != null &&
-              referencesStoredRow(statement.having!)) ||
+          statement.having != null ||
           items.any((item) => referencesStoredRow(item.expression!)) ||
           order.any((term) => referencesStoredRow(term.expression));
       Iterable<EvalContext> prepare() sync* {
@@ -3202,9 +3286,7 @@ final class SqliteDatabase {
             }
           }
           if (statement.having != null &&
-              truth(statement.having!.evaluate(ctx),
-                      _pager.header.textEncoding) !=
-                  true) {
+              !sqlPredicate(statement.having!, ctx)) {
             continue;
           }
           if (windowed) {

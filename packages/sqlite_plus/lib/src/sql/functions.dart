@@ -276,7 +276,7 @@ final class FunctionExpr extends Expr {
     }
     if (key == 'iif' || key == 'if') {
       for (var i = 0; i + 1 < arguments.length; i += 2) {
-        if (truth(arguments[i].evaluate(context), context.encoding) == true) {
+        if (sqlPredicate(arguments[i], context)) {
           return arguments[i + 1].evaluate(context);
         }
       }
@@ -733,8 +733,7 @@ final class PreparedSqlAggregate {
 
   void step(EvalContext row) {
     final fn = function;
-    if (fn.filter != null &&
-        truth(fn.filter!.evaluate(row), row.encoding) != true) {
+    if (fn.filter != null && !sqlPredicate(fn.filter!, row)) {
       return;
     }
     final reuse = fn.arguments.length == 1 &&
@@ -802,7 +801,13 @@ final class PreparedSqlAggregate {
       return;
     }
     final value = args.single;
-    if (value == null) return;
+    if (value == null) {
+      // Until a non-NULL extremum exists, SQLite copies each accepted row.
+      if ((key == 'min' || key == 'max') && _extreme == null) {
+        representative = row.row;
+      }
+      return;
+    }
     if (key == 'min' || key == 'max') {
       final comparison = _extreme == null
           ? 0

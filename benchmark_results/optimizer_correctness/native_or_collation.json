@@ -1,0 +1,26 @@
+{
+  "setup": "CREATE TABLE t(id INTEGER PRIMARY KEY,a TEXT COLLATE BINARY); INSERT INTO t VALUES(1,'A'),(2,'a'),(3,'b'); CREATE INDEX ia ON t(a);",
+  "indexed_sql": "SELECT a FROM t WHERE a='a' COLLATE NOCASE OR a='b' COLLATE NOCASE ORDER BY id",
+  "scan_sql": "SELECT a FROM t NOT INDEXED WHERE a='a' COLLATE NOCASE OR a='b' COLLATE NOCASE ORDER BY id",
+  "reference_source_id": "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+  "indexed_rows": [
+    {
+      "a": "a"
+    },
+    {
+      "a": "b"
+    }
+  ],
+  "scan_rows": [
+    {
+      "a": "A"
+    },
+    {
+      "a": "a"
+    },
+    {
+      "a": "b"
+    }
+  ],
+  "policy": "Preserve the comparison/NOT INDEXED rows; do not duplicate the pinned native OR-to-IN collation mismatch."
+}

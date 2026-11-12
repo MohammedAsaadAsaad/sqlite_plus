@@ -1,5 +1,69 @@
 # Development log
 
+## 2026-11-12 — Optimizer correctness final gate
+
+Repaired the 12 reviewed defective IDs plus the compound ORDER BY folding follow-up. Final core/ORM/Inspector tests, static analysis, 374 independent comparisons, VM/JS assertions, and scoped AOT controls are recorded in `benchmark_results/optimizer_correctness/REPORT.md`. Item 23 remains partial; individual roadmap performance gates remain open. No merge or publication.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 33
+
+Preserve compound ORDER BY expression identity during constant folding. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item33.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 37
+
+Guard subquery reuse against limit callbacks and identifier collisions. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item37.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 21
+
+Preserve scalar and predicate boolean evaluation contexts. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item21.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 29
+
+Preserve CTE flattening choices and inner ordered windows. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item29.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 22
+
+Keep wildcard expansion and ordinal binding in written source order. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item22.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 34
+
+Prove contradictions only for safe numeric source columns. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item34.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 14
+
+Match probe collation and comparison affinity before multiple seeks. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item14.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 13
+
+Require numeric affinity before strengthening partial-index proofs. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item13.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 31
+
+Restrict extremum shortcuts to unshadowed built-in integer keys. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item31.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 11
+
+Require complete covering dependencies and genuine rowid aliases. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item11.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 21
+
+Restore required scalar boolean operand evaluation. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item21.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 37
+
+Use complete conservative semantic keys for subquery reuse. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item37.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 32
+
+Preserve HAVING group keys and NULL extremum representatives. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item32.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 33
+
+Retain CAST affinity and explicit collation during folding. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item33.log`. Full-tree regressions and performance acceptance remain pending.
+
+## 2026-11-12 — Correctness checkpoint for optimizer item 35
+
+Preserve correlated and renamed projection dependencies. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item35.log`. Full-tree regressions and performance acceptance remain pending.
+
 ## 2026-11-11 — Item 42 closes the optimizer ledger
 
 The 42-item ledger is closed at the statuses in `docs/plans/OPTIMIZER.md`.

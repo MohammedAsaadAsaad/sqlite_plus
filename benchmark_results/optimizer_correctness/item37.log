@@ -1,0 +1,5 @@
+00:00 +0: loading test/optimizer_reuse_test.dart
+00:00 +0: shared subqueries distinguish semantic shape and binding 1
+00:00 +1: shared subqueries distinguish semantic shape and binding 2
+00:01 +2: shared subqueries distinguish semantic shape and binding 3
+00:01 +3: All tests passed!

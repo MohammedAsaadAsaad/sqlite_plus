@@ -1,0 +1,6 @@
+00:00 +0: loading test/optimizer_join_order_test.dart
+00:00 +0: test/optimizer_join_order_test.dart: join planning preserves wildcard column and ordinal order
+00:00 +1: loading test/engine_gap_test.dart
+00:00 +1: test/engine_gap_test.dart: four comma joins reorder by sqlite_stat1 row counts
+00:01 +2: test/engine_gap_test.dart: two comma joins reorder by sqlite_stat1 row counts
+00:01 +3: All tests passed!
