@@ -93,10 +93,21 @@
         "packages/sqlite_plus/test/optimizer_partial_test.dart": "fa234ae22a0d08f1468090a03f69023a73eba39f651a70701c09e2092e8789ca"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 14,
+      "description": "Match probe collation and comparison affinity before multiple seeks",
+      "focused_test_log": "item14.log",
+      "parent_commit": "88768185968b186897590105a1734c570556a3da",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "7f92c587acf2437dc9288fd286dfdd9387d0cc642c770f253b560e2733e61da2",
+        "packages/sqlite_plus/test/optimizer_multiseek_test.dart": "b817a2d5ae6f4d6cfe8301d1824c27303d2f91f040cf08751d554bef88d812dd",
+        "benchmark_results/optimizer_correctness/native_or_collation.json": "0472800babd15bb5f3c8ddfab2699fd6540ba2d6350ae02d22d21f9c7acabd33"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
   "pending": [
-    14,
     34,
     22,
     29

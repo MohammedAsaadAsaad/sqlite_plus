@@ -4,8 +4,8 @@
 
 Branch: `fix/optimizer-correctness-20261112`. Baseline: `91a8545`.
 The independent review found correctness regressions; the earlier closeout is historical, not a current passing gate.
-Correctness checkpoints: 35, 33, 32, 37, 21, 11, 31, 13.
-Still under repair: 14, 34, 22, 29.
+Correctness checkpoints: 35, 33, 32, 37, 21, 11, 31, 13, 14.
+Still under repair: 34, 22, 29.
 Each checkpoint has focused/native regressions in `benchmark_results/optimizer_correctness/`.
 Full final regressions and cost acceptance are separate and pending; no merge or publication is authorized by a checkpoint.
 
@@ -32,7 +32,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 11 | Broader covering-index reads and costing | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
 | 12 | Composite equality/range/order planning | Implemented/unaccepted; inclusive BETWEEN becomes index bounds; no AOT sample |
 | 13 | Partial/expression index eligibility | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
-| 14 | IN/OR multiple-seek/union paths | Implemented/unaccepted; constant IN and same-column OR seek each value; no AOT sample |
+| 14 | IN/OR multiple-seek/union paths | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
 | 15 | WITHOUT ROWID access planning | Implemented/unaccepted; secondary equality and range seeks; primary tree is not pretended to be a seek; no AOT sample |
 | 16 | Evaluate intersection and skip-scan | Rejected; a non-leading column stays a table scan, and two indexes are not intersected |
 | 17 | Improve STAT1 estimates | Implemented/unaccepted; a range estimate is at least the next equality average; no AOT sample |

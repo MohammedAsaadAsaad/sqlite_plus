@@ -757,3 +757,7 @@ limits, enabled cost, source/binary evidence and disabled Inspector control
 tradeoff (paired ratio1.0108) are documented in
 benchmark_results/optimizer_diagnostics/README.md. Not zero-overhead, device/
 file-durability, complete optimizer or release certification; CI remains separate.
+
+## Optimizer OR/COLLATE reference difference
+
+SQLite 3.53.1 can drop an uppercase match when its indexed OR-to-IN rewrite loses a RHS `COLLATE NOCASE`; the same query with `NOT INDEXED` returns it. The repaired planner preserves the comparison/scan results rather than reproducing that native indexed mismatch. Exact SQL and both native outputs are in `benchmark_results/optimizer_correctness/native_or_collation.json`. Native optimizer equivalence is not claimed.

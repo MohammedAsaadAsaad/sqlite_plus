@@ -260,12 +260,44 @@ final class SqliteDatabase {
   /// form returns null so the ordinary filter remains responsible.
   List<Object?>? _constantEqualityProbes(
       Expr? where, Expr column, String collation, EvalContext context) {
+    bool matches(Expr operand) =>
+        sameExpression(indexOperand(operand), indexOperand(column));
+    bool compatible(Expr? expr) {
+      if (expr == null) return true;
+      if (expr is InExpr && matches(expr.operand)) {
+        final actual = expr.operand.explicitCollation(context) ??
+            expr.operand.collation(context) ??
+            'binary';
+        if (actual != collation) return false;
+        if (expr.values
+            .any((value) => value.explicitCollation(context) != null)) {
+          return false;
+        }
+      }
+      if (expr is BinaryExpr &&
+          (expr.op == '=' || expr.op == '==') &&
+          (matches(expr.left) || matches(expr.right))) {
+        final actual = expr.left.explicitCollation(context) ??
+            expr.right.explicitCollation(context) ??
+            expr.left.collation(context) ??
+            expr.right.collation(context) ??
+            'binary';
+        if (actual != collation) return false;
+      }
+      return expr.children.every(compatible);
+    }
+
+    if (!compatible(where)) return null;
     final constants =
         _inConstants(where, column) ?? _orConstants(where, column);
     if (constants == null || constants.length > 32) return null;
     final values = <Object?>[];
     for (final constant in constants) {
       if (!_planningConstant(constant)) return null;
+      final affinity = column.affinity(context);
+      final other = constant.affinity(context);
+      if (other == 'numeric' && affinity != 'numeric' ||
+          other == 'text' && affinity == 'none') return null;
       final value =
           applyAffinity(constant.evaluate(context), column.affinity(context));
       if (value == null) continue;
