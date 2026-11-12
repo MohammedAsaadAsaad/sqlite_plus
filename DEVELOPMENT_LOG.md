@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Prepare sqlite_plus 0.1.14 for publication
+
+`sqlite_plus` is `0.1.14`. The changelog states the planner behavior that is in the tree, the shapes that stay on the previous path, and the suites that passed on Linux x64. In-repo packages now require `sqlite_plus` ^0.1.14. Their own version numbers are unchanged. M9 and item 108 stay open. This version is not uploaded.
+
 ## 2026-11-12 — Item 23 physical indexed inner joins
 
 Merged prior correctness PR #84 by explicit user confirmation (`322c2b0`). Implemented real secondary B-tree probes for the verified two-table rowid/single-column scope, with per-execution replay and truthful temporary-lookup labels. Initial dense IO regression led to a STAT1 fallback. Full core/ORM/Inspector, 425 new native comparisons, VM/JS, static analysis and 60 fresh-process AOT samples are recorded in `benchmark_results/optimizer_item23/README.md`; small-table IO and broader-scope limits remain explicit. Reopened four unimplemented proposals for evidence-based evaluation; no publication or automatic merge of this checkpoint.

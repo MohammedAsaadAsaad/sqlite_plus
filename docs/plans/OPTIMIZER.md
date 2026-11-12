@@ -2,8 +2,8 @@
 
 ## Current checkpoint — item 23, 2026-11-12
 
-PR #84 was merged by explicit user approval as `322c2b0` before this work.
-Current review checkpoint: [PR #85](https://github.com/MohammedAsaadAsaad/sqlite_plus/pull/85); not merged.
+PR #84 is on main as `322c2b0`. PR #85 is on main as `1e9afdd`.
+`sqlite_plus` 0.1.14 packages this tree and is not uploaded.
 Item 23 now uses physical secondary-index seeks in the tested two-table scope;
 see `benchmark_results/optimizer_item23/README.md` for eligibility, fallbacks,
 full tests, and AOT/control costs. It does not make all roadmap items cost-accepted.

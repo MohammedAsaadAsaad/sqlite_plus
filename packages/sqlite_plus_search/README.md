@@ -4,7 +4,7 @@ Offline search for rows that already live in a [sqlite_plus](https://pub.dev/pac
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
   sqlite_plus_search: ^0.1.0-dev.8
 ```
 
@@ -289,6 +289,6 @@ A query of whole terms reads the leaves that contain those terms, plus one docum
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.13` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus | `^0.1.14` | <https://pub.dev/packages/sqlite_plus> |
 | sqlite_plus_arabic | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_arabic> |
 | sqlite_plus_vec | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_vec> |

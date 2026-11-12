@@ -1,5 +1,6 @@
 ## Unreleased — operation preview
 
+- Require `sqlite_plus` ^0.1.14.
 - Callback preview with reviewed changes/conflicts and explicit stale-safe merge.
 - Failure cleanup and complete ORM import-preview example.
 

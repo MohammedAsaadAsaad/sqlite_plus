@@ -1,4 +1,32 @@
-## Unreleased — explicit bounded query diagnostics
+## 0.1.14
+
+Prepared for pub.dev. This version is not uploaded.
+
+Linux x64, Dart 3.13.7, 12 November 2026 (Asia/Hebron): format and `dart analyze --fatal-infos` were clean. The engine suite passed 10811 tests and skipped 1 because the `sqlcipher` command is not installed. The same run passed ORM 259, Inspector 55, generator 78, Arabic 4, vec 5, geo 42, search 86, changes 41, sync 60, reactive 9, branch 49, jobs 55, and 10 example tests. Optimizer assertions passed on the Dart VM and on JavaScript.
+
+No schema or file-format change. Integers stay `BigInt`. The production runtime stays Pure Dart. Query plans can differ from 0.1.13. Repaired results match pinned SQLite 3.53.1 in the recorded suites. This release does not claim SQLite optimizer equivalence, zero overhead, or the close of M9 and item 108. `sqlite_stat4` planning, skip-scan, index intersection, hash join, and flattening a correlated subquery into a join are not implemented. Most planner changes still have an open cost gate. Item 23's physical index seek is limited to two ordinary rowid tables and one single-column secondary index; other joins keep the previous path.
+
+### Query planner
+
+- A direct forward index scan can satisfy `ORDER BY`. A full reverse scan can satisfy a descending order. An ordered `LIMIT` with no `WHERE` stops early. An unordered table scan with `LIMIT` and no `WHERE` also stops. A filter still reads the rows it must check.
+- A non-covering index that `sqlite_stat1` says will visit every row stays a table scan. Equal estimates prefer an order-providing plan, then a covering plan. Inclusive `BETWEEN` is two bounds.
+- An automatic plan may use a partial index when a numeric comparison is stronger than the predicate and the column affinity is numeric. `INDEXED BY` still needs the exact predicate.
+- A leading `IN` list or same-column `OR` of constants seeks each distinct value, at most 32, after collation and affinity agree. A longer list stays on the previous path.
+- `WITHOUT ROWID` can use a secondary index. The primary tree is not reported as that seek.
+- A `sqlite_stat1` range estimate is at least the next equality average. Stat text longer than 65536 characters is ignored. A recorded table cardinality is not inflated by a sibling index.
+- `AND` and `OR` follow SQLite's context: a scalar keeps required operand evaluation, and a filter can skip a side that cannot change the result.
+- Two to four simple cross joins with table statistics are ordered from the smallest. Five stay in the written order. Wildcard columns and `ORDER BY` ordinals keep that written order.
+- An eligible two-table `INNER JOIN` reads the secondary B-tree for each distinct outer key. Denser indexes, explicit scans, and shapes outside that scope keep a scan or a temporary lookup. The temporary lookup holds at most 1024 distinct keys. `EXPLAIN` says `USING INDEX` for the physical seek and `USING TEMPORARY LOOKUP` for the memory path.
+- An uncorrelated single-table `EXISTS` stops at the first match. An uncorrelated scalar subquery runs once. Two identical side-effect-free scalars share one result. `probe()` stays a separate call. A correlated subquery still runs per outer row.
+- A repeated CTE runs once unless it is `NOT MATERIALIZED`. A derived `LIMIT` stays inside the derived query. An unused bare column of a derived query can become `NULL`; a function in that list stays.
+- Ordered `DISTINCT` compares the previous row. `GROUP BY` sorts only when a new group arrives out of order.
+- `MIN` and `MAX` of an unshadowed integer primary key read one end. `COUNT` and a filtered aggregate still read the input.
+- Plain `count`, `sum`, `avg`, `total`, `min`, and `max` keep a running value. `DISTINCT`, `ORDER BY` inside the aggregate, user aggregates, and a bare grouped column still keep the group rows.
+- Arithmetic with no column, parameter, or function becomes its value. `CAST` affinity and explicit collation stay. A false numeric filter on one direct table skips the scan; `count(*)` of that filter is 0. A function in the filter still runs.
+- `WHERE a = ?` still chooses the index after the value is bound. Plans are computed for the current catalog and are not cached, so `ANALYZE` affects the next statement.
+- `diagnoseQuery` can report an index seek, a one-end primary-key extreme, and `SEARCH` for a plain inner join. A join that calls a function still rejects before the callback.
+
+### Explicit bounded query diagnostics
 
 - Add opt-in read-only/mutable diagnoseQuery for supported scalar SELECTs.
 - Bounded planner decisions, existing estimates and actual row/page/sort metrics;
@@ -6,23 +34,21 @@
 - Preserve routing/exclusion; reduce redundant diagnostic BLOB copies with
   pre-await isolation tests. Measured scope/costs: workspace diagnostics evidence.
 
-## Unreleased — bounded ORDER BY/LIMIT selection
+### Bounded ORDER BY/LIMIT selection
 
 - Replace repeated linear worst-candidate search with a lazy in-place max-heap
   for eligible capacity >=32, retaining tie/projection/fallback behavior.
 - No schema/API/dependency change; no reduced-page-read claim. Native/full/VM/JS
   verification and AOT benefits/control costs: `doc/OPTIMIZER.md`.
 
-## Unreleased — optional prepared statements
+### Optional prepared statements
 
 - Connection-bound reusable syntax with fresh bindings and schema invalidation.
 - Typed ORM prepared reads/updates and optional bounded cache (default disabled).
 - Existing adapter interception/capture paths retained; unsupported shapes fall back in ORM.
 - See `doc/PREPARED.md` and workspace prepared benchmarks for measured scope.
 
-# Changelog
-
-## Guarded writes and job processing (unreleased)
+### Guarded writes and job processing
 
 - Narrow conservative integer rowid AND predicates while rechecking the original
   WHERE; retain callback/subquery/coercion/generated-column fallbacks.
@@ -32,7 +58,7 @@
   RETURNING; preserve the existing append-order read cache.
 - No schema/file-format change. Evidence: ../../benchmark_results/jobs_performance/README.md.
 
-## Unreleased — UPSERT/import performance
+### UPSERT/import performance
 
 - Preserve successful row preparation during UPSERT conflict updates; avoid
   whole-database validation for eligible unchanged unique keys.

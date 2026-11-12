@@ -6,7 +6,7 @@ SQL, JSON, full-text search, and R-tree in Dart. No FFI, no native SQLite, and n
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
 ```
 
 ## A table, a row, a query
@@ -235,7 +235,7 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.13` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus | `^0.1.14` | <https://pub.dev/packages/sqlite_plus> |
 | sqlite_plus_orm | `^0.1.12` | <https://pub.dev/packages/sqlite_plus_orm> |
 | sqlite_plus_generator | `^0.1.12` | <https://pub.dev/packages/sqlite_plus_generator> |
 | sqlite_plus_arabic | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_arabic> |
@@ -246,7 +246,7 @@ Each package is a complete library. Import only what you call. The links below a
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
 ```
 
 ```dart
@@ -427,7 +427,7 @@ An application loads a package when it imports it. Arabic and vec stay out of a 
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
   sqlite_plus_orm: ^0.1.12
   sqlite_plus_arabic: ^0.1.6
   sqlite_plus_vec: ^0.1.6

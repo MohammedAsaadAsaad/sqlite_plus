@@ -1,3 +1,7 @@
+## Unreleased
+
+- Require `sqlite_plus` ^0.1.14.
+
 ## 0.0.1-dev.1
 
 Depends on `sqlite_plus` ^0.1.13. The README opens `products.db`. Capture stays off until `track`.

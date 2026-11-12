@@ -16,7 +16,7 @@ No native bindings, polling timers or background scans.
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
   sqlite_plus_changes: ^0.0.1-dev.1
 ```
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Require `sqlite_plus` ^0.1.14. The library behavior stays the 0.1.6 release until this package's own version changes.
+
 ## 0.1.6
 
 Depends on `sqlite_plus` ^0.1.13. The library behavior is the 0.1.5 release.

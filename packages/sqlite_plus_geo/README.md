@@ -8,7 +8,7 @@ It is not an OGC, PostGIS, SpatiaLite, or GeoPackage certification. The function
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
   sqlite_plus_orm: ^0.1.12
   sqlite_plus_geo: ^0.1.5
 ```
@@ -111,7 +111,7 @@ Each package is a complete library. Import only what you call. The links below a
 
 | Package | Version | Page |
 |---|---|---|
-| sqlite_plus | `^0.1.13` | <https://pub.dev/packages/sqlite_plus> |
+| sqlite_plus | `^0.1.14` | <https://pub.dev/packages/sqlite_plus> |
 | sqlite_plus_orm | `^0.1.12` | <https://pub.dev/packages/sqlite_plus_orm> |
 | sqlite_plus_generator | `^0.1.12` | <https://pub.dev/packages/sqlite_plus_generator> |
 | sqlite_plus_arabic | `^0.1.6` | <https://pub.dev/packages/sqlite_plus_arabic> |
@@ -122,7 +122,7 @@ Each package is a complete library. Import only what you call. The links below a
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
 ```
 
 ```dart

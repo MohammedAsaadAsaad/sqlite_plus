@@ -8,7 +8,7 @@ loop, native SQLite or engine patch.
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
   sqlite_plus_orm: ^0.1.12
   sqlite_plus_reactive: ^0.0.1-dev.1
 ```
