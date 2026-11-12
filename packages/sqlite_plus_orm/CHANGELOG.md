@@ -1,5 +1,6 @@
 ## Unreleased — optional prepared statements
 
+- Require `sqlite_plus` ^0.1.14. The 0.1.12 release text remains the record of the uploaded package.
 - Connection-bound reusable syntax with fresh bindings and schema invalidation.
 - Typed ORM prepared reads/updates and optional bounded cache (default disabled).
 - Existing adapter interception/capture paths retained; unsupported shapes fall back in ORM.

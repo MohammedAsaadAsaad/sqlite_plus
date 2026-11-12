@@ -4,6 +4,8 @@ Item 23 verified scope: two distinct ordinary main-schema rowid tables, a single
 
 <!-- optimizer-repairs -->
 The 12 optimizer correctness repairs passed final core/ORM/Inspector regressions and 374 independent semantic-reference comparisons. See `benchmark_results/optimizer_correctness/REPORT.md`. This is scoped correctness evidence, not full SQLite compatibility or acceptance of every roadmap performance gate. Item 23 now performs physical index seeks for the verified two-table/single-column rowid scope, with explicit fallbacks and measured control tradeoffs; see `benchmark_results/optimizer_item23/README.md`.
+
+`sqlite_plus` 0.1.14 is the packaging boundary for that tree. On 12 November 2026 (Asia/Hebron), Linux x64 and Dart 3.13.7, the engine suite passed 10811 tests with one `sqlcipher` skip, and the workspace package suites named in the 0.1.14 changelog passed with it. The version is prepared and not uploaded. M9 and item 108 stay open. Native optimizer equivalence is not claimed.
 <!-- /optimizer-repairs -->
 
 Reference: **SQLite 3.53.1**, source ID

@@ -1,5 +1,6 @@
 ## Unreleased — explicit runtime profile
 
+- Require `sqlite_plus` ^0.1.14.
 - Add opt-in profile on engine-backed read-only/mutable/ORM connections.
 - Respect schema routing, ownership/lease state and existing observation capture.
 - Return bounded real engine diagnostics; unsupported custom adapters reject.

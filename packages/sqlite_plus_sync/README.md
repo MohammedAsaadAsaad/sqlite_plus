@@ -8,7 +8,7 @@ into a durable outbox, then explicitly push and pull through your server adapter
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
   sqlite_plus_changes: ^0.0.1-dev.1
   sqlite_plus_sync: ^0.0.1-dev.1
 ```

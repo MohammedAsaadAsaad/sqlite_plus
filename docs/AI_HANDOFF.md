@@ -1,9 +1,13 @@
 # AI handoff — sqlite_plus optimizer continuation
 
-## Current checkpoint — item 23, 2026-11-12
+## Current checkpoint — 0.1.14 prepared, 2026-11-12
 
-PR #84 was merged by explicit user approval as `322c2b0` before this work.
-Current review checkpoint: [PR #85](https://github.com/MohammedAsaadAsaad/sqlite_plus/pull/85); not merged.
+`sqlite_plus` is version `0.1.14` in this tree and is not uploaded. The
+changelog records the planner scope, the open cost gates, and the suites run
+on Linux x64. M9 and item 108 stay open. Publishing still waits for an
+explicit upload request.
+
+PR #84 is on main as `322c2b0`. PR #85 is on main as `1e9afdd`.
 Item 23 now uses physical secondary-index seeks in the tested two-table scope;
 see `benchmark_results/optimizer_item23/README.md` for eligibility, fallbacks,
 full tests, and AOT/control costs. It does not make all roadmap items cost-accepted.

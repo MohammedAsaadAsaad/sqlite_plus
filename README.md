@@ -6,7 +6,7 @@ A SQLite engine in Dart, a typed ORM, and a generator for the mapping. SQL, JSON
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
   sqlite_plus_orm: ^0.1.12
   sqlite_plus_arabic: ^0.1.6
   sqlite_plus_vec: ^0.1.6

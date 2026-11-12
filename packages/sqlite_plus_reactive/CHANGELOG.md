@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Require `sqlite_plus` ^0.1.14.
+
 ## 0.0.1-dev.1
 
 Depends on `sqlite_plus` ^0.1.13 and `sqlite_plus_changes` ^0.0.1-dev.1. The README opens on `watch`.

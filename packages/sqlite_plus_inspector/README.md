@@ -10,7 +10,7 @@ engine execution hook or automatic index creation.
 
 ```yaml
 dependencies:
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
   sqlite_plus_orm: ^0.1.12
   sqlite_plus_inspector: ^0.0.1-dev.1
 ```

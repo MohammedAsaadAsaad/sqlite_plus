@@ -2,6 +2,7 @@
 
 ## 0.0.1-dev.1 (unreleased workspace)
 
+- Require `sqlite_plus` ^0.1.14.
 - Explicit durable queue with queue-scoped dedup, priority/delay, random-token
   leases, renewal/expiry, bounded retries, cancellation and terminal pruning.
 - Atomic application DML plus enqueue or lease-fenced acknowledgement.

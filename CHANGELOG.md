@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.14
+
+`sqlite_plus` is `0.1.14`. The query planner described in `packages/sqlite_plus/CHANGELOG.md` is in this tree. ORM, generator, Arabic, vec, geo, and the other packages keep their current version numbers and now require `sqlite_plus` ^0.1.14. This version is not uploaded.
+
 ## 0.1.13
 
 `sqlite_plus` is `0.1.13`. `page` walks `notes.db` by title. `sqlite_plus_orm` and `sqlite_plus_generator` are `0.1.12`. The ORM README shows the next page of `books.db`, a direct title update, and `watch`. `sqlite_plus_arabic` and `sqlite_plus_vec` are `0.1.6`. `sqlite_plus_geo` is `0.1.5`. `sqlite_plus_search` is `0.1.0-dev.8`, and its README opens `typos.db` on `جودة بسكوت`. `sqlite_plus_changes`, `sqlite_plus_sync`, `sqlite_plus_reactive`, and `sqlite_plus_inspector` are `0.0.1-dev.1`. Each package README opens on a file. These versions are uploaded to pub.dev. The score cards were not read.

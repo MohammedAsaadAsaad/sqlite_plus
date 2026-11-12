@@ -13,7 +13,7 @@ environment:
 dependencies:
   sqlite_plus_reactive: ^0.0.1-dev.1
   sqlite_plus_changes: ^0.0.1-dev.1
-  sqlite_plus: ^0.1.13
+  sqlite_plus: ^0.1.14
 dev_dependencies:
   sqlite_plus_sync: ^0.0.1-dev.1
   test: ^1.25.0

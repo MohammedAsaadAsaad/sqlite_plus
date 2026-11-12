@@ -1,3 +1,7 @@
+## Unreleased
+
+- Require `sqlite_plus` ^0.1.14.
+
 ## 0.1.0-dev.8
 
 Depends on `sqlite_plus` ^0.1.13, `sqlite_plus_arabic` ^0.1.6, and `sqlite_plus_vec` ^0.1.6. The README opens `typos.db` for a fuzzy query. The search behavior below is this pre-release.
