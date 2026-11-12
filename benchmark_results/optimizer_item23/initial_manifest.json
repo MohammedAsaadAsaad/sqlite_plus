@@ -1,0 +1,8 @@
+{
+  "baseline": "322c2b0dd5c867301858e67b42eba726e3dcbe4d",
+  "binary_sha256": {
+    "item23-before": "b28be82d39146dcf42c318e8d9c72ef5c91d97f8a778c0c0998dac490bd0fbf6",
+    "item23-after-initial": "9378a8767b0651df10cbc5cb90f391e06b59be94cc1ef92b22e756c78bf39060"
+  },
+  "note": "Exploratory single process per variant; query timing precedes the final probe planning/callback instrumentation. Not a performance acceptance."
+}

@@ -1,0 +1,74 @@
+00:00 +0: loading test/optimizer_indexed_join_test.dart
+00:00 +0: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality INT  1
+00:00 +1: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality INT DESC 1
+00:00 +2: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality REAL  1
+00:01 +3: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality REAL DESC 1
+00:01 +4: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE NOCASE  1
+00:01 +5: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE NOCASE DESC 1
+00:01 +6: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE RTRIM  1
+00:02 +7: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE RTRIM DESC 1
+00:02 +8: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality BLOB  1
+00:02 +9: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality BLOB DESC 1
+00:02 +10: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality INT  2
+00:02 +11: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality INT DESC 2
+00:02 +12: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality REAL  2
+00:03 +13: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality REAL DESC 2
+00:03 +14: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE NOCASE  2
+00:03 +15: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE NOCASE DESC 2
+00:03 +16: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE RTRIM  2
+00:03 +17: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE RTRIM DESC 2
+00:03 +18: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality BLOB  2
+00:03 +19: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality BLOB DESC 2
+00:03 +20: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality INT  3
+00:04 +21: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality INT DESC 3
+00:04 +22: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality REAL  3
+00:04 +23: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality REAL DESC 3
+00:04 +24: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE NOCASE  3
+00:04 +25: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE NOCASE DESC 3
+00:04 +26: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE RTRIM  3
+00:05 +27: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality TEXT COLLATE RTRIM DESC 3
+00:05 +28: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality BLOB  3
+00:05 +29: test/optimizer_indexed_join_test.dart: physical inner seek preserves SQL equality BLOB DESC 3
+00:05 +30: test/optimizer_indexed_join_test.dart: sparse indexed join reads matching pages rather than the full inner table
+00:08 +31: test/optimizer_indexed_join_test.dart: fallbacks preserve complete inputs and distinguish temporary lookup plans
+00:08 +32: test/optimizer_indexed_join_test.dart: join probes are per execution and explicit index collation mismatches fall back
+00:09 +33: test/optimizer_indexed_join_test.dart: STAT1 density selects a scan without changing rows; forced index still seeks
+00:09 +34: loading test/engine_gap_test.dart
+00:09 +34: test/engine_gap_test.dart: TEMP tables and indexes stay out of the exported image
+00:09 +35: test/engine_gap_test.dart: TEMP views and triggers shadow permanent names
+00:09 +36: test/engine_gap_test.dart: ATTACH and DETACH keep one extra database inside the limit
+00:09 +37: test/engine_gap_test.dart: qualified names resolve conflicts and a temp update writes main
+00:09 +38: test/engine_gap_test.dart: a transaction snapshots main and temp together
+00:09 +39: test/engine_gap_test.dart: journal_mode on memory stays memory without rewriting the image
+00:09 +40: test/engine_gap_test.dart: cache_size, busy_timeout, and synchronous stay off the image
+00:09 +41: test/engine_gap_test.dart: auto_vacuum on a fresh connection is stored in the header
+00:09 +42: test/engine_gap_test.dart: a custom collation orders, indexes, and rejects duplicates
+00:09 +43: test/engine_gap_test.dart: EXPLAIN QUERY PLAN is this engine plan, not bytecode
+00:09 +44: test/engine_gap_test.dart: sqlite_stat4 is stored and is not used for planning
+00:09 +45: test/engine_gap_test.dart: four comma joins reorder by sqlite_stat1 row counts
+00:09 +46: test/engine_gap_test.dart: two comma joins reorder by sqlite_stat1 row counts
+00:09 +47: test/engine_gap_test.dart: a covering index does not return to the table
+00:10 +48: test/engine_gap_test.dart: double quotes stay identifiers while DQS is off
+00:10 +49: test/engine_gap_test.dart: constraint, syntax, and missing-table errors keep stable codes
+00:10 +50: test/engine_gap_test.dart: AND and OR skip the right side once the left side decides
+00:10 +51: test/engine_gap_test.dart: an indexed inner join seeks the leading column
+00:10 +52: test/engine_gap_test.dart: uncorrelated EXISTS stops after the first match
+00:12 +53: test/engine_gap_test.dart: an uncorrelated scalar subquery runs once
+00:12 +54: test/engine_gap_test.dart: pure arithmetic folds and functions stay
+00:12 +55: test/engine_gap_test.dart: plain aggregates stream without changing results
+00:12 +56: test/engine_gap_test.dart: identical scalar subqueries are reused and probe stays separate
+00:13 +57: test/engine_gap_test.dart: unordered LIMIT stops a table scan
+00:14 +58: test/engine_gap_test.dart: an unused derived column can be dropped and a function stays
+00:14 +59: test/engine_gap_test.dart: a contradictory filter matches SQLite without a scan
+00:15 +60: test/engine_gap_test.dart: MIN and MAX of an integer primary key read one end
+00:16 +61: test/engine_gap_test.dart: ordered DISTINCT and GROUP BY keep SQLite rows
+00:17 +62: test/engine_gap_test.dart: a repeated CTE is shared unless NOT MATERIALIZED
+00:17 +63: test/engine_gap_test.dart: a correlated subquery stays tied to the outer row
+00:17 +64: test/engine_gap_test.dart: physical indexed joins are not capped by temporary lookup keys
+00:18 +65: test/engine_gap_test.dart: unordered joins keep nested-loop order
+00:18 +66: test/engine_gap_test.dart: diagnosis shows an index seek, a join search, and one-end MIN
+00:18 +67: test/engine_gap_test.dart: a later ANALYZE changes the next plan
+00:18 +68: test/engine_gap_test.dart: a bound parameter still uses the index
+00:18 +69: test/engine_gap_test.dart: IN lists above 32 and five-table joins keep their bounds
+00:18 +70: test/engine_gap_test.dart: malformed UTF-8 and UTF-16 records are rejected
+00:18 +71: All tests passed!

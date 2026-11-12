@@ -1196,7 +1196,8 @@ void main() {
     ]);
   });
 
-  test('an inner lookup stops after 1024 distinct keys', () async {
+  test('physical indexed joins are not capped by temporary lookup keys',
+      () async {
     Future<void> check(int rows, String planText) async {
       final db = await MutableSqliteDatabase.create();
       addTearDown(db.close);
@@ -1234,7 +1235,7 @@ void main() {
     }
 
     await check(1024, 'SEARCH b USING INDEX bk (k=?)');
-    await check(1025, 'SCAN b');
+    await check(1025, 'SEARCH b USING INDEX bk (k=?)');
   });
 
   test('unordered joins keep nested-loop order', () async {

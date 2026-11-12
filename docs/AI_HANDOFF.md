@@ -1,6 +1,19 @@
 # AI handoff — sqlite_plus optimizer continuation
 
-## Active correctness repairs — 2026-11-12
+## Current checkpoint — item 23, 2026-11-12
+
+PR #84 was merged by explicit user approval as `322c2b0` before this work.
+Item 23 now uses physical secondary-index seeks in the tested two-table scope;
+see `benchmark_results/optimizer_item23/README.md` for eligibility, fallbacks,
+full tests, and AOT/control costs. It does not make all roadmap items cost-accepted.
+The four formerly "rejected" proposals are not implemented and are reopened for
+measured evaluation. Next: existing implementation cost gates, then prioritize
+STAT4/other proposals against real workloads; do not assume all four are required.
+No publication or automatic merge of the new checkpoint.
+
+Working branch: `optimizer/item23-indexed-inner-join`. The prior "ledger closed" sections below are historical; the current ledger and checkpoint above take precedence.
+
+## Completed correctness repairs — 2026-11-12
 
 Branch: `fix/optimizer-correctness-20261112`. Baseline: `91a8545`.
 The independent review found correctness regressions; the earlier closeout is historical, not a current passing gate.

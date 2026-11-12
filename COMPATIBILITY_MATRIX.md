@@ -1,7 +1,9 @@
 # SQLite compatibility matrix
 
+Item 23 verified scope: two distinct ordinary main-schema rowid tables, a single-column secondary index and safe equality; 425 new native comparisons, complete core/ORM/Inspector regressions, VM/JS and scoped AOT/IO/RSS checks pass. Broader physical join coverage remains on existing fallbacks.
+
 <!-- optimizer-repairs -->
-The 12 optimizer correctness repairs passed final core/ORM/Inspector regressions and 374 independent semantic-reference comparisons. See `benchmark_results/optimizer_correctness/REPORT.md`. This is scoped correctness evidence, not full SQLite compatibility or acceptance of every roadmap performance gate. Item 23 remains partial.
+The 12 optimizer correctness repairs passed final core/ORM/Inspector regressions and 374 independent semantic-reference comparisons. See `benchmark_results/optimizer_correctness/REPORT.md`. This is scoped correctness evidence, not full SQLite compatibility or acceptance of every roadmap performance gate. Item 23 now performs physical index seeks for the verified two-table/single-column rowid scope, with explicit fallbacks and measured control tradeoffs; see `benchmark_results/optimizer_item23/README.md`.
 <!-- /optimizer-repairs -->
 
 Reference: **SQLite 3.53.1**, source ID

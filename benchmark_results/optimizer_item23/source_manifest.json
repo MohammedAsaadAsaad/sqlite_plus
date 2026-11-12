@@ -1,0 +1,10 @@
+{
+  "packages/sqlite_plus/lib/src/sql/database.dart": "200694242991650a2b44ae8c5fecd47f130dae4d85cea00f51e02a46a79cc66d",
+  "packages/sqlite_plus/lib/src/sql/lazy_views.dart": "4f8b112ac5c16efdfc89c32e23bf9fcdf6669aefb7c73dc334db5ff907ae7997",
+  "packages/sqlite_plus/lib/src/sql/relational.dart": "b4f12a0cbd0a7d0285e5fd02abe3766caefa688e61e907f8bb92b0c7803b0b1c",
+  "packages/sqlite_plus/test/optimizer_indexed_join_test.dart": "c761d0504a81941d6f6c12e9e19693e485621cfed21c3d98a780b33edaf3c793",
+  "packages/sqlite_plus/test/engine_gap_test.dart": "80e10d0e8f8d1c7c301c26960e21a7860163566280875e34c5257e8819e91dc1",
+  "tool/optimizer_benchmark/indexed_join_probe.dart": "f0d529f8043df30078504743115a96397fa33d414e0b49142b3b79deb1869d6c",
+  "tool/optimizer_benchmark/indexed_join_assertions.dart": "926cee55ee92b48406a4e8e2e473e2309486b04d6a74997b6e1efd2679337d32",
+  ".github/workflows/dart.yml": "eea2b2af5c9934806f34256a61e9a3cfb6d39980a4ac561cb61490a7318ac430"
+}

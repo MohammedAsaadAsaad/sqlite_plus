@@ -1,6 +1,17 @@
 # Optimizer roadmap and acceptance ledger
 
-## Active correctness repairs — 2026-11-12
+## Current checkpoint — item 23, 2026-11-12
+
+PR #84 was merged by explicit user approval as `322c2b0` before this work.
+Item 23 now uses physical secondary-index seeks in the tested two-table scope;
+see `benchmark_results/optimizer_item23/README.md` for eligibility, fallbacks,
+full tests, and AOT/control costs. It does not make all roadmap items cost-accepted.
+The four formerly "rejected" proposals are not implemented and are reopened for
+measured evaluation. Next: existing implementation cost gates, then prioritize
+STAT4/other proposals against real workloads; do not assume all four are required.
+No publication or automatic merge of the new checkpoint.
+
+## Completed correctness repairs — 2026-11-12
 
 Branch: `fix/optimizer-correctness-20261112`. Baseline: `91a8545`.
 The independent review found correctness regressions; the earlier closeout is historical, not a current passing gate.
@@ -34,19 +45,19 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 13 | Partial/expression index eligibility | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
 | 14 | IN/OR multiple-seek/union paths | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
 | 15 | WITHOUT ROWID access planning | Implemented/unaccepted; secondary equality and range seeks; primary tree is not pretended to be a seek; no AOT sample |
-| 16 | Evaluate intersection and skip-scan | Rejected; a non-leading column stays a table scan, and two indexes are not intersected |
+| 16 | Evaluate intersection and skip-scan | Not implemented; reopened for evidence-based evaluation. Skip-scan and index intersection are not permanently rejected; correctness and cost gates required. |
 | 17 | Improve STAT1 estimates | Implemented/unaccepted; a range estimate is at least the next equality average; no AOT sample |
-| 18 | Evaluate skew-aware/STAT4 samples | Rejected; sqlite_stat4 is stored and ignored, stat1 remains the estimate |
+| 18 | Evaluate skew-aware/STAT4 samples | Not implemented; reopened for evidence-based evaluation. STAT4/skew-aware estimates are not permanently rejected; correctness and cost gates required. |
 | 19 | Stale/missing statistics safeguards | Implemented/unaccepted; a recorded table cardinality is not inflated by a sibling index; no AOT sample |
 | 20 | Statistics gathering/loading cost | Implemented/unaccepted; stat text longer than 65536 is ignored; no loading AOT sample |
 | 21 | Broader safe predicate pushdown | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
 | 22 | Bounded join-order search | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
-| 23 | Indexed inner join access | Partial/unaccepted: equality joins group the materialized inner input in memory; the existing SEARCH label does not prove physical B-tree seeks. Real indexed inner-row access and its AOT gate remain open. |
-| 24 | Evaluate alternative join algorithms | Rejected; nested-loop order matches SQLite 3.53.1, so a hash join is not used |
+| 23 | Indexed inner join access | Accepted for tested two-table rowid/single-column-index scope and documented control tradeoffs; real B-tree seeks, native/full regressions and AOT/IO/RSS evidence; other shapes retain fallback |
+| 24 | Evaluate alternative join algorithms | Not implemented; reopened for evidence-based evaluation. Alternative join algorithms are not permanently rejected; correctness and cost gates required. |
 | 25 | Bounded temporary lookup structures | Implemented/unaccepted; inner-join lookup keeps at most 1024 distinct keys; no AOT sample |
 | 26 | EXISTS early exit | Implemented/unaccepted; uncorrelated single-table EXISTS stops at the first match; no AOT sample |
 | 27 | Safe reuse of uncorrelated subqueries | Implemented/unaccepted; an uncorrelated scalar subquery runs once; correlated counts stay per row; no AOT sample |
-| 28 | Correlated query transformations | Rejected; a correlated subquery stays per outer row and is not flattened into a join |
+| 28 | Correlated query transformations | Not implemented; reopened for evidence-based evaluation. Correlated query transformations are not permanently rejected; correctness and cost gates required. |
 | 29 | CTE/derived pushdown and materialization choices | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
 | 30 | Ordered DISTINCT/GROUP BY | Implemented/unaccepted; ordered DISTINCT compares the previous row, and GROUP BY sorts only when a group arrives out of order; no AOT sample |
 | 31 | MIN/MAX/COUNT shortcuts | Correctness repaired; final core/ORM/Inspector and native regressions pass; individual cost gate remains open |
