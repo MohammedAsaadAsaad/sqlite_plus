@@ -507,7 +507,11 @@ final class SqliteDatabase {
 
   List<QuerySource> _orderedJoinSources(SelectStatement statement) {
     final sources = [...statement.normalizedSources];
-    if (statement.order.isEmpty || sources.length < 2 || sources.length > 4) {
+    // Source order also defines wildcard expansion and ORDER BY ordinals.
+    if (statement.items.any((item) => item.expression == null) ||
+        statement.order.isEmpty ||
+        sources.length < 2 ||
+        sources.length > 4) {
       return sources;
     }
     if (sources.any((source) =>

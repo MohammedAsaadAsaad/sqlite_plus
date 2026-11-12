@@ -116,10 +116,20 @@
         "packages/sqlite_plus/test/optimizer_contradiction_test.dart": "fd0164b349d34bfddef4ca27ffbc0ac3da506f9d79519ebf8c2945a2a966f1c6"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 22,
+      "description": "Keep wildcard expansion and ordinal binding in written source order",
+      "focused_test_log": "item22.log",
+      "parent_commit": "b07a4f198a3f9acf4af5ac10cda2bba4716ab7b6",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "e18742e07eec6d79c2d4d99ea51905916ac1dad8ccf3aa48ace2d24600d87a85",
+        "packages/sqlite_plus/test/optimizer_join_order_test.dart": "edd997760768081cf9ccebdbe5e2fe0501cd3f8e40932210788407d0daddd7ff"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
   "pending": [
-    22,
     29
   ]
 }

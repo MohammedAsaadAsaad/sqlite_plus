@@ -4,8 +4,8 @@
 
 Branch: `fix/optimizer-correctness-20261112`. Baseline: `91a8545`.
 The independent review found correctness regressions; the earlier closeout is historical, not a current passing gate.
-Correctness checkpoints: 35, 33, 32, 37, 21, 11, 31, 13, 14, 34.
-Still under repair: 22, 29.
+Correctness checkpoints: 35, 33, 32, 37, 21, 11, 31, 13, 14, 34, 22.
+Still under repair: 29.
 Each checkpoint has focused/native regressions in `benchmark_results/optimizer_correctness/`.
 Full final regressions and cost acceptance are separate and pending; no merge or publication is authorized by a checkpoint.
 

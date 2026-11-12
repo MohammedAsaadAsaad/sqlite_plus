@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Correctness checkpoint for optimizer item 22
+
+Keep wildcard expansion and ordinal binding in written source order. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item22.log`. Full-tree regressions and performance acceptance remain pending.
+
 ## 2026-11-12 — Correctness checkpoint for optimizer item 34
 
 Prove contradictions only for safe numeric source columns. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item34.log`. Full-tree regressions and performance acceptance remain pending.
