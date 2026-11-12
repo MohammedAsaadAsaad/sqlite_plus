@@ -4,8 +4,8 @@
 
 Branch: `fix/optimizer-correctness-20261112`. Baseline: `91a8545`.
 The independent review found correctness regressions; the earlier closeout is historical, not a current passing gate.
-Correctness checkpoints: 35, 33, 32, 37, 21, 11, 31, 13, 14, 34, 22.
-Still under repair: 29.
+Correctness checkpoints: 35, 33, 32, 37, 21, 11, 31, 13, 14, 34, 22, 29.
+Still under repair: none; final verification pending.
 Each checkpoint has focused/native regressions in `benchmark_results/optimizer_correctness/`.
 Full final regressions and cost acceptance are separate and pending; no merge or publication is authorized by a checkpoint.
 
@@ -47,7 +47,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 26 | EXISTS early exit | Implemented/unaccepted; uncorrelated single-table EXISTS stops at the first match; no AOT sample |
 | 27 | Safe reuse of uncorrelated subqueries | Implemented/unaccepted; an uncorrelated scalar subquery runs once; correlated counts stay per row; no AOT sample |
 | 28 | Correlated query transformations | Rejected; a correlated subquery stays per outer row and is not flattened into a join |
-| 29 | CTE/derived pushdown and materialization choices | Implemented/unaccepted; a repeated CTE runs once, NOT MATERIALIZED runs per use, derived LIMIT stays inside; no AOT sample |
+| 29 | CTE/derived pushdown and materialization choices | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
 | 30 | Ordered DISTINCT/GROUP BY | Implemented/unaccepted; ordered DISTINCT compares the previous row, and GROUP BY sorts only when a group arrives out of order; no AOT sample |
 | 31 | MIN/MAX/COUNT shortcuts | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
 | 32 | Streaming aggregation | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |

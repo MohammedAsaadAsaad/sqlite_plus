@@ -127,9 +127,19 @@
         "packages/sqlite_plus/test/optimizer_join_order_test.dart": "edd997760768081cf9ccebdbe5e2fe0501cd3f8e40932210788407d0daddd7ff"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 29,
+      "description": "Preserve CTE flattening choices and inner ordered windows",
+      "focused_test_log": "item29.log",
+      "parent_commit": "d817e2f612fa0dcc6c92282e778d43eda17d7492",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/lazy_views.dart": "10e5f506e868359b45c8fd9530be07d5e628b1d851db5565670da143fe02c433",
+        "packages/sqlite_plus/lib/src/sql/relational.dart": "c4e484a25497862f0dc4f2842d647d85d2783024de61e5329c5b140310183515",
+        "packages/sqlite_plus/test/optimizer_cte_test.dart": "26d02919f823150f1384da83e59a7dc66aea2d29916f206312d2021032d0d8b3"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
-  "pending": [
-    29
-  ]
+  "pending": []
 }

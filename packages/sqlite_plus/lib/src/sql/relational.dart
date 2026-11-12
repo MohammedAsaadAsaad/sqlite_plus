@@ -172,6 +172,7 @@ extension _RelationalQueries on SqliteDatabase {
   int _cteUses(SelectStatement statement, String name) {
     var count = 0;
     void walk(SelectStatement query) {
+      if (!identical(query, statement) && query.ctes.containsKey(name)) return;
       for (final source in query.leafSources) {
         if (source.schema == null && asciiLower(source.table ?? '') == name) {
           count++;
@@ -743,8 +744,15 @@ extension _RelationalQueries on SqliteDatabase {
                   materialized: s.cteMaterialization[name] == true ||
                       (mutationCtes?.containsKey(query) ?? false) ||
                       s.cteMaterialization[name] != false &&
-                          _cteUses(s, name) > 1,
-                  shareUses: s.cteMaterialization[name] != false,
+                          _cteUses(s, name) > 1 &&
+                          (query.sources.isEmpty ||
+                              query.distinct ||
+                              _aggregateQuery(query) ||
+                              _windowQuery(query) ||
+                              query.limit != null ||
+                              query.offset != null ||
+                              query.order.isNotEmpty ||
+                              query.compounds.isNotEmpty),
                   cte: true,
                   describe: (query) =>
                       _pragmaColumnMetadata(query, scope, outerMetadata))
