@@ -2197,6 +2197,9 @@ final class SqliteDatabase {
   }
 
   bool _constantImpure(Expr expression) =>
+      // Preserve expression-level affinity and collation in derived scopes.
+      expression is CastExpr ||
+      expression is CollateExpr ||
       expression is FunctionExpr ||
       expression is ColumnExpr ||
       expression is ParameterExpr ||

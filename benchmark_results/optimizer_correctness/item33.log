@@ -1,0 +1,174 @@
+00:00 +0: loading test/optimizer_constants_test.dart
+00:00 +0: test/optimizer_constants_test.dart: constant CAST and COLLATE preserve derived metadata 1
+00:00 +1: test/optimizer_constants_test.dart: constant CAST and COLLATE preserve derived metadata 2
+00:00 +2: test/optimizer_constants_test.dart: constant CAST and COLLATE preserve derived metadata 3
+00:00 +3: loading test/semantics_test.dart
+00:01 +3: test/semantics_test.dart: M6 differential 512 (setUpAll)
+00:01 +3: test/semantics_test.dart: M6 differential 512 select CAST('123e2' AS INTEGER) as result
+00:01 +4: test/semantics_test.dart: M6 differential 512 select CAST('123e2' AS NUMERIC) as result
+00:01 +5: test/semantics_test.dart: M6 differential 512 select CAST('abc' AS REAL) as result
+00:01 +6: test/semantics_test.dart: M6 differential 512 select CAST('9223372036854775808' AS INTEGER) as result
+00:01 +7: test/semantics_test.dart: M6 differential 512 select CAST('-9223372036854775809' AS INTEGER) as result
+00:01 +8: test/semantics_test.dart: M6 differential 512 select CAST(1e999 AS INTEGER) as result
+00:01 +9: test/semantics_test.dart: M6 differential 512 select CAST('hello' AS BLOB) as result
+00:01 +10: test/semantics_test.dart: M6 differential 512 select CAST(X'3132' AS TEXT) as result
+00:01 +11: test/semantics_test.dart: M6 differential 512 select 'A' = 'a' COLLATE NOCASE as result
+00:01 +12: test/semantics_test.dart: M6 differential 512 select 'a ' COLLATE RTRIM = 'a' as result
+00:01 +13: test/semantics_test.dart: M6 differential 512 select 'λ' = 'Λ' COLLATE NOCASE as result
+00:01 +14: test/semantics_test.dart: M6 differential 512 SELECT id FROM sample WHERE value=CAST(1 AS NUMERIC) ORDER BY id
+00:01 +15: test/semantics_test.dart: M6 differential 512 SELECT id FROM sample WHERE value='ROW-001' COLLATE NOCASE ORDER BY id
+00:01 +16: test/semantics_test.dart: M6 differential 512 SELECT i FROM types ORDER BY 1 COLLATE BINARY NULLS LAST
+00:01 +17: test/semantics_test.dart: M6 differential 512 SELECT id FROM sample ORDER BY 0 COLLATE BINARY
+00:01 +18: test/semantics_test.dart: M6 differential 512 SELECT value AS v,count(*) FROM sample GROUP BY 1 COLLATE NOCASE ORDER BY v LIMIT 3
+00:01 +19: test/semantics_test.dart: M6 differential 512 SELECT v='A' FROM (SELECT 'a' COLLATE NOCASE AS v)
+00:01 +20: test/semantics_test.dart: M6 differential 512 SELECT v='a' FROM (SELECT 'a ' COLLATE RTRIM AS v)
+00:01 +21: test/semantics_test.dart: M6 differential 512 SELECT v FROM (SELECT 'b' COLLATE NOCASE AS v UNION ALL SELECT 'A') ORDER BY v
+00:01 +22: test/semantics_test.dart: M6 differential 512 WITH c(v) AS (SELECT 'a' COLLATE NOCASE) SELECT v='A' FROM c
+00:01 +23: test/semantics_test.dart: M6 differential 512 SELECT v='A' FROM (SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v))
+00:01 +24: test/semantics_test.dart: M6 differential 512 SELECT v,count(*) FROM (SELECT 'a' COLLATE NOCASE AS v UNION ALL SELECT 'A') GROUP BY v
+00:01 +25: test/semantics_test.dart: M6 differential 512 SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v) UNION SELECT 'A'
+00:01 +26: test/semantics_test.dart: M6 differential 512 SELECT typeof(v) FROM (SELECT CAST(1 AS REAL) AS v)
+00:01 +27: test/semantics_test.dart: M6 differential 512 WITH RECURSIVE c(x) AS(SELECT 'b' AS x UNION ALL SELECT 'A' UNION ALL SELECT x||'z' FROM c WHERE length(x)<2 ORDER BY x COLLATE NOCASE LIMIT 5) SELECT x FROM c
+00:01 +28: test/semantics_test.dart: M6 differential 512 WITH RECURSIVE c(x) AS(SELECT 'a' COLLATE NOCASE UNION SELECT 'A' FROM c LIMIT 5) SELECT x FROM c
+00:01 +29: test/semantics_test.dart: M6 differential 512 SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x)
+00:01 +30: test/semantics_test.dart: M6 differential 512 SELECT x=1 FROM (SELECT CAST('1' AS TEXT) AS x)
+00:01 +31: test/semantics_test.dart: M6 differential 512 WITH c(x) AS(SELECT CAST(1 AS REAL)) SELECT x='1',typeof(x) FROM c
+00:01 +32: test/semantics_test.dart: M6 differential 512 SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x LIMIT 0)
+00:01 +33: test/semantics_test.dart: M6 differential 512 SELECT group_concat(DISTINCT x ORDER BY x),group_concat(DISTINCT x ORDER BY y),group_concat(DISTINCT x ORDER BY x COLLATE BINARY) FROM (SELECT 'a' COLLATE NOCASE AS x,3 AS y UNION ALL SELECT 'A',1 UNION ALL SELECT 'b',2 UNION ALL SELECT NULL,0)
+00:01 +34: test/semantics_test.dart: M6 differential 512 SELECT group_concat(dart_counter() ORDER BY dart_counter() COLLATE BINARY),dart_counter() FROM sample WHERE id>0 AND id<=3
+00:01 +35: test/semantics_test.dart: M6 differential 512 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:01 +36: test/semantics_test.dart: M6 differential 512 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l JOIN (SELECT 'A' AS x) r USING(x)
+00:01 +37: test/semantics_test.dart: M6 differential 512 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l LEFT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:01 +38: test/semantics_test.dart: M6 differential 512 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l LEFT JOIN (SELECT 'A' AS x) r USING(x)
+00:01 +39: test/semantics_test.dart: M6 differential 512 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:01 +40: test/semantics_test.dart: M6 differential 512 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l RIGHT JOIN (SELECT 'A' AS x) r USING(x)
+00:01 +41: test/semantics_test.dart: M6 differential 512 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l FULL JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:01 +42: test/semantics_test.dart: M6 differential 512 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l FULL JOIN (SELECT 'A' AS x) r USING(x)
+00:01 +43: test/semantics_test.dart: M6 differential 512 SELECT a.x,b.x FROM (SELECT 'a' COLLATE NOCASE AS x) a JOIN (SELECT 'A' AS x) b ON a.x=b.x
+00:01 +44: test/semantics_test.dart: M6 differential 512 SELECT a.x,b.x FROM (SELECT 'a' AS x) a RIGHT JOIN (SELECT 'A' COLLATE NOCASE AS x) b ON a.x=b.x
+00:01 +45: test/semantics_test.dart: M6 differential 512 SELECT x,typeof(x) FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)
+00:01 +46: test/semantics_test.dart: M6 differential 512 SELECT x FROM (SELECT CAST('1' AS TEXT) AS x) l FULL JOIN (SELECT CAST(1 AS INT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)
+00:01 +47: test/semantics_test.dart: M6 differential 512 SELECT x=y FROM (SELECT x FROM (SELECT 'a' AS x) l FULL JOIN (SELECT 'a' AS x) r USING(x)) merged CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)
+00:01 +48: test/semantics_test.dart: M6 differential 512 SELECT x FROM (SELECT 'a' AS x) UNION SELECT 'A' COLLATE NOCASE
+00:01 +49: test/semantics_test.dart: M6 differential 512 SELECT lower('A')=y FROM (SELECT 'A' COLLATE NOCASE AS y)
+00:01 +50: test/semantics_test.dart: M6 differential 512 SELECT x=y FROM (SELECT lower('A') AS x) q CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)
+00:01 +51: test/semantics_test.dart: M6 differential 512 SELECT 'A' AS x UNION SELECT 'a' COLLATE NOCASE
+00:01 +52: test/semantics_test.dart: M6 differential 512 SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x
+00:01 +53: test/semantics_test.dart: M6 differential 512 SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY +1
+00:01 +54: test/semantics_test.dart: M6 differential 512 SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x COLLATE BINARY
+00:01 +55: test/semantics_test.dart: M6 differential 512 SELECT CAST('1_000' AS INT),typeof(CAST('1_000' AS INT))
+00:01 +56: test/semantics_test.dart: M6 differential 512 SELECT CAST('1_0.2' AS REAL),typeof(CAST('1_0.2' AS REAL))
+00:01 +57: test/semantics_test.dart: M6 differential 512 (tearDownAll)
+00:01 +57: test/semantics_test.dart: M6 differential 4096 (setUpAll)
+00:01 +57: test/semantics_test.dart: M6 differential 4096 select CAST('123e2' AS INTEGER) as result
+00:01 +58: test/semantics_test.dart: M6 differential 4096 select CAST('123e2' AS NUMERIC) as result
+00:01 +59: test/semantics_test.dart: M6 differential 4096 select CAST('abc' AS REAL) as result
+00:01 +60: test/semantics_test.dart: M6 differential 4096 select CAST('9223372036854775808' AS INTEGER) as result
+00:01 +61: test/semantics_test.dart: M6 differential 4096 select CAST('-9223372036854775809' AS INTEGER) as result
+00:01 +62: test/semantics_test.dart: M6 differential 4096 select CAST(1e999 AS INTEGER) as result
+00:01 +63: test/semantics_test.dart: M6 differential 4096 select CAST('hello' AS BLOB) as result
+00:01 +64: test/semantics_test.dart: M6 differential 4096 select CAST(X'3132' AS TEXT) as result
+00:01 +65: test/semantics_test.dart: M6 differential 4096 select 'A' = 'a' COLLATE NOCASE as result
+00:01 +66: test/semantics_test.dart: M6 differential 4096 select 'a ' COLLATE RTRIM = 'a' as result
+00:01 +67: test/semantics_test.dart: M6 differential 4096 select 'λ' = 'Λ' COLLATE NOCASE as result
+00:01 +68: test/semantics_test.dart: M6 differential 4096 SELECT id FROM sample WHERE value=CAST(1 AS NUMERIC) ORDER BY id
+00:01 +69: test/semantics_test.dart: M6 differential 4096 SELECT id FROM sample WHERE value='ROW-001' COLLATE NOCASE ORDER BY id
+00:01 +70: test/semantics_test.dart: M6 differential 4096 SELECT i FROM types ORDER BY 1 COLLATE BINARY NULLS LAST
+00:01 +71: test/semantics_test.dart: M6 differential 4096 SELECT id FROM sample ORDER BY 0 COLLATE BINARY
+00:01 +72: test/semantics_test.dart: M6 differential 4096 SELECT value AS v,count(*) FROM sample GROUP BY 1 COLLATE NOCASE ORDER BY v LIMIT 3
+00:01 +73: test/semantics_test.dart: M6 differential 4096 SELECT v='A' FROM (SELECT 'a' COLLATE NOCASE AS v)
+00:01 +74: test/semantics_test.dart: M6 differential 4096 SELECT v='a' FROM (SELECT 'a ' COLLATE RTRIM AS v)
+00:01 +75: test/semantics_test.dart: M6 differential 4096 SELECT v FROM (SELECT 'b' COLLATE NOCASE AS v UNION ALL SELECT 'A') ORDER BY v
+00:01 +76: test/semantics_test.dart: M6 differential 4096 WITH c(v) AS (SELECT 'a' COLLATE NOCASE) SELECT v='A' FROM c
+00:01 +77: test/semantics_test.dart: M6 differential 4096 SELECT v='A' FROM (SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v))
+00:01 +78: test/semantics_test.dart: M6 differential 4096 SELECT v,count(*) FROM (SELECT 'a' COLLATE NOCASE AS v UNION ALL SELECT 'A') GROUP BY v
+00:01 +79: test/semantics_test.dart: M6 differential 4096 SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v) UNION SELECT 'A'
+00:01 +80: test/semantics_test.dart: M6 differential 4096 SELECT typeof(v) FROM (SELECT CAST(1 AS REAL) AS v)
+00:01 +81: test/semantics_test.dart: M6 differential 4096 WITH RECURSIVE c(x) AS(SELECT 'b' AS x UNION ALL SELECT 'A' UNION ALL SELECT x||'z' FROM c WHERE length(x)<2 ORDER BY x COLLATE NOCASE LIMIT 5) SELECT x FROM c
+00:01 +82: test/semantics_test.dart: M6 differential 4096 WITH RECURSIVE c(x) AS(SELECT 'a' COLLATE NOCASE UNION SELECT 'A' FROM c LIMIT 5) SELECT x FROM c
+00:01 +83: test/semantics_test.dart: M6 differential 4096 SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x)
+00:01 +84: test/semantics_test.dart: M6 differential 4096 SELECT x=1 FROM (SELECT CAST('1' AS TEXT) AS x)
+00:01 +85: test/semantics_test.dart: M6 differential 4096 WITH c(x) AS(SELECT CAST(1 AS REAL)) SELECT x='1',typeof(x) FROM c
+00:01 +86: test/semantics_test.dart: M6 differential 4096 SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x LIMIT 0)
+00:01 +87: test/semantics_test.dart: M6 differential 4096 SELECT group_concat(DISTINCT x ORDER BY x),group_concat(DISTINCT x ORDER BY y),group_concat(DISTINCT x ORDER BY x COLLATE BINARY) FROM (SELECT 'a' COLLATE NOCASE AS x,3 AS y UNION ALL SELECT 'A',1 UNION ALL SELECT 'b',2 UNION ALL SELECT NULL,0)
+00:01 +88: test/semantics_test.dart: M6 differential 4096 SELECT group_concat(dart_counter() ORDER BY dart_counter() COLLATE BINARY),dart_counter() FROM sample WHERE id>0 AND id<=3
+00:01 +89: test/semantics_test.dart: M6 differential 4096 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:01 +90: test/semantics_test.dart: M6 differential 4096 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l JOIN (SELECT 'A' AS x) r USING(x)
+00:01 +91: test/semantics_test.dart: M6 differential 4096 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l LEFT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:01 +92: test/semantics_test.dart: M6 differential 4096 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l LEFT JOIN (SELECT 'A' AS x) r USING(x)
+00:01 +93: test/semantics_test.dart: M6 differential 4096 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:01 +94: test/semantics_test.dart: M6 differential 4096 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l RIGHT JOIN (SELECT 'A' AS x) r USING(x)
+00:01 +95: test/semantics_test.dart: M6 differential 4096 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l FULL JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:01 +96: test/semantics_test.dart: M6 differential 4096 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l FULL JOIN (SELECT 'A' AS x) r USING(x)
+00:01 +97: test/semantics_test.dart: M6 differential 4096 SELECT a.x,b.x FROM (SELECT 'a' COLLATE NOCASE AS x) a JOIN (SELECT 'A' AS x) b ON a.x=b.x
+00:01 +98: test/semantics_test.dart: M6 differential 4096 SELECT a.x,b.x FROM (SELECT 'a' AS x) a RIGHT JOIN (SELECT 'A' COLLATE NOCASE AS x) b ON a.x=b.x
+00:01 +99: test/semantics_test.dart: M6 differential 4096 SELECT x,typeof(x) FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)
+00:01 +100: test/semantics_test.dart: M6 differential 4096 SELECT x FROM (SELECT CAST('1' AS TEXT) AS x) l FULL JOIN (SELECT CAST(1 AS INT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)
+00:01 +101: test/semantics_test.dart: M6 differential 4096 SELECT x=y FROM (SELECT x FROM (SELECT 'a' AS x) l FULL JOIN (SELECT 'a' AS x) r USING(x)) merged CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)
+00:01 +102: test/semantics_test.dart: M6 differential 4096 SELECT x FROM (SELECT 'a' AS x) UNION SELECT 'A' COLLATE NOCASE
+00:01 +103: test/semantics_test.dart: M6 differential 4096 SELECT lower('A')=y FROM (SELECT 'A' COLLATE NOCASE AS y)
+00:01 +104: test/semantics_test.dart: M6 differential 4096 SELECT x=y FROM (SELECT lower('A') AS x) q CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)
+00:01 +105: test/semantics_test.dart: M6 differential 4096 SELECT 'A' AS x UNION SELECT 'a' COLLATE NOCASE
+00:01 +106: test/semantics_test.dart: M6 differential 4096 SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x
+00:01 +107: test/semantics_test.dart: M6 differential 4096 SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY +1
+00:01 +108: test/semantics_test.dart: M6 differential 4096 SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x COLLATE BINARY
+00:01 +109: test/semantics_test.dart: M6 differential 4096 SELECT CAST('1_000' AS INT),typeof(CAST('1_000' AS INT))
+00:01 +110: test/semantics_test.dart: M6 differential 4096 SELECT CAST('1_0.2' AS REAL),typeof(CAST('1_0.2' AS REAL))
+00:01 +111: test/semantics_test.dart: M6 differential 4096 (tearDownAll)
+00:01 +111: test/semantics_test.dart: M6 differential 65536 (setUpAll)
+00:01 +111: test/semantics_test.dart: M6 differential 65536 select CAST('123e2' AS INTEGER) as result
+00:01 +112: test/semantics_test.dart: M6 differential 65536 select CAST('123e2' AS NUMERIC) as result
+00:01 +113: test/semantics_test.dart: M6 differential 65536 select CAST('abc' AS REAL) as result
+00:01 +114: test/semantics_test.dart: M6 differential 65536 select CAST('9223372036854775808' AS INTEGER) as result
+00:01 +115: test/semantics_test.dart: M6 differential 65536 select CAST('-9223372036854775809' AS INTEGER) as result
+00:01 +116: test/semantics_test.dart: M6 differential 65536 select CAST(1e999 AS INTEGER) as result
+00:01 +117: test/semantics_test.dart: M6 differential 65536 select CAST('hello' AS BLOB) as result
+00:01 +118: test/semantics_test.dart: M6 differential 65536 select CAST(X'3132' AS TEXT) as result
+00:01 +119: test/semantics_test.dart: M6 differential 65536 select 'A' = 'a' COLLATE NOCASE as result
+00:01 +120: test/semantics_test.dart: M6 differential 65536 select 'a ' COLLATE RTRIM = 'a' as result
+00:01 +121: test/semantics_test.dart: M6 differential 65536 select 'λ' = 'Λ' COLLATE NOCASE as result
+00:01 +122: test/semantics_test.dart: M6 differential 65536 SELECT id FROM sample WHERE value=CAST(1 AS NUMERIC) ORDER BY id
+00:01 +123: test/semantics_test.dart: M6 differential 65536 SELECT id FROM sample WHERE value='ROW-001' COLLATE NOCASE ORDER BY id
+00:01 +124: test/semantics_test.dart: M6 differential 65536 SELECT i FROM types ORDER BY 1 COLLATE BINARY NULLS LAST
+00:01 +125: test/semantics_test.dart: M6 differential 65536 SELECT id FROM sample ORDER BY 0 COLLATE BINARY
+00:01 +126: test/semantics_test.dart: M6 differential 65536 SELECT value AS v,count(*) FROM sample GROUP BY 1 COLLATE NOCASE ORDER BY v LIMIT 3
+00:02 +127: test/semantics_test.dart: M6 differential 65536 SELECT v='A' FROM (SELECT 'a' COLLATE NOCASE AS v)
+00:02 +128: test/semantics_test.dart: M6 differential 65536 SELECT v='a' FROM (SELECT 'a ' COLLATE RTRIM AS v)
+00:02 +129: test/semantics_test.dart: M6 differential 65536 SELECT v FROM (SELECT 'b' COLLATE NOCASE AS v UNION ALL SELECT 'A') ORDER BY v
+00:02 +130: test/semantics_test.dart: M6 differential 65536 WITH c(v) AS (SELECT 'a' COLLATE NOCASE) SELECT v='A' FROM c
+00:02 +131: test/semantics_test.dart: M6 differential 65536 SELECT v='A' FROM (SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v))
+00:02 +132: test/semantics_test.dart: M6 differential 65536 SELECT v,count(*) FROM (SELECT 'a' COLLATE NOCASE AS v UNION ALL SELECT 'A') GROUP BY v
+00:02 +133: test/semantics_test.dart: M6 differential 65536 SELECT v FROM (SELECT 'a' COLLATE NOCASE AS v) UNION SELECT 'A'
+00:02 +134: test/semantics_test.dart: M6 differential 65536 SELECT typeof(v) FROM (SELECT CAST(1 AS REAL) AS v)
+00:02 +135: test/semantics_test.dart: M6 differential 65536 WITH RECURSIVE c(x) AS(SELECT 'b' AS x UNION ALL SELECT 'A' UNION ALL SELECT x||'z' FROM c WHERE length(x)<2 ORDER BY x COLLATE NOCASE LIMIT 5) SELECT x FROM c
+00:02 +136: test/semantics_test.dart: M6 differential 65536 WITH RECURSIVE c(x) AS(SELECT 'a' COLLATE NOCASE UNION SELECT 'A' FROM c LIMIT 5) SELECT x FROM c
+00:02 +137: test/semantics_test.dart: M6 differential 65536 SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x)
+00:02 +138: test/semantics_test.dart: M6 differential 65536 SELECT x=1 FROM (SELECT CAST('1' AS TEXT) AS x)
+00:02 +139: test/semantics_test.dart: M6 differential 65536 WITH c(x) AS(SELECT CAST(1 AS REAL)) SELECT x='1',typeof(x) FROM c
+00:02 +140: test/semantics_test.dart: M6 differential 65536 SELECT x='1' FROM (SELECT CAST(1 AS INT) AS x LIMIT 0)
+00:02 +141: test/semantics_test.dart: M6 differential 65536 SELECT group_concat(DISTINCT x ORDER BY x),group_concat(DISTINCT x ORDER BY y),group_concat(DISTINCT x ORDER BY x COLLATE BINARY) FROM (SELECT 'a' COLLATE NOCASE AS x,3 AS y UNION ALL SELECT 'A',1 UNION ALL SELECT 'b',2 UNION ALL SELECT NULL,0)
+00:02 +142: test/semantics_test.dart: M6 differential 65536 SELECT group_concat(dart_counter() ORDER BY dart_counter() COLLATE BINARY),dart_counter() FROM sample WHERE id>0 AND id<=3
+00:02 +143: test/semantics_test.dart: M6 differential 65536 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:02 +144: test/semantics_test.dart: M6 differential 65536 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l JOIN (SELECT 'A' AS x) r USING(x)
+00:02 +145: test/semantics_test.dart: M6 differential 65536 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l LEFT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:02 +146: test/semantics_test.dart: M6 differential 65536 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l LEFT JOIN (SELECT 'A' AS x) r USING(x)
+00:02 +147: test/semantics_test.dart: M6 differential 65536 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:02 +148: test/semantics_test.dart: M6 differential 65536 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l RIGHT JOIN (SELECT 'A' AS x) r USING(x)
+00:02 +149: test/semantics_test.dart: M6 differential 65536 SELECT x,typeof(x),x='1' FROM (SELECT CAST(1 AS INT) AS x) l FULL JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x)
+00:02 +150: test/semantics_test.dart: M6 differential 65536 SELECT x,x='a',x='A',l.x,r.x FROM (SELECT 'a' COLLATE NOCASE AS x) l FULL JOIN (SELECT 'A' AS x) r USING(x)
+00:02 +151: test/semantics_test.dart: M6 differential 65536 SELECT a.x,b.x FROM (SELECT 'a' COLLATE NOCASE AS x) a JOIN (SELECT 'A' AS x) b ON a.x=b.x
+00:02 +152: test/semantics_test.dart: M6 differential 65536 SELECT a.x,b.x FROM (SELECT 'a' AS x) a RIGHT JOIN (SELECT 'A' COLLATE NOCASE AS x) b ON a.x=b.x
+00:02 +153: test/semantics_test.dart: M6 differential 65536 SELECT x,typeof(x) FROM (SELECT CAST(1 AS INT) AS x) l RIGHT JOIN (SELECT CAST('1' AS TEXT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)
+00:02 +154: test/semantics_test.dart: M6 differential 65536 SELECT x FROM (SELECT CAST('1' AS TEXT) AS x) l FULL JOIN (SELECT CAST(1 AS INT) AS x) r USING(x) JOIN (SELECT 1 AS x) s USING(x)
+00:02 +155: test/semantics_test.dart: M6 differential 65536 SELECT x=y FROM (SELECT x FROM (SELECT 'a' AS x) l FULL JOIN (SELECT 'a' AS x) r USING(x)) merged CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)
+00:02 +156: test/semantics_test.dart: M6 differential 65536 SELECT x FROM (SELECT 'a' AS x) UNION SELECT 'A' COLLATE NOCASE
+00:02 +157: test/semantics_test.dart: M6 differential 65536 SELECT lower('A')=y FROM (SELECT 'A' COLLATE NOCASE AS y)
+00:02 +158: test/semantics_test.dart: M6 differential 65536 SELECT x=y FROM (SELECT lower('A') AS x) q CROSS JOIN (SELECT 'A' COLLATE NOCASE AS y)
+00:02 +159: test/semantics_test.dart: M6 differential 65536 SELECT 'A' AS x UNION SELECT 'a' COLLATE NOCASE
+00:02 +160: test/semantics_test.dart: M6 differential 65536 SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x
+00:02 +161: test/semantics_test.dart: M6 differential 65536 SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY +1
+00:02 +162: test/semantics_test.dart: M6 differential 65536 SELECT 'a' COLLATE NOCASE AS x UNION ALL SELECT 'B' ORDER BY x COLLATE BINARY
+00:02 +163: test/semantics_test.dart: M6 differential 65536 SELECT CAST('1_000' AS INT),typeof(CAST('1_000' AS INT))
+00:02 +164: test/semantics_test.dart: M6 differential 65536 SELECT CAST('1_0.2' AS REAL),typeof(CAST('1_0.2' AS REAL))
+00:02 +165: test/semantics_test.dart: M6 differential 65536 (tearDownAll)
+00:02 +165: All tests passed!

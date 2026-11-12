@@ -13,10 +13,20 @@
         "packages/sqlite_plus/test/support/optimizer_oracle.dart": "588534f4bfcd6dc39e27e6964d137133a6136943330e232b9da60859e2fff859"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 33,
+      "description": "Retain CAST affinity and explicit collation during folding",
+      "focused_test_log": "item33.log",
+      "parent_commit": "2a704be8dad0d1c6eaf6cb92bcf2f767cb959445",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "1f83379690712da1fd2124a1377db47199ef843f86598640f95e514b9b62b490",
+        "packages/sqlite_plus/test/optimizer_constants_test.dart": "659ba7541dd0ba5069f04686efd4139cbf9fb84bc74a0e9b9569ac870fbb99e4"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
   "pending": [
-    33,
     32,
     37,
     21,

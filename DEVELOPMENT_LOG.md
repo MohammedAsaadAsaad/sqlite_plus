@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Correctness checkpoint for optimizer item 33
+
+Retain CAST affinity and explicit collation during folding. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item33.log`. Full-tree regressions and performance acceptance remain pending.
+
 ## 2026-11-12 — Correctness checkpoint for optimizer item 35
 
 Preserve correlated and renamed projection dependencies. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item35.log`. Full-tree regressions and performance acceptance remain pending.
