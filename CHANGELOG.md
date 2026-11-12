@@ -2,7 +2,7 @@
 
 ## 0.1.14
 
-`sqlite_plus` is `0.1.14`. The query planner described in `packages/sqlite_plus/CHANGELOG.md` is in this tree. ORM, generator, Arabic, vec, geo, and the other packages keep their current version numbers and now require `sqlite_plus` ^0.1.14. This version is not uploaded.
+`sqlite_plus` is `0.1.14`. The query planner described in `packages/sqlite_plus/CHANGELOG.md` is in this tree, with worked examples in the engine, ORM, and inspector READMEs. ORM, generator, Arabic, vec, geo, and the other packages keep their current version numbers and now require `sqlite_plus` ^0.1.14. `sqlite_plus_jobs` is `0.0.1-dev.1`, prepared for pub.dev, and not uploaded. Its upload waits until `sqlite_plus` 0.1.14 is on pub.dev. Neither version is uploaded.
 
 ## 0.1.13
 

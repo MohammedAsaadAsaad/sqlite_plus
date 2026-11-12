@@ -2,8 +2,17 @@
 
 Opt-in embedded jobs for the pure Dart sqlite_plus engine. Persist tasks, claim
 with leases, retry failures and recover expired attempts. No server, core hooks,
-ORM dependency, automatic polling or OS background service. Experimental,
-unpublished workspace package (`publish_to: none`).
+ORM dependency, automatic polling or OS background service.
+
+```yaml
+dependencies:
+  sqlite_plus: ^0.1.14
+  sqlite_plus_jobs: ^0.0.1-dev.1
+```
+
+This is pre-release `0.0.1-dev.1`. It is prepared for pub.dev and is not uploaded.
+It requires `sqlite_plus` ^0.1.14, which is also not uploaded. Upload the engine
+first. pub.dev cannot resolve this package until that version exists.
 
 ## Start with an application record and its job
 
@@ -165,6 +174,19 @@ The first payload wins; a repeated key returns the original ID with created=fals
 without changing type/payload/schedule. Omit the key to allow independent jobs.
 Retention therefore affects deduplication semantics. Pruning/retry are explicit.
 
+## SQL
+
+Queue statements are ordinary engine SQL. This package does not choose indexes
+and does not keep a second planner. `EXPLAIN QUERY PLAN` on the application
+connection reports the engine decision for application tables. The worked plans,
+including an index seek, a two-table inner join, and the shapes that stay
+unimplemented, are in the
+[engine planner section](../sqlite_plus/README.md#the-query-planner).
+
+The reserved `_spj_` tables are ordinary tables with the indexes this package
+creates. Their access follows the same planner. Do not write those tables by
+hand.
+
 ## Schema, bounds and integration
 
 Reserved ordinary tables: `_spj_meta`, `_spj_jobs`, plus three automatic indexes
@@ -211,10 +233,11 @@ retry bounds, cancellation/pruning, atomic application enqueue/result+ack,
 scoped lifetime, reopen, reserved-schema corruption, journal fault recovery,
 pinned native SQLite transitions and cross-open integrity in three encodings.
 
-No production-publication readiness, independent-process coordination, actual
-browser/device performance, OS background execution, or million-row scalability
-claim. Production runtime remains pure Dart; native SQLite is a development oracle.
+This pre-release is prepared for pub.dev and is not uploaded. It does not claim
+independent-process coordination, browser or device performance, OS background
+execution, or million-row scalability. The production runtime remains pure Dart.
+Native SQLite is a development oracle.
 
-The measured workspace behavior requires the accompanying unreleased core fixes.
-Release those fixes and raise the core dependency floor before publishing Jobs
-independently; older published core builds are not covered by these results.
+The measured behavior requires `sqlite_plus` ^0.1.14. That engine version is
+prepared in this workspace and is not on pub.dev yet. Upload it before this
+package. Older published engine builds are not the version these results describe.

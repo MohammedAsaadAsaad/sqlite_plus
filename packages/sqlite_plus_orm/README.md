@@ -620,6 +620,20 @@ value policies use actual SQL collations; plans report input counts, not estimat
 insert/update promises. See [API and limits](doc/IMPORT.md), including the complete
 Branch preview example and the source of handwritten/generated column names.
 
+## The query planner
+
+A typed filter is SQL. The engine plans it. This package does not keep a second planner.
+
+```dart
+final stored = await books.query
+    .filter((row) => row.title.equalTo('Kept Garden Revised'))
+    .single();
+```
+
+The predicate is `"title" = ?`. The bound value is `Kept Garden Revised`. If the table also has `CREATE INDEX books_title ON books(title)`, that equality is eligible for the same index seek the engine README shows for `WHERE a = ?`. `EXPLAIN QUERY PLAN` on the engine connection reports the chosen path. A filter that calls a function, a join the engine does not seek, and a shape with no usable index stay on the engine's existing scan.
+
+The worked plans, including a covering seek, a two-table `SEARCH`, `MAX` of an integer primary key, and the shapes that stay unimplemented, are in the [engine planner section](../sqlite_plus/README.md#the-query-planner). Inspector `explain` and `profile` report those decisions for SQL you pass through the wrapper.
+
 ## Prepared statements
 
 Optional reusable query syntax and typed ORM integration are documented in

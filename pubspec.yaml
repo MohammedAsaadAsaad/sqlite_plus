@@ -28,6 +28,7 @@ workspace:
   - packages/sqlite_plus_inspector/example
   - packages/sqlite_plus_branch
   - packages/sqlite_plus_jobs
+  - packages/sqlite_plus_jobs/example
 dev_dependencies:
   crypto: any
   sqlite_plus: any

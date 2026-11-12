@@ -721,9 +721,10 @@ connection/process/isolate ownership remain unverified/out of scope.
 
 Raw medians/ranges/RSS, reproducible copied-baseline patches, source/binary hashes,
 profiling, archived intermediate runs and limits: benchmark_results/jobs_performance.
-Current workspace depends on these unreleased core fixes; before independent Jobs
-publication, release the core fixes and raise the dependency floor appropriately.
-No push, merge or publication performed.
+The jobs dependency floor in this tree is `sqlite_plus` ^0.1.14. `sqlite_plus_jobs`
+0.0.1-dev.1 is prepared for pub.dev and is not uploaded. Upload `sqlite_plus`
+0.1.14 first. pub.dev cannot resolve the jobs package until that version exists.
+The historical counts above describe the workspace that produced them.
 
 ## Optional preparation and ORM binding
 

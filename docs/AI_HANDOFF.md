@@ -4,7 +4,10 @@
 
 `sqlite_plus` is version `0.1.14` in this tree and is not uploaded. The
 changelog records the planner scope, the open cost gates, and the suites run
-on Linux x64. M9 and item 108 stay open. Publishing still waits for an
+on Linux x64. The engine, ORM, inspector, and jobs READMEs show worked planner
+examples from this tree. `sqlite_plus_jobs` 0.0.1-dev.1 is prepared for pub.dev
+and is not uploaded. It requires `sqlite_plus` ^0.1.14, so the engine upload
+comes first. M9 and item 108 stay open. Publishing still waits for an
 explicit upload request.
 
 PR #84 is on main as `322c2b0`. PR #85 is on main as `1e9afdd`.

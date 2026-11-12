@@ -131,6 +131,21 @@ Joins through `FULL`, subqueries, `UNION` `INTERSECT` `EXCEPT`, CTEs, windows, `
 
 Compared with pinned SQLite 3.53.1: constant `EXPLAIN` arithmetic, a constant `WHERE`, one table scan, a constant subquery, an integer-primary-key scan, `WITHOUT ROWID`, a virtual generated column, a typed `INSERT`, and a multi-row `VALUES` insert. An integer-primary-key insert and a join of two subqueries still have no bytecode. This is not a VDBE. Contentless FTS4 returns the pinned `MATCH` row and stores no content table. File `journal_mode` `wal`, `persist`, and `truncate` follow the pinned header and journal bytes. This is not a multi-frame WAL. `incremental_vacuum` moves a live end page before truncating. ICU collations are absent. `json_pretty` and correlated `json_each` are in the engine. `json_each(docs.label) RIGHT JOIN docs` returns 0 rows, matching the pinned CLI. Double quotes stay identifiers unless `doubleQuotedStrings` is set. That mode matches the pinned CLI for the cases in `db_browser_b3_dqs_test.dart`. Unquoted `a.title` beside a column named `a.title` returns the `title` column, matching the pinned CLI.
 
+## The query planner
+
+Version 0.1.14, in this tree and not uploaded, chooses an access path for ordinary SQL. An equality on an index can seek. A plain two-table inner join can seek the inner index. `MAX` of an unshadowed integer primary key can read one end. The complete setup is in the [engine README](packages/sqlite_plus/README.md#the-query-planner). On that connection, after `CREATE INDEX ia ON t(a)` and the three inserted rows:
+
+```dart
+final rows = await db.query('SELECT id FROM t WHERE a = ? ORDER BY id', [10]);
+final plan = await db.query(
+  'EXPLAIN QUERY PLAN SELECT id FROM t WHERE a = 10',
+);
+```
+
+`rows.rows` is `[[1], [3]]` and `plan.rows.single.last` is `SEARCH t USING COVERING INDEX ia (a=?)`. Each id is a `BigInt`.
+
+The ORM filter `row.title.equalTo(...)` becomes `"title" = ?` and uses this planner. Inspector `explain` reports `secondary-index-lookup` for that seek and `inner-join-search` for an eligible two-table join. `sqlite_plus_jobs` runs ordinary engine SQL, so its statements use the same planner; the queue package does not choose indexes. `STAT4` planning, skip-scan, index intersection, hash join, and flattening a correlated subquery are not implemented. Plans can differ from 0.1.13.
+
 ## Keyword search
 
 [`sqlite_plus_search`](packages/sqlite_plus_search) keeps the index in the same database. A page of the product catalog loads 20 names. On one arm64 phone, release build 0.5.2, `بسكويت` read `20 of 493 matches · 47.236 ms`. The catalog holds 10,000 Arabic names and 10,000 English names. That page was 1 of 25, and the score on those titles was 3.965.
@@ -271,15 +286,21 @@ plan](docs/plans/PREVIEW_IMPORT_DIAGNOSTICS.md) and [AOT evidence/limits](benchm
 cover scope and remaining release gates. The [core import performance follow-up](benchmark_results/import_performance/README.md) records the optimized workload and its limits. No separate Preview/Import
 package, automatic index creation or default raw recording is introduced.
 
-### Embedded job queues (unreleased)
+### Embedded job queues
 
-[`sqlite_plus_jobs`](packages/sqlite_plus_jobs) adds durable task state, queue-scoped
-idempotent enqueue, priority/delay, lease tokens, bounded retries and explicit
-retention. Application writes can commit atomically with enqueue or lease-fenced
+[`sqlite_plus_jobs`](packages/sqlite_plus_jobs) is `0.0.1-dev.1` in this tree.
+It is prepared for pub.dev and is not uploaded. It requires `sqlite_plus` ^0.1.14,
+so the engine upload comes first. pub.dev cannot resolve the jobs package until
+that engine version exists.
+
+The package adds durable task state, queue-scoped idempotent enqueue,
+priority/delay, lease tokens, bounded retries and explicit retention.
+Application writes can commit atomically with enqueue or lease-fenced
 completion. Its optional worker runs one registered handler when called; the
 application controls scheduling. Same-connection coordination only, with
 at-least-once processing and backend-dependent durability. No core hooks or
-implicit ORM/Changes/Sync integration. See the [plan/status](docs/plans/JOBS.md)
+implicit ORM/Changes/Sync integration. Queue statements are ordinary engine SQL
+and use the planner above. See the [plan/status](docs/plans/JOBS.md)
 and [performance evidence](benchmark_results/jobs_performance/README.md).
 
 ### Optional prepared statements

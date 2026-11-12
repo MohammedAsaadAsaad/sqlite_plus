@@ -201,21 +201,20 @@ in-flight budget until it finishes. `enabled = false` bypasses observation;
 
 ## Explicit plans
 
+`explain` asks the engine planner and does not run the original `SELECT`. On the tables from the [engine planner example](../sqlite_plus/README.md#the-query-planner):
+
 ```dart
-final plan = await db.explain(
-  'SELECT id,name FROM products WHERE category_id=?',
-  [categoryId],
+final inspector = SqlInspector();
+final watched = inspector.database(db);
+final plan = await watched.explain('SELECT id FROM t WHERE a = 10');
+final joined = await watched.explain(
+  'SELECT t.id FROM t INNER JOIN u ON t.a = u.k',
 );
-print(plan.toJson()); // engine access path, index, covering information
 ```
 
-Never automatic on slow queries. The original SELECT is not executed again.
-For mutable engines this explicitly exports a main-image snapshot and opens a
-read-only planner with the same function registry; it can be expensive for a
-large database. Read-only adapters use their existing planner. These are the
-engine's supported planning metadata, not full VM bytecode or automatic index
-recommendations. Unsupported SQL shapes fail normally; only SELECT/WITH input
-is accepted and planning does not write source data.
+`plan.access` is `secondary-index-lookup`, `plan.indexName` is `ia`, and `plan.covering` is true. `joined.access` is `inner-join-search`. The per-table lines stay on `EXPLAIN QUERY PLAN`: `SCAN t`, then `SEARCH u USING INDEX uk (k=?)`. `plan.toJson()` is that metadata. It is not bytecode and it does not recommend a new index.
+
+Never automatic on slow queries. For mutable engines this exports a main-image snapshot and opens a read-only planner with the same function registry; it can be expensive for a large database. Read-only adapters use their existing planner. Only `SELECT` and `WITH` input is accepted. Planning does not write source data.
 
 ORM `.explain` serializes with its Changes delegate when configured, but call it
 while the context is idle: it is not a new context-queue operation. IO/RPC file
@@ -261,8 +260,16 @@ and the [complete runnable example](example/diagnostics.dart).
 Use `await connection.profile(sql, parameters: values)` on engine-backed
 read-only/mutable or ORM inspection connections to obtain one execution's normal
 result plus bounded real planner decisions/actual row and page counters.
-Normal `.query` never turns this on. Unsupported shapes/custom adapters reject;
-ORM lease/close state and mutable routing/exclusion remain enforced. See the
+Normal `.query` never turns this on.
+
+On the same tables, `profile('SELECT id FROM t WHERE a = 10')` returns rows
+`[[1], [3]]` and `plan.access` `secondary-index-lookup`. `profile('SELECT MAX(id) FROM t')`
+returns `[[3]]` and records `primary-key-extreme`. A join that calls a function,
+such as `SELECT abs(t.id) FROM t INNER JOIN u ON t.a = u.k`, rejects with
+`Diagnosis requires a simple scalar SELECT` before the function runs.
+
+Unsupported shapes and custom adapters reject. ORM lease/close state and mutable
+routing/exclusion remain enforced. See the
 [complete assertion example](example/query_profile.dart), engine diagnostic scope
 and workspace `benchmark_results/optimizer_diagnostics/README.md` for measured
 ON costs and OFF control tradeoffs; no zero-overhead guarantee is made.
