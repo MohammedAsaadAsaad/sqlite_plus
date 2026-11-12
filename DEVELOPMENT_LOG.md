@@ -1,5 +1,9 @@
 # Development log
 
+## 2026-11-12 — Correctness checkpoint for optimizer item 31
+
+Restrict extremum shortcuts to unshadowed built-in integer keys. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item31.log`. Full-tree regressions and performance acceptance remain pending.
+
 ## 2026-11-12 — Correctness checkpoint for optimizer item 11
 
 Require complete covering dependencies and genuine rowid aliases. Focused/native checks passed; see `benchmark_results/optimizer_correctness/item11.log`. Full-tree regressions and performance acceptance remain pending.

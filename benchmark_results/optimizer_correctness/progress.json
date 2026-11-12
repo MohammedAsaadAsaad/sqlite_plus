@@ -70,10 +70,20 @@
         "packages/sqlite_plus/test/optimizer_covering_test.dart": "678c86485a7c826b1ddbdeb462ee84206321e18078a2c2074c8e43f2254cff7d"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 31,
+      "description": "Restrict extremum shortcuts to unshadowed built-in integer keys",
+      "focused_test_log": "item31.log",
+      "parent_commit": "1eb2e52675218f4693f950e4068dba86010433c4",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/database.dart": "eb86bc03a0e21c136284dec4ec8267c4cd8916c4962f6ed3914911d764b744f9",
+        "packages/sqlite_plus/test/optimizer_extreme_test.dart": "d04dff74019a452b7cb7adf86fc652d87e7d5d8e97da8d736fc86c81637a8b66"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
   "pending": [
-    31,
     13,
     14,
     34,

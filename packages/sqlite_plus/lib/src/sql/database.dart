@@ -2324,6 +2324,9 @@ final class SqliteDatabase {
     }
     final expression = statement.items.single.expression;
     if (expression is! FunctionExpr ||
+        expression.registered != null ||
+        !expression.isAggregate ||
+        expression.order.isNotEmpty ||
         expression.distinct ||
         expression.star ||
         expression.filter != null ||
@@ -2336,7 +2339,9 @@ final class SqliteDatabase {
     final name = asciiLower(argument.name);
     final alias =
         table.rowidAlias == null ? null : asciiLower(table.rowidAlias!);
-    if (name != alias && !const {'rowid', 'oid', '_rowid_'}.contains(name)) {
+    if (name != alias &&
+        (!const {'rowid', 'oid', '_rowid_'}.contains(name) ||
+            table.columns.any((column) => asciiLower(column.name) == name))) {
       return null;
     }
     return expression.key == 'max';
