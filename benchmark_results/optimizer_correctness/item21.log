@@ -1,0 +1,310 @@
+00:00 +0: loading test/optimizer_boolean_test.dart
+00:00 +0: test/optimizer_boolean_test.dart: scalar AND OR evaluate required callbacks and errors
+00:00 +1: loading test/generated_read_test.dart
+00:00 +1: test/generated_read_test.dart:  SELECT a FROM t encoding 1
+00:00 +2: test/generated_read_test.dart:  SELECT v FROM t encoding 1
+00:00 +3: test/generated_read_test.dart:  SELECT v,v FROM t encoding 1
+00:00 +4: test/generated_read_test.dart:  SELECT s,s FROM t encoding 1
+00:00 +5: test/generated_read_test.dart:  SELECT a FROM t LIMIT 1 encoding 1
+00:00 +6: test/generated_read_test.dart:  SELECT v FROM t LIMIT 1 encoding 1
+00:00 +7: test/generated_read_test.dart:  SELECT v FROM t LIMIT 0 encoding 1
+00:00 +8: test/generated_read_test.dart:  SELECT count(*) FROM t encoding 1
+00:00 +9: test/generated_read_test.dart:  SELECT v FROM t WHERE v>1 encoding 1
+00:00 +10: test/generated_read_test.dart:  SELECT v FROM t WHERE a=2 encoding 1
+00:00 +11: test/generated_read_test.dart:  SELECT v FROM t ORDER BY a DESC LIMIT 1 encoding 1
+00:00 +12: test/generated_read_test.dart:  SELECT v FROM t ORDER BY v DESC LIMIT 1 encoding 1
+00:00 +13: test/generated_read_test.dart:  SELECT w,w FROM t WHERE a=2 encoding 1
+00:00 +14: test/generated_read_test.dart:  SELECT v,s FROM t WHERE a=2 encoding 1
+00:00 +15: test/generated_read_test.dart:  SELECT t.v,x.v FROM t JOIN t x ON x.a=t.a WHERE t.a=2 encoding 1
+00:01 +16: test/generated_read_test.dart:  SELECT * FROM t WHERE a=2 encoding 1
+00:01 +17: test/generated_read_test.dart:  SELECT a FROM t WHERE 0 AND v encoding 1
+00:01 +18: test/generated_read_test.dart:  SELECT 0 AND v, v AND 0, 1 OR v, v OR 2 FROM t encoding 1
+00:01 +19: test/generated_read_test.dart:  SELECT 0_0 AND v, 1_0 OR v, +0 AND v, -0 AND v FROM t encoding 1
+00:01 +20: test/generated_read_test.dart:  SELECT 0.0 AND v, 2147483648 OR v, 0x0 AND v FROM t encoding 1
+00:01 +21: test/generated_read_test.dart:  SELECT 0 AND missing, missing OR 1 FROM t encoding 1
+00:01 +22: test/generated_read_test.dart:  SELECT 0 AND sum(v) FROM t encoding 1
+00:01 +23: test/generated_read_test.dart:  SELECT 0 AND row_number() OVER(ORDER BY a) FROM t encoding 1
+00:01 +24: test/generated_read_test.dart:  SELECT CASE WHEN a=2 THEN v ELSE s END FROM t encoding 1
+00:01 +25: test/generated_read_test.dart:  SELECT (SELECT v FROM t WHERE a=x.a) FROM t x encoding 1
+00:01 +26: test/generated_read_test.dart:  SELECT v,v FROM(SELECT v FROM t) WHERE v>1 LIMIT 1 encoding 1
+00:01 +27: test/generated_read_test.dart:  WITH c AS MATERIALIZED(SELECT v FROM t) SELECT v,v FROM c encoding 1
+00:01 +28: test/generated_read_test.dart:  error guard SELECT a,s FROM t encoding 1
+00:01 +29: test/generated_read_test.dart:  error guard SELECT count(*) FROM t encoding 1
+00:01 +30: test/generated_read_test.dart:  error guard SELECT a FROM t WHERE a=99 encoding 1
+00:01 +31: test/generated_read_test.dart:  error guard SELECT CASE WHEN 0 THEN v ELSE s END FROM t encoding 1
+00:01 +32: test/generated_read_test.dart:  error guard SELECT v FROM t LIMIT 0 encoding 1
+00:01 +33: test/generated_read_test.dart:  error guard SELECT v FROM t encoding 1
+00:01 +34: test/generated_read_test.dart:  error guard SELECT w FROM t WHERE a=2 encoding 1
+00:01 +35: test/generated_read_test.dart: WITHOUT ROWID SELECT a FROM t encoding 1
+00:01 +36: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t encoding 1
+00:01 +37: test/generated_read_test.dart: WITHOUT ROWID SELECT v,v FROM t encoding 1
+00:01 +38: test/generated_read_test.dart: WITHOUT ROWID SELECT s,s FROM t encoding 1
+00:01 +39: test/generated_read_test.dart: WITHOUT ROWID SELECT a FROM t LIMIT 1 encoding 1
+00:01 +40: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t LIMIT 1 encoding 1
+00:01 +41: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t LIMIT 0 encoding 1
+00:01 +42: test/generated_read_test.dart: WITHOUT ROWID SELECT count(*) FROM t encoding 1
+00:01 +43: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t WHERE v>1 encoding 1
+00:01 +44: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t WHERE a=2 encoding 1
+00:01 +45: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t ORDER BY a DESC LIMIT 1 encoding 1
+00:01 +46: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t ORDER BY v DESC LIMIT 1 encoding 1
+00:01 +47: test/generated_read_test.dart: WITHOUT ROWID SELECT w,w FROM t WHERE a=2 encoding 1
+00:01 +48: test/generated_read_test.dart: WITHOUT ROWID SELECT v,s FROM t WHERE a=2 encoding 1
+00:01 +49: test/generated_read_test.dart: WITHOUT ROWID SELECT t.v,x.v FROM t JOIN t x ON x.a=t.a WHERE t.a=2 encoding 1
+00:01 +50: test/generated_read_test.dart: WITHOUT ROWID SELECT * FROM t WHERE a=2 encoding 1
+00:01 +51: test/generated_read_test.dart: WITHOUT ROWID SELECT a FROM t WHERE 0 AND v encoding 1
+00:01 +52: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND v, v AND 0, 1 OR v, v OR 2 FROM t encoding 1
+00:01 +53: test/generated_read_test.dart: WITHOUT ROWID SELECT 0_0 AND v, 1_0 OR v, +0 AND v, -0 AND v FROM t encoding 1
+00:01 +54: test/generated_read_test.dart: WITHOUT ROWID SELECT 0.0 AND v, 2147483648 OR v, 0x0 AND v FROM t encoding 1
+00:01 +55: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND missing, missing OR 1 FROM t encoding 1
+00:01 +56: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND sum(v) FROM t encoding 1
+00:01 +57: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND row_number() OVER(ORDER BY a) FROM t encoding 1
+00:01 +58: test/generated_read_test.dart: WITHOUT ROWID SELECT CASE WHEN a=2 THEN v ELSE s END FROM t encoding 1
+00:01 +59: test/generated_read_test.dart: WITHOUT ROWID SELECT (SELECT v FROM t WHERE a=x.a) FROM t x encoding 1
+00:01 +60: test/generated_read_test.dart: WITHOUT ROWID SELECT v,v FROM(SELECT v FROM t) WHERE v>1 LIMIT 1 encoding 1
+00:01 +61: test/generated_read_test.dart: WITHOUT ROWID WITH c AS MATERIALIZED(SELECT v FROM t) SELECT v,v FROM c encoding 1
+00:01 +62: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT a,s FROM t encoding 1
+00:01 +63: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT count(*) FROM t encoding 1
+00:01 +64: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT a FROM t WHERE a=99 encoding 1
+00:01 +65: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT CASE WHEN 0 THEN v ELSE s END FROM t encoding 1
+00:01 +66: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT v FROM t LIMIT 0 encoding 1
+00:01 +67: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT v FROM t encoding 1
+00:01 +68: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT w FROM t WHERE a=2 encoding 1
+00:01 +69: test/generated_read_test.dart: STRICT SELECT a FROM t encoding 1
+00:01 +70: test/generated_read_test.dart: STRICT SELECT v FROM t encoding 1
+00:01 +71: test/generated_read_test.dart: STRICT SELECT v,v FROM t encoding 1
+00:01 +72: test/generated_read_test.dart: STRICT SELECT s,s FROM t encoding 1
+00:01 +73: test/generated_read_test.dart: STRICT SELECT a FROM t LIMIT 1 encoding 1
+00:01 +74: test/generated_read_test.dart: STRICT SELECT v FROM t LIMIT 1 encoding 1
+00:01 +75: test/generated_read_test.dart: STRICT SELECT v FROM t LIMIT 0 encoding 1
+00:01 +76: test/generated_read_test.dart: STRICT SELECT count(*) FROM t encoding 1
+00:01 +77: test/generated_read_test.dart: STRICT SELECT v FROM t WHERE v>1 encoding 1
+00:01 +78: test/generated_read_test.dart: STRICT SELECT v FROM t WHERE a=2 encoding 1
+00:01 +79: test/generated_read_test.dart: STRICT SELECT v FROM t ORDER BY a DESC LIMIT 1 encoding 1
+00:01 +80: test/generated_read_test.dart: STRICT SELECT v FROM t ORDER BY v DESC LIMIT 1 encoding 1
+00:01 +81: test/generated_read_test.dart: STRICT SELECT w,w FROM t WHERE a=2 encoding 1
+00:01 +82: test/generated_read_test.dart: STRICT SELECT v,s FROM t WHERE a=2 encoding 1
+00:01 +83: test/generated_read_test.dart: STRICT SELECT t.v,x.v FROM t JOIN t x ON x.a=t.a WHERE t.a=2 encoding 1
+00:01 +84: test/generated_read_test.dart: STRICT SELECT * FROM t WHERE a=2 encoding 1
+00:01 +85: test/generated_read_test.dart: STRICT SELECT a FROM t WHERE 0 AND v encoding 1
+00:01 +86: test/generated_read_test.dart: STRICT SELECT 0 AND v, v AND 0, 1 OR v, v OR 2 FROM t encoding 1
+00:01 +87: test/generated_read_test.dart: STRICT SELECT 0_0 AND v, 1_0 OR v, +0 AND v, -0 AND v FROM t encoding 1
+00:01 +88: test/generated_read_test.dart: STRICT SELECT 0.0 AND v, 2147483648 OR v, 0x0 AND v FROM t encoding 1
+00:01 +89: test/generated_read_test.dart: STRICT SELECT 0 AND missing, missing OR 1 FROM t encoding 1
+00:01 +90: test/generated_read_test.dart: STRICT SELECT 0 AND sum(v) FROM t encoding 1
+00:01 +91: test/generated_read_test.dart: STRICT SELECT 0 AND row_number() OVER(ORDER BY a) FROM t encoding 1
+00:01 +92: test/generated_read_test.dart: STRICT SELECT CASE WHEN a=2 THEN v ELSE s END FROM t encoding 1
+00:01 +93: test/generated_read_test.dart: STRICT SELECT (SELECT v FROM t WHERE a=x.a) FROM t x encoding 1
+00:01 +94: test/generated_read_test.dart: STRICT SELECT v,v FROM(SELECT v FROM t) WHERE v>1 LIMIT 1 encoding 1
+00:01 +95: test/generated_read_test.dart: STRICT WITH c AS MATERIALIZED(SELECT v FROM t) SELECT v,v FROM c encoding 1
+00:01 +96: test/generated_read_test.dart: STRICT error guard SELECT a,s FROM t encoding 1
+00:01 +97: test/generated_read_test.dart: STRICT error guard SELECT count(*) FROM t encoding 1
+00:01 +98: test/generated_read_test.dart: STRICT error guard SELECT a FROM t WHERE a=99 encoding 1
+00:01 +99: test/generated_read_test.dart: STRICT error guard SELECT CASE WHEN 0 THEN v ELSE s END FROM t encoding 1
+00:01 +100: test/generated_read_test.dart: STRICT error guard SELECT v FROM t LIMIT 0 encoding 1
+00:01 +101: test/generated_read_test.dart: STRICT error guard SELECT v FROM t encoding 1
+00:01 +102: test/generated_read_test.dart: STRICT error guard SELECT w FROM t WHERE a=2 encoding 1
+00:01 +103: test/generated_read_test.dart:  SELECT a FROM t encoding 2
+00:01 +104: test/generated_read_test.dart:  SELECT v FROM t encoding 2
+00:01 +105: test/generated_read_test.dart:  SELECT v,v FROM t encoding 2
+00:01 +106: test/generated_read_test.dart:  SELECT s,s FROM t encoding 2
+00:01 +107: test/generated_read_test.dart:  SELECT a FROM t LIMIT 1 encoding 2
+00:01 +108: test/generated_read_test.dart:  SELECT v FROM t LIMIT 1 encoding 2
+00:01 +109: test/generated_read_test.dart:  SELECT v FROM t LIMIT 0 encoding 2
+00:01 +110: test/generated_read_test.dart:  SELECT count(*) FROM t encoding 2
+00:01 +111: test/generated_read_test.dart:  SELECT v FROM t WHERE v>1 encoding 2
+00:01 +112: test/generated_read_test.dart:  SELECT v FROM t WHERE a=2 encoding 2
+00:01 +113: test/generated_read_test.dart:  SELECT v FROM t ORDER BY a DESC LIMIT 1 encoding 2
+00:01 +114: test/generated_read_test.dart:  SELECT v FROM t ORDER BY v DESC LIMIT 1 encoding 2
+00:01 +115: test/generated_read_test.dart:  SELECT w,w FROM t WHERE a=2 encoding 2
+00:01 +116: test/generated_read_test.dart:  SELECT v,s FROM t WHERE a=2 encoding 2
+00:01 +117: test/generated_read_test.dart:  SELECT t.v,x.v FROM t JOIN t x ON x.a=t.a WHERE t.a=2 encoding 2
+00:01 +118: test/generated_read_test.dart:  SELECT * FROM t WHERE a=2 encoding 2
+00:02 +119: test/generated_read_test.dart:  SELECT a FROM t WHERE 0 AND v encoding 2
+00:02 +120: test/generated_read_test.dart:  SELECT 0 AND v, v AND 0, 1 OR v, v OR 2 FROM t encoding 2
+00:02 +121: test/generated_read_test.dart:  SELECT 0_0 AND v, 1_0 OR v, +0 AND v, -0 AND v FROM t encoding 2
+00:02 +122: test/generated_read_test.dart:  SELECT 0.0 AND v, 2147483648 OR v, 0x0 AND v FROM t encoding 2
+00:02 +123: test/generated_read_test.dart:  SELECT 0 AND missing, missing OR 1 FROM t encoding 2
+00:02 +124: test/generated_read_test.dart:  SELECT 0 AND sum(v) FROM t encoding 2
+00:02 +125: test/generated_read_test.dart:  SELECT 0 AND row_number() OVER(ORDER BY a) FROM t encoding 2
+00:02 +126: test/generated_read_test.dart:  SELECT CASE WHEN a=2 THEN v ELSE s END FROM t encoding 2
+00:02 +127: test/generated_read_test.dart:  SELECT (SELECT v FROM t WHERE a=x.a) FROM t x encoding 2
+00:02 +128: test/generated_read_test.dart:  SELECT v,v FROM(SELECT v FROM t) WHERE v>1 LIMIT 1 encoding 2
+00:02 +129: test/generated_read_test.dart:  WITH c AS MATERIALIZED(SELECT v FROM t) SELECT v,v FROM c encoding 2
+00:02 +130: test/generated_read_test.dart:  error guard SELECT a,s FROM t encoding 2
+00:02 +131: test/generated_read_test.dart:  error guard SELECT count(*) FROM t encoding 2
+00:02 +132: test/generated_read_test.dart:  error guard SELECT a FROM t WHERE a=99 encoding 2
+00:02 +133: test/generated_read_test.dart:  error guard SELECT CASE WHEN 0 THEN v ELSE s END FROM t encoding 2
+00:02 +134: test/generated_read_test.dart:  error guard SELECT v FROM t LIMIT 0 encoding 2
+00:02 +135: test/generated_read_test.dart:  error guard SELECT v FROM t encoding 2
+00:02 +136: test/generated_read_test.dart:  error guard SELECT w FROM t WHERE a=2 encoding 2
+00:02 +137: test/generated_read_test.dart: WITHOUT ROWID SELECT a FROM t encoding 2
+00:02 +138: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t encoding 2
+00:02 +139: test/generated_read_test.dart: WITHOUT ROWID SELECT v,v FROM t encoding 2
+00:02 +140: test/generated_read_test.dart: WITHOUT ROWID SELECT s,s FROM t encoding 2
+00:02 +141: test/generated_read_test.dart: WITHOUT ROWID SELECT a FROM t LIMIT 1 encoding 2
+00:02 +142: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t LIMIT 1 encoding 2
+00:02 +143: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t LIMIT 0 encoding 2
+00:02 +144: test/generated_read_test.dart: WITHOUT ROWID SELECT count(*) FROM t encoding 2
+00:02 +145: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t WHERE v>1 encoding 2
+00:02 +146: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t WHERE a=2 encoding 2
+00:02 +147: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t ORDER BY a DESC LIMIT 1 encoding 2
+00:02 +148: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t ORDER BY v DESC LIMIT 1 encoding 2
+00:02 +149: test/generated_read_test.dart: WITHOUT ROWID SELECT w,w FROM t WHERE a=2 encoding 2
+00:02 +150: test/generated_read_test.dart: WITHOUT ROWID SELECT v,s FROM t WHERE a=2 encoding 2
+00:02 +151: test/generated_read_test.dart: WITHOUT ROWID SELECT t.v,x.v FROM t JOIN t x ON x.a=t.a WHERE t.a=2 encoding 2
+00:02 +152: test/generated_read_test.dart: WITHOUT ROWID SELECT * FROM t WHERE a=2 encoding 2
+00:02 +153: test/generated_read_test.dart: WITHOUT ROWID SELECT a FROM t WHERE 0 AND v encoding 2
+00:02 +154: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND v, v AND 0, 1 OR v, v OR 2 FROM t encoding 2
+00:02 +155: test/generated_read_test.dart: WITHOUT ROWID SELECT 0_0 AND v, 1_0 OR v, +0 AND v, -0 AND v FROM t encoding 2
+00:02 +156: test/generated_read_test.dart: WITHOUT ROWID SELECT 0.0 AND v, 2147483648 OR v, 0x0 AND v FROM t encoding 2
+00:02 +157: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND missing, missing OR 1 FROM t encoding 2
+00:02 +158: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND sum(v) FROM t encoding 2
+00:02 +159: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND row_number() OVER(ORDER BY a) FROM t encoding 2
+00:02 +160: test/generated_read_test.dart: WITHOUT ROWID SELECT CASE WHEN a=2 THEN v ELSE s END FROM t encoding 2
+00:02 +161: test/generated_read_test.dart: WITHOUT ROWID SELECT (SELECT v FROM t WHERE a=x.a) FROM t x encoding 2
+00:02 +162: test/generated_read_test.dart: WITHOUT ROWID SELECT v,v FROM(SELECT v FROM t) WHERE v>1 LIMIT 1 encoding 2
+00:02 +163: test/generated_read_test.dart: WITHOUT ROWID WITH c AS MATERIALIZED(SELECT v FROM t) SELECT v,v FROM c encoding 2
+00:02 +164: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT a,s FROM t encoding 2
+00:02 +165: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT count(*) FROM t encoding 2
+00:02 +166: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT a FROM t WHERE a=99 encoding 2
+00:02 +167: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT CASE WHEN 0 THEN v ELSE s END FROM t encoding 2
+00:02 +168: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT v FROM t LIMIT 0 encoding 2
+00:02 +169: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT v FROM t encoding 2
+00:02 +170: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT w FROM t WHERE a=2 encoding 2
+00:02 +171: test/generated_read_test.dart: STRICT SELECT a FROM t encoding 2
+00:02 +172: test/generated_read_test.dart: STRICT SELECT v FROM t encoding 2
+00:02 +173: test/generated_read_test.dart: STRICT SELECT v,v FROM t encoding 2
+00:02 +174: test/generated_read_test.dart: STRICT SELECT s,s FROM t encoding 2
+00:02 +175: test/generated_read_test.dart: STRICT SELECT a FROM t LIMIT 1 encoding 2
+00:02 +176: test/generated_read_test.dart: STRICT SELECT v FROM t LIMIT 1 encoding 2
+00:02 +177: test/generated_read_test.dart: STRICT SELECT v FROM t LIMIT 0 encoding 2
+00:02 +178: test/generated_read_test.dart: STRICT SELECT count(*) FROM t encoding 2
+00:02 +179: test/generated_read_test.dart: STRICT SELECT v FROM t WHERE v>1 encoding 2
+00:02 +180: test/generated_read_test.dart: STRICT SELECT v FROM t WHERE a=2 encoding 2
+00:02 +181: test/generated_read_test.dart: STRICT SELECT v FROM t ORDER BY a DESC LIMIT 1 encoding 2
+00:02 +182: test/generated_read_test.dart: STRICT SELECT v FROM t ORDER BY v DESC LIMIT 1 encoding 2
+00:02 +183: test/generated_read_test.dart: STRICT SELECT w,w FROM t WHERE a=2 encoding 2
+00:02 +184: test/generated_read_test.dart: STRICT SELECT v,s FROM t WHERE a=2 encoding 2
+00:02 +185: test/generated_read_test.dart: STRICT SELECT t.v,x.v FROM t JOIN t x ON x.a=t.a WHERE t.a=2 encoding 2
+00:02 +186: test/generated_read_test.dart: STRICT SELECT * FROM t WHERE a=2 encoding 2
+00:02 +187: test/generated_read_test.dart: STRICT SELECT a FROM t WHERE 0 AND v encoding 2
+00:02 +188: test/generated_read_test.dart: STRICT SELECT 0 AND v, v AND 0, 1 OR v, v OR 2 FROM t encoding 2
+00:02 +189: test/generated_read_test.dart: STRICT SELECT 0_0 AND v, 1_0 OR v, +0 AND v, -0 AND v FROM t encoding 2
+00:02 +190: test/generated_read_test.dart: STRICT SELECT 0.0 AND v, 2147483648 OR v, 0x0 AND v FROM t encoding 2
+00:02 +191: test/generated_read_test.dart: STRICT SELECT 0 AND missing, missing OR 1 FROM t encoding 2
+00:02 +192: test/generated_read_test.dart: STRICT SELECT 0 AND sum(v) FROM t encoding 2
+00:02 +193: test/generated_read_test.dart: STRICT SELECT 0 AND row_number() OVER(ORDER BY a) FROM t encoding 2
+00:02 +194: test/generated_read_test.dart: STRICT SELECT CASE WHEN a=2 THEN v ELSE s END FROM t encoding 2
+00:02 +195: test/generated_read_test.dart: STRICT SELECT (SELECT v FROM t WHERE a=x.a) FROM t x encoding 2
+00:02 +196: test/generated_read_test.dart: STRICT SELECT v,v FROM(SELECT v FROM t) WHERE v>1 LIMIT 1 encoding 2
+00:02 +197: test/generated_read_test.dart: STRICT WITH c AS MATERIALIZED(SELECT v FROM t) SELECT v,v FROM c encoding 2
+00:02 +198: test/generated_read_test.dart: STRICT error guard SELECT a,s FROM t encoding 2
+00:02 +199: test/generated_read_test.dart: STRICT error guard SELECT count(*) FROM t encoding 2
+00:02 +200: test/generated_read_test.dart: STRICT error guard SELECT a FROM t WHERE a=99 encoding 2
+00:02 +201: test/generated_read_test.dart: STRICT error guard SELECT CASE WHEN 0 THEN v ELSE s END FROM t encoding 2
+00:02 +202: test/generated_read_test.dart: STRICT error guard SELECT v FROM t LIMIT 0 encoding 2
+00:02 +203: test/generated_read_test.dart: STRICT error guard SELECT v FROM t encoding 2
+00:02 +204: test/generated_read_test.dart: STRICT error guard SELECT w FROM t WHERE a=2 encoding 2
+00:02 +205: test/generated_read_test.dart:  SELECT a FROM t encoding 3
+00:02 +206: test/generated_read_test.dart:  SELECT v FROM t encoding 3
+00:02 +207: test/generated_read_test.dart:  SELECT v,v FROM t encoding 3
+00:02 +208: test/generated_read_test.dart:  SELECT s,s FROM t encoding 3
+00:02 +209: test/generated_read_test.dart:  SELECT a FROM t LIMIT 1 encoding 3
+00:02 +210: test/generated_read_test.dart:  SELECT v FROM t LIMIT 1 encoding 3
+00:02 +211: test/generated_read_test.dart:  SELECT v FROM t LIMIT 0 encoding 3
+00:02 +212: test/generated_read_test.dart:  SELECT count(*) FROM t encoding 3
+00:02 +213: test/generated_read_test.dart:  SELECT v FROM t WHERE v>1 encoding 3
+00:02 +214: test/generated_read_test.dart:  SELECT v FROM t WHERE a=2 encoding 3
+00:02 +215: test/generated_read_test.dart:  SELECT v FROM t ORDER BY a DESC LIMIT 1 encoding 3
+00:02 +216: test/generated_read_test.dart:  SELECT v FROM t ORDER BY v DESC LIMIT 1 encoding 3
+00:02 +217: test/generated_read_test.dart:  SELECT w,w FROM t WHERE a=2 encoding 3
+00:02 +218: test/generated_read_test.dart:  SELECT v,s FROM t WHERE a=2 encoding 3
+00:02 +219: test/generated_read_test.dart:  SELECT t.v,x.v FROM t JOIN t x ON x.a=t.a WHERE t.a=2 encoding 3
+00:02 +220: test/generated_read_test.dart:  SELECT * FROM t WHERE a=2 encoding 3
+00:02 +221: test/generated_read_test.dart:  SELECT a FROM t WHERE 0 AND v encoding 3
+00:02 +222: test/generated_read_test.dart:  SELECT 0 AND v, v AND 0, 1 OR v, v OR 2 FROM t encoding 3
+00:02 +223: test/generated_read_test.dart:  SELECT 0_0 AND v, 1_0 OR v, +0 AND v, -0 AND v FROM t encoding 3
+00:02 +224: test/generated_read_test.dart:  SELECT 0.0 AND v, 2147483648 OR v, 0x0 AND v FROM t encoding 3
+00:02 +225: test/generated_read_test.dart:  SELECT 0 AND missing, missing OR 1 FROM t encoding 3
+00:02 +226: test/generated_read_test.dart:  SELECT 0 AND sum(v) FROM t encoding 3
+00:02 +227: test/generated_read_test.dart:  SELECT 0 AND row_number() OVER(ORDER BY a) FROM t encoding 3
+00:02 +228: test/generated_read_test.dart:  SELECT CASE WHEN a=2 THEN v ELSE s END FROM t encoding 3
+00:02 +229: test/generated_read_test.dart:  SELECT (SELECT v FROM t WHERE a=x.a) FROM t x encoding 3
+00:02 +230: test/generated_read_test.dart:  SELECT v,v FROM(SELECT v FROM t) WHERE v>1 LIMIT 1 encoding 3
+00:02 +231: test/generated_read_test.dart:  WITH c AS MATERIALIZED(SELECT v FROM t) SELECT v,v FROM c encoding 3
+00:02 +232: test/generated_read_test.dart:  error guard SELECT a,s FROM t encoding 3
+00:02 +233: test/generated_read_test.dart:  error guard SELECT count(*) FROM t encoding 3
+00:02 +234: test/generated_read_test.dart:  error guard SELECT a FROM t WHERE a=99 encoding 3
+00:02 +235: test/generated_read_test.dart:  error guard SELECT CASE WHEN 0 THEN v ELSE s END FROM t encoding 3
+00:02 +236: test/generated_read_test.dart:  error guard SELECT v FROM t LIMIT 0 encoding 3
+00:02 +237: test/generated_read_test.dart:  error guard SELECT v FROM t encoding 3
+00:02 +238: test/generated_read_test.dart:  error guard SELECT w FROM t WHERE a=2 encoding 3
+00:02 +239: test/generated_read_test.dart: WITHOUT ROWID SELECT a FROM t encoding 3
+00:02 +240: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t encoding 3
+00:02 +241: test/generated_read_test.dart: WITHOUT ROWID SELECT v,v FROM t encoding 3
+00:02 +242: test/generated_read_test.dart: WITHOUT ROWID SELECT s,s FROM t encoding 3
+00:02 +243: test/generated_read_test.dart: WITHOUT ROWID SELECT a FROM t LIMIT 1 encoding 3
+00:02 +244: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t LIMIT 1 encoding 3
+00:02 +245: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t LIMIT 0 encoding 3
+00:03 +246: test/generated_read_test.dart: WITHOUT ROWID SELECT count(*) FROM t encoding 3
+00:03 +247: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t WHERE v>1 encoding 3
+00:03 +248: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t WHERE a=2 encoding 3
+00:03 +249: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t ORDER BY a DESC LIMIT 1 encoding 3
+00:03 +250: test/generated_read_test.dart: WITHOUT ROWID SELECT v FROM t ORDER BY v DESC LIMIT 1 encoding 3
+00:03 +251: test/generated_read_test.dart: WITHOUT ROWID SELECT w,w FROM t WHERE a=2 encoding 3
+00:03 +252: test/generated_read_test.dart: WITHOUT ROWID SELECT v,s FROM t WHERE a=2 encoding 3
+00:03 +253: test/generated_read_test.dart: WITHOUT ROWID SELECT t.v,x.v FROM t JOIN t x ON x.a=t.a WHERE t.a=2 encoding 3
+00:03 +254: test/generated_read_test.dart: WITHOUT ROWID SELECT * FROM t WHERE a=2 encoding 3
+00:03 +255: test/generated_read_test.dart: WITHOUT ROWID SELECT a FROM t WHERE 0 AND v encoding 3
+00:03 +256: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND v, v AND 0, 1 OR v, v OR 2 FROM t encoding 3
+00:03 +257: test/generated_read_test.dart: WITHOUT ROWID SELECT 0_0 AND v, 1_0 OR v, +0 AND v, -0 AND v FROM t encoding 3
+00:03 +258: test/generated_read_test.dart: WITHOUT ROWID SELECT 0.0 AND v, 2147483648 OR v, 0x0 AND v FROM t encoding 3
+00:03 +259: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND missing, missing OR 1 FROM t encoding 3
+00:03 +260: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND sum(v) FROM t encoding 3
+00:03 +261: test/generated_read_test.dart: WITHOUT ROWID SELECT 0 AND row_number() OVER(ORDER BY a) FROM t encoding 3
+00:03 +262: test/generated_read_test.dart: WITHOUT ROWID SELECT CASE WHEN a=2 THEN v ELSE s END FROM t encoding 3
+00:03 +263: test/generated_read_test.dart: WITHOUT ROWID SELECT (SELECT v FROM t WHERE a=x.a) FROM t x encoding 3
+00:03 +264: test/generated_read_test.dart: WITHOUT ROWID SELECT v,v FROM(SELECT v FROM t) WHERE v>1 LIMIT 1 encoding 3
+00:03 +265: test/generated_read_test.dart: WITHOUT ROWID WITH c AS MATERIALIZED(SELECT v FROM t) SELECT v,v FROM c encoding 3
+00:03 +266: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT a,s FROM t encoding 3
+00:03 +267: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT count(*) FROM t encoding 3
+00:03 +268: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT a FROM t WHERE a=99 encoding 3
+00:03 +269: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT CASE WHEN 0 THEN v ELSE s END FROM t encoding 3
+00:03 +270: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT v FROM t LIMIT 0 encoding 3
+00:03 +271: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT v FROM t encoding 3
+00:03 +272: test/generated_read_test.dart: WITHOUT ROWID error guard SELECT w FROM t WHERE a=2 encoding 3
+00:03 +273: test/generated_read_test.dart: STRICT SELECT a FROM t encoding 3
+00:03 +274: test/generated_read_test.dart: STRICT SELECT v FROM t encoding 3
+00:03 +275: test/generated_read_test.dart: STRICT SELECT v,v FROM t encoding 3
+00:03 +276: test/generated_read_test.dart: STRICT SELECT s,s FROM t encoding 3
+00:03 +277: test/generated_read_test.dart: STRICT SELECT a FROM t LIMIT 1 encoding 3
+00:03 +278: test/generated_read_test.dart: STRICT SELECT v FROM t LIMIT 1 encoding 3
+00:03 +279: test/generated_read_test.dart: STRICT SELECT v FROM t LIMIT 0 encoding 3
+00:03 +280: test/generated_read_test.dart: STRICT SELECT count(*) FROM t encoding 3
+00:03 +281: test/generated_read_test.dart: STRICT SELECT v FROM t WHERE v>1 encoding 3
+00:03 +282: test/generated_read_test.dart: STRICT SELECT v FROM t WHERE a=2 encoding 3
+00:03 +283: test/generated_read_test.dart: STRICT SELECT v FROM t ORDER BY a DESC LIMIT 1 encoding 3
+00:03 +284: test/generated_read_test.dart: STRICT SELECT v FROM t ORDER BY v DESC LIMIT 1 encoding 3
+00:03 +285: test/generated_read_test.dart: STRICT SELECT w,w FROM t WHERE a=2 encoding 3
+00:03 +286: test/generated_read_test.dart: STRICT SELECT v,s FROM t WHERE a=2 encoding 3
+00:03 +287: test/generated_read_test.dart: STRICT SELECT t.v,x.v FROM t JOIN t x ON x.a=t.a WHERE t.a=2 encoding 3
+00:03 +288: test/generated_read_test.dart: STRICT SELECT * FROM t WHERE a=2 encoding 3
+00:03 +289: test/generated_read_test.dart: STRICT SELECT a FROM t WHERE 0 AND v encoding 3
+00:03 +290: test/generated_read_test.dart: STRICT SELECT 0 AND v, v AND 0, 1 OR v, v OR 2 FROM t encoding 3
+00:03 +291: test/generated_read_test.dart: STRICT SELECT 0_0 AND v, 1_0 OR v, +0 AND v, -0 AND v FROM t encoding 3
+00:03 +292: test/generated_read_test.dart: STRICT SELECT 0.0 AND v, 2147483648 OR v, 0x0 AND v FROM t encoding 3
+00:03 +293: test/generated_read_test.dart: STRICT SELECT 0 AND missing, missing OR 1 FROM t encoding 3
+00:03 +294: test/generated_read_test.dart: STRICT SELECT 0 AND sum(v) FROM t encoding 3
+00:03 +295: test/generated_read_test.dart: STRICT SELECT 0 AND row_number() OVER(ORDER BY a) FROM t encoding 3
+00:03 +296: test/generated_read_test.dart: STRICT SELECT CASE WHEN a=2 THEN v ELSE s END FROM t encoding 3
+00:03 +297: test/generated_read_test.dart: STRICT SELECT (SELECT v FROM t WHERE a=x.a) FROM t x encoding 3
+00:03 +298: test/generated_read_test.dart: STRICT SELECT v,v FROM(SELECT v FROM t) WHERE v>1 LIMIT 1 encoding 3
+00:03 +299: test/generated_read_test.dart: STRICT WITH c AS MATERIALIZED(SELECT v FROM t) SELECT v,v FROM c encoding 3
+00:03 +300: test/generated_read_test.dart: STRICT error guard SELECT a,s FROM t encoding 3
+00:03 +301: test/generated_read_test.dart: STRICT error guard SELECT count(*) FROM t encoding 3
+00:03 +302: test/generated_read_test.dart: STRICT error guard SELECT a FROM t WHERE a=99 encoding 3
+00:03 +303: test/generated_read_test.dart: STRICT error guard SELECT CASE WHEN 0 THEN v ELSE s END FROM t encoding 3
+00:03 +304: test/generated_read_test.dart: STRICT error guard SELECT v FROM t LIMIT 0 encoding 3
+00:03 +305: test/generated_read_test.dart: STRICT error guard SELECT v FROM t encoding 3
+00:03 +306: test/generated_read_test.dart: STRICT error guard SELECT w FROM t WHERE a=2 encoding 3
+00:03 +307: All tests passed!

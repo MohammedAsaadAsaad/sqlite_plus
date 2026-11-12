@@ -48,10 +48,20 @@
         "packages/sqlite_plus/test/optimizer_reuse_test.dart": "5750250b239092affbd5dc01a82387713572eecfd928d6d53d4a8a68778259a1"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 21,
+      "description": "Restore required scalar boolean operand evaluation",
+      "focused_test_log": "item21.log",
+      "parent_commit": "e219e29492882ce3170d1e1ee49b8b69ba68d785",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/parser.dart": "ccdf1b8f01585088ee56c8eb8ef3f44b53054c04d1da4f7d45c120104a949826",
+        "packages/sqlite_plus/test/optimizer_boolean_test.dart": "ee9e447e46df82e6f8d2befe1bb2c1c6c5bf07ccac0838f816f673df1a0f67c4"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }
   ],
   "pending": [
-    21,
     11,
     31,
     13,

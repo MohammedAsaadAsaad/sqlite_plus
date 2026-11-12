@@ -408,17 +408,17 @@ final class BinaryExpr extends Expr {
     }
     if (op == 'AND' || op == 'OR') {
       final aa = truth(left.evaluate(context), context.encoding);
-      if (op == 'AND' && aa == false) return BigInt.zero;
-      if (op == 'OR' && aa == true) return BigInt.one;
+      // Scalar expressions evaluate both operands; only the explicit
+      // integer-literal simplifications above/in the parser may elide them.
       final bb = truth(right.evaluate(context), context.encoding);
       if (op == 'AND') {
-        return bb == false
+        return aa == false || bb == false
             ? BigInt.zero
             : aa == null || bb == null
                 ? null
                 : BigInt.one;
       }
-      return bb == true
+      return aa == true || bb == true
           ? BigInt.one
           : aa == null || bb == null
               ? null

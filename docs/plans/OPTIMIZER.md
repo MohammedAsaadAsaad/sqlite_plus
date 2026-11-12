@@ -4,8 +4,8 @@
 
 Branch: `fix/optimizer-correctness-20261112`. Baseline: `91a8545`.
 The independent review found correctness regressions; the earlier closeout is historical, not a current passing gate.
-Correctness checkpoints: 35, 33, 32, 37.
-Still under repair: 21, 11, 31, 13, 14, 34, 22, 29.
+Correctness checkpoints: 35, 33, 32, 37, 21.
+Still under repair: 11, 31, 13, 14, 34, 22, 29.
 Each checkpoint has focused/native regressions in `benchmark_results/optimizer_correctness/`.
 Full final regressions and cost acceptance are separate and pending; no merge or publication is authorized by a checkpoint.
 
@@ -39,7 +39,7 @@ better. No universal zero-overhead or SQLite optimizer equivalence claim.
 | 18 | Evaluate skew-aware/STAT4 samples | Rejected; sqlite_stat4 is stored and ignored, stat1 remains the estimate |
 | 19 | Stale/missing statistics safeguards | Implemented/unaccepted; a recorded table cardinality is not inflated by a sibling index; no AOT sample |
 | 20 | Statistics gathering/loading cost | Implemented/unaccepted; stat text longer than 65536 is ignored; no loading AOT sample |
-| 21 | Broader safe predicate pushdown | Implemented/unaccepted; AND/OR skip the right side once the left side decides; no AOT sample |
+| 21 | Broader safe predicate pushdown | Correctness repair checkpoint; focused/native regressions pass; final suite/cost gate pending |
 | 22 | Bounded join-order search | Implemented/unaccepted; stat1 reorder covers 2–4 cross joins; 5 stays written order; no AOT sample |
 | 23 | Indexed inner join access | Implemented/unaccepted; INNER JOIN equality on a leading index column seeks; OR and LEFT stay scans; no AOT sample |
 | 24 | Evaluate alternative join algorithms | Rejected; nested-loop order matches SQLite 3.53.1, so a hash join is not used |
