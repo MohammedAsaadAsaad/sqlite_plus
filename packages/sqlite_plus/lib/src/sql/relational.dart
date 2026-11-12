@@ -27,6 +27,12 @@ extension _RelationalQueries on SqliteDatabase {
               entry.type == 'table' && asciiLower(entry.name) == name))
         return null;
     }
+    String? signature(Expr expr) => expressionSignature(expr,
+        columnKey: (column) => jsonEncode([
+              asciiLower(column.name),
+              column.qualifier == null ? null : asciiLower(column.qualifier!),
+              column.doubleQuoted,
+            ]));
     final expressions = <Expr>[
       for (final item in query.items)
         if (item.expression != null) item.expression!,
@@ -40,8 +46,7 @@ extension _RelationalQueries on SqliteDatabase {
     // The shared structural matcher preserves types, CAST/COLLATE, flags and
     // nested expression details. Unknown nodes (including parameters) fall back.
     if (query.items.any((item) => item.expression == null) ||
-        expressions.any((expr) => expressionSignature(expr) == null))
-      return null;
+        expressions.any((expr) => signature(expr) == null)) return null;
     return jsonEncode([
       query.distinct,
       query.valuesQuery,
@@ -50,7 +55,7 @@ extension _RelationalQueries on SqliteDatabase {
       query.subqueryExists,
       [
         for (final item in query.items)
-          [item.label, expressionSignature(item.expression!)]
+          [item.label, signature(item.expression!)]
       ],
       [
         for (final source in query.sources)
@@ -62,19 +67,15 @@ extension _RelationalQueries on SqliteDatabase {
             source.notIndexed
           ]
       ],
-      query.where == null ? null : expressionSignature(query.where!),
-      [for (final expr in query.groupBy) expressionSignature(expr)],
-      query.having == null ? null : expressionSignature(query.having!),
+      query.where == null ? null : signature(query.where!),
+      [for (final expr in query.groupBy) signature(expr)],
+      query.having == null ? null : signature(query.having!),
       [
         for (final term in query.order)
-          [
-            expressionSignature(term.expression),
-            term.descending,
-            term.nullsFirst
-          ]
+          [signature(term.expression), term.descending, term.nullsFirst]
       ],
-      query.limit == null ? null : expressionSignature(query.limit!),
-      query.offset == null ? null : expressionSignature(query.offset!),
+      query.limit == null ? null : signature(query.limit!),
+      query.offset == null ? null : signature(query.offset!),
     ]);
   }
 
@@ -109,6 +110,8 @@ extension _RelationalQueries on SqliteDatabase {
     for (final expression in _expressions(query)) {
       walk(expression);
     }
+    walk(query.limit);
+    walk(query.offset);
     for (final source in query.sources) {
       if (source.query != null) {
         sideEffect = sideEffect || _subqueryHasSideEffect(source.query!);

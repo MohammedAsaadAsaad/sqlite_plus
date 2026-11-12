@@ -38,18 +38,6 @@
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     },
     {
-      "item": 37,
-      "description": "Use complete conservative semantic keys for subquery reuse",
-      "focused_test_log": "item37.log",
-      "parent_commit": "318fd1f57e35de770bb018459fa33bef92a32fc2",
-      "files_sha256": {
-        "packages/sqlite_plus/lib/src/sql/database.dart": "38f112debd6cf86e148ef3b56d65a30320220c4a731e8f66f3a66aedc6f6a0ec",
-        "packages/sqlite_plus/lib/src/sql/relational.dart": "8ffd68a73f9a01204182f17ca0012f10054173ab7703956ece5c29cdf4241ab2",
-        "packages/sqlite_plus/test/optimizer_reuse_test.dart": "5750250b239092affbd5dc01a82387713572eecfd928d6d53d4a8a68778259a1"
-      },
-      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
-    },
-    {
       "item": 11,
       "description": "Require complete covering dependencies and genuine rowid aliases",
       "focused_test_log": "item11.log",
@@ -144,6 +132,17 @@
         "packages/sqlite_plus/lib/src/sql/image_mutations.dart": "2a80b37d7fe127af6dccedacbf3f11846857440e582e2f4e680a286a07500db3",
         "packages/sqlite_plus/lib/src/sql/search_mutations.dart": "3fccdfa06805341f96be77b729661a6ee1c776a4c2c9422e38a28dacb284e87e",
         "packages/sqlite_plus/test/optimizer_boolean_test.dart": "93e86fd6b0ca45da136b739e4eb2ccb798ff0b2f5cec4f7c23d586b0deeedfd3"
+      },
+      "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
+    },
+    {
+      "item": 37,
+      "description": "Guard subquery reuse against limit callbacks and identifier collisions",
+      "focused_test_log": "item37.log",
+      "parent_commit": "70c7bf967fdc34cc57782548979a54efd089f206",
+      "files_sha256": {
+        "packages/sqlite_plus/lib/src/sql/relational.dart": "3e9af9c54a47627f99d99b7cf1477be235c3e323646fccca58c1194af0af5e1c",
+        "packages/sqlite_plus/test/optimizer_reuse_test.dart": "e6f3e35f0974179576da838e104dce997f66c91cead0044ccaa4316336584609"
       },
       "status": "correctness checkpoint; full final regressions pending; no performance acceptance"
     }

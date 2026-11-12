@@ -25,6 +25,14 @@ void main() {
         "SELECT (SELECT 'A' COLLATE NOCASE AS v)='a' AS x,(SELECT 'A' COLLATE BINARY AS v)='a' AS y",
         'SELECT (SELECT count(*) FROM t) AS x,(SELECT count(*) FROM t) AS y'
       ]) {
+        var calls = 0;
+        db.functions.registerScalar('take_one', 0, (_) {
+          calls++;
+          return 1;
+        });
+        await db.query('SELECT (SELECT a FROM t LIMIT take_one()) AS x,'
+            '(SELECT a FROM t LIMIT take_one()) AS y');
+        expect(calls, 2);
         final expected = await optimizerOracle(setup, sql);
         expect((await db.query(sql)).rows, expected, reason: sql);
         expect((await ro.query(sql)).rows, expected, reason: sql);
